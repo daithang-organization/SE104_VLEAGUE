@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import type { Match } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SchedulingService {
   constructor(private prisma: PrismaService) {}
 
-  async getSchedule() {
+  async getSchedule(): Promise<{ ok: boolean; matches: Match[] }> {
     // Sprint 0: trả danh sách matches (nếu có seed)
 
-    const matches = await this.prisma.match.findMany({
+    const matches: Match[] = await this.prisma.match.findMany({
       orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
     });
 

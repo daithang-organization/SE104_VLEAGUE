@@ -6,7 +6,9 @@ export class PlayersController {
   constructor(private readonly reg: RegistrationService) {}
 
   @Get('/players')
-  async getPlayers() {
+  async getPlayers(): Promise<
+    Awaited<ReturnType<typeof this.reg.listPlayers>>
+  > {
     return await this.reg.listPlayers();
   }
 }
