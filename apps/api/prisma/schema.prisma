@@ -18,6 +18,12 @@ enum PlayerPosition {
   FW
 }
 
+enum MatchStatus {
+  DRAFT
+  PUBLISHED
+  LOCKED
+}
+
 model Team {
   id        String     @id @default(uuid())
   name      String     @unique
@@ -40,4 +46,23 @@ model Player {
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
   @@map("players")
+}
+
+model Match {
+  id         String      @id @default(uuid())
+
+  roundNo    Int         @map("round_no")
+
+  homeTeamId String      @map("home_team_id")
+  awayTeamId String      @map("away_team_id")
+
+  stadiumId  String?     @map("stadium_id")
+  kickoffAt  DateTime?   @map("kickoff_at")
+
+  status     MatchStatus @default(DRAFT)
+
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@map("matches")
 }
