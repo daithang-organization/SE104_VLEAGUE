@@ -50,8 +50,22 @@ cd ../..
 pnpm dev
 ```
 
-- API: http://localhost:3000/health
+- API: http://localhost:8080/health
 - Web: http://localhost:5173
+
+## Ports
+
+- **Postgres**: 5432
+- **API**: 8080
+- **Web**: 5173
+
+## Run with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for more details.
 
 ## Common commands
 
