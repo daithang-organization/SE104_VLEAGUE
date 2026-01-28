@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PlayerPosition, PrismaClient, TeamStatus } from '@prisma/client';
+import { MatchStatus, PlayerPosition, PrismaClient, TeamStatus } from '@prisma/client';
 import 'dotenv/config';
 import pg from 'pg';
 
@@ -11,8 +11,9 @@ async function main() {
   // clear data (dev only)
   await prisma.player.deleteMany();
   await prisma.team.deleteMany();
+  await prisma.match.deleteMany();
 
-  const teams = await prisma.team.createMany({
+  await prisma.team.createMany({
     data: [
       { name: 'Hà Nội FC', status: TeamStatus.ACTIVE },
       { name: 'TP.HCM FC', status: TeamStatus.ACTIVE },
@@ -41,7 +42,33 @@ async function main() {
   // Nhưng nếu sau này bạn muốn players gắn teamId, thì Sprint 0 bạn chưa cần.
   await prisma.player.createMany({ data: playersData });
 
-  console.log('Seeded:', { teams: teams.count, players: playersData.length });
+  // Seed placeholder matches
+  const teams = await prisma.team.findMany({ orderBy: { name: 'asc' } });
+
+  if (teams.length >= 2) {
+    await prisma.match.createMany({
+      data: [
+        {
+          roundNo: 1,
+          homeTeamId: teams[0].id,
+          awayTeamId: teams[1].id,
+          stadiumId: null,
+          kickoffAt: null,
+          status: MatchStatus.DRAFT,
+        },
+        {
+          roundNo: 1,
+          homeTeamId: teams[1].id,
+          awayTeamId: teams[0].id,
+          stadiumId: null,
+          kickoffAt: null,
+          status: MatchStatus.DRAFT,
+        },
+      ],
+    });
+  }
+
+  console.log('Seeded:', { teams: teams.length, players: playersData.length, matches: teams.length >= 2 ? 2 : 0 });
 }
 
 main()
