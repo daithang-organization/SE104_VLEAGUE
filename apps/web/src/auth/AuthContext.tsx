@@ -3,9 +3,9 @@ import type { AuthContextValue } from './auth.types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = 'vleague_access_token';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const STORAGE_KEY = 'vleague_access_token';
+  
   const [accessToken, setAccessToken] = useState<string | null>(() => {
     return localStorage.getItem(STORAGE_KEY);
   });

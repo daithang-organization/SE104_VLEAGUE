@@ -1,4 +1,8 @@
-export type MatchEventType = 'GOAL' | 'YELLOW_CARD' | 'RED_CARD' | 'SUBSTITUTION';
+export type MatchEventType =
+  | 'GOAL'
+  | 'YELLOW_CARD'
+  | 'RED_CARD'
+  | 'SUBSTITUTION';
 
 export type AddMatchEventDto = {
   minute: number;

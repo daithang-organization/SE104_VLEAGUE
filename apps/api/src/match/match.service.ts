@@ -3,7 +3,7 @@ import type { AddMatchEventDto } from './dto/add-match-event.dto';
 
 @Injectable()
 export class MatchService {
-  async getMatchById(id: string) {
+  getMatchById(id: string) {
     // Sprint 0 stub
     return {
       id,
@@ -18,7 +18,7 @@ export class MatchService {
     };
   }
 
-  async addEvent(matchId: string, dto: AddMatchEventDto) {
+  addEvent(matchId: string, dto: AddMatchEventDto) {
     // Sprint 0 stub: just echo back
     return {
       ok: true,
