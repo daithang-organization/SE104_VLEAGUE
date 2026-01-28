@@ -7,6 +7,7 @@ export class SchedulingService {
 
   async getSchedule() {
     // Sprint 0: trả danh sách matches (nếu có seed)
+
     const matches = await this.prisma.match.findMany({
       orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
     });
