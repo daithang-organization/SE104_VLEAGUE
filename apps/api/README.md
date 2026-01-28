@@ -1,98 +1,389 @@
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS"/>
+  <img src="https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white" alt="Prisma"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<h1 align="center">🔌 VLeague API</h1>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  <strong>Backend REST API cho hệ thống quản lý giải VLeague</strong>
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 📋 Tổng quan
 
-## Project setup
+**VLeague API** là backend service được xây dựng bằng NestJS framework, cung cấp REST API cho hệ thống quản lý giải bóng đá VLeague.
 
-```bash
-$ pnpm install
+### ✨ Tính năng chính
+- 🔐 **Authentication** - Xác thực và phân quyền người dùng
+- 👥 **Registration** - Quản lý đăng ký đội bóng và cầu thủ
+- 📅 **Scheduling** - Lập lịch thi đấu tự động
+- ⚽ **Match** - Quản lý trận đấu và ghi nhận kết quả
+
+---
+
+## 🏗 Cấu trúc thư mục
+
+```
+apps/api/
+├── 📂 prisma/                     # Database Schema & Migrations
+│   ├── 📄 schema.prisma           # Prisma schema definition
+│   ├── 📄 seed.ts                 # Database seeding script
+│   └── 📂 migrations/             # Migration history
+│
+├── 📂 src/
+│   ├── 📄 main.ts                 # Entry point
+│   ├── 📄 app.module.ts           # Root module
+│   │
+│   ├── 📂 auth/                   # 🔐 Authentication Module
+│   │   ├── auth.controller.ts     # Auth endpoints
+│   │   ├── auth.service.ts        # Auth business logic
+│   │   └── auth.module.ts         # Module definition
+│   │
+│   ├── 📂 match/                  # ⚽ Match Module
+│   │   ├── match.controller.ts    # Match endpoints
+│   │   ├── match.service.ts       # Match business logic
+│   │   ├── match.module.ts        # Module definition
+│   │   └── 📂 dto/                # Data Transfer Objects
+│   │
+│   ├── 📂 prisma/                 # 🗄️ Prisma Module
+│   │   ├── prisma.service.ts      # Prisma client wrapper
+│   │   └── prisma.module.ts       # Module definition
+│   │
+│   ├── 📂 registration/           # 👥 Registration Module
+│   │   ├── teams.controller.ts    # Teams endpoints
+│   │   ├── players.controller.ts  # Players endpoints
+│   │   ├── registration.service.ts
+│   │   └── registration.module.ts
+│   │
+│   └── 📂 scheduling/             # 📅 Scheduling Module
+│       ├── scheduling.controller.ts
+│       ├── scheduling.service.ts
+│       └── scheduling.module.ts
+│
+└── 📂 test/                       # E2E Tests
+    ├── app.e2e-spec.ts
+    └── jest-e2e.json
 ```
 
-## Compile and run the project
+---
+
+## 🚀 Bắt đầu
+
+### Yêu cầu
+- Node.js >= 20
+- pnpm >= 8
+- PostgreSQL (hoặc Docker)
+
+### Cài đặt
 
 ```bash
-# development
-$ pnpm run start
+# Từ root của project
+cd apps/api
 
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+# Cài đặt dependencies (nếu chưa chạy ở root)
+pnpm install
 ```
 
-## Run tests
+### Cấu hình Environment
+
+Tạo file `.env` từ template:
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+cp .env.example .env
 ```
 
-## Deployment
+Nội dung file `.env`:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+```env
+# Database
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vleague?schema=public"
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+# Server
+PORT=8080
+NODE_ENV=development
+```
+
+### Khởi động Database
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+# Chạy PostgreSQL với Docker
+docker compose -f ../../infra/docker-compose.db.yml up -d
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Chạy Migrations
 
-## Resources
+```bash
+# Tạo và chạy migrations
+pnpm dlx prisma migrate dev
 
-Check out a few resources that may come in handy when working with NestJS:
+# Generate Prisma Client
+pnpm dlx prisma generate
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Chạy Development Server
 
-## Support
+```bash
+pnpm dev
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+API sẽ chạy tại: **http://localhost:8080**
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 📝 Các lệnh thường dùng
 
-## License
+### Development
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Lệnh | Mô tả |
+|------|-------|
+| `pnpm dev` | Chạy server với hot-reload |
+| `pnpm start` | Chạy server |
+| `pnpm start:debug` | Chạy với debug mode |
+| `pnpm build` | Build production |
+| `pnpm start:prod` | Chạy production build |
+
+### Testing
+
+| Lệnh | Mô tả |
+|------|-------|
+| `pnpm test` | Chạy unit tests |
+| `pnpm test:watch` | Chạy tests với watch mode |
+| `pnpm test:cov` | Chạy tests với coverage |
+| `pnpm test:e2e` | Chạy E2E tests |
+
+### Database (Prisma)
+
+| Lệnh | Mô tả |
+|------|-------|
+| `pnpm dlx prisma migrate dev` | Tạo & chạy migration |
+| `pnpm dlx prisma migrate dev --name <name>` | Tạo migration với tên |
+| `pnpm dlx prisma migrate deploy` | Deploy migrations (prod) |
+| `pnpm dlx prisma generate` | Generate Prisma Client |
+| `pnpm dlx prisma studio` | Mở Prisma Studio GUI |
+| `pnpm dlx prisma db push` | Push schema (dev only) |
+| `pnpm dlx prisma db seed` | Seed database |
+| `pnpm db:seed` | Seed database (shortcut) |
+
+### Code Quality
+
+| Lệnh | Mô tả |
+|------|-------|
+| `pnpm lint` | Kiểm tra và fix ESLint |
+| `pnpm format` | Format code với Prettier |
+
+---
+
+## 🗄️ Database Schema
+
+### Các Models chính
+
+#### Team (Đội bóng)
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `name` | String | Tên đội (unique) |
+| `status` | Enum | ACTIVE / INACTIVE |
+| `createdAt` | DateTime | Ngày tạo |
+| `updatedAt` | DateTime | Ngày cập nhật |
+
+#### Player (Cầu thủ)
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `fullName` | String | Họ tên |
+| `dob` | DateTime | Ngày sinh |
+| `nationality` | String | Quốc tịch |
+| `position` | Enum | GK / DF / MF / FW |
+| `createdAt` | DateTime | Ngày tạo |
+| `updatedAt` | DateTime | Ngày cập nhật |
+
+#### Match (Trận đấu)
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `roundNo` | Int | Vòng đấu |
+| `homeTeamId` | UUID | Đội nhà |
+| `awayTeamId` | UUID | Đội khách |
+| `stadiumId` | UUID? | Sân vận động |
+| `kickoffAt` | DateTime? | Thời gian thi đấu |
+| `status` | Enum | DRAFT / PUBLISHED / LOCKED |
+
+---
+
+## 🔗 API Endpoints
+
+### Health Check
+```
+GET /health → { status: 'ok' }
+```
+
+### Authentication
+```
+POST /auth/login
+POST /auth/logout
+```
+
+### Teams
+```
+GET  /teams          → Danh sách đội bóng
+GET  /teams/:id      → Chi tiết đội bóng
+POST /teams          → Tạo đội bóng mới
+```
+
+### Players
+```
+GET  /players        → Danh sách cầu thủ
+GET  /players/:id    → Chi tiết cầu thủ
+POST /players        → Tạo cầu thủ mới
+```
+
+### Scheduling
+```
+GET  /schedule       → Lấy lịch thi đấu
+POST /schedule/generate → Tạo lịch thi đấu
+POST /schedule/publish  → Xuất bản lịch
+```
+
+### Matches
+```
+GET  /matches/:id         → Chi tiết trận đấu
+POST /matches/:id/events  → Thêm sự kiện trận đấu
+```
+
+> 📖 Chi tiết API xem tại: [docs/api-outline.md](../../docs/api-outline.md)
+
+---
+
+## 🧪 Testing
+
+### Unit Tests
+
+```bash
+# Chạy tất cả unit tests
+pnpm test
+
+# Chạy với watch mode
+pnpm test:watch
+
+# Chạy với coverage report
+pnpm test:cov
+```
+
+### E2E Tests
+
+```bash
+# Đảm bảo database đang chạy
+pnpm test:e2e
+```
+
+---
+
+## 🐛 Debugging
+
+### VS Code Launch Config
+
+Thêm vào `.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach NestJS",
+      "port": 9229,
+      "restart": true
+    }
+  ]
+}
+```
+
+Chạy với debug mode:
+
+```bash
+pnpm start:debug
+```
+
+---
+
+## 📁 Hướng dẫn thêm Module mới
+
+### 1. Tạo module với NestJS CLI
+
+```bash
+# Tạo module
+npx nest g module <module-name>
+
+# Tạo controller
+npx nest g controller <module-name>
+
+# Tạo service
+npx nest g service <module-name>
+```
+
+### 2. Cấu trúc thư mục chuẩn
+
+```
+src/<module-name>/
+├── <module-name>.controller.ts
+├── <module-name>.service.ts
+├── <module-name>.module.ts
+└── dto/
+    ├── create-<module-name>.dto.ts
+    └── update-<module-name>.dto.ts
+```
+
+### 3. Import vào AppModule
+
+```typescript
+// app.module.ts
+import { NewModule } from './new-module/new-module.module';
+
+@Module({
+  imports: [
+    // ... existing modules
+    NewModule,
+  ],
+})
+export class AppModule {}
+```
+
+---
+
+## 🔒 Best Practices
+
+### 1. Validation
+- Sử dụng `class-validator` cho DTOs
+- Validate input ở controller level
+
+### 2. Error Handling
+- Sử dụng NestJS Exception Filters
+- Trả về consistent error response
+
+### 3. Database
+- Không truy cập Prisma trực tiếp từ controller
+- Luôn đi qua service layer
+- Sử dụng transactions cho nhiều operations
+
+### 4. Testing
+- Unit test cho services
+- E2E test cho endpoints quan trọng
+
+---
+
+## 📚 Tài liệu tham khảo
+
+- [NestJS Documentation](https://docs.nestjs.com/)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+---
+
+<p align="center">
+  <em>VLeague API - Backend Service</em>
+</p>
