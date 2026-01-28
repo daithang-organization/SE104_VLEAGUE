@@ -3,4 +3,4 @@ dist
 build
 coverage
 .pnpm-store
-*.log
+npm-debug.log
