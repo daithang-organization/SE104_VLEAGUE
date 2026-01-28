@@ -1,19 +1,9 @@
-# API Outline (planned)
+# API Outline
 
-## Standings
-- GET /standings
-  - Response (draft):
-    - items: { teamId, teamName, played, win, draw, loss, gf, ga, gd, points, rank }[]
+## Match
+- GET /matches/{id}
+  - Response (draft): MatchResponseDto (id, roundNo, kickoffAt, status, teams, score, events[])
 
-## Reports
-- GET /reports/scorers
-  - Response (draft):
-    - items: { playerId, playerName, teamName, goals }[]
-
-- GET /reports/cards
-  - Response (draft):
-    - items: { playerId, playerName, teamName, yellow, red }[]
-
-- GET /reports/motm
-  - Response (draft):
-    - items: { matchId, playerId, playerName, teamName, roundNo }[]
+- POST /matches/{id}/events
+  - Request (draft): { minute, type, playerId?, teamId?, note? }
+  - Response (draft): { ok, matchId, createdEvent }
