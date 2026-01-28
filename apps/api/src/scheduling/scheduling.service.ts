@@ -14,12 +14,12 @@ export class SchedulingService {
     return { ok: true, matches };
   }
 
-  async generateStub() {
+  generateStub() {
     // Sprint 0: stub
     return { ok: true, message: 'schedule generation stub' };
   }
 
-  async publishStub() {
+  publishStub() {
     // Sprint 0: stub
     return { ok: true, message: 'schedule publish stub' };
   }

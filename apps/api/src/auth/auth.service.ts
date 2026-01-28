@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
-  async login(username: string, password: string) {
+  login(username: string) {
     // Sprint 0 stub token
     return {
       accessToken: `stub-token-${Buffer.from(username).toString('base64')}`,
@@ -11,7 +11,7 @@ export class AuthService {
     };
   }
 
-  async refresh() {
+  refresh() {
     return {
       accessToken: `stub-token-refresh-${Date.now()}`,
       tokenType: 'Bearer',
@@ -19,7 +19,7 @@ export class AuthService {
     };
   }
 
-  async logout() {
+  logout() {
     return { ok: true };
   }
 }

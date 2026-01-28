@@ -6,7 +6,7 @@ export class TeamsController {
   constructor(private readonly reg: RegistrationService) {}
 
   @Get('/teams')
-  getTeams() {
-    return this.reg.listTeams();
+  async getTeams() {
+    return await this.reg.listTeams();
   }
 }

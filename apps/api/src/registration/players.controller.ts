@@ -6,7 +6,7 @@ export class PlayersController {
   constructor(private readonly reg: RegistrationService) {}
 
   @Get('/players')
-  getPlayers() {
-    return this.reg.listPlayers();
+  async getPlayers() {
+    return await this.reg.listPlayers();
   }
 }

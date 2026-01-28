@@ -14,7 +14,7 @@ export default function LoginPage() {
       login(res.accessToken);
       msg.success('Logged in (stub)');
       nav('/standings');
-    } catch (e) {
+    } catch {
       msg.error('Login failed');
     }
   };

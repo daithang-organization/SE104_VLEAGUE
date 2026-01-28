@@ -5,11 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class RegistrationService {
   constructor(private prisma: PrismaService) {}
 
-  listTeams() {
-    return this.prisma.team.findMany({ orderBy: { name: 'asc' } });
+  async listTeams() {
+    return await this.prisma.team.findMany({ orderBy: { name: 'asc' } });
   }
 
-  listPlayers() {
-    return this.prisma.player.findMany({ orderBy: { fullName: 'asc' } });
+  async listPlayers() {
+    return await this.prisma.player.findMany({ orderBy: { fullName: 'asc' } });
   }
 }
