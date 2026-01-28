@@ -4,10 +4,40 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model Healthcheck {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+enum TeamStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PlayerPosition {
+  GK
+  DF
+  MF
+  FW
+}
+
+model Team {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  status    TeamStatus @default(ACTIVE)
+
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@map("teams")
+}
+
+model Player {
+  id          String         @id @default(uuid())
+  fullName    String         @map("full_name")
+  dob         DateTime
+  nationality String
+  position    PlayerPosition
+
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("players")
 }
