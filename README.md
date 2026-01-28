@@ -78,3 +78,14 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for more details.
 
 - `apps/api/.env`: DATABASE_URL, PORT
 - `apps/web/.env`: VITE_API_BASE_URL
+
+## CI / Branch rules
+
+- Every PR to `main` must pass CI:
+  - API: lint + test + build
+  - Web: lint + build
+- `main` branch is protected:
+  - PR required
+  - At least 1 approval
+  - Required status checks must pass
+- CI produces build artifacts (no deploy yet)
