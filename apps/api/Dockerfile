@@ -23,5 +23,9 @@ EXPOSE 8080
 
 WORKDIR /app/apps/api
 
-# Dev mode - chạy nest CLI từ root node_modules
-CMD ["node", "../../node_modules/@nestjs/cli/bin/nest.js", "start", "--watch"]
+# Copy entrypoint script
+COPY apps/api/docker-entrypoint.sh /app/apps/api/
+RUN chmod +x /app/apps/api/docker-entrypoint.sh
+
+# Dev mode - chạy migration, seed, rồi start server
+ENTRYPOINT ["/app/apps/api/docker-entrypoint.sh"]

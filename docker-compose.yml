@@ -4,14 +4,14 @@ services:
     container_name: vleague_db
     environment:
       POSTGRES_DB: vleague
-      POSTGRES_USER: vleague
-      POSTGRES_PASSWORD: vleague
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - vleague_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vleague -d vleague"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vleague"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -25,7 +25,7 @@ services:
       - apps/api/.env.example
     environment:
       # ghi đè DATABASE_URL để api trong container connect tới service db
-      DATABASE_URL: postgresql://vleague:vleague@db:5432/vleague?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/vleague?schema=public
       PORT: 8080
       NODE_ENV: development
     ports:
