@@ -79,11 +79,22 @@ See [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) for more details.
 - `apps/api/.env`: DATABASE_URL, PORT
 - `apps/web/.env`: VITE_API_BASE_URL
 
+## PR naming rule (required)
+
+PR title must follow Conventional Commits:
+- Allowed types: feat, fix, chore, docs, refactor, test, ci
+- Format: `<type>: <summary>`
+
+Examples:
+- `feat: add standings page skeleton`
+- `ci: enforce PR title convention`
+
 ## CI / Branch rules
 
 - Every PR to `main` must pass CI:
   - API: lint + test + build
   - Web: lint + build
+  - PR title must follow conventional commits format
 - `main` branch is protected:
   - PR required
   - At least 1 approval

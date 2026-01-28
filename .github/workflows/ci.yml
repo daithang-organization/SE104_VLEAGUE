@@ -83,3 +83,14 @@ jobs:
           name: web-dist
           path: apps/web/dist
           if-no-files-found: error
+
+  pr-title:
+    name: PR Title - conventional
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: $TITLE"
+          echo "$TITLE" | grep -E '^(feat|fix|chore|docs|refactor|test|ci):\s.+$'
