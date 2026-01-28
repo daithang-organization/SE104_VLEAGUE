@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16
+    container_name: vleague_db
+    environment:
+      POSTGRES_DB: vleague
+      POSTGRES_USER: vleague
+      POSTGRES_PASSWORD: vleague
+    ports:
+      - "5432:5432"
+    volumes:
+      - vleague_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vleague -d vleague"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: vleague_api
+    env_file:
+      - apps/api/.env.example
+    environment:
+      # ghi đè DATABASE_URL để api trong container connect tới service db
+      DATABASE_URL: postgresql://vleague:vleague@db:5432/vleague?schema=public
+      PORT: 8080
+      NODE_ENV: development
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: vleague_web
+    env_file:
+      - apps/web/.env.example
+    environment:
+      # Browser chạy trên máy host -> gọi localhost là đúng nhất
+      VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  vleague_pgdata:
