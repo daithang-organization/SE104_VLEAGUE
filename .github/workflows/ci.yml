@@ -93,7 +93,7 @@ jobs:
         run: |
           TITLE="${{ github.event.pull_request.title }}"
           echo "PR Title: $TITLE"
-          echo "$TITLE" | grep -E '^(feat|fix|chore|docs|refactor|test|ci):\s.+$'
+          echo "$TITLE" | grep -E '^(feat|fix|chore|docs|refactor|test|ci)(\(.+\))?:\s.+$'
 
   pr-branch:
     name: Branch Name - conventional

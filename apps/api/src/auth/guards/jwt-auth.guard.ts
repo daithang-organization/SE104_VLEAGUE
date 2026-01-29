@@ -3,6 +3,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 import { AppError } from '../../common/errors';
 
+interface JwtInfo {
+  name?: string;
+  message?: string;
+}
+
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(
@@ -11,7 +16,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest<TUser = any>(err: any, user: any, info: any): TUser {
+  handleRequest<TUser>(
+    err: Error | null,
+    user: TUser | false,
+    info: JwtInfo | undefined,
+  ): TUser {
     if (err || !user) {
       if (info?.name === 'TokenExpiredError') {
         throw new AppError(
