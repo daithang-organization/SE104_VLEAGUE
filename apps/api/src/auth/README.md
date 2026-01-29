@@ -6,7 +6,7 @@ Module xử lý authentication (xác thực) và authorization (phân quyền) c
 
 Cung cấp các chức năng liên quan đến bảo mật:
 - Xác thực người dùng (login/logout)
-- Quản lý JWT tokens
+- Quản lý JWT tokens (access + refresh tokens)
 - Bảo vệ routes với guards
 - Role-based access control (RBAC)
 
@@ -16,8 +16,105 @@ Cung cấp các chức năng liên quan đến bảo mật:
 auth/
 ├── auth.module.ts       # Module definition
 ├── auth.controller.ts   # Authentication endpoints
-└── auth.service.ts      # Authentication business logic
+├── auth.service.ts      # Authentication business logic
+├── index.ts             # Public exports
+├── dto/
+│   ├── index.ts
+│   ├── login.dto.ts           # Login request validation
+│   ├── refresh.dto.ts         # Refresh token request
+│   └── auth-response.dto.ts   # Response DTOs
+├── guards/
+│   ├── index.ts
+│   ├── jwt-auth.guard.ts      # JWT authentication guard
+│   └── roles.guard.ts         # Role-based authorization guard
+├── strategies/
+│   ├── index.ts
+│   └── jwt.strategy.ts        # Passport JWT strategy
+└── decorators/
+    ├── index.ts
+    ├── roles.decorator.ts     # @Roles() decorator
+    └── current-user.decorator.ts  # @CurrentUser() decorator
 ```
+
+## API Endpoints
+
+### POST /auth/login
+Xác thực người dùng với email và password.
+
+**Request Body:**
+```json
+{
+  "email": "admin@vleague.vn",
+  "password": "admin123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "a1b2c3d4e5f6...",
+  "user": {
+    "id": "uuid",
+    "email": "admin@vleague.vn",
+    "role": "ADMIN",
+    "createdAt": "2026-01-30T10:00:00.000Z"
+  }
+}
+```
+
+### POST /auth/refresh
+Lấy access token mới từ refresh token.
+
+**Request Body:**
+```json
+{
+  "refreshToken": "a1b2c3d4e5f6..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+### POST /auth/logout
+Vô hiệu hóa refresh token (revoke).
+
+**Request Body:**
+```json
+{
+  "refreshToken": "a1b2c3d4e5f6..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+
+## Error Response Format
+
+Tất cả errors đều có format thống nhất:
+```json
+{
+  "code": "AUTH_INVALID_CREDENTIALS",
+  "message": "Invalid email or password",
+  "details": {}
+}
+```
+
+**Error Codes:**
+- `AUTH_INVALID_CREDENTIALS` - Sai email hoặc password
+- `AUTH_INVALID_REFRESH_TOKEN` - Refresh token không hợp lệ hoặc đã hết hạn
+- `AUTH_TOKEN_EXPIRED` - Access token đã hết hạn
+- `AUTH_UNAUTHORIZED` - Chưa xác thực
+- `AUTH_FORBIDDEN` - Không đủ quyền truy cập
 
 ## Components
 

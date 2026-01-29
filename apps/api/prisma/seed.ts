@@ -1,5 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { MatchStatus, PlayerPosition, PrismaClient, TeamStatus } from '@prisma/client';
+import { MatchStatus, PlayerPosition, PrismaClient, TeamStatus, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import pg from 'pg';
 
@@ -9,9 +10,22 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // clear data (dev only)
+  await prisma.refreshToken.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.player.deleteMany();
   await prisma.team.deleteMany();
   await prisma.match.deleteMany();
+
+  // Seed admin user
+  const adminPassword = await bcrypt.hash('Admin@12345', 10);
+  const admin = await prisma.user.create({
+    data: {
+      email: 'admin@vleague.local',
+      passwordHash: adminPassword,
+      role: UserRole.ADMIN,
+    },
+  });
+  console.log('Created admin user:', admin.email);
 
   await prisma.team.createMany({
     data: [
@@ -68,7 +82,13 @@ async function main() {
     });
   }
 
-  console.log('Seeded:', { teams: teams.length, players: playersData.length, matches: teams.length >= 2 ? 2 : 0 });
+  console.log('Seeded:', { 
+    users: 1, 
+    teams: teams.length, 
+    players: playersData.length, 
+    matches: teams.length >= 2 ? 2 : 0 
+  });
+  console.log('Admin credentials: admin@vleague.local / Admin@12345');
 }
 
 main()
