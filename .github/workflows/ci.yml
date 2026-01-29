@@ -43,7 +43,7 @@ jobs:
         run: pnpm build
 
       - name: Upload API build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: api-dist
           path: apps/api/dist
@@ -78,7 +78,7 @@ jobs:
         run: pnpm build
 
       - name: Upload Web build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: web-dist
           path: apps/web/dist
