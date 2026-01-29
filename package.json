@@ -4,6 +4,7 @@
   "private": true,
   "description": "SE104 VLeague Project",
   "scripts": {
+    "setup": "node -e \"require('child_process').execSync(process.platform === 'win32' ? 'powershell -ExecutionPolicy Bypass -File .\\\\scripts\\\\setup.ps1' : 'bash scripts/setup.sh', {stdio: 'inherit'})\"",
     "dev": "pnpm --parallel run dev",
     "build": "pnpm --recursive run build",
     "test": "pnpm --recursive run test",
@@ -12,7 +13,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "prettier": "^3.2.0"
   },

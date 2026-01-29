@@ -352,7 +352,7 @@ Sử dụng [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## 📄 License
 
-Dự án này được phân phối dưới giấy phép **ISC License**. Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
+Dự án này được phân phối dưới giấy phép **MIT License**. Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
 
 ---
 

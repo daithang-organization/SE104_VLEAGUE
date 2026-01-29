@@ -1,0 +1,36 @@
+# CODEOWNERS
+# This file defines code ownership for automatic review requests
+# Lines starting with '#' are comments
+# Each line is a file pattern followed by one or more owners
+
+# Default owners for everything in the repo
+# These owners will be requested for review when someone opens a PR
+* @daithang-organization
+
+# Backend API
+/apps/api/ @daithang-organization
+/apps/api/src/auth/ @daithang-organization
+/apps/api/src/match/ @daithang-organization
+/apps/api/src/registration/ @daithang-organization
+/apps/api/src/scheduling/ @daithang-organization
+/apps/api/prisma/ @daithang-organization
+
+# Frontend Web
+/apps/web/ @daithang-organization
+/apps/web/src/pages/ @daithang-organization
+/apps/web/src/auth/ @daithang-organization
+
+# Infrastructure & DevOps
+/infra/ @daithang-organization
+/docker-compose.yml @daithang-organization
+/.github/ @daithang-organization
+/scripts/ @daithang-organization
+
+# Documentation
+/docs/ @daithang-organization
+README.md @daithang-organization
+
+# Configuration files
+package.json @daithang-organization
+pnpm-workspace.yaml @daithang-organization
+.env.example @daithang-organization

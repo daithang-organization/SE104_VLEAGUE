@@ -1,29 +1,55 @@
-## What
-<!-- Describe what changes you made -->
+## 📝 Description
+<!-- Mô tả ngắn gọn về Pull Request này -->
 
-## Why
-<!-- Explain why this change is needed -->
 
-## Type
-<!-- Check one that applies -->
-- [ ] feat: New feature
-- [ ] fix: Bug fix
-- [ ] chore: Maintenance/dependencies
-- [ ] docs: Documentation only
-- [ ] refactor: Code restructuring
-- [ ] test: Adding/updating tests
-- [ ] ci: CI/CD changes
+## 🎯 Related Issues
+<!-- Link đến issue liên quan (nếu có) -->
+Closes #
 
-## Checklist
-- [ ] Code builds successfully
-- [ ] Tests pass locally
-- [ ] Added/updated tests (if needed)
-- [ ] Updated documentation (if needed)
-- [ ] PR title follows convention: `<type>: <summary>`
-- [ ] Branch name follows convention: `<type>/<description>`
 
-## Screenshots (if applicable)
-<!-- Add screenshots for UI changes -->
+## 🔄 Type of Change
+<!-- Đánh dấu [x] vào loại thay đổi phù hợp -->
 
-## Related Issues
-<!-- Link to related issues: Closes #123, Fixes #456 -->
+- [ ] 🐛 Bug fix (thay đổi không phá vỡ tính năng hiện có)
+- [ ] ✨ New feature (thêm tính năng mới)
+- [ ] 💥 Breaking change (thay đổi phá vỡ API/tính năng hiện có)
+- [ ] 📚 Documentation update (cập nhật tài liệu)
+- [ ] 🎨 Style/UI update (thay đổi giao diện)
+- [ ] ♻️ Refactoring (cải tiến code không thay đổi chức năng)
+- [ ] ⚡️ Performance improvement
+- [ ] 🧪 Test update
+
+
+## 🧪 Testing Checklist
+<!-- Đánh dấu [x] vào các mục đã hoàn thành -->
+
+- [ ] Code đã được test locally
+- [ ] Unit tests đã pass
+- [ ] Integration tests đã pass (nếu có)
+- [ ] ESLint không có lỗi
+- [ ] Prettier đã format code
+- [ ] TypeScript không có type errors
+
+
+## 📸 Screenshots (nếu có UI changes)
+<!-- Thêm screenshots nếu có thay đổi giao diện -->
+
+
+## 📋 Additional Notes
+<!-- Thông tin thêm, lưu ý cho reviewer -->
+
+
+## ✅ Checklist for Reviewer
+<!-- Dành cho người review -->
+
+- [ ] Code dễ đọc và dễ maintain
+- [ ] Tuân thủ coding conventions của project
+- [ ] Không có code smell hoặc anti-patterns
+- [ ] Performance được xem xét (nếu cần)
+- [ ] Security được xem xét (nếu cần)
+- [ ] Documentation đã được cập nhật (nếu cần)
+
+
+---
+
+**⚠️ Lưu ý**: PR nên nhỏ gọn (< 30 files, < 500 lines) để dễ review. PR lớn sẽ nhận cảnh báo từ CI.
