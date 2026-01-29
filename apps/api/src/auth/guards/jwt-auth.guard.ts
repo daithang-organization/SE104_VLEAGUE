@@ -1,8 +1,7 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, HttpStatus, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 import { AppError } from '../../common/errors';
-import { HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -12,11 +11,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest<TUser = any>(
-    err: any,
-    user: any,
-    info: any,
-  ): TUser {
+  handleRequest<TUser = any>(err: any, user: any, info: any): TUser {
     if (err || !user) {
       if (info?.name === 'TokenExpiredError') {
         throw new AppError(

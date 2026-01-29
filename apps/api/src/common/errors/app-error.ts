@@ -72,10 +72,6 @@ export class UserNotFoundError extends AppError {
 
 export class EmailAlreadyExistsError extends AppError {
   constructor() {
-    super(
-      'AUTH_EMAIL_EXISTS',
-      'Email already registered',
-      HttpStatus.CONFLICT,
-    );
+    super('AUTH_EMAIL_EXISTS', 'Email already registered', HttpStatus.CONFLICT);
   }
 }
