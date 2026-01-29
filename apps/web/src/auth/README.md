@@ -333,7 +333,7 @@ useEffect(() => {
 const login = async (credentials: LoginCredentials) => {
   setIsLoading(true);
   setError(null);
-  
+
   try {
     const response = await authApi.login(credentials);
     setUser(response.user);

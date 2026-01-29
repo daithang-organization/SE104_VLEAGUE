@@ -104,12 +104,12 @@ Token payload thường chứa:
 @Controller('teams')
 @UseGuards(JwtAuthGuard)  // Protect toàn bộ controller
 export class TeamsController {
-  
+
   @Get()
   findAll() {
     // Chỉ authenticated users mới access được
   }
-  
+
   @Post()
   @Roles('admin', 'manager')  // Chỉ admin hoặc manager
   create(@Body() dto: CreateTeamDto) {

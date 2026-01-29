@@ -119,7 +119,7 @@ interface Props {
 
 export function Component({ ...props }: Props) {
   // Component logic
-  
+
   return (
     <div className={styles.container}>
       {/* JSX */}
@@ -133,7 +133,7 @@ export function Component({ ...props }: Props) {
 export function PageName() {
   // Fetch data
   // Handle state
-  
+
   return (
     <div>
       <h1>Page Title</h1>

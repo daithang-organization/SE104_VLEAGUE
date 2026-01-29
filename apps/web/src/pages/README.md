@@ -57,7 +57,7 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <form onSubmit={handleSubmit}>
-        <input 
+        <input
           type="text"
           value={credentials.username}
           onChange={(e) => setCredentials({
@@ -66,7 +66,7 @@ export function LoginPage() {
           })}
           placeholder="Username"
         />
-        <input 
+        <input
           type="password"
           value={credentials.password}
           onChange={(e) => setCredentials({
@@ -153,9 +153,9 @@ export function StandingsPage() {
   return (
     <div className="standings-page">
       <h1>League Standings</h1>
-      <SeasonSelector 
-        value={season} 
-        onChange={setSeason} 
+      <SeasonSelector
+        value={season}
+        onChange={setSeason}
       />
       <StandingsTable standings={standings} />
     </div>
@@ -210,7 +210,7 @@ export function ReportsPage() {
 
   const fetchReport = async () => {
     const reportData = await reportsApi.getReport(
-      reportType, 
+      reportType,
       dateRange
     );
     setData(reportData);
@@ -219,7 +219,7 @@ export function ReportsPage() {
   return (
     <div className="reports-page">
       <h1>Reports & Statistics</h1>
-      
+
       <ReportControls
         reportType={reportType}
         onReportTypeChange={setReportType}
@@ -227,7 +227,7 @@ export function ReportsPage() {
         onDateRangeChange={setDateRange}
       />
 
-      <ReportVisualization 
+      <ReportVisualization
         type={reportType}
         data={data}
       />
@@ -338,14 +338,14 @@ const [filters, setFilters] = useState({
 
 const filteredData = useMemo(() => {
   return data
-    .filter(item => 
+    .filter(item =>
       item.name.includes(filters.search)
     )
-    .filter(item => 
-      filters.category === 'all' || 
+    .filter(item =>
+      filters.category === 'all' ||
       item.category === filters.category
     )
-    .sort((a, b) => 
+    .sort((a, b) =>
       a[filters.sort].localeCompare(b[filters.sort])
     );
 }, [data, filters]);
@@ -363,7 +363,7 @@ export function StandingsPage() {
         <title>League Standings - VLeague</title>
         <meta name="description" content="Current VLeague standings and rankings" />
       </Helmet>
-      
+
       <div className="standings-page">
         {/* Content */}
       </div>

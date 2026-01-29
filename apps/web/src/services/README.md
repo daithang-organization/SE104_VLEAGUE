@@ -72,12 +72,12 @@ http.interceptors.response.use(
       localStorage.removeItem('authToken');
       window.location.href = '/login';
     }
-    
+
     if (error.response?.status === 500) {
       // Server error
       console.error('Server error:', error);
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -206,16 +206,16 @@ export const featureApi = {
 ```typescript
 // teamsApi.ts
 export const teamsApi = {
-  getAll: (params?: { season?: string }) => 
+  getAll: (params?: { season?: string }) =>
     http.get('/teams', { params }),
-  
-  getById: (id: string) => 
+
+  getById: (id: string) =>
     http.get(`/teams/${id}`),
-  
-  getPlayers: (teamId: string) => 
+
+  getPlayers: (teamId: string) =>
     http.get(`/teams/${teamId}/players`),
-  
-  getStats: (teamId: string, season?: string) => 
+
+  getStats: (teamId: string, season?: string) =>
     http.get(`/teams/${teamId}/stats`, { params: { season } }),
 };
 ```
@@ -226,13 +226,13 @@ export const teamsApi = {
 export const matchesApi = {
   getAll: (params?: MatchQueryParams) =>
     http.get('/matches', { params }),
-  
+
   getById: (id: string) =>
     http.get(`/matches/${id}`),
-  
+
   getEvents: (matchId: string) =>
     http.get(`/matches/${matchId}/events`),
-  
+
   addEvent: (matchId: string, event: MatchEventDto) =>
     http.post(`/matches/${matchId}/events`, event),
 };
@@ -244,7 +244,7 @@ export const matchesApi = {
 export const standingsApi = {
   getStandings: (season: string) =>
     http.get('/standings', { params: { season } }),
-  
+
   getByRound: (season: string, round: number) =>
     http.get('/standings', { params: { season, round } }),
 };
@@ -272,7 +272,7 @@ http.interceptors.response.use(
   (response) => response,
   (error) => {
     const { response } = error;
-    
+
     if (response) {
       throw new ApiError(
         response.status,
@@ -280,7 +280,7 @@ http.interceptors.response.use(
         response.data.errors
       );
     }
-    
+
     throw new ApiError(0, 'Network error');
   }
 );
@@ -332,9 +332,9 @@ export interface ApiResponse<T> {
 ```typescript
 // Using AbortController
 export const searchTeams = (query: string, signal?: AbortSignal) => {
-  return http.get('/teams/search', { 
+  return http.get('/teams/search', {
     params: { q: query },
-    signal 
+    signal
   });
 };
 
@@ -365,14 +365,14 @@ export const getCachedData = async <T>(
   fetcher: () => Promise<T>
 ): Promise<T> => {
   const cached = cache.get(key);
-  
+
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
     return cached.data;
   }
-  
+
   const data = await fetcher();
   cache.set(key, { data, timestamp: Date.now() });
-  
+
   return data;
 };
 
@@ -386,13 +386,13 @@ const teams = await getCachedData('teams', () => teamsApi.getAll());
 export const uploadFile = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const response = await http.post('/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-  
+
   return response.data.url;
 };
 ```

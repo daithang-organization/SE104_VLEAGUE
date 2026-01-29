@@ -132,8 +132,8 @@ await this.prisma.$transaction([
 // Or with callback
 await this.prisma.$transaction(async (tx) => {
   const team = await tx.team.create({ data: teamData });
-  await tx.player.create({ 
-    data: { ...playerData, teamId: team.id } 
+  await tx.player.create({
+    data: { ...playerData, teamId: team.id }
   });
 });
 ```
@@ -207,7 +207,7 @@ type TeamWithPlayers = Team & { players: Player[] };
 // Trong PrismaService
 constructor() {
   super();
-  
+
   this.$use(async (params, next) => {
     // Logging
     console.log(`Query: ${params.model}.${params.action}`);
