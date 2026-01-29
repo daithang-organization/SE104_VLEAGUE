@@ -123,11 +123,11 @@ jobs:
           ADDITIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | awk '{print $4}')
           echo "Changed files: $CHANGED_FILES"
           echo "Lines added: $ADDITIONS"
-          
+
           if [ "$CHANGED_FILES" -gt 30 ]; then
             echo "::warning::⚠️ This PR changes $CHANGED_FILES files. Consider splitting into smaller PRs for easier review."
           fi
-          
+
           if [ "$ADDITIONS" -gt 500 ]; then
             echo "::warning::⚠️ This PR adds $ADDITIONS lines. Large PRs are harder to review - consider breaking it down."
           fi
