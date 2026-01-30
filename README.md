@@ -98,19 +98,19 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Client (Browser)                          │
+│                        Client (Browser)                         │
 └─────────────────────────────┬───────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend (React + Vite)                      │
-│                        :5173                                     │
+│                     Frontend (React + Vite)                     │
+│                        :5173                                    │
 └─────────────────────────────┬───────────────────────────────────┘
                               │ HTTP/REST
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Backend (NestJS)                            │
-│                        :8080                                     │
+│                      Backend (NestJS)                           │
+│                        :8080                                    │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
 │  │    Auth     │ │Registration │ │ Scheduling  │ │   Match    │ │
 │  │   Module    │ │   Module    │ │   Module    │ │   Module   │ │
@@ -119,8 +119,8 @@ Hệ thống cung cấp các công cụ để quản lý:
                               │ Prisma ORM
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Database (PostgreSQL)                          │
-│                        :5432                                     │
+│                   Database (PostgreSQL)                         │
+│                        :5432                                    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -375,21 +375,3 @@ Dự án này được phân phối dưới giấy phép **MIT License**. Xem fi
 <p align="center">
   Made with ❤️ by Team SE104
 </p>
-- Keep PRs focused and reviewable
-- Target: < 30 files changed, < 500 lines added
-- Large PRs will receive warnings (but won't block merge)
-
-## CI / Branch rules
-
-- Every PR to `main` must pass CI:
-  - API: lint + test + build
-  - Web: lint + build
-  - PR title validation (conventional commits)
-  - Branch name validation (conventional format)
-  - PR size check (warnings only)
-- `main` branch is protected:
-  - PR required
-  - At least 1 approval
-  - Required status checks must pass
-- CI produces build artifacts (no deploy yet)
-- Auto-labeling: PRs are automatically tagged based on type (type:feat, type:fix, etc.)

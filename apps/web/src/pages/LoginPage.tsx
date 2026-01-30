@@ -1,40 +1,63 @@
 import { Button, Card, Form, Input, Typography, message } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { apiLogin } from '../services/authApi';
 
 export default function LoginPage() {
   const nav = useNavigate();
-  const { login } = useAuth();
-  const [msg, contextHolder] = message.useMessage();
+  const location = useLocation();
+  const { login, isAuthed } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values: { username: string; password: string }) => {
+  // If already authenticated, redirect to intended page
+  const from = (location.state as { from?: string })?.from || '/';
+  if (isAuthed) {
+    nav(from, { replace: true });
+    return null;
+  }
+
+  const onFinish = async (values: { email: string; password: string }) => {
+    setLoading(true);
     try {
-      const res = await apiLogin(values.username, values.password);
-      login(res.accessToken);
-      msg.success('Logged in (stub)');
-      nav('/standings');
-    } catch {
-      msg.error('Login failed');
+      await login(values.email, values.password);
+      message.success('Đăng nhập thành công');
+      nav(from, { replace: true });
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Đăng nhập thất bại';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'grid', placeItems: 'center', height: '100vh', padding: 16 }}>
-      {contextHolder}
+    <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
       <Card style={{ width: 360 }}>
         <Typography.Title level={4} style={{ marginTop: 0 }}>
           VLeague Admin
         </Typography.Title>
         <Form layout="vertical" onFinish={onFinish}>
-          <Form.Item name="username" label="Username" rules={[{ required: true }]}>
-            <Input placeholder="demo" />
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: 'Vui lòng nhập email' },
+              { type: 'email', message: 'Email không hợp lệ' },
+            ]}
+          >
+            <Input placeholder="admin@vleague.local" />
           </Form.Item>
-          <Form.Item name="password" label="Password" rules={[{ required: true }]}>
-            <Input.Password placeholder="demo" />
+          <Form.Item
+            name="password"
+            label="Mật khẩu"
+            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
+          >
+            <Input.Password placeholder="••••••••" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block>
-            Login
+          <Button type="primary" htmlType="submit" block loading={loading}>
+            Đăng nhập
           </Button>
         </Form>
       </Card>
