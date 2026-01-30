@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 type RequireRoleProps = {
   allow: string[];
-  children: JSX.Element;
+  children: ReactNode;
 };
 
 /**
