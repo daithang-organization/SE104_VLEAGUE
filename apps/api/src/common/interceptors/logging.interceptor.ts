@@ -1,9 +1,9 @@
 import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  Logger,
-  NestInterceptor,
+    CallHandler,
+    ExecutionContext,
+    Injectable,
+    Logger,
+    NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -24,7 +24,10 @@ export class LoggingInterceptor implements NestInterceptor {
       `➡️  [${method}] ${url} → ${controllerName}.${handlerName}()`,
     );
 
-    if (process.env.NODE_ENV === 'development' && Object.keys(body || {}).length > 0) {
+    if (
+      process.env.NODE_ENV === 'development' &&
+      Object.keys(body || {}).length > 0
+    ) {
       this.logger.debug(`📦 Request Body: ${JSON.stringify(body)}`);
     }
 
@@ -32,7 +35,8 @@ export class LoggingInterceptor implements NestInterceptor {
       tap({
         next: (data) => {
           const duration = Date.now() - startTime;
-          const statusColor = duration < 100 ? '🟢' : duration < 500 ? '🟡' : '🔴';
+          const statusColor =
+            duration < 100 ? '🟢' : duration < 500 ? '🟡' : '🔴';
 
           this.logger.log(
             `⬅️  [${method}] ${url} ${statusColor} ${duration}ms`,
@@ -42,7 +46,9 @@ export class LoggingInterceptor implements NestInterceptor {
           if (process.env.NODE_ENV === 'development' && data) {
             const responseSize = JSON.stringify(data).length;
             if (responseSize > 1000) {
-              this.logger.debug(`📊 Response size: ${(responseSize / 1024).toFixed(2)} KB`);
+              this.logger.debug(
+                `📊 Response size: ${(responseSize / 1024).toFixed(2)} KB`,
+              );
             }
           }
         },

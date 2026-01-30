@@ -43,7 +43,7 @@ export class TeamsService {
 
   async create(dto: CreateTeamDto) {
     this.logger.log(`Creating team: ${dto.name}`);
-    
+
     try {
       const team = await this.prisma.team.create({ data: dto });
       this.logger.log(`Team created successfully: ${team.id}`);

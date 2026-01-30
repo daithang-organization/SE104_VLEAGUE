@@ -1,7 +1,7 @@
 # V-League API Documentation
 
-> **Version:** 1.0.0  
-> **Base URL:** `http://localhost:3000/api`  
+> **Version:** 1.0.0
+> **Base URL:** `http://localhost:3000/api`
 > **Last Updated:** January 30, 2026
 
 ## Table of Contents
@@ -214,7 +214,7 @@ Làm mới access token bằng refresh token.
 
 Lấy danh sách tất cả đội bóng.
 
-**Authentication:** ✅ Required  
+**Authentication:** ✅ Required
 **Allowed Roles:** `ADMIN`, `TEAM_MANAGER`
 
 **Headers:**
@@ -325,7 +325,7 @@ Lấy danh sách tất cả cầu thủ.
 
 Lấy thông tin chi tiết một trận đấu.
 
-**Authentication:** ✅ Required  
+**Authentication:** ✅ Required
 **Allowed Roles:** `ADMIN`, `TEAM_MANAGER`, `REFEREE`
 
 **Path Parameters:**
@@ -377,7 +377,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 Thêm sự kiện vào trận đấu (bàn thắng, thẻ phạt, thay người...).
 
-**Authentication:** ✅ Required  
+**Authentication:** ✅ Required
 **Allowed Roles:** `ADMIN`, `REFEREE`
 
 **Path Parameters:**
@@ -442,7 +442,7 @@ Thêm sự kiện vào trận đấu (bàn thắng, thẻ phạt, thay người.
 
 Lấy lịch thi đấu (danh sách các trận đấu).
 
-**Authentication:** ✅ Required  
+**Authentication:** ✅ Required
 **Allowed Roles:** `ADMIN`, `TEAM_MANAGER`, `REFEREE`
 
 **Headers:**
@@ -478,7 +478,7 @@ Authorization: Bearer <access_token>
 
 Tạo lịch thi đấu tự động.
 
-**Authentication:** ✅ Required  
+**Authentication:** ✅ Required
 **Allowed Roles:** `ADMIN` only
 
 **Headers:**
@@ -506,7 +506,7 @@ Authorization: Bearer <access_token>
 
 Công bố lịch thi đấu.
 
-**Authentication:** ✅ Required  
+**Authentication:** ✅ Required
 **Allowed Roles:** `ADMIN` only
 
 **Headers:**

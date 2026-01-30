@@ -7,16 +7,14 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
     PinoLoggerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const isProduction =
-          configService.get('NODE_ENV') === 'production';
+        const isProduction = configService.get('NODE_ENV') === 'production';
 
         return {
           pinoHttp: {
             // Tự động gán request id
             genReqId: (req) => {
               return (
-                (req.headers['x-request-id'] as string) ||
-                crypto.randomUUID()
+                (req.headers['x-request-id'] as string) || crypto.randomUUID()
               );
             },
 
@@ -78,10 +76,8 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
                     levelFirst: true,
                     translateTime: 'SYS:HH:MM:ss.l',
                     ignore: 'pid,hostname',
-                    messageFormat:
-                      '{if context}[{context}] {end}{msg}',
-                    customColors:
-                      'error:red,warn:yellow,info:cyan,debug:gray',
+                    messageFormat: '{if context}[{context}] {end}{msg}',
+                    customColors: 'error:red,warn:yellow,info:cyan,debug:gray',
                   },
                 },
 
