@@ -1,12 +1,14 @@
-# RBAC – Sprint 1 Permission Matrix
+# RBAC – Permission Matrix
 
 ## Roles
 
 | Role | Description |
 |------|-------------|
 | `ADMIN` | Quản trị hệ thống - toàn quyền |
-| `TEAM_MANAGER` | Quản lý đội bóng - chỉ đọc thông tin teams (Sprint 1) |
+| `TEAM_MANAGER` | Quản lý đội bóng - quản lý thông tin đội và cầu thủ |
 | `REFEREE` | Trọng tài - nhập kết quả trận đấu |
+| `SUPERVISOR` | Giám sát - xem báo cáo và thống kê |
+| `PUBLIC` | Công khai - xem thông tin cơ bản (không cần đăng nhập) |
 
 ## JWT Authentication
 
@@ -17,21 +19,31 @@
 
 ## Permission Matrix
 
-| Feature / Endpoint | ADMIN | TEAM_MANAGER | REFEREE |
-|---|:---:|:---:|:---:|
-| **Teams** | | | |
-| `GET /teams` | ✅ | ✅ | ❌ |
-| `GET /teams/:id` | ✅ | ✅ | ❌ |
-| `POST /teams` | ✅ | ❌ | ❌ |
-| `PATCH /teams/:id` | ✅ | ❌ | ❌ |
-| `DELETE /teams/:id` | ✅ | ❌ | ❌ |
-| **Schedule** | | | |
-| `GET /schedule` | ✅ | ✅ | ✅ |
-| `POST /schedule/generate` | ✅ | ❌ | ❌ |
-| `POST /schedule/publish` | ✅ | ❌ | ❌ |
-| **Match** | | | |
-| `GET /matches/:id` | ✅ | ✅ | ✅ |
-| `POST /matches/:id/events` | ✅ | ❌ | ✅ |
+| Feature / Endpoint | ADMIN | TEAM_MANAGER | REFEREE | SUPERVISOR | PUBLIC |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Teams** | | | | | |
+| `GET /teams` | ✅ | ✅ | ❌ | ✅ | ❌ |
+| `GET /teams/:id` | ✅ | ✅ | ❌ | ✅ | ❌ |
+| `POST /teams` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `PATCH /teams/:id` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `DELETE /teams/:id` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Players** | | | | | |
+| `GET /players` | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `GET /players/:id` | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `POST /players` | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `PATCH /players/:id` | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `DELETE /players/:id` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Schedule** | | | | | |
+| `GET /schedule` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `POST /schedule/generate` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `POST /schedule/publish` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Match** | | | | | |
+| `GET /matches/:id` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `POST /matches/:id/events` | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **Auth** | | | | | |
+| `POST /auth/login` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `POST /auth/refresh` | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `POST /auth/logout` | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 ## HTTP Status Codes
 
@@ -61,7 +73,9 @@
 2. ❌ Token `TEAM_MANAGER` → `POST /schedule/generate` → `403`
 3. ✅ Token `REFEREE` → `POST /matches/:id/events` → `200`
 4. ❌ Token `REFEREE` → `DELETE /teams/:id` → `403`
-5. ✅ Token `ADMIN` → tất cả routes → `200`
+5. ✅ Token `SUPERVISOR` → `GET /teams` → `200`
+6. ❌ Token `SUPERVISOR` → `POST /teams` → `403`
+7. ✅ Token `ADMIN` → tất cả routes → `200`
 
 ## Implementation
 

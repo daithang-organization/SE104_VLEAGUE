@@ -10,6 +10,16 @@ Cung cấp các chức năng liên quan đến bảo mật:
 - Bảo vệ routes với guards
 - Role-based access control (RBAC)
 
+## Roles trong hệ thống
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `ADMIN` | Quản trị viên | Toàn quyền - quản lý hệ thống |
+| `TEAM_MANAGER` | Quản lý đội bóng | Quản lý thông tin đội và cầu thủ |
+| `REFEREE` | Trọng tài | Nhập kết quả trận đấu |
+| `SUPERVISOR` | Giám sát viên | Xem báo cáo và thống kê |
+| `PUBLIC` | Công khai | Xem thông tin cơ bản (không cần đăng nhập) |
+
 ## Cấu trúc
 
 ```
@@ -198,21 +208,36 @@ Token payload thường chứa:
 
 ```typescript
 // Trong controller
+import { JwtAuthGuard, RolesGuard, Roles, Role } from '../auth';
+
 @Controller('teams')
-@UseGuards(JwtAuthGuard)  // Protect toàn bộ controller
+@UseGuards(JwtAuthGuard, RolesGuard)  // Protect toàn bộ controller
 export class TeamsController {
 
   @Get()
+  @Roles(Role.ADMIN, Role.TEAM_MANAGER, Role.SUPERVISOR)
   findAll() {
-    // Chỉ authenticated users mới access được
+    // ADMIN, TEAM_MANAGER, SUPERVISOR mới access được
   }
 
   @Post()
-  @Roles('admin', 'manager')  // Chỉ admin hoặc manager
+  @Roles(Role.ADMIN)  // Chỉ ADMIN
   create(@Body() dto: CreateTeamDto) {
     // ...
   }
 }
+```
+
+### Các Role có sẵn
+
+```typescript
+import { Role } from '../auth';
+
+Role.ADMIN         // Quản trị viên
+Role.TEAM_MANAGER  // Quản lý đội bóng
+Role.REFEREE       // Trọng tài
+Role.SUPERVISOR    // Giám sát viên
+Role.PUBLIC        // Công khai
 ```
 
 ## Environment Variables
