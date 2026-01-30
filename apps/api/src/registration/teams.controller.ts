@@ -1,5 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard, RolesGuard, Roles, Role } from '../auth';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import { RegistrationService } from './registration.service';
 
 @Controller()

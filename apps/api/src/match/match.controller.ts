@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard, RolesGuard, Roles, Role } from '../auth';
-import { MatchService } from './match.service';
+import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import type { AddMatchEventDto } from './dto/add-match-event.dto';
+import { MatchService } from './match.service';
 
 @Controller('matches')
 @UseGuards(JwtAuthGuard, RolesGuard)
