@@ -234,7 +234,7 @@ export class TeamsController {
 import { Role } from '../auth';
 
 Role.ADMIN         // Quản trị viên
-Role.TEAM_MANAGER  // Quản lý đội bóng  
+Role.TEAM_MANAGER  // Quản lý đội bóng
 Role.REFEREE       // Trọng tài
 Role.SUPERVISOR    // Giám sát viên
 Role.PUBLIC        // Công khai
