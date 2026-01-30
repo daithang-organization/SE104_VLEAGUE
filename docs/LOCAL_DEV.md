@@ -12,6 +12,15 @@ docker compose up --build
 - **API**: http://localhost:8080
 - **Web**: http://localhost:5173
 
+## Prisma Studio (Database GUI)
+
+```bash
+cd apps/api
+pnpm exec prisma studio --port 5555
+```
+
+Truy cập: http://localhost:5555
+
 ## Stop stack
 
 ```bash
