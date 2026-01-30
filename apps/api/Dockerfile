@@ -13,6 +13,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 
+# Copy prisma schema trước để postinstall (prisma generate) hoạt động
+COPY apps/api/prisma apps/api/prisma
+COPY apps/api/prisma.config.ts apps/api/
+
 # Install tất cả deps (workspace hoisting + shamefully-hoist cho Docker)
 RUN pnpm install --frozen-lockfile --shamefully-hoist
 

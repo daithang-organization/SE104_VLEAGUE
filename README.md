@@ -180,12 +180,19 @@ cd SE104_VLEAGUE
 
 # 2. Chạy toàn bộ stack
 docker compose up --build
+
+# 3. (Tùy chọn) Seed dữ liệu mẫu
+docker exec -it vleague_api npx prisma db seed
 ```
 
 🎉 **Xong!** Truy cập:
 - 🌐 Web: http://localhost:5173
 - 🔌 API: http://localhost:8080
 - 🗄️ Database: localhost:5432
+
+> 📌 **Tài khoản mặc định sau khi seed:**
+> - Email: `admin@vleague.local`
+> - Password: `Admin@12345`
 
 ### Cách 2: Chạy Local (Development)
 
@@ -208,9 +215,12 @@ cp apps/web/.env.example apps/web/.env
 # 5. Chạy migration database
 cd apps/api
 pnpm dlx prisma migrate dev
+
+# 6. (Tùy chọn) Seed dữ liệu mẫu
+pnpm db:seed
 cd ../..
 
-# 6. Chạy development server
+# 7. Chạy development server
 pnpm dev
 ```
 
