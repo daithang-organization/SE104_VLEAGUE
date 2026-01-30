@@ -16,7 +16,10 @@ Quản lý authentication state và logic cho toàn bộ ứng dụng:
 ```
 auth/
 ├── AuthContext.tsx     # React Context for auth state
-└── auth.types.ts       # TypeScript types & interfaces
+├── RequireAuth.tsx     # Protected route guard
+├── RequireRole.tsx     # Role-based route guard
+├── auth.types.ts       # TypeScript types & interfaces
+└── index.ts            # Re-exports
 ```
 
 ## Components
