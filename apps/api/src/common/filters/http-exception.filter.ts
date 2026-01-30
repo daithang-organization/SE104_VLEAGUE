@@ -4,20 +4,26 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 
 interface ErrorResponse {
   code: string;
   message: string;
   details?: unknown;
+  requestId?: string;
+  timestamp?: string;
 }
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let errorResponse: ErrorResponse = {
@@ -62,6 +68,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
         };
       }
     } else if (exception instanceof Error) {
+      // Log internal errors với stack trace
+      this.logger.error(
+        `Unhandled exception: ${exception.message}`,
+        exception.stack,
+      );
+
       errorResponse = {
         code: 'INTERNAL_ERROR',
         message:
@@ -69,6 +81,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? exception.message
             : 'Đã xảy ra lỗi không mong muốn',
       };
+    }
+
+    // Thêm metadata cho response
+    const requestId = request.headers['x-request-id'] as string;
+    errorResponse.requestId = requestId;
+    errorResponse.timestamp = new Date().toISOString();
+
+    // Log error với context
+    if (status >= 500) {
+      this.logger.error(
+        `[${request.method}] ${request.url} - ${status} - ${errorResponse.code}: ${errorResponse.message}`,
+      );
+    } else if (status >= 400) {
+      this.logger.warn(
+        `[${request.method}] ${request.url} - ${status} - ${errorResponse.code}: ${errorResponse.message}`,
+      );
     }
 
     response.status(status).json(errorResponse);
