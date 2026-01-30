@@ -12,30 +12,36 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
         return {
           pinoHttp: {
             // Tự động gán request id
-            genReqId: (req) => {
+            genReqId: (req: {
+              headers: Record<string, string | string[] | undefined>;
+            }) => {
               return (
                 (req.headers['x-request-id'] as string) || crypto.randomUUID()
               );
             },
 
             // Custom log level dựa trên status code
-            customLogLevel: (req, res, err) => {
+            customLogLevel: (
+              _req: unknown,
+              res: { statusCode: number },
+              err: Error | undefined,
+            ) => {
               if (res.statusCode >= 500 || err) return 'error';
               if (res.statusCode >= 400) return 'warn';
               return 'info';
             },
 
             // Custom message cho mỗi request
-            customSuccessMessage: (req, res) => {
+            customSuccessMessage: (req: { method?: string; url?: string }) => {
               return `${req.method} ${req.url} completed`;
             },
 
-            customErrorMessage: (req, res, err) => {
+            customErrorMessage: (req: { method?: string; url?: string }) => {
               return `${req.method} ${req.url} failed`;
             },
 
             // Chọn những props nào của request/response sẽ được log
-            customProps: (req) => ({
+            customProps: () => ({
               context: 'HTTP',
             }),
 
@@ -52,7 +58,14 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 
             // Serializers để format request/response
             serializers: {
-              req: (req) => ({
+              req: (req: {
+                id?: string | number;
+                method?: string;
+                url?: string;
+                query?: unknown;
+                params?: unknown;
+                raw?: { body?: unknown };
+              }) => ({
                 id: req.id,
                 method: req.method,
                 url: req.url,
@@ -61,7 +74,7 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
                 // Chỉ log body trong dev
                 ...(isProduction ? {} : { body: req.raw?.body }),
               }),
-              res: (res) => ({
+              res: (res: { statusCode: number }) => ({
                 statusCode: res.statusCode,
               }),
             },
@@ -86,7 +99,7 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 
             // Quiet routes (không log health check, favicon...)
             autoLogging: {
-              ignore: (req) => {
+              ignore: (req: { url?: string }) => {
                 const ignorePaths = ['/health', '/favicon.ico'];
                 return ignorePaths.includes(req.url || '');
               },

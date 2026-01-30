@@ -1,10 +1,11 @@
 import {
-    CallHandler,
-    ExecutionContext,
-    Injectable,
-    Logger,
-    NestInterceptor,
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  NestInterceptor,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
@@ -13,8 +14,10 @@ export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('RequestPerformance');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest();
-    const { method, url, body } = request;
+    const request = context.switchToHttp().getRequest<Request>();
+    const method = request.method;
+    const url = request.url;
+    const body = request.body as Record<string, unknown> | undefined;
     const controllerName = context.getClass().name;
     const handlerName = context.getHandler().name;
 
@@ -26,7 +29,8 @@ export class LoggingInterceptor implements NestInterceptor {
 
     if (
       process.env.NODE_ENV === 'development' &&
-      Object.keys(body || {}).length > 0
+      body &&
+      Object.keys(body).length > 0
     ) {
       this.logger.debug(`📦 Request Body: ${JSON.stringify(body)}`);
     }
@@ -52,7 +56,7 @@ export class LoggingInterceptor implements NestInterceptor {
             }
           }
         },
-        error: (error) => {
+        error: (error: Error) => {
           const duration = Date.now() - startTime;
           this.logger.error(
             `❌ [${method}] ${url} failed after ${duration}ms - ${error.message}`,

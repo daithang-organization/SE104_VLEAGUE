@@ -89,13 +89,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
     errorResponse.timestamp = new Date().toISOString();
 
     // Log error với context
-    if (status >= 500) {
+    const statusCode = Number(status);
+    if (statusCode >= 500) {
       this.logger.error(
-        `[${request.method}] ${request.url} - ${status} - ${errorResponse.code}: ${errorResponse.message}`,
+        `[${request.method}] ${request.url} - ${statusCode} - ${errorResponse.code}: ${errorResponse.message}`,
       );
-    } else if (status >= 400) {
+    } else if (statusCode >= 400) {
       this.logger.warn(
-        `[${request.method}] ${request.url} - ${status} - ${errorResponse.code}: ${errorResponse.message}`,
+        `[${request.method}] ${request.url} - ${statusCode} - ${errorResponse.code}: ${errorResponse.message}`,
       );
     }
 

@@ -19,11 +19,23 @@ export class PlayersController {
       items: {
         type: 'object',
         properties: {
-          id: { type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440010' },
+          id: {
+            type: 'string',
+            format: 'uuid',
+            example: '550e8400-e29b-41d4-a716-446655440010',
+          },
           fullName: { type: 'string', example: 'Nguyễn Quang Hải' },
-          dob: { type: 'string', format: 'date-time', example: '1997-04-12T00:00:00.000Z' },
+          dob: {
+            type: 'string',
+            format: 'date-time',
+            example: '1997-04-12T00:00:00.000Z',
+          },
           nationality: { type: 'string', example: 'Vietnam' },
-          position: { type: 'string', enum: ['GK', 'DF', 'MF', 'FW'], example: 'MF' },
+          position: {
+            type: 'string',
+            enum: ['GK', 'DF', 'MF', 'FW'],
+            example: 'MF',
+          },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },
