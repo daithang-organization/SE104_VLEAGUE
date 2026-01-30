@@ -190,9 +190,31 @@ docker exec -it vleague_api npx prisma db seed
 - 🔌 API: http://localhost:8080
 - 🗄️ Database: localhost:5432
 
-> 📌 **Tài khoản mặc định sau khi seed:**
-> - Email: `admin@vleague.local`
-> - Password: `Admin@12345`
+---
+
+## 🔑 Demo Accounts (Sprint 1)
+
+Password chung cho tất cả demo users: `Demo@12345`
+
+| Role | Email | Mô tả |
+|------|-------|-------|
+| **ADMIN** | admin@demo.local | Quản trị viên hệ thống |
+| **TEAM_MANAGER** | teammanager@demo.local | Quản lý đội bóng |
+| **REFEREE** | referee@demo.local | Trọng tài |
+| **SUPERVISOR** | supervisor@demo.local | Giám sát viên |
+| **PUBLIC** | public@demo.local | Người dùng công khai |
+
+### Chạy Seed
+
+```bash
+cd apps/api
+pnpm prisma migrate dev   # Áp dụng migrations
+pnpm prisma db seed       # Seed demo data (idempotent - chạy bao nhiêu lần cũng OK)
+```
+
+> 💡 **Note:** Seed script là idempotent - có thể chạy nhiều lần mà không tạo duplicate data.
+
+---
 
 ### Cách 2: Chạy Local (Development)
 

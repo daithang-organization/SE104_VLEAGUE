@@ -2,11 +2,19 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import 'dotenv/config';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true, // Buffer logs cho đến khi Logger được khởi tạo
+  });
+
+  // Sử dụng Pino Logger cho toàn bộ app
+  const logger = app.get(Logger);
+  app.useLogger(logger);
 
   // Enable CORS for frontend
   app.enableCors({
@@ -16,6 +24,9 @@ async function bootstrap() {
 
   // Global exception filter for unified error shape
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Global logging interceptor - đo performance và log request/response
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -49,6 +60,7 @@ async function bootstrap() {
     .addTag('Teams', 'Team management endpoints')
     .addTag('Players', 'Player management endpoints')
     .addTag('Matches', 'Match scheduling and management')
+    .addTag('Scheduling', 'Schedule generation and publishing')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -56,9 +68,14 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(
-    `📚 Swagger docs available at: http://localhost:${port}/api/docs`,
+
+  // Startup logs chuyên nghiệp
+  logger.log(`🚀 Application started successfully`, 'Bootstrap');
+  logger.log(`📍 Server running on: http://localhost:${port}`, 'Bootstrap');
+  logger.log(`📚 Swagger docs: http://localhost:${port}/api/docs`, 'Bootstrap');
+  logger.log(
+    `🔧 Environment: ${process.env.NODE_ENV || 'development'}`,
+    'Bootstrap',
   );
 }
 void bootstrap();
