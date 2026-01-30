@@ -28,6 +28,8 @@ enum UserRole {
   ADMIN
   TEAM_MANAGER
   REFEREE
+  SUPERVISOR
+  PUBLIC
 }
 
 model User {
@@ -99,4 +101,14 @@ model Match {
   updatedAt  DateTime    @updatedAt @map("updated_at")
 
   @@map("matches")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
 }

@@ -6,4 +6,6 @@ export enum Role {
   ADMIN = 'ADMIN',
   TEAM_MANAGER = 'TEAM_MANAGER',
   REFEREE = 'REFEREE',
+  SUPERVISOR = 'SUPERVISOR',
+  PUBLIC = 'PUBLIC',
 }

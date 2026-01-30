@@ -14,144 +14,203 @@ const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const DEMO_PASSWORD = 'Demo@12345';
+
+// Định nghĩa roles để seed vào bảng Role
+const roles = [
+  { name: 'ADMIN', description: 'Quản trị viên hệ thống' },
+  { name: 'TEAM_MANAGER', description: 'Quản lý đội bóng' },
+  { name: 'REFEREE', description: 'Trọng tài' },
+  { name: 'SUPERVISOR', description: 'Giám sát viên' },
+  { name: 'PUBLIC', description: 'Người dùng công khai' },
+] as const;
+
+// Demo users cho từng vai trò
+const demoUsers = [
+  { email: 'admin@demo.local', role: UserRole.ADMIN },
+  { email: 'teammanager@demo.local', role: UserRole.TEAM_MANAGER },
+  { email: 'referee@demo.local', role: UserRole.REFEREE },
+  { email: 'supervisor@demo.local', role: UserRole.SUPERVISOR },
+  { email: 'public@demo.local', role: UserRole.PUBLIC },
+] as const;
+
+// Teams demo
+const teams = [
+  { name: 'Hà Nội FC', status: TeamStatus.ACTIVE },
+  { name: 'TP.HCM FC', status: TeamStatus.ACTIVE },
+] as const;
+
+// Players demo
+const playersData = [
+  {
+    fullName: 'Nguyễn Văn A',
+    dob: new Date('2000-01-10'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.MF,
+  },
+  {
+    fullName: 'Trần Văn B',
+    dob: new Date('1999-03-22'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.DF,
+  },
+  {
+    fullName: 'Lê Văn C',
+    dob: new Date('2001-07-05'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.FW,
+  },
+  {
+    fullName: 'Phạm Văn D',
+    dob: new Date('1998-11-12'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.GK,
+  },
+  {
+    fullName: 'Hoàng Văn E',
+    dob: new Date('2002-02-18'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.MF,
+  },
+  {
+    fullName: 'Võ Văn F',
+    dob: new Date('2000-08-09'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.DF,
+  },
+  {
+    fullName: 'Đặng Văn G',
+    dob: new Date('1999-12-01'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.FW,
+  },
+  {
+    fullName: 'Bùi Văn H',
+    dob: new Date('2001-04-14'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.MF,
+  },
+  {
+    fullName: 'Đỗ Văn I',
+    dob: new Date('1997-06-30'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.DF,
+  },
+  {
+    fullName: 'Ngô Văn K',
+    dob: new Date('2003-09-21'),
+    nationality: 'Vietnam',
+    position: PlayerPosition.FW,
+  },
+];
+
 async function main() {
-  // clear data (dev only)
-  await prisma.refreshToken.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.player.deleteMany();
-  await prisma.team.deleteMany();
-  await prisma.match.deleteMany();
+  console.log('🌱 Starting idempotent seed...');
 
-  // Seed admin user
-  const adminPassword = await bcrypt.hash('Admin@12345', 10);
-  const admin = await prisma.user.create({
-    data: {
-      email: 'admin@vleague.local',
-      passwordHash: adminPassword,
-      role: UserRole.ADMIN,
-    },
-  });
-  console.log('Created admin user:', admin.email);
-
-  await prisma.team.createMany({
-    data: [
-      { name: 'Hà Nội FC', status: TeamStatus.ACTIVE },
-      { name: 'TP.HCM FC', status: TeamStatus.ACTIVE },
-    ],
-  });
-
-  // lấy lại team records để seed player (vì createMany không return ids)
-  const [team1, team2] = await prisma.team.findMany({
-    orderBy: { name: 'asc' },
-  });
-
-  // 10 players dummy
-  const playersData = [
-    {
-      fullName: 'Nguyễn Văn A',
-      dob: new Date('2000-01-10'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.MF,
-    },
-    {
-      fullName: 'Trần Văn B',
-      dob: new Date('1999-03-22'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.DF,
-    },
-    {
-      fullName: 'Lê Văn C',
-      dob: new Date('2001-07-05'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.FW,
-    },
-    {
-      fullName: 'Phạm Văn D',
-      dob: new Date('1998-11-12'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.GK,
-    },
-    {
-      fullName: 'Hoàng Văn E',
-      dob: new Date('2002-02-18'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.MF,
-    },
-
-    {
-      fullName: 'Võ Văn F',
-      dob: new Date('2000-08-09'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.DF,
-    },
-    {
-      fullName: 'Đặng Văn G',
-      dob: new Date('1999-12-01'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.FW,
-    },
-    {
-      fullName: 'Bùi Văn H',
-      dob: new Date('2001-04-14'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.MF,
-    },
-    {
-      fullName: 'Đỗ Văn I',
-      dob: new Date('1997-06-30'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.DF,
-    },
-    {
-      fullName: 'Ngô Văn K',
-      dob: new Date('2003-09-21'),
-      nationality: 'Vietnam',
-      position: PlayerPosition.FW,
-    },
-  ];
-
-  // Chia đều 5-5 cho 2 đội (AC không yêu cầu teamId, nên seed vào bảng players độc lập cũng OK)
-  // Nhưng nếu sau này bạn muốn players gắn teamId, thì Sprint 0 bạn chưa cần.
-  await prisma.player.createMany({ data: playersData });
-
-  // Seed placeholder matches
-  const teams = await prisma.team.findMany({ orderBy: { name: 'asc' } });
-
-  if (teams.length >= 2) {
-    await prisma.match.createMany({
-      data: [
-        {
-          roundNo: 1,
-          homeTeamId: teams[0].id,
-          awayTeamId: teams[1].id,
-          stadiumId: null,
-          kickoffAt: null,
-          status: MatchStatus.DRAFT,
-        },
-        {
-          roundNo: 1,
-          homeTeamId: teams[1].id,
-          awayTeamId: teams[0].id,
-          stadiumId: null,
-          kickoffAt: null,
-          status: MatchStatus.DRAFT,
-        },
-      ],
+  // 1) Upsert roles (idempotent)
+  console.log('📋 Seeding roles...');
+  for (const r of roles) {
+    await prisma.role.upsert({
+      where: { name: r.name },
+      update: { description: r.description },
+      create: { name: r.name, description: r.description },
     });
   }
+  console.log(`   ✓ ${roles.length} roles upserted`);
 
-  console.log('Seeded:', {
-    users: 1,
-    teams: teams.length,
-    players: playersData.length,
-    matches: teams.length >= 2 ? 2 : 0,
-  });
-  console.log('Admin credentials: admin@vleague.local / Admin@12345');
+  // 2) Upsert demo users (idempotent by email)
+  console.log('👥 Seeding demo users...');
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  for (const u of demoUsers) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        role: u.role,
+        // Không update passwordHash để tránh đổi password nếu team đang test
+        // Nếu muốn luôn reset password mỗi lần seed thì uncomment dòng dưới:
+        // passwordHash,
+      },
+      create: {
+        email: u.email,
+        role: u.role,
+        passwordHash,
+      },
+    });
+  }
+  console.log(`   ✓ ${demoUsers.length} demo users upserted`);
+
+  // 3) Upsert teams (idempotent by name)
+  console.log('🏟️  Seeding teams...');
+  for (const t of teams) {
+    await prisma.team.upsert({
+      where: { name: t.name },
+      update: { status: t.status },
+      create: { name: t.name, status: t.status },
+    });
+  }
+  console.log(`   ✓ ${teams.length} teams upserted`);
+
+  // 4) Seed players nếu chưa có (không có unique field nên check count)
+  console.log('⚽ Seeding players...');
+  const existingPlayersCount = await prisma.player.count();
+  if (existingPlayersCount === 0) {
+    await prisma.player.createMany({ data: playersData });
+    console.log(`   ✓ ${playersData.length} players created`);
+  } else {
+    console.log(
+      `   ⏭️  Skipped (${existingPlayersCount} players already exist)`,
+    );
+  }
+
+  // 5) Seed matches nếu chưa có
+  console.log('📅 Seeding matches...');
+  const existingMatchesCount = await prisma.match.count();
+  if (existingMatchesCount === 0) {
+    const teamRecords = await prisma.team.findMany({
+      orderBy: { name: 'asc' },
+    });
+    if (teamRecords.length >= 2) {
+      await prisma.match.createMany({
+        data: [
+          {
+            roundNo: 1,
+            homeTeamId: teamRecords[0].id,
+            awayTeamId: teamRecords[1].id,
+            stadiumId: null,
+            kickoffAt: null,
+            status: MatchStatus.DRAFT,
+          },
+          {
+            roundNo: 1,
+            homeTeamId: teamRecords[1].id,
+            awayTeamId: teamRecords[0].id,
+            stadiumId: null,
+            kickoffAt: null,
+            status: MatchStatus.DRAFT,
+          },
+        ],
+      });
+      console.log('   ✓ 2 matches created');
+    }
+  } else {
+    console.log(
+      `   ⏭️  Skipped (${existingMatchesCount} matches already exist)`,
+    );
+  }
+
+  console.log('\n✅ Seed done!');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📧 Demo accounts (password for all):', DEMO_PASSWORD);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  for (const u of demoUsers) {
+    console.log(`   ${u.role.padEnd(15)} → ${u.email}`);
+  }
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {
