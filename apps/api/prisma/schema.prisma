@@ -32,18 +32,41 @@ enum UserRole {
   PUBLIC
 }
 
+enum OtpType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         UserRole @default(ADMIN)
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  role          UserRole @default(PUBLIC)
+  emailVerified Boolean  @default(false) @map("email_verified")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   refreshTokens RefreshToken[]
+  otpCodes      OtpCode[]
 
   @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  code      String
+  type      OtpType
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  usedAt    DateTime? @map("used_at")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([code, type])
+  @@map("otp_codes")
 }
 
 model RefreshToken {

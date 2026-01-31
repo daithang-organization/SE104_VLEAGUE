@@ -27,13 +27,11 @@ export class LoggingInterceptor implements NestInterceptor {
       `➡️  [${method}] ${url} → ${controllerName}.${handlerName}()`,
     );
 
-    if (
-      process.env.NODE_ENV === 'development' &&
-      body &&
-      Object.keys(body).length > 0
-    ) {
-      this.logger.debug(`📦 Request Body: ${JSON.stringify(body)}`);
-    }
+    // Không log request body để giảm noise
+    // Có thể bật lại bằng cách uncomment
+    // if (body && Object.keys(body).length > 0) {
+    //   this.logger.debug(`📦 Body: ${JSON.stringify(body)}`);
+    // }
 
     return next.handle().pipe(
       tap({
