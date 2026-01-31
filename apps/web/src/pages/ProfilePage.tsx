@@ -4,16 +4,16 @@ import {
   Descriptions,
   message,
   Modal,
+  Space,
   Spin,
   Tag,
   Typography,
-  Space,
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { apiGetMe, apiLogoutAll } from '../services/authApi';
 import type { UserProfile } from '../services/authApi';
+import { apiGetMe, apiLogoutAll } from '../services/authApi';
 
 export default function ProfilePage() {
   const nav = useNavigate();

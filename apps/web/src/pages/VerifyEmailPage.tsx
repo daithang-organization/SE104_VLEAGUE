@@ -1,7 +1,7 @@
-import { Button, Card, Form, Input, Typography, message, Space } from 'antd';
-import { useState, useEffect } from 'react';
+import { Button, Card, Form, Input, message, Space, Typography } from 'antd';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { apiVerifyEmail, apiResendOtp } from '../services/authApi';
+import { apiResendOtp, apiVerifyEmail } from '../services/authApi';
 
 export default function VerifyEmailPage() {
   const nav = useNavigate();
