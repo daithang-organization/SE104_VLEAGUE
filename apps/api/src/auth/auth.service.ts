@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -10,7 +11,7 @@ import { createHash, randomBytes, randomInt } from 'crypto';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-type JwtUserPayload = { sub: string; email: string; role: string };
+export type JwtUserPayload = { sub: string; email: string; role: string };
 
 // OTP Types - matches Prisma schema enum
 const OtpType = {
@@ -492,6 +493,98 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
+    };
+  }
+
+  /**
+   * Get current user profile
+   */
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_USER_NOT_FOUND',
+        message: 'Người dùng không tồn tại',
+      });
+    }
+
+    return user;
+  }
+
+  /**
+   * Change password for authenticated user
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_USER_NOT_FOUND',
+        message: 'Người dùng không tồn tại',
+      });
+    }
+
+    // Verify current password
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new ForbiddenException({
+        code: 'AUTH_INVALID_CURRENT_PASSWORD',
+        message: 'Mật khẩu hiện tại không đúng',
+      });
+    }
+
+    // Prevent using same password
+    const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSamePassword) {
+      throw new BadRequestException({
+        code: 'AUTH_SAME_PASSWORD',
+        message: 'Mật khẩu mới phải khác mật khẩu hiện tại',
+      });
+    }
+
+    // Hash and update password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: 'Đổi mật khẩu thành công' };
+  }
+
+  /**
+   * Logout from all devices by revoking all refresh tokens
+   */
+  async logoutAll(userId: string) {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+
+    return {
+      success: true,
+      message: `Đã đăng xuất khỏi ${result.count} thiết bị`,
+      revokedCount: result.count,
     };
   }
 }

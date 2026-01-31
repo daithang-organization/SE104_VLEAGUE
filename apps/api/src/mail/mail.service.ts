@@ -21,7 +21,11 @@ export class MailService {
    */
   async sendEmailVerificationOtp(email: string, otp: string): Promise<void> {
     if (this.skipMail) {
-      this.logger.warn(`🔑 [DEV] Email Verification OTP for ${email}: ${otp}`);
+      this.logger.warn(`\n╔══════════════════════════════════════════╗`);
+      this.logger.warn(`║  🔑 EMAIL VERIFICATION OTP                ║`);
+      this.logger.warn(`║  Email: ${email.padEnd(32)}║`);
+      this.logger.warn(`║  OTP:   ${otp.padEnd(32)}║`);
+      this.logger.warn(`╚══════════════════════════════════════════╝`);
       return;
     }
 
@@ -50,7 +54,11 @@ export class MailService {
    */
   async sendPasswordResetOtp(email: string, otp: string): Promise<void> {
     if (this.skipMail) {
-      this.logger.warn(`🔑 [DEV] Password Reset OTP for ${email}: ${otp}`);
+      this.logger.warn(`\n╔══════════════════════════════════════════╗`);
+      this.logger.warn(`║  🔑 PASSWORD RESET OTP                    ║`);
+      this.logger.warn(`║  Email: ${email.padEnd(32)}║`);
+      this.logger.warn(`║  OTP:   ${otp.padEnd(32)}║`);
+      this.logger.warn(`╚══════════════════════════════════════════╝`);
       return;
     }
 
