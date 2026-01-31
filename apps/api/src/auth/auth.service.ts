@@ -376,9 +376,20 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
+  async login(
+    email: string,
+    password: string,
+    options?: {
+      rememberMe?: boolean;
+      userAgent?: string;
+      ipAddress?: string;
+    },
+  ) {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    const ok = user && (await bcrypt.compare(password, user.passwordHash));
+    const ok =
+      user &&
+      user.passwordHash &&
+      (await bcrypt.compare(password, user.passwordHash));
     if (!ok) {
       throw new UnauthorizedException({
         code: 'AUTH_INVALID_CREDENTIALS',
@@ -394,6 +405,20 @@ export class AuthService {
       });
     }
 
+    return this.generateTokens(user, options);
+  }
+
+  /**
+   * Generate tokens helper - used by login and OAuth
+   */
+  private async generateTokens(
+    user: { id: string; email: string; role: string; name?: string | null },
+    options?: {
+      rememberMe?: boolean;
+      userAgent?: string;
+      ipAddress?: string;
+    },
+  ) {
     const payload: JwtUserPayload = {
       sub: user.id,
       email: user.email,
@@ -412,23 +437,65 @@ export class AuthService {
     const refreshToken = randomBytes(48).toString('base64url');
     const refreshTokenHash = this.hashToken(refreshToken);
 
-    const expiresAt = new Date(
-      Date.now() + this.parseTtlToMs(process.env.JWT_REFRESH_TTL ?? '7d'),
-    );
+    // Remember me: 30 days, otherwise use default (7 days)
+    const refreshTtl = options?.rememberMe
+      ? '30d'
+      : (process.env.JWT_REFRESH_TTL ?? '7d');
+    const expiresAt = new Date(Date.now() + this.parseTtlToMs(refreshTtl));
+
+    // Parse device name from user agent
+    const deviceName = this.parseDeviceName(options?.userAgent);
 
     await this.prisma.refreshToken.create({
       data: {
         tokenHash: refreshTokenHash,
         userId: user.id,
         expiresAt,
+        userAgent: options?.userAgent,
+        ipAddress: options?.ipAddress,
+        deviceName,
+        lastUsedAt: new Date(),
       },
     });
 
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      },
     };
+  }
+
+  /**
+   * Parse device name from user agent string
+   */
+  private parseDeviceName(userAgent?: string): string {
+    if (!userAgent) return 'Unknown Device';
+
+    const ua = userAgent.toLowerCase();
+
+    // Detect browser
+    let browser = 'Unknown Browser';
+    if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome';
+    else if (ua.includes('firefox')) browser = 'Firefox';
+    else if (ua.includes('safari') && !ua.includes('chrome'))
+      browser = 'Safari';
+    else if (ua.includes('edg')) browser = 'Edge';
+    else if (ua.includes('opera') || ua.includes('opr')) browser = 'Opera';
+
+    // Detect OS
+    let os = 'Unknown OS';
+    if (ua.includes('windows')) os = 'Windows';
+    else if (ua.includes('mac')) os = 'macOS';
+    else if (ua.includes('linux')) os = 'Linux';
+    else if (ua.includes('android')) os = 'Android';
+    else if (ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+
+    return `${browser} on ${os}`;
   }
 
   async refresh(refreshToken: string) {
@@ -448,6 +515,12 @@ export class AuthService {
         message: 'Refresh token không hợp lệ hoặc đã hết hạn',
       });
     }
+
+    // Update last used time
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { lastUsedAt: new Date() },
+    });
 
     const payload: JwtUserPayload = {
       sub: stored.user.id,
@@ -506,6 +579,8 @@ export class AuthService {
         id: true,
         email: true,
         role: true,
+        name: true,
+        avatarUrl: true,
         emailVerified: true,
         createdAt: true,
         updatedAt: true,
@@ -520,6 +595,163 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  /**
+   * Update user profile (name, avatarUrl)
+   */
+  async updateProfile(
+    userId: string,
+    data: { name?: string; avatarUrl?: string },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_USER_NOT_FOUND',
+        message: 'Người dùng không tồn tại',
+      });
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: data.name,
+        avatarUrl: data.avatarUrl,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        name: true,
+        avatarUrl: true,
+        emailVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Get all active sessions for a user
+   */
+  async getSessions(userId: string) {
+    const sessions = await this.prisma.refreshToken.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        deviceName: true,
+        userAgent: true,
+        ipAddress: true,
+        lastUsedAt: true,
+        createdAt: true,
+        expiresAt: true,
+      },
+      orderBy: { lastUsedAt: 'desc' },
+    });
+
+    return sessions;
+  }
+
+  /**
+   * Revoke a specific session
+   */
+  async revokeSession(userId: string, sessionId: string) {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: {
+        id: sessionId,
+        userId,
+        revokedAt: null,
+      },
+    });
+
+    if (!session) {
+      throw new BadRequestException({
+        code: 'AUTH_SESSION_NOT_FOUND',
+        message: 'Phiên đăng nhập không tồn tại',
+      });
+    }
+
+    await this.prisma.refreshToken.update({
+      where: { id: sessionId },
+      data: { revokedAt: new Date() },
+    });
+
+    return { success: true, message: 'Đã thu hồi phiên đăng nhập' };
+  }
+
+  /**
+   * Handle Google OAuth login/signup
+   */
+  async googleLogin(
+    profile: {
+      googleId: string;
+      email: string;
+      name?: string;
+      avatarUrl?: string;
+    },
+    options?: {
+      userAgent?: string;
+      ipAddress?: string;
+    },
+  ) {
+    // Check if user exists with this Google ID
+    let user = await this.prisma.user.findUnique({
+      where: { googleId: profile.googleId },
+    });
+
+    if (!user) {
+      // Check if email already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: profile.email },
+      });
+
+      if (existingUser) {
+        // Link Google account to existing user
+        user = await this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            googleId: profile.googleId,
+            name: existingUser.name || profile.name,
+            avatarUrl: existingUser.avatarUrl || profile.avatarUrl,
+            emailVerified: true, // Google emails are verified
+          },
+        });
+      } else {
+        // Create new user
+        user = await this.prisma.user.create({
+          data: {
+            email: profile.email,
+            googleId: profile.googleId,
+            name: profile.name,
+            avatarUrl: profile.avatarUrl,
+            emailVerified: true,
+          },
+        });
+
+        // Send welcome email (non-blocking)
+        this.mail.sendWelcomeEmail(profile.email).catch(() => {});
+      }
+    } else {
+      // Update profile if name/avatar changed
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: user.name || profile.name,
+          avatarUrl: user.avatarUrl || profile.avatarUrl,
+        },
+      });
+    }
+
+    return this.generateTokens(user, options);
   }
 
   /**
@@ -538,6 +770,14 @@ export class AuthService {
       throw new UnauthorizedException({
         code: 'AUTH_USER_NOT_FOUND',
         message: 'Người dùng không tồn tại',
+      });
+    }
+
+    // OAuth users without password
+    if (!user.passwordHash) {
+      throw new ForbiddenException({
+        code: 'AUTH_NO_PASSWORD',
+        message: 'Tài khoản sử dụng đăng nhập bằng Google. Vui lòng đặt mật khẩu mới.',
       });
     }
 
@@ -567,6 +807,37 @@ export class AuthService {
     });
 
     return { success: true, message: 'Đổi mật khẩu thành công' };
+  }
+
+  /**
+   * Set password for OAuth users who don't have one
+   */
+  async setPassword(userId: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_USER_NOT_FOUND',
+        message: 'Người dùng không tồn tại',
+      });
+    }
+
+    if (user.passwordHash) {
+      throw new BadRequestException({
+        code: 'AUTH_PASSWORD_EXISTS',
+        message: 'Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: 'Đặt mật khẩu thành công' };
   }
 
   /**

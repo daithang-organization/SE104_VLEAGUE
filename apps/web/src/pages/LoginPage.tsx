@@ -1,7 +1,9 @@
-import { Button, Card, Form, Input, message, Space, Typography } from 'antd';
+import { GoogleOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, Divider, Form, Input, message, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { getGoogleAuthUrl } from '../services/authApi';
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -16,10 +18,10 @@ export default function LoginPage() {
     return null;
   }
 
-  const onFinish = async (values: { email: string; password: string }) => {
+  const onFinish = async (values: { email: string; password: string; rememberMe?: boolean }) => {
     setLoading(true);
     try {
-      await login(values.email, values.password);
+      await login(values.email, values.password, values.rememberMe);
       message.success('Đăng nhập thành công');
       nav(from, { replace: true });
     } catch (err: unknown) {
@@ -32,13 +34,17 @@ export default function LoginPage() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    window.location.href = getGoogleAuthUrl();
+  };
+
   return (
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
-      <Card style={{ width: 360 }}>
+      <Card style={{ width: 380 }}>
         <Typography.Title level={4} style={{ marginTop: 0, textAlign: 'center' }}>
           VLeague Admin
         </Typography.Title>
-        <Form layout="vertical" onFinish={onFinish}>
+        <Form layout="vertical" onFinish={onFinish} initialValues={{ rememberMe: false }}>
           <Form.Item
             name="email"
             label="Email"
@@ -57,15 +63,30 @@ export default function LoginPage() {
             <Input.Password placeholder="••••••••" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 8 }}>
-            <Link to="/forgot-password" style={{ float: 'right' }}>
-              Quên mật khẩu?
-            </Link>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Form.Item name="rememberMe" valuePropName="checked" noStyle>
+                <Checkbox>Ghi nhớ đăng nhập</Checkbox>
+              </Form.Item>
+              <Link to="/forgot-password">Quên mật khẩu?</Link>
+            </div>
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>
             Đăng nhập
           </Button>
         </Form>
-        <Space direction="vertical" style={{ width: '100%', marginTop: 16, textAlign: 'center' }}>
+
+        <Divider plain>hoặc</Divider>
+
+        <Button
+          icon={<GoogleOutlined />}
+          block
+          onClick={handleGoogleLogin}
+          style={{ marginBottom: 16 }}
+        >
+          Đăng nhập với Google
+        </Button>
+
+        <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
           <div>
             Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
           </div>

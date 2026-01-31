@@ -1,9 +1,21 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
+  ApiExcludeEndpoint,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
@@ -12,6 +24,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -21,11 +34,23 @@ import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 interface RequestWithUser {
   user: { id: string; email: string; role: string };
+  headers: { 'user-agent'?: string };
+  ip?: string;
+}
+
+interface GoogleUser {
+  googleId: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
 }
 
 @ApiTags('auth')
@@ -184,8 +209,12 @@ export class AuthController {
       },
     },
   })
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.email, dto.password);
+  login(@Req() req: RequestWithUser, @Body() dto: LoginDto) {
+    return this.auth.login(dto.email, dto.password, {
+      rememberMe: dto.rememberMe,
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
   }
 
   @Post('refresh')
@@ -315,5 +344,140 @@ export class AuthController {
   })
   logoutAll(@Req() req: RequestWithUser) {
     return this.auth.logoutAll(req.user.id);
+  }
+
+  // ===== Profile & Session Management =====
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Cập nhật thông tin cá nhân' })
+  @ApiBody({ type: UpdateProfileDto })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        id: 'uuid',
+        email: 'user@example.com',
+        role: 'USER',
+        name: 'Nguyen Van A',
+        avatarUrl: 'https://example.com/avatar.jpg',
+        emailVerified: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
+    },
+  })
+  updateProfile(@Req() req: RequestWithUser, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateProfile(req.user.id, dto);
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Lấy danh sách phiên đăng nhập' })
+  @ApiOkResponse({
+    schema: {
+      example: [
+        {
+          id: 'uuid',
+          deviceName: 'Chrome on Windows',
+          userAgent: 'Mozilla/5.0...',
+          ipAddress: '192.168.1.1',
+          lastUsedAt: '2024-01-15T10:30:00.000Z',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          expiresAt: '2024-01-31T00:00:00.000Z',
+        },
+      ],
+    },
+  })
+  getSessions(@Req() req: RequestWithUser) {
+    return this.auth.getSessions(req.user.id);
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Thu hồi phiên đăng nhập cụ thể' })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        success: true,
+        message: 'Đã thu hồi phiên đăng nhập',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    schema: {
+      example: {
+        code: 'AUTH_SESSION_NOT_FOUND',
+        message: 'Phiên đăng nhập không tồn tại',
+      },
+    },
+  })
+  revokeSession(@Req() req: RequestWithUser, @Param('sessionId') sessionId: string) {
+    return this.auth.revokeSession(req.user.id, sessionId);
+  }
+
+  @Post('set-password')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Đặt mật khẩu cho tài khoản OAuth' })
+  @ApiBody({ type: SetPasswordDto })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        success: true,
+        message: 'Đặt mật khẩu thành công',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    schema: {
+      example: {
+        code: 'AUTH_PASSWORD_EXISTS',
+        message: 'Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.',
+      },
+    },
+  })
+  setPassword(@Req() req: RequestWithUser, @Body() dto: SetPasswordDto) {
+    return this.auth.setPassword(req.user.id, dto.newPassword);
+  }
+
+  // ===== Google OAuth =====
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @SkipThrottle()
+  @ApiOperation({ summary: 'Đăng nhập bằng Google' })
+  @ApiExcludeEndpoint() // Hidden from Swagger, browser redirect
+  googleAuth() {
+    // Guard redirects to Google
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @SkipThrottle()
+  @ApiExcludeEndpoint()
+  async googleCallback(
+    @Req() req: RequestWithUser & { user: GoogleUser },
+    @Res() res: Response,
+  ) {
+    const result = await this.auth.googleLogin(req.user, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    // Redirect to frontend with tokens in URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const params = new URLSearchParams({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+
+    res.redirect(`${frontendUrl}/auth/oauth-callback?${params.toString()}`);
   }
 }

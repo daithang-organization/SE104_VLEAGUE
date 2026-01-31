@@ -7,6 +7,7 @@ export type LoginResponse = {
     id: string;
     email: string;
     role: string;
+    name?: string | null;
   };
 };
 
@@ -27,17 +28,28 @@ export type UserProfile = {
   id: string;
   email: string;
   role: string;
+  name?: string | null;
+  avatarUrl?: string | null;
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
+export type Session = {
+  id: string;
+  deviceName: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+  expiresAt: string;
+};
+
 /**
- * Login API call - now handled by AuthContext
- * @deprecated Use useAuth().login() instead
+ * Login API call
  */
-export function apiLogin(email: string, password: string) {
-  return api.post<LoginResponse>('/auth/login', { email, password }).then((res) => res.data);
+export function apiLogin(email: string, password: string, rememberMe?: boolean) {
+  return api.post<LoginResponse>('/auth/login', { email, password, rememberMe }).then((res) => res.data);
 }
 
 /**
@@ -117,4 +129,44 @@ export function apiLogoutAll() {
   return api
     .post<{ success: boolean; message: string; revokedCount: number }>('/auth/logout-all')
     .then((res) => res.data);
+}
+
+/**
+ * Update profile (name, avatarUrl)
+ */
+export function apiUpdateProfile(data: { name?: string; avatarUrl?: string }) {
+  return api.patch<UserProfile>('/auth/profile', data).then((res) => res.data);
+}
+
+/**
+ * Get all active sessions
+ */
+export function apiGetSessions() {
+  return api.get<Session[]>('/auth/sessions').then((res) => res.data);
+}
+
+/**
+ * Revoke a specific session
+ */
+export function apiRevokeSession(sessionId: string) {
+  return api
+    .delete<{ success: boolean; message: string }>(`/auth/sessions/${sessionId}`)
+    .then((res) => res.data);
+}
+
+/**
+ * Set password for OAuth users
+ */
+export function apiSetPassword(newPassword: string) {
+  return api
+    .post<{ success: boolean; message: string }>('/auth/set-password', { newPassword })
+    .then((res) => res.data);
+}
+
+/**
+ * Get Google OAuth URL
+ */
+export function getGoogleAuthUrl() {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+  return `${apiBaseUrl}/auth/google`;
 }
