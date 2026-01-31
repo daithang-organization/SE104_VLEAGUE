@@ -72,13 +72,63 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
-  // Startup logs chuyên nghiệp
-  logger.log(`🚀 Application started successfully`, 'Bootstrap');
-  logger.log(`📍 Server running on: http://localhost:${port}`, 'Bootstrap');
-  logger.log(`📚 Swagger docs: http://localhost:${port}/api/docs`, 'Bootstrap');
-  logger.log(
-    `🔧 Environment: ${process.env.NODE_ENV || 'development'}`,
-    'Bootstrap',
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STARTUP BANNER - Beautiful console output
+  // ═══════════════════════════════════════════════════════════════════════════
+  const divider = '═'.repeat(60);
+  const env = process.env.NODE_ENV || 'development';
+
+  console.log('\n');
+  console.log('\x1b[36m' + divider + '\x1b[0m');
+  console.log(
+    '\x1b[36m' +
+      '   __     ___                                  _    ____ ___ ' +
+      '\x1b[0m',
   );
+  console.log(
+    '\x1b[36m' +
+      '   \\ \\   / / |    ___  __ _  __ _ _   _  ___  / \\  |  _ \\_ _|' +
+      '\x1b[0m',
+  );
+  console.log(
+    '\x1b[36m' +
+      '    \\ \\ / /| |   / _ \\/ _` |/ _` | | | |/ _ \\/  _\\ | |_) | | ' +
+      '\x1b[0m',
+  );
+  console.log(
+    '\x1b[36m' +
+      '     \\ V / | |__|  __/ (_| | (_| | |_| |  __/ ___ \\|  __/| | ' +
+      '\x1b[0m',
+  );
+  console.log(
+    '\x1b[36m' +
+      '      \\_/  |_____\\___|\\__,_|\\__, |\\__,_|\\___/_/   \\_\\_|  |___|' +
+      '\x1b[0m',
+  );
+  console.log(
+    '\x1b[36m' +
+      '                            |___/                            ' +
+      '\x1b[0m',
+  );
+  console.log('\x1b[36m' + divider + '\x1b[0m');
+  console.log('');
+  console.log(
+    '  \x1b[32m✓\x1b[0m \x1b[1mStatus:\x1b[0m       \x1b[32mRunning\x1b[0m',
+  );
+  console.log(
+    `  \x1b[32m✓\x1b[0m \x1b[1mURL:\x1b[0m          \x1b[36mhttp://localhost:${port}\x1b[0m`,
+  );
+  console.log(
+    `  \x1b[32m✓\x1b[0m \x1b[1mSwagger:\x1b[0m      \x1b[36mhttp://localhost:${port}/docs\x1b[0m`,
+  );
+  console.log(
+    `  \x1b[32m✓\x1b[0m \x1b[1mEnvironment:\x1b[0m  \x1b[33m${env}\x1b[0m`,
+  );
+  console.log('');
+  console.log('\x1b[36m' + divider + '\x1b[0m');
+  console.log('\n');
+
+  // Keep pino logs for runtime
+  logger.log(`Application is listening on port ${port}`, 'Bootstrap');
 }
 void bootstrap();

@@ -19,6 +19,7 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
@@ -61,7 +62,7 @@ interface FacebookUser {
   avatarUrl?: string;
 }
 
-@ApiTags('auth')
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
@@ -409,6 +410,12 @@ export class AuthController {
   @SkipThrottle()
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Thu hồi phiên đăng nhập cụ thể' })
+  @ApiParam({
+    name: 'sessionId',
+    description: 'ID của phiên đăng nhập cần thu hồi',
+    type: 'string',
+    format: 'uuid',
+  })
   @ApiOkResponse({
     schema: {
       example: {

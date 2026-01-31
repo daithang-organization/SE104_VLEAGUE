@@ -1,0 +1,56 @@
+# Dependabot configuration
+# Optimized to minimize PR spam while maintaining security
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # ========================================
+  # Root Dependencies - Security Only
+  # ========================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    # Limit PRs to avoid spam
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "type:chore"
+    commit-message:
+      prefix: "chore(deps)"
+    # Group ALL updates into single PR
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+    # Only security updates - ignore regular minor/patch
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+
+  # ========================================
+  # GitHub Actions - Monthly
+  # ========================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "type:ci"
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns:
+          - "*"

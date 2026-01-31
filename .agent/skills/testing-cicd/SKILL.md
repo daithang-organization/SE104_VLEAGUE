@@ -230,121 +230,121 @@ module.exports = {
 
 ## CI/CD Pipeline
 
-### GitHub Actions Workflow
+### GitHub Actions Workflows
 
-Location: `.github/workflows/ci.yml` (or similar)
+The project has multiple CI/CD workflows in `.github/workflows/`:
 
-The CI pipeline runs on:
-- Push to `main` branch
-- Pull Requests to `main`
+| Workflow | File | Purpose |
+|----------|------|---------|
+| CI | `ci.yml` | Main CI pipeline (lint, test, build) |
+| PR Labeler | `pr-labeler.yml` | Auto-label PRs based on title, files, size |
+| CodeQL | `codeql.yml` | Security analysis for JS/TS |
 
-### CI Pipeline Steps
+### CI Pipeline Features
 
-1. **Setup**:
-   - Checkout code
-   - Setup Node.js 20
-   - Enable corepack for pnpm
-   - Install dependencies
+The main CI pipeline (`ci.yml`) includes:
 
-2. **API Checks**:
-   - Lint: `pnpm --filter api lint`
-   - Test: `pnpm --filter api test`
-   - Build: `pnpm --filter api build`
+1. **Concurrency Control**: Cancels in-progress runs when new commits are pushed
+2. **pnpm Caching**: Speeds up dependency installation
+3. **TypeScript Type Checking**: Runs `tsc --noEmit` before build
+4. **Security Audit**: Checks for vulnerable dependencies
+5. **Test Coverage**: Uploads coverage reports to Codecov
+6. **Build Artifacts**: Uploads build outputs for deployment
 
-3. **Web Checks**:
-   - Lint: `pnpm --filter web lint`
-   - Build: `pnpm --filter web build`
+### CI Pipeline Jobs
 
-4. **PR Title Check**:
-   - Validates PR title follows Conventional Commits format
-
-### Example CI Configuration
-
-```yaml
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  api:
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: vleague_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Enable Corepack
-        run: corepack enable
-        
-      - name: Install dependencies
-        run: pnpm install
-        
-      - name: Generate Prisma Client
-        working-directory: apps/api
-        run: pnpm dlx prisma generate
-        
-      - name: Lint
-        working-directory: apps/api
-        run: pnpm lint
-        
-      - name: Test
-        working-directory: apps/api
-        run: pnpm test
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vleague_test
-        
-      - name: Build
-        working-directory: apps/api
-        run: pnpm build
-
-  web:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Enable Corepack
-        run: corepack enable
-        
-      - name: Install dependencies
-        run: pnpm install
-        
-      - name: Lint
-        working-directory: apps/web
-        run: pnpm lint
-        
-      - name: Build
-        working-directory: apps/web
-        run: pnpm build
 ```
+┌─────────────────────────────────────────────────────────────┐
+│                        CI Pipeline                          │
+├─────────────────────────────────────────────────────────────┤
+│  api                │  web                │  security       │
+│  ├─ Lint            │  ├─ Lint            │  └─ pnpm audit  │
+│  ├─ Type Check      │  ├─ Type Check      │                 │
+│  ├─ Test + Coverage │  └─ Build           │                 │
+│  └─ Build           │                     │                 │
+├─────────────────────────────────────────────────────────────┤
+│  pr-title           │  pr-branch          │  pr-size        │
+│  (Conventional)     │  (Naming)           │  (Warnings)     │
+├─────────────────────────────────────────────────────────────┤
+│                      ci-success                             │
+│                 (Final status gate)                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Running CI Locally
+
+Simulate what CI runs locally:
+
+```bash
+# Full CI simulation
+pnpm lint && pnpm test && pnpm build
+
+# API only
+cd apps/api
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm test
+pnpm test:cov
+pnpm build
+
+# Web only
+cd apps/web
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
+
+# Security audit
+pnpm audit --audit-level high
+```
+
+### Environment Variables in CI
+
+CI uses these environment variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `NODE_VERSION` | Node.js version (20) |
+| `STORE_PATH` | pnpm store directory for caching |
+
+### Dependabot Configuration
+
+The project uses Dependabot (`.github/dependabot.yml`) for automatic dependency updates:
+
+- **NPM dependencies**: Weekly updates on Monday
+- **GitHub Actions**: Monthly updates
+- **Grouping**: Minor/patch updates are grouped to reduce PR noise
+- **Labels**: Auto-labeled with `dependencies`, `type:chore`, and area labels
+
+### CodeQL Security Analysis
+
+The CodeQL workflow (`.github/workflows/codeql.yml`) provides:
+
+- JavaScript/TypeScript security scanning
+- Runs on push, PRs, and weekly schedule
+- Reports vulnerabilities in GitHub Security tab
+
+### PR Auto-Labeling
+
+The PR labeler workflow adds labels based on:
+
+1. **PR Title** (Conventional Commits):
+   - `feat:` → `type:feature`
+   - `fix:` → `type:bugfix`
+   - `chore:` → `type:chore`
+   - etc.
+
+2. **Changed Files**:
+   - `apps/api/*` → `area:api`
+   - `apps/web/*` → `area:web`
+   - `.github/*` → `area:ci`
+   - `*.md` → `area:docs`
+
+3. **PR Size**:
+   - `size:XS` (<10 changes)
+   - `size:S` (10-49 changes)
+   - `size:M` (50-199 changes)
+   - `size:L` (200-499 changes)
+   - `size:XL` (500+ changes)
 
 ## Conventional Commits
 
