@@ -67,18 +67,22 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
               }),
             },
 
-            // Transport config
+            // Transport config - Enhanced for better visual experience
             transport: isProduction
               ? undefined // JSON logs cho production
               : {
                   target: 'pino-pretty',
                   options: {
                     colorize: true,
-                    levelFirst: true,
-                    translateTime: 'SYS:HH:MM:ss.l',
+                    levelFirst: false,
+                    translateTime: 'SYS:HH:mm:ss',
                     ignore: 'pid,hostname',
-                    messageFormat: '{if context}[{context}] {end}{msg}',
-                    customColors: 'error:red,warn:yellow,info:cyan,debug:gray',
+                    singleLine: false,
+                    messageFormat: '{if context}[{context}]{end} {msg}',
+                    // Đẹp mắt với màu sắc phân biệt
+                    customColors:
+                      'error:red,warn:yellow,info:green,debug:blue,trace:gray',
+                    minimumLevel: 'debug',
                   },
                 },
 

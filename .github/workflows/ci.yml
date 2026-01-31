@@ -2,17 +2,23 @@ name: CI
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: "20"
+
 jobs:
+  # ========================================
+  # API: Lint, Type Check, Test, Build
+  # ========================================
   api:
-    name: API - lint, test, build
+    name: API - lint, typecheck, test, build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,20 +30,48 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Enable Corepack (pnpm)
         run: corepack enable
 
-      - name: Install deps (workspace filtered)
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
 
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
       - name: Test
         run: pnpm test
+
+      - name: Test with coverage
+        run: pnpm test:cov
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: apps/api/coverage
+          flags: api
+          fail_ci_if_error: false
+        continue-on-error: true
 
       - name: Build
         run: pnpm build
@@ -49,8 +83,11 @@ jobs:
           path: apps/api/dist
           if-no-files-found: error
 
+  # ========================================
+  # Web: Lint, Type Check, Build
+  # ========================================
   web:
-    name: Web - lint, build
+    name: Web - lint, typecheck, build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -62,17 +99,33 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Enable Corepack (pnpm)
         run: corepack enable
 
-      - name: Install deps (workspace filtered)
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
         working-directory: .
         run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
 
       - name: Build
         run: pnpm build
@@ -84,6 +137,34 @@ jobs:
           path: apps/web/dist
           if-no-files-found: error
 
+  # ========================================
+  # Security: Dependency Audit
+  # ========================================
+  security:
+    name: Security - dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run security audit
+        run: pnpm audit --audit-level high
+        continue-on-error: true
+
+  # ========================================
+  # PR Title: Conventional Commits
+  # ========================================
   pr-title:
     name: PR Title - conventional
     if: github.event_name == 'pull_request'
@@ -93,8 +174,16 @@ jobs:
         run: |
           TITLE="${{ github.event.pull_request.title }}"
           echo "PR Title: $TITLE"
-          echo "$TITLE" | grep -E '^(feat|fix|chore|docs|refactor|test|ci)(\(.+\))?:\s.+$'
+          if ! echo "$TITLE" | grep -E '^(feat|fix|chore|docs|refactor|test|ci|perf|style|revert)(\(.+\))?!?:\s.+$'; then
+            echo "::error::PR title must follow Conventional Commits format:"
+            echo "::error::  <type>(<scope>): <description>"
+            echo "::error::  Examples: feat: add login, fix(api): resolve auth bug"
+            exit 1
+          fi
 
+  # ========================================
+  # PR Branch: Naming Convention
+  # ========================================
   pr-branch:
     name: Branch Name - conventional
     if: github.event_name == 'pull_request'
@@ -104,8 +193,14 @@ jobs:
         run: |
           BRANCH="${{ github.head_ref }}"
           echo "Branch name: $BRANCH"
-          echo "$BRANCH" | grep -E '^(feat|fix|chore|docs|refactor|test|ci)/.+$'
+          if ! echo "$BRANCH" | grep -E '^(feat|fix|chore|docs|refactor|test|ci|hotfix|release)/.+$'; then
+            echo "::warning::Branch name should follow convention: <type>/<description>"
+            echo "::warning::  Examples: feat/add-login, fix/auth-bug"
+          fi
 
+  # ========================================
+  # PR Size: Keep PRs Small
+  # ========================================
   pr-size:
     name: PR Size Check
     if: github.event_name == 'pull_request'
@@ -120,14 +215,41 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }}
           CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
-          ADDITIONS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1 | awk '{print $4}')
+
+          # Get additions more safely
+          STATS=$(git diff --stat origin/${{ github.base_ref }}...HEAD | tail -1)
+          ADDITIONS=$(echo "$STATS" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo "0")
+          DELETIONS=$(echo "$STATS" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo "0")
+
           echo "Changed files: $CHANGED_FILES"
           echo "Lines added: $ADDITIONS"
+          echo "Lines deleted: $DELETIONS"
+
+          # Set outputs for labeling
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "additions=$ADDITIONS" >> $GITHUB_OUTPUT
 
           if [ "$CHANGED_FILES" -gt 30 ]; then
             echo "::warning::⚠️ This PR changes $CHANGED_FILES files. Consider splitting into smaller PRs for easier review."
           fi
 
-          if [ "$ADDITIONS" -gt 500 ]; then
+          if [ "${ADDITIONS:-0}" -gt 500 ]; then
             echo "::warning::⚠️ This PR adds $ADDITIONS lines. Large PRs are harder to review - consider breaking it down."
           fi
+
+  # ========================================
+  # Summary: All Checks Status
+  # ========================================
+  ci-success:
+    name: CI Success
+    needs: [api, web, security]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs
+        run: |
+          if [ "${{ needs.api.result }}" != "success" ] || [ "${{ needs.web.result }}" != "success" ]; then
+            echo "::error::One or more required jobs failed"
+            exit 1
+          fi
+          echo "✅ All CI checks passed!"

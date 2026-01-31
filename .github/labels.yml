@@ -1,0 +1,129 @@
+# GitHub Labels Configuration
+# Use GitHub CLI to create these labels:
+# gh label create <name> --color <hex> --description "<desc>"
+
+## Type Labels (from PR title convention)
+- name: "type:feature"
+  color: "0E8A16"
+  description: "New feature or enhancement"
+
+- name: "type:bugfix"
+  color: "D73A4A"
+  description: "Bug fix"
+
+- name: "type:chore"
+  color: "FEF2C0"
+  description: "Maintenance and chores"
+
+- name: "type:docs"
+  color: "0075CA"
+  description: "Documentation changes"
+
+- name: "type:ci"
+  color: "FBCA04"
+  description: "CI/CD changes"
+
+- name: "type:refactor"
+  color: "A2EEEF"
+  description: "Code refactoring"
+
+- name: "type:test"
+  color: "BFD4F2"
+  description: "Test additions or updates"
+
+- name: "type:performance"
+  color: "5319E7"
+  description: "Performance improvements"
+
+- name: "type:style"
+  color: "C5DEF5"
+  description: "Style/formatting changes"
+
+- name: "type:revert"
+  color: "F9D0C4"
+  description: "Revert previous changes"
+
+## Area Labels (from changed files)
+- name: "area:api"
+  color: "1D76DB"
+  description: "API backend (apps/api)"
+
+- name: "area:web"
+  color: "7057FF"
+  description: "Web frontend (apps/web)"
+
+- name: "area:infra"
+  color: "B60205"
+  description: "Infrastructure (infra/)"
+
+- name: "area:docs"
+  color: "0075CA"
+  description: "Documentation files"
+
+- name: "area:ci"
+  color: "FBCA04"
+  description: "GitHub Actions (.github/)"
+
+- name: "area:database"
+  color: "006B75"
+  description: "Database/Prisma changes"
+
+## Special Labels
+- name: "dependencies"
+  color: "0366D6"
+  description: "Dependency updates"
+
+- name: "has-tests"
+  color: "BFD4F2"
+  description: "PR includes test changes"
+
+- name: "breaking-change"
+  color: "D93F0B"
+  description: "Contains breaking changes (!)"
+
+## Size Labels
+- name: "size:XS"
+  color: "3CBF00"
+  description: "Extra small PR (<10 changes)"
+
+- name: "size:S"
+  color: "5D9801"
+  description: "Small PR (10-49 changes)"
+
+- name: "size:M"
+  color: "7F7203"
+  description: "Medium PR (50-199 changes)"
+
+- name: "size:L"
+  color: "A14C05"
+  description: "Large PR (200-499 changes)"
+
+- name: "size:XL"
+  color: "C32607"
+  description: "Extra large PR (500+ changes)"
+
+## Priority Labels
+- name: "priority:high"
+  color: "B60205"
+  description: "High priority"
+
+- name: "priority:medium"
+  color: "FBCA04"
+  description: "Medium priority"
+
+- name: "priority:low"
+  color: "0E8A16"
+  description: "Low priority"
+
+## Status Labels
+- name: "status:needs-review"
+  color: "FBCA04"
+  description: "Ready for review"
+
+- name: "status:in-progress"
+  color: "1D76DB"
+  description: "Work in progress"
+
+- name: "status:blocked"
+  color: "B60205"
+  description: "Blocked by external factors"
