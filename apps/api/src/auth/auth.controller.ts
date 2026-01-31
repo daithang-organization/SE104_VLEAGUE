@@ -37,6 +37,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SetPasswordDto } from './dto/set-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { FacebookAuthGuard } from './guards/facebook-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -48,6 +49,13 @@ interface RequestWithUser {
 
 interface GoogleUser {
   googleId: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+}
+
+interface FacebookUser {
+  facebookId: string;
   email: string;
   name?: string;
   avatarUrl?: string;
@@ -417,7 +425,10 @@ export class AuthController {
       },
     },
   })
-  revokeSession(@Req() req: RequestWithUser, @Param('sessionId') sessionId: string) {
+  revokeSession(
+    @Req() req: RequestWithUser,
+    @Param('sessionId') sessionId: string,
+  ) {
     return this.auth.revokeSession(req.user.id, sessionId);
   }
 
@@ -439,7 +450,8 @@ export class AuthController {
     schema: {
       example: {
         code: 'AUTH_PASSWORD_EXISTS',
-        message: 'Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.',
+        message:
+          'Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.',
       },
     },
   })
@@ -467,6 +479,40 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const result = await this.auth.googleLogin(req.user, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    // Redirect to frontend with tokens in URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const params = new URLSearchParams({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+
+    res.redirect(`${frontendUrl}/auth/oauth-callback?${params.toString()}`);
+  }
+
+  // ===== Facebook OAuth =====
+
+  @Get('facebook')
+  @UseGuards(FacebookAuthGuard)
+  @SkipThrottle()
+  @ApiOperation({ summary: 'Đăng nhập bằng Facebook' })
+  @ApiExcludeEndpoint() // Hidden from Swagger, browser redirect
+  facebookAuth() {
+    // Guard redirects to Facebook
+  }
+
+  @Get('facebook/callback')
+  @UseGuards(FacebookAuthGuard)
+  @SkipThrottle()
+  @ApiExcludeEndpoint()
+  async facebookCallback(
+    @Req() req: RequestWithUser & { user: FacebookUser },
+    @Res() res: Response,
+  ) {
+    const result = await this.auth.facebookLogin(req.user, {
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });

@@ -1,19 +1,19 @@
 import {
-  DeleteOutlined,
-  DesktopOutlined,
-  MobileOutlined,
-  TabletOutlined,
+    DeleteOutlined,
+    DesktopOutlined,
+    MobileOutlined,
+    TabletOutlined,
 } from '@ant-design/icons';
 import {
-  Alert,
-  Button,
-  Card,
-  List,
-  message,
-  Popconfirm,
-  Space,
-  Tag,
-  Typography,
+    Alert,
+    Button,
+    Card,
+    List,
+    message,
+    Popconfirm,
+    Space,
+    Tag,
+    Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';

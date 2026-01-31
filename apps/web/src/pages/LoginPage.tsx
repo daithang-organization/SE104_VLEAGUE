@@ -1,9 +1,9 @@
-import { GoogleOutlined } from '@ant-design/icons';
+import { FacebookOutlined, GoogleOutlined } from '@ant-design/icons';
 import { Button, Card, Checkbox, Divider, Form, Input, message, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { getGoogleAuthUrl } from '../services/authApi';
+import { getFacebookAuthUrl, getGoogleAuthUrl } from '../services/authApi';
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -36,6 +36,10 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     window.location.href = getGoogleAuthUrl();
+  };
+
+  const handleFacebookLogin = () => {
+    window.location.href = getFacebookAuthUrl();
   };
 
   return (
@@ -77,23 +81,32 @@ export default function LoginPage() {
 
         <Divider plain>hoặc</Divider>
 
-        <Button
-          icon={<GoogleOutlined />}
-          block
-          onClick={handleGoogleLogin}
-          style={{ marginBottom: 16 }}
-        >
-          Đăng nhập với Google
-        </Button>
-
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
-          <div>
-            Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
-          </div>
-          <div>
-            <Link to="/verify-email">Xác thực email</Link>
-          </div>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Button
+            icon={<GoogleOutlined />}
+            block
+            onClick={handleGoogleLogin}
+          >
+            Đăng nhập với Google
+          </Button>
+          <Button
+            icon={<FacebookOutlined />}
+            block
+            onClick={handleFacebookLogin}
+            style={{ backgroundColor: '#1877f2', borderColor: '#1877f2', color: 'white' }}
+          >
+            Đăng nhập với Facebook
+          </Button>
         </Space>
+
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <Space direction="vertical">
+            <span>
+              Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+            </span>
+            <Link to="/verify-email">Xác thực email</Link>
+          </Space>
+        </div>
       </Card>
     </div>
   );

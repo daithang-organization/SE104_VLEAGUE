@@ -1,17 +1,17 @@
 import { EditOutlined, UserOutlined } from '@ant-design/icons';
 import {
-  Avatar,
-  Button,
-  Card,
-  Descriptions,
-  Form,
-  Input,
-  message,
-  Modal,
-  Space,
-  Spin,
-  Tag,
-  Typography,
+    Avatar,
+    Button,
+    Card,
+    Descriptions,
+    Form,
+    Input,
+    message,
+    Modal,
+    Space,
+    Spin,
+    Tag,
+    Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

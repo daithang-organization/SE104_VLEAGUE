@@ -167,6 +167,14 @@ export function apiSetPassword(newPassword: string) {
  * Get Google OAuth URL
  */
 export function getGoogleAuthUrl() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  return `${apiBaseUrl}/auth/google`;
+  const serverUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  return `${serverUrl}/api/auth/google`;
+}
+
+/**
+ * Get Facebook OAuth URL
+ */
+export function getFacebookAuthUrl() {
+  const serverUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+  return `${serverUrl}/api/auth/facebook`;
 }

@@ -1,9 +1,9 @@
 import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -755,6 +755,83 @@ export class AuthService {
   }
 
   /**
+   * Handle Facebook OAuth login/signup
+   */
+  async facebookLogin(
+    profile: {
+      facebookId: string;
+      email: string;
+      name?: string;
+      avatarUrl?: string;
+    },
+    options?: {
+      userAgent?: string;
+      ipAddress?: string;
+    },
+  ) {
+    // Check if user exists with this Facebook ID
+    let user = await this.prisma.user.findUnique({
+      where: { facebookId: profile.facebookId },
+    });
+
+    if (!user) {
+      // Check if email already exists
+      if (profile.email) {
+        const existingUser = await this.prisma.user.findUnique({
+          where: { email: profile.email },
+        });
+
+        if (existingUser) {
+          // Link Facebook account to existing user
+          user = await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              facebookId: profile.facebookId,
+              name: existingUser.name || profile.name,
+              avatarUrl: existingUser.avatarUrl || profile.avatarUrl,
+              emailVerified: true, // Facebook emails are verified
+            },
+          });
+        }
+      }
+
+      if (!user) {
+        // Create new user
+        if (!profile.email) {
+          throw new BadRequestException({
+            code: 'AUTH_EMAIL_REQUIRED',
+            message: 'Email is required for registration',
+          });
+        }
+
+        user = await this.prisma.user.create({
+          data: {
+            email: profile.email,
+            facebookId: profile.facebookId,
+            name: profile.name,
+            avatarUrl: profile.avatarUrl,
+            emailVerified: true,
+          },
+        });
+
+        // Send welcome email (non-blocking)
+        this.mail.sendWelcomeEmail(profile.email).catch(() => {});
+      }
+    } else {
+      // Update profile if name/avatar changed
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: user.name || profile.name,
+          avatarUrl: user.avatarUrl || profile.avatarUrl,
+        },
+      });
+    }
+
+    return this.generateTokens(user, options);
+  }
+
+  /**
    * Change password for authenticated user
    */
   async changePassword(
@@ -777,7 +854,8 @@ export class AuthService {
     if (!user.passwordHash) {
       throw new ForbiddenException({
         code: 'AUTH_NO_PASSWORD',
-        message: 'Tài khoản sử dụng đăng nhập bằng Google. Vui lòng đặt mật khẩu mới.',
+        message:
+          'Tài khoản sử dụng đăng nhập bằng Google. Vui lòng đặt mật khẩu mới.',
       });
     }
 
@@ -827,7 +905,8 @@ export class AuthService {
     if (user.passwordHash) {
       throw new BadRequestException({
         code: 'AUTH_PASSWORD_EXISTS',
-        message: 'Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.',
+        message:
+          'Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.',
       });
     }
 
