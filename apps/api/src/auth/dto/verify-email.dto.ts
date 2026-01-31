@@ -2,7 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsString, Length } from 'class-validator';
 
 export class VerifyEmailDto {
-  @ApiProperty({ example: 'user@example.com', description: 'Email cần xác thực' })
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'Email cần xác thực',
+  })
   @IsEmail({}, { message: 'Email không hợp lệ' })
   email: string;
 

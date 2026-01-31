@@ -13,7 +13,8 @@ export class ResetPasswordDto {
 
   @ApiProperty({
     example: 'NewPassword@123',
-    description: 'Mật khẩu mới (ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt)',
+    description:
+      'Mật khẩu mới (ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt)',
   })
   @IsString()
   @MinLength(8, { message: 'Mật khẩu phải có ít nhất 8 ký tự' })

@@ -56,7 +56,12 @@ export class AuthController {
   })
   @ApiTooManyRequestsResponse({
     description: 'Rate limit: 5 requests/phút',
-    schema: { example: { statusCode: 429, message: 'ThrottlerException: Too Many Requests' } },
+    schema: {
+      example: {
+        statusCode: 429,
+        message: 'ThrottlerException: Too Many Requests',
+      },
+    },
   })
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto.email, dto.password);
@@ -172,7 +177,12 @@ export class AuthController {
   })
   @ApiTooManyRequestsResponse({
     description: 'Rate limit: 5 requests/phút',
-    schema: { example: { statusCode: 429, message: 'ThrottlerException: Too Many Requests' } },
+    schema: {
+      example: {
+        statusCode: 429,
+        message: 'ThrottlerException: Too Many Requests',
+      },
+    },
   })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password);

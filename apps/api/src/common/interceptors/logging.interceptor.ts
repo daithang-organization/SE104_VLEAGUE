@@ -1,9 +1,9 @@
 import {
-    CallHandler,
-    ExecutionContext,
-    Injectable,
-    Logger,
-    NestInterceptor,
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  NestInterceptor,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
@@ -17,7 +17,6 @@ export class LoggingInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
     const method = request.method;
     const url = request.url;
-    const body = request.body as Record<string, unknown> | undefined;
     const controllerName = context.getClass().name;
     const handlerName = context.getHandler().name;
 
