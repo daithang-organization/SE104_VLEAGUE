@@ -1,6 +1,6 @@
-import { Button, Card, Form, Input, Typography, message } from 'antd';
+import { Button, Card, Form, Input, Typography, message, Space } from 'antd';
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 export default function LoginPage() {
@@ -35,7 +35,7 @@ export default function LoginPage() {
   return (
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
       <Card style={{ width: 360 }}>
-        <Typography.Title level={4} style={{ marginTop: 0 }}>
+        <Typography.Title level={4} style={{ marginTop: 0, textAlign: 'center' }}>
           VLeague Admin
         </Typography.Title>
         <Form layout="vertical" onFinish={onFinish}>
@@ -56,10 +56,23 @@ export default function LoginPage() {
           >
             <Input.Password placeholder="••••••••" />
           </Form.Item>
+          <Form.Item style={{ marginBottom: 8 }}>
+            <Link to="/forgot-password" style={{ float: 'right' }}>
+              Quên mật khẩu?
+            </Link>
+          </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>
             Đăng nhập
           </Button>
         </Form>
+        <Space direction="vertical" style={{ width: '100%', marginTop: 16, textAlign: 'center' }}>
+          <div>
+            Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+          </div>
+          <div>
+            <Link to="/verify-email">Xác thực email</Link>
+          </div>
+        </Space>
       </Card>
     </div>
   );

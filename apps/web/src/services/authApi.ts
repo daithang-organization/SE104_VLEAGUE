@@ -14,6 +14,24 @@ export type RefreshResponse = {
   accessToken: string;
 };
 
+export type RegisterResponse = {
+  message: string;
+  email: string;
+};
+
+export type VerifyEmailResponse = {
+  message: string;
+};
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  role: string;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 /**
  * Login API call - now handled by AuthContext
  * @deprecated Use useAuth().login() instead
@@ -34,4 +52,69 @@ export function apiRefresh(refreshToken: string) {
  */
 export function apiLogout(refreshToken: string) {
   return api.post('/auth/logout', { refreshToken });
+}
+
+/**
+ * Register new account
+ */
+export function apiRegister(email: string, password: string) {
+  return api.post<RegisterResponse>('/auth/register', { email, password }).then((res) => res.data);
+}
+
+/**
+ * Verify email with OTP
+ */
+export function apiVerifyEmail(email: string, otp: string) {
+  return api.post<VerifyEmailResponse>('/auth/verify-email', { email, otp }).then((res) => res.data);
+}
+
+/**
+ * Resend OTP for email verification
+ */
+export function apiResendOtp(email: string) {
+  return api.post<{ message: string }>('/auth/resend-otp', { email }).then((res) => res.data);
+}
+
+/**
+ * Request password reset OTP
+ */
+export function apiForgotPassword(email: string) {
+  return api.post<{ message: string }>('/auth/forgot-password', { email }).then((res) => res.data);
+}
+
+/**
+ * Reset password with OTP
+ */
+export function apiResetPassword(email: string, otp: string, newPassword: string) {
+  return api
+    .post<{ message: string }>('/auth/reset-password', { email, otp, newPassword })
+    .then((res) => res.data);
+}
+
+/**
+ * Get current user profile
+ */
+export function apiGetMe() {
+  return api.get<UserProfile>('/auth/me').then((res) => res.data);
+}
+
+/**
+ * Change password
+ */
+export function apiChangePassword(currentPassword: string, newPassword: string) {
+  return api
+    .post<{ success: boolean; message: string }>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    })
+    .then((res) => res.data);
+}
+
+/**
+ * Logout from all devices
+ */
+export function apiLogoutAll() {
+  return api
+    .post<{ success: boolean; message: string; revokedCount: number }>('/auth/logout-all')
+    .then((res) => res.data);
 }
