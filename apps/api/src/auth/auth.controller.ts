@@ -29,7 +29,8 @@ export class AuthController {
   @ApiOkResponse({
     schema: {
       example: {
-        message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.',
+        message:
+          'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.',
         email: 'user@example.com',
       },
     },
@@ -52,7 +53,8 @@ export class AuthController {
   @ApiOkResponse({
     schema: {
       example: {
-        message: 'Xác thực email thành công. Bạn có thể đăng nhập ngay bây giờ.',
+        message:
+          'Xác thực email thành công. Bạn có thể đăng nhập ngay bây giờ.',
       },
     },
   })
@@ -96,7 +98,8 @@ export class AuthController {
   @ApiOkResponse({
     schema: {
       example: {
-        message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
+        message:
+          'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
       },
     },
   })
@@ -110,7 +113,8 @@ export class AuthController {
   @ApiOkResponse({
     schema: {
       example: {
-        message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.',
+        message:
+          'Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.',
       },
     },
   })

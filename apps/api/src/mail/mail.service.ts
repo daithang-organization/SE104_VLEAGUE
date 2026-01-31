@@ -23,7 +23,10 @@ export class MailService {
       });
       this.logger.log(`Email verification OTP sent to ${email}`);
     } catch (error) {
-      this.logger.error(`Failed to send email verification OTP to ${email}`, error);
+      this.logger.error(
+        `Failed to send email verification OTP to ${email}`,
+        error,
+      );
       throw error;
     }
   }

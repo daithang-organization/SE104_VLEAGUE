@@ -117,7 +117,8 @@ export class AuthService {
     await this.mail.sendEmailVerificationOtp(email, otp);
 
     return {
-      message: 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.',
+      message:
+        'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.',
       email: user.email,
     };
   }
@@ -261,7 +262,8 @@ export class AuthService {
     // Always return success to prevent email enumeration
     if (!user || !user.emailVerified) {
       return {
-        message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
+        message:
+          'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
       };
     }
 
@@ -279,7 +281,8 @@ export class AuthService {
       if (timeSinceLastOtp < OTP_COOLDOWN_SECONDS * 1000) {
         // Silently return success to prevent timing attacks
         return {
-          message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
+          message:
+            'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
         };
       }
     }
@@ -310,7 +313,8 @@ export class AuthService {
     await this.mail.sendPasswordResetOtp(email, otp);
 
     return {
-      message: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
+      message:
+        'Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu.',
     };
   }
 
@@ -366,7 +370,8 @@ export class AuthService {
     ]);
 
     return {
-      message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.',
+      message:
+        'Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.',
     };
   }
 
