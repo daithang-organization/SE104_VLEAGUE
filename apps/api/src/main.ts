@@ -22,6 +22,9 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Set global prefix for all routes
+  app.setGlobalPrefix('api');
+
   // Global exception filter for unified error shape
   app.useGlobalFilters(new HttpExceptionFilter());
 
@@ -64,7 +67,7 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);

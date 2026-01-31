@@ -2,6 +2,7 @@ export type User = {
   id: string;
   email: string;
   role: string;
+  name?: string | null;
 };
 
 export type AuthState = {
@@ -11,6 +12,7 @@ export type AuthState = {
 };
 
 export type AuthContextValue = AuthState & {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
+  applyOAuthTokens: (accessToken: string, refreshToken: string) => void;
 };

@@ -1,4 +1,5 @@
-import { Button, Layout, Menu, message } from 'antd';
+import { KeyOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Layout, Menu, message, Space } from 'antd';
 import { useMemo } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -42,6 +43,29 @@ export default function AppShell() {
     nav('/login');
   };
 
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Thông tin tài khoản',
+      onClick: () => nav('/profile'),
+    },
+    {
+      key: 'change-password',
+      icon: <KeyOutlined />,
+      label: 'Đổi mật khẩu',
+      onClick: () => nav('/change-password'),
+    },
+    { type: 'divider' as const },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      onClick: onLogout,
+      danger: true,
+    },
+  ];
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible>
@@ -76,10 +100,14 @@ export default function AppShell() {
             background: '#001529',
           }}
         >
-          <span style={{ color: 'white' }}>
-            {user?.email} ({user?.role})
-          </span>
-          <Button onClick={onLogout}>Đăng xuất</Button>
+          <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
+            <Button type="text" style={{ color: 'white' }}>
+              <Space>
+                <UserOutlined />
+                {user?.email}
+              </Space>
+            </Button>
+          </Dropdown>
         </Header>
 
         <Content style={{ padding: 24, background: '#f5f5f5' }}>

@@ -31,14 +31,9 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
               return 'info';
             },
 
-            // Custom message cho mỗi request
-            customSuccessMessage: (req: { method?: string; url?: string }) => {
-              return `${req.method} ${req.url} completed`;
-            },
-
-            customErrorMessage: (req: { method?: string; url?: string }) => {
-              return `${req.method} ${req.url} failed`;
-            },
+            // Tắt auto logging từ pino-http (dùng interceptor thay thế)
+            // Chỉ giữ lại log từ các service và interceptor
+            autoLogging: false,
 
             // Chọn những props nào của request/response sẽ được log
             customProps: () => ({
@@ -56,23 +51,16 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
               censor: '***REDACTED***',
             },
 
-            // Serializers để format request/response
+            // Serializers để format request/response - ngắn gọn
             serializers: {
               req: (req: {
                 id?: string | number;
                 method?: string;
                 url?: string;
-                query?: unknown;
-                params?: unknown;
-                raw?: { body?: unknown };
               }) => ({
                 id: req.id,
                 method: req.method,
                 url: req.url,
-                query: req.query,
-                params: req.params,
-                // Chỉ log body trong dev
-                ...(isProduction ? {} : { body: req.raw?.body }),
               }),
               res: (res: { statusCode: number }) => ({
                 statusCode: res.statusCode,
@@ -96,14 +84,6 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 
             // Log level
             level: isProduction ? 'info' : 'debug',
-
-            // Quiet routes (không log health check, favicon...)
-            autoLogging: {
-              ignore: (req: { url?: string }) => {
-                const ignorePaths = ['/health', '/favicon.ico'];
-                return ignorePaths.includes(req.url || '');
-              },
-            },
           },
         };
       },

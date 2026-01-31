@@ -1,9 +1,9 @@
 import {
-    CallHandler,
-    ExecutionContext,
-    Injectable,
-    Logger,
-    NestInterceptor,
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  NestInterceptor,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
@@ -17,7 +17,6 @@ export class LoggingInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
     const method = request.method;
     const url = request.url;
-    const body = request.body as Record<string, unknown> | undefined;
     const controllerName = context.getClass().name;
     const handlerName = context.getHandler().name;
 
@@ -27,13 +26,11 @@ export class LoggingInterceptor implements NestInterceptor {
       `➡️  [${method}] ${url} → ${controllerName}.${handlerName}()`,
     );
 
-    if (
-      process.env.NODE_ENV === 'development' &&
-      body &&
-      Object.keys(body).length > 0
-    ) {
-      this.logger.debug(`📦 Request Body: ${JSON.stringify(body)}`);
-    }
+    // Không log request body để giảm noise
+    // Có thể bật lại bằng cách uncomment
+    // if (body && Object.keys(body).length > 0) {
+    //   this.logger.debug(`📦 Body: ${JSON.stringify(body)}`);
+    // }
 
     return next.handle().pipe(
       tap({

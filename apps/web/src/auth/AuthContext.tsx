@@ -6,7 +6,7 @@ import type { AuthContextValue, User } from './auth.types';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Decode JWT payload to extract user info
-function decodeJwtPayload(token: string): { sub: string; email: string; role: string } | null {
+function decodeJwtPayload(token: string): { sub: string; email: string; role: string; name?: string } | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload;
@@ -33,10 +33,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Login with email/password
-  const login = async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
+  const login = async (email: string, password: string, rememberMe?: boolean) => {
+    const res = await api.post('/auth/login', { email, password, rememberMe });
     const { accessToken: at, refreshToken: rt, user: userData } = res.data;
     applySession(at, userData, rt);
+  };
+
+  // Apply OAuth tokens (called from OAuthCallbackPage)
+  const applyOAuthTokens = (at: string, rt: string) => {
+    const payload = decodeJwtPayload(at);
+    if (payload) {
+      const u: User = {
+        id: payload.sub,
+        email: payload.email,
+        role: payload.role,
+        name: payload.name,
+      };
+      applySession(at, u, rt);
+    }
   };
 
   // Logout
@@ -81,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: payload.sub,
             email: payload.email,
             role: payload.role,
+            name: payload.name,
           };
           applySession(newAccessToken, u);
         } else {
@@ -97,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, accessToken, isAuthed, login, logout }),
+    () => ({ user, accessToken, isAuthed, login, logout, applyOAuthTokens }),
     [user, accessToken, isAuthed],
   );
 

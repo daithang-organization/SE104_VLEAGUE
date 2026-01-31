@@ -18,7 +18,8 @@
 **VLeague API** là backend service được xây dựng bằng NestJS framework, cung cấp REST API cho hệ thống quản lý giải bóng đá VLeague.
 
 ### ✨ Tính năng chính
-- 🔐 **Authentication** - Xác thực và phân quyền người dùng
+- 🔐 **Authentication** - Xác thực và phân quyền người dùng (JWT, OAuth)
+- 📧 **Email Verification** - Xác thực email với OTP (Mailtrap/SMTP)
 - 👥 **Registration** - Quản lý đăng ký đội bóng và cầu thủ
 - 📅 **Scheduling** - Lập lịch thi đấu tự động
 - ⚽ **Match** - Quản lý trận đấu và ghi nhận kết quả
@@ -58,6 +59,14 @@ apps/api/
 │   │   ├── players.controller.ts  # Players endpoints
 │   │   ├── registration.service.ts
 │   │   └── registration.module.ts
+│   │
+│   ├── 📂 mail/                    # 📧 Mail Module
+│   │   ├── mail.service.ts        # Email sending logic
+│   │   ├── mail.module.ts         # Module definition
+│   │   └── 📂 templates/          # Handlebars email templates
+│   │       ├── email-verification.hbs
+│   │       ├── password-reset.hbs
+│   │       └── welcome.hbs
 │   │
 │   └── 📂 scheduling/             # 📅 Scheduling Module
 │       ├── scheduling.controller.ts
@@ -105,6 +114,102 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vleague?schema=publi
 # Server
 PORT=8080
 NODE_ENV=development
+```
+
+### 📧 Cấu hình Email (Mailtrap)
+
+Hệ thống sử dụng email để gửi **OTP xác thực** và **reset mật khẩu**. Có 3 chế độ:
+
+#### 1. Development Mode (Khuyến nghị cho dev)
+
+Không cần cấu hình SMTP - OTP sẽ được log ra console:
+
+```env
+MAIL_SKIP_SEND=true
+```
+
+Khi user đăng ký hoặc quên mật khẩu, OTP sẽ hiện lên console như sau:
+
+```
+╔══════════════════════════════════════════╗
+║  🔑 EMAIL VERIFICATION OTP               ║
+║  Email: user@example.com                 ║
+║  OTP:   123456                           ║
+╚══════════════════════════════════════════╝
+```
+
+#### 2. Test với Mailtrap (Khuyến nghị để test email template)
+
+[Mailtrap](https://mailtrap.io) là service để test email mà không gửi thật.
+
+**Cách setup:**
+1. Đăng ký tài khoản tại https://mailtrap.io
+2. Vào **Email Testing** → **Inboxes** → Chọn inbox
+3. Chọn **SMTP Settings** → Copy credentials
+
+```env
+MAIL_SKIP_SEND=false
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USER=your-mailtrap-user      # Từ Mailtrap
+MAIL_PASS=your-mailtrap-pass      # Từ Mailtrap
+MAIL_FROM=noreply@vleague.local
+```
+
+> 💡 **Tip**: Tất cả email sẽ được "bắt" vào inbox Mailtrap để xem preview, không gửi ra ngoài.
+
+#### 3. Production (Gmail hoặc SMTP khác)
+
+```env
+MAIL_SKIP_SEND=false
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=your-email@gmail.com
+MAIL_PASS=your-app-password       # App Password, không phải mật khẩu Gmail
+MAIL_FROM=noreply@vleague.com
+```
+
+> ⚠️ **Lưu ý Gmail**: Phải tạo [App Password](https://support.google.com/accounts/answer/185833) và bật 2FA.
+
+#### Email Templates
+
+Các template email nằm trong `src/mail/templates/`:
+
+| Template | Mô tả |
+|----------|-------|
+| `email-verification.hbs` | OTP xác thực email khi đăng ký |
+| `password-reset.hbs` | OTP đặt lại mật khẩu |
+| `welcome.hbs` | Email chào mừng sau xác thực |
+
+#### Flow xác thực Email
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant API
+    participant MailService
+    participant Mailtrap/Gmail
+
+    User->>Frontend: Đăng ký (email, password)
+    Frontend->>API: POST /auth/register
+    API->>API: Tạo user (emailVerified=false)
+    API->>API: Generate OTP (6 số, 10 phút)
+    API->>MailService: sendEmailVerificationOtp()
+
+    alt MAIL_SKIP_SEND=true
+        MailService->>MailService: Log OTP to console
+    else MAIL_SKIP_SEND=false
+        MailService->>Mailtrap/Gmail: Gửi email chứa OTP
+    end
+
+    API-->>Frontend: { message, email }
+    Frontend->>User: Hiển thị form nhập OTP
+    User->>Frontend: Nhập OTP
+    Frontend->>API: POST /auth/verify-email
+    API->>API: Verify OTP
+    API-->>Frontend: { success }
 ```
 
 ### Khởi động Database

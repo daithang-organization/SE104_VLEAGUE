@@ -5,8 +5,10 @@ Module xử lý authentication (xác thực) và authorization (phân quyền) c
 ## Mục đích
 
 Cung cấp các chức năng liên quan đến bảo mật:
+- Đăng ký tài khoản mới với xác thực email
 - Xác thực người dùng (login/logout)
 - Quản lý JWT tokens (access + refresh tokens)
+- Quên mật khẩu và đặt lại mật khẩu với OTP
 - Bảo vệ routes với guards
 - Role-based access control (RBAC)
 
@@ -31,7 +33,13 @@ auth/
 ├── dto/
 │   ├── index.ts
 │   ├── login.dto.ts           # Login request validation
+│   ├── register.dto.ts        # Register request validation
+│   ├── verify-email.dto.ts    # Email verification with OTP
+│   ├── resend-otp.dto.ts      # Resend OTP request
+│   ├── forgot-password.dto.ts # Forgot password request
+│   ├── reset-password.dto.ts  # Reset password with OTP
 │   ├── refresh.dto.ts         # Refresh token request
+│   ├── logout.dto.ts          # Logout request
 │   └── auth-response.dto.ts   # Response DTOs
 ├── guards/
 │   ├── index.ts
@@ -47,6 +55,96 @@ auth/
 ```
 
 ## API Endpoints
+
+### POST /auth/register
+Đăng ký tài khoản mới. Gửi OTP xác thực về email.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "Password@123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
+  "email": "user@example.com"
+}
+```
+
+### POST /auth/verify-email
+Xác thực email bằng mã OTP.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "otp": "123456"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Xác thực email thành công. Bạn có thể đăng nhập ngay bây giờ."
+}
+```
+
+### POST /auth/resend-otp
+Gửi lại mã OTP xác thực email (có cooldown 60 giây).
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Đã gửi lại mã OTP. Vui lòng kiểm tra email."
+}
+```
+
+### POST /auth/forgot-password
+Yêu cầu đặt lại mật khẩu. Gửi OTP về email.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Nếu email tồn tại, bạn sẽ nhận được mã OTP để đặt lại mật khẩu."
+}
+```
+
+### POST /auth/reset-password
+Đặt lại mật khẩu với OTP.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "otp": "123456",
+  "newPassword": "NewPassword@123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới."
+}
+```
 
 ### POST /auth/login
 Xác thực người dùng với email và password.
