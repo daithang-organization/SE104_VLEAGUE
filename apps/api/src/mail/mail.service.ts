@@ -4,13 +4,27 @@ import { Injectable, Logger } from '@nestjs/common';
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
+  private readonly skipMail: boolean;
 
-  constructor(private readonly mailer: MailerService) {}
+  constructor(private readonly mailer: MailerService) {
+    // Skip gửi mail thật trong dev mode nếu MAIL_SKIP_SEND=true
+    this.skipMail = process.env.MAIL_SKIP_SEND === 'true';
+    if (this.skipMail) {
+      this.logger.warn(
+        '📧 Mail sending is DISABLED - OTP will be logged to console',
+      );
+    }
+  }
 
   /**
    * Gửi OTP xác thực email khi đăng ký
    */
   async sendEmailVerificationOtp(email: string, otp: string): Promise<void> {
+    if (this.skipMail) {
+      this.logger.warn(`🔑 [DEV] Email Verification OTP for ${email}: ${otp}`);
+      return;
+    }
+
     try {
       await this.mailer.sendMail({
         to: email,
@@ -35,6 +49,11 @@ export class MailService {
    * Gửi OTP đặt lại mật khẩu
    */
   async sendPasswordResetOtp(email: string, otp: string): Promise<void> {
+    if (this.skipMail) {
+      this.logger.warn(`🔑 [DEV] Password Reset OTP for ${email}: ${otp}`);
+      return;
+    }
+
     try {
       await this.mailer.sendMail({
         to: email,
@@ -56,6 +75,11 @@ export class MailService {
    * Gửi email chào mừng sau khi xác thực thành công
    */
   async sendWelcomeEmail(email: string): Promise<void> {
+    if (this.skipMail) {
+      this.logger.debug(`[DEV] Skipped welcome email for ${email}`);
+      return;
+    }
+
     try {
       await this.mailer.sendMail({
         to: email,
