@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
 
-echo "� Generating Prisma Client..."
+echo "🔧 Generating Prisma Client..."
 node ../../node_modules/prisma/build/index.js generate
 
-echo "�🔄 Running migrations..."
+echo "🔄 Running migrations..."
 node ../../node_modules/prisma/build/index.js migrate deploy
 
 echo "🌱 Running seed..."
