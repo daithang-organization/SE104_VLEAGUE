@@ -7,7 +7,11 @@ import { LoggerModule } from './common/logger';
 import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationModule } from './registration/registration.module';
+import { RosterModule } from './roster/roster.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
+import { SeasonModule } from './season/season.module';
+import { StadiumModule } from './stadium/stadium.module';
+import { StandingsModule } from './standings/standings.module';
 
 @Module({
   imports: [
@@ -39,10 +43,15 @@ import { SchedulingModule } from './scheduling/scheduling.module';
     }),
     LoggerModule,
     PrismaModule,
+    AuthModule,
     RegistrationModule,
     SchedulingModule,
-    AuthModule,
     MatchModule,
+    // New modules
+    SeasonModule,
+    StadiumModule,
+    StandingsModule,
+    RosterModule,
   ],
   providers: [
     // Apply throttler globally

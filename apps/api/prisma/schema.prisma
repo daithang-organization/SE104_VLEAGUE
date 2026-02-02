@@ -6,6 +6,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================================================
+// ENUMS
+// ============================================================================
+
 enum TeamStatus {
   ACTIVE
   INACTIVE
@@ -36,6 +40,24 @@ enum OtpType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
 }
+
+enum SeasonStatus {
+  UPCOMING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EventType {
+  GOAL
+  OWN_GOAL
+  YELLOW_CARD
+  RED_CARD
+  SUBSTITUTION
+}
+
+// ============================================================================
+// USER & AUTH MODELS
+// ============================================================================
 
 model User {
   id            String    @id @default(uuid())
@@ -97,49 +119,6 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-model Team {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  status    TeamStatus @default(ACTIVE)
-
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-
-  @@map("teams")
-}
-
-model Player {
-  id          String         @id @default(uuid())
-  fullName    String         @map("full_name")
-  dob         DateTime
-  nationality String
-  position    PlayerPosition
-
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-
-  @@map("players")
-}
-
-model Match {
-  id         String      @id @default(uuid())
-
-  roundNo    Int         @map("round_no")
-
-  homeTeamId String      @map("home_team_id")
-  awayTeamId String      @map("away_team_id")
-
-  stadiumId  String?     @map("stadium_id")
-  kickoffAt  DateTime?   @map("kickoff_at")
-
-  status     MatchStatus @default(DRAFT)
-
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
-
-  @@map("matches")
-}
-
 model Role {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -148,4 +127,186 @@ model Role {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("roles")
+}
+
+// ============================================================================
+// SEASON MODEL
+// ============================================================================
+
+model Season {
+  id        String       @id @default(uuid())
+  name      String       @unique // "VLeague 2024"
+  year      Int
+  status    SeasonStatus @default(UPCOMING)
+  startDate DateTime?    @map("start_date")
+  endDate   DateTime?    @map("end_date")
+
+  matches   Match[]
+
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@map("seasons")
+}
+
+// ============================================================================
+// STADIUM MODEL
+// ============================================================================
+
+model Stadium {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  city     String
+  capacity Int?
+
+  teams    Team[]   // Teams that have this as home stadium
+  matches  Match[]  // Matches played here
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("stadiums")
+}
+
+// ============================================================================
+// TEAM MODEL
+// ============================================================================
+
+model Team {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  shortName String?    @map("short_name")
+  logoUrl   String?    @map("logo_url")
+  status    TeamStatus @default(ACTIVE)
+
+  // Home stadium
+  stadiumId String?    @map("stadium_id")
+  stadium   Stadium?   @relation(fields: [stadiumId], references: [id])
+
+  // Relations
+  teamPlayers  TeamPlayer[]
+  homeMatches  Match[]       @relation("HomeTeam")
+  awayMatches  Match[]       @relation("AwayTeam")
+  matchEvents  MatchEvent[]
+
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@map("teams")
+}
+
+// ============================================================================
+// PLAYER MODEL
+// ============================================================================
+
+model Player {
+  id          String         @id @default(uuid())
+  fullName    String         @map("full_name")
+  dob         DateTime
+  nationality String
+  position    PlayerPosition
+
+  // Relations
+  teamPlayers  TeamPlayer[]
+  matchEvents  MatchEvent[]
+
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("players")
+}
+
+// ============================================================================
+// TEAM-PLAYER JOIN TABLE (Roster)
+// ============================================================================
+
+model TeamPlayer {
+  id        String   @id @default(uuid())
+  teamId    String   @map("team_id")
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId  String   @map("player_id")
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  jerseyNumber Int?      @map("jersey_number")
+  joinedAt     DateTime  @default(now()) @map("joined_at")
+  leftAt       DateTime? @map("left_at")
+
+  @@unique([teamId, playerId])
+  @@index([teamId])
+  @@index([playerId])
+  @@map("team_players")
+}
+
+// ============================================================================
+// MATCH MODEL
+// ============================================================================
+
+model Match {
+  id         String      @id @default(uuid())
+
+  // Season relation
+  seasonId   String?     @map("season_id")
+  season     Season?     @relation(fields: [seasonId], references: [id])
+
+  roundNo    Int         @map("round_no")
+
+  // Team relations
+  homeTeamId String      @map("home_team_id")
+  homeTeam   Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId String      @map("away_team_id")
+  awayTeam   Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  // Stadium relation
+  stadiumId  String?     @map("stadium_id")
+  stadium    Stadium?    @relation(fields: [stadiumId], references: [id])
+
+  kickoffAt  DateTime?   @map("kickoff_at")
+
+  // Score (calculated from events or manual entry)
+  homeScore  Int         @default(0) @map("home_score")
+  awayScore  Int         @default(0) @map("away_score")
+
+  status     MatchStatus @default(DRAFT)
+
+  // Events
+  events     MatchEvent[]
+
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@index([seasonId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@map("matches")
+}
+
+// ============================================================================
+// MATCH EVENT MODEL (Goals, Cards, Substitutions)
+// ============================================================================
+
+model MatchEvent {
+  id        String    @id @default(uuid())
+  matchId   String    @map("match_id")
+  match     Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  minute    Int       // Minutes into the match (0-120)
+  type      EventType
+
+  // Player involved (optional for some events)
+  playerId  String?   @map("player_id")
+  player    Player?   @relation(fields: [playerId], references: [id])
+
+  // Team involved
+  teamId    String    @map("team_id")
+  team      Team      @relation(fields: [teamId], references: [id])
+
+  // Additional info
+  note      String?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([matchId])
+  @@index([playerId])
+  @@index([teamId])
+  @@map("match_events")
 }
