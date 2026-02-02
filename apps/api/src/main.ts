@@ -46,8 +46,32 @@ async function bootstrap() {
   // Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('VLeague API')
-    .setDescription('V-League Football Management System API')
-    .setVersion('1.0')
+    .setDescription(
+      'V-League Football Management System API - SE104 Project\n\n' +
+        '## Overview\n' +
+        'Hệ thống quản lý giải bóng đá VLeague, hỗ trợ:\n' +
+        '- 🔐 Xác thực & phân quyền người dùng\n' +
+        '- 👥 Quản lý đội bóng & cầu thủ\n' +
+        '- 📅 Lập lịch thi đấu tự động\n' +
+        '- ⚽ Ghi nhận kết quả trận đấu\n\n' +
+        '## Demo Accounts\n' +
+        'Password: `Demo@12345`\n' +
+        '- Admin: `admin@demo.local`\n' +
+        '- Team Manager: `teammanager@demo.local`',
+    )
+    .setVersion('1.0.0')
+    .setLicense('MIT', 'https://opensource.org/licenses/MIT')
+    .setExternalDoc(
+      'GitHub Repository',
+      'https://github.com/daithang-organization/SE104_VLEAGUE',
+    )
+    .setContact(
+      'SE104 Team',
+      'https://github.com/daithang-organization/SE104_VLEAGUE',
+      'admin@vleague.local',
+    )
+    .addServer('http://localhost:8080', 'Local Development')
+    .addServer('https://api.vleague.example.com', 'Production (placeholder)')
     .addBearerAuth(
       {
         type: 'http',
