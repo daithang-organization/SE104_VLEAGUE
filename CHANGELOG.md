@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Season Module**: CRUD API for managing seasons (VLeague 2024, 2025...)
+- **Stadium Module**: CRUD API for stadium management
+- **Standings Module**: Auto-calculated league standings with points, goal difference
+- **Top Scorers API**: Vua phá lưới endpoint
+- **Roster Module**: Team-Player relationship management (add/remove players from teams)
+- **MatchEvent Model**: Database storage for goals, cards, substitutions
+- **Auto Score Calculation**: Match scores auto-calculated from goal events
+
+### Changed
+- Updated Prisma schema with new models: Season, Stadium, MatchEvent, TeamPlayer
+- Enhanced Match model with homeScore, awayScore, events relation
+- Enhanced Team model with stadium and roster relations
+- Enhanced Player model with roster and events relations
+
 ### Planned
 - Stadium management module
 - Team-Player relationship management

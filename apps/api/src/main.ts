@@ -88,6 +88,10 @@ async function bootstrap() {
     .addTag('Players', 'Player management endpoints')
     .addTag('Matches', 'Match scheduling and management')
     .addTag('Scheduling', 'Schedule generation and publishing')
+    .addTag('Seasons', 'Season management (VLeague 2024, 2025...)')
+    .addTag('Stadiums', 'Stadium management')
+    .addTag('Standings', 'League standings and top scorers')
+    .addTag('Roster', 'Team roster management (players in teams)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
