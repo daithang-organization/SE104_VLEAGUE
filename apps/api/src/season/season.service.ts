@@ -11,7 +11,7 @@ import { CreateSeasonDto, UpdateSeasonDto } from './dto';
 export class SeasonService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(): Promise<Season[]> {
+  findAll(): Promise<Season[]> {
     return this.prisma.season.findMany({
       orderBy: { year: 'desc' },
     });
@@ -35,7 +35,7 @@ export class SeasonService {
     return season;
   }
 
-  async findCurrent(): Promise<Season | null> {
+  findCurrent(): Promise<Season | null> {
     return this.prisma.season.findFirst({
       where: { status: 'IN_PROGRESS' },
     });

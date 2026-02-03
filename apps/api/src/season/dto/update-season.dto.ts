@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { SeasonStatus } from '@prisma/client';
 import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import type { SeasonStatus } from './create-season.dto';
 
 export class UpdateSeasonDto {
   @ApiPropertyOptional({
@@ -23,10 +23,10 @@ export class UpdateSeasonDto {
 
   @ApiPropertyOptional({
     description: 'Trạng thái mùa giải',
-    enum: SeasonStatus,
+    enum: ['UPCOMING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
   })
   @IsOptional()
-  @IsEnum(SeasonStatus)
+  @IsEnum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'])
   status?: SeasonStatus;
 
   @ApiPropertyOptional({

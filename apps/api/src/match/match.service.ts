@@ -58,7 +58,7 @@ export class MatchService {
       data: {
         matchId,
         minute: dto.minute,
-        type: dto.type,
+        type: dto.type as never,
         playerId: dto.playerId,
         teamId: dto.teamId,
         note: dto.note,
