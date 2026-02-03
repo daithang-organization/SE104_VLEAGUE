@@ -47,7 +47,7 @@ export class SeasonService {
         data: {
           name: dto.name,
           year: dto.year,
-          status: dto.status ?? 'UPCOMING',
+          status: (dto.status ?? 'UPCOMING') as never,
           startDate: dto.startDate,
           endDate: dto.endDate,
         },
@@ -71,7 +71,7 @@ export class SeasonService {
     try {
       return await this.prisma.season.update({
         where: { id },
-        data: dto,
+        data: dto as never,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
