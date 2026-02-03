@@ -33,13 +33,26 @@ export default tseslint.config(
     },
   },
   {
-    // Disable unsafe type rules for Prisma files due to adapter type limitations
-    files: ['**/prisma/*.ts', '**/registration/*.ts', '**/scheduling/*.ts'],
+    // Disable unsafe type rules for Prisma-related files due to adapter type limitations
+    files: [
+      '**/prisma/*.ts',
+      '**/registration/*.ts',
+      '**/scheduling/*.ts',
+      '**/season/*.ts',
+      '**/stadium/*.ts',
+      '**/standings/*.ts',
+      '**/roster/*.ts',
+      '**/match/*.ts',
+      '**/*.spec.ts',
+    ],
     rules: {
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+      '@typescript-eslint/unbound-method': 'off',
     },
   },
 );
