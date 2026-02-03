@@ -1,10 +1,11 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
-  MatchStatus,
-  PlayerPosition,
-  PrismaClient,
-  TeamStatus,
-  UserRole,
+    MatchStatus,
+    PlayerPosition,
+    PrismaClient,
+    SeasonStatus,
+    TeamStatus,
+    UserRole
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
@@ -162,7 +163,27 @@ async function main() {
     );
   }
 
-  // 5) Seed matches nếu chưa có
+  // 5) Seed season nếu chưa có
+  console.log('📅 Seeding season...');
+  let season = await prisma.season.findFirst({
+    where: { status: SeasonStatus.IN_PROGRESS },
+  });
+  if (!season) {
+    season = await prisma.season.create({
+      data: {
+        name: 'VLeague 2024',
+        year: 2024,
+        status: SeasonStatus.IN_PROGRESS,
+        startDate: new Date('2024-01-01'),
+        endDate: new Date('2024-12-31'),
+      },
+    });
+    console.log('   ✓ Season created');
+  } else {
+    console.log(`   ⏭️  Skipped (season "${season.name}" already exists)`);
+  }
+
+  // 6) Seed matches nếu chưa có
   console.log('📅 Seeding matches...');
   const existingMatchesCount = await prisma.match.count();
   if (existingMatchesCount === 0) {
@@ -173,6 +194,7 @@ async function main() {
       await prisma.match.createMany({
         data: [
           {
+            seasonId: season.id,
             roundNo: 1,
             homeTeamId: teamRecords[0].id,
             awayTeamId: teamRecords[1].id,
@@ -181,6 +203,7 @@ async function main() {
             status: MatchStatus.DRAFT,
           },
           {
+            seasonId: season.id,
             roundNo: 1,
             homeTeamId: teamRecords[1].id,
             awayTeamId: teamRecords[0].id,

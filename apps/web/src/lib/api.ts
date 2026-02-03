@@ -1,8 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-// Server URL from env, /api prefix is hardcoded as it's an implementation detail
-const serverURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-const baseURL = `${serverURL}/api`;
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 export const api = axios.create({
   baseURL,

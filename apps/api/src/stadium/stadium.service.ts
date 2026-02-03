@@ -11,15 +11,13 @@ import { CreateStadiumDto, UpdateStadiumDto } from './dto';
 export class StadiumService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(): Promise<Stadium[]> {
+  findAll(): Promise<Stadium[]> {
     return this.prisma.stadium.findMany({
       orderBy: { name: 'asc' },
     });
   }
 
-  async findOne(
-    id: string,
-  ): Promise<Stadium & { teams: { id: string; name: string }[] }> {
+  async findOne(id: string) {
     const stadium = await this.prisma.stadium.findUnique({
       where: { id },
       include: {
@@ -44,7 +42,9 @@ export class StadiumService {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException(`Stadium "${dto.name}" already exists`);
+          throw new ConflictException(
+            `Stadium with name "${dto.name}" already exists`,
+          );
         }
       }
       throw error;
@@ -62,7 +62,9 @@ export class StadiumService {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException(`Stadium "${dto.name}" already exists`);
+          throw new ConflictException(
+            `Stadium with name "${dto.name}" already exists`,
+          );
         }
       }
       throw error;

@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EventType } from '@prisma/client';
 import {
   IsEnum,
   IsInt,
@@ -10,6 +9,16 @@ import {
   Max,
   Min,
 } from 'class-validator';
+
+// Define locally to avoid Prisma type issues
+export type EventType =
+  | 'GOAL'
+  | 'OWN_GOAL'
+  | 'PENALTY'
+  | 'PENALTY_MISS'
+  | 'YELLOW_CARD'
+  | 'RED_CARD'
+  | 'SUBSTITUTION';
 
 export class AddMatchEventDto {
   @ApiProperty({
@@ -25,10 +34,26 @@ export class AddMatchEventDto {
 
   @ApiProperty({
     description: 'Loại sự kiện',
-    enum: EventType,
+    enum: [
+      'GOAL',
+      'OWN_GOAL',
+      'PENALTY',
+      'PENALTY_MISS',
+      'YELLOW_CARD',
+      'RED_CARD',
+      'SUBSTITUTION',
+    ],
     example: 'GOAL',
   })
-  @IsEnum(EventType)
+  @IsEnum([
+    'GOAL',
+    'OWN_GOAL',
+    'PENALTY',
+    'PENALTY_MISS',
+    'YELLOW_CARD',
+    'RED_CARD',
+    'SUBSTITUTION',
+  ])
   @IsNotEmpty()
   type: EventType;
 
