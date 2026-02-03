@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RosterService } from './roster.service';
@@ -67,7 +72,9 @@ describe('RosterService', () => {
   describe('getTeamRoster', () => {
     it('should return team roster with players', async () => {
       jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(mockTeam as any);
-      jest.spyOn(prisma.teamPlayer, 'findMany').mockResolvedValue([mockTeamPlayer] as any);
+      jest
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([mockTeamPlayer] as any);
 
       const result = await service.getTeamRoster('team-1');
 
@@ -89,9 +96,13 @@ describe('RosterService', () => {
   describe('addPlayerToRoster', () => {
     it('should add player to team', async () => {
       jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(mockTeam as any);
-      jest.spyOn(prisma.player, 'findUnique').mockResolvedValue(mockPlayer as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue(mockPlayer as any);
       jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prisma.teamPlayer, 'create').mockResolvedValue(mockTeamPlayer as any);
+      jest
+        .spyOn(prisma.teamPlayer, 'create')
+        .mockResolvedValue(mockTeamPlayer as any);
 
       const result = await service.addPlayerToRoster('team-1', {
         playerId: 'player-1',
@@ -112,7 +123,9 @@ describe('RosterService', () => {
 
     it('should throw ConflictException if player already in team', async () => {
       jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(mockTeam as any);
-      jest.spyOn(prisma.player, 'findUnique').mockResolvedValue(mockPlayer as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue(mockPlayer as any);
       jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue({
         ...mockTeamPlayer,
         team: { name: 'Other Team' },
@@ -125,21 +138,28 @@ describe('RosterService', () => {
 
     it('should throw BadRequestException if jersey number taken', async () => {
       jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(mockTeam as any);
-      jest.spyOn(prisma.player, 'findUnique').mockResolvedValue(mockPlayer as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue(mockPlayer as any);
       jest
         .spyOn(prisma.teamPlayer, 'findFirst')
         .mockResolvedValueOnce(null) // Player not in any team
         .mockResolvedValueOnce(mockTeamPlayer as any); // Jersey taken
 
       await expect(
-        service.addPlayerToRoster('team-1', { playerId: 'player-2', jerseyNumber: 19 }),
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-2',
+          jerseyNumber: 19,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('removePlayerFromRoster', () => {
     it('should mark player as left', async () => {
-      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(mockTeamPlayer as any);
+      jest
+        .spyOn(prisma.teamPlayer, 'findFirst')
+        .mockResolvedValue(mockTeamPlayer as any);
       jest.spyOn(prisma.teamPlayer, 'update').mockResolvedValue({
         ...mockTeamPlayer,
         leftAt: new Date(),

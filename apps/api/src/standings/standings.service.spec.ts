@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { StandingsService } from './standings.service';
@@ -61,7 +62,9 @@ describe('StandingsService', () => {
         status: 'IN_PROGRESS',
       } as any);
       jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams as any);
-      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(mockMatches as any);
+      jest
+        .spyOn(prisma.match, 'findMany')
+        .mockResolvedValue(mockMatches as any);
 
       const result = await service.getStandings();
 
@@ -105,12 +108,21 @@ describe('StandingsService', () => {
 
     it('should sort by points, then goal difference', async () => {
       const multiMatches = [
-        { homeTeamId: 'team-1', awayTeamId: 'team-2', homeScore: 3, awayScore: 0 },
+        {
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeScore: 3,
+          awayScore: 0,
+        },
       ];
 
-      jest.spyOn(prisma.season, 'findFirst').mockResolvedValue({ id: 's1' } as any);
+      jest
+        .spyOn(prisma.season, 'findFirst')
+        .mockResolvedValue({ id: 's1' } as any);
       jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams as any);
-      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(multiMatches as any);
+      jest
+        .spyOn(prisma.match, 'findMany')
+        .mockResolvedValue(multiMatches as any);
 
       const result = await service.getStandings();
 
@@ -121,7 +133,9 @@ describe('StandingsService', () => {
 
   describe('getTopScorers', () => {
     it('should return top scorers', async () => {
-      jest.spyOn(prisma.season, 'findFirst').mockResolvedValue({ id: 's1' } as any);
+      jest
+        .spyOn(prisma.season, 'findFirst')
+        .mockResolvedValue({ id: 's1' } as any);
       jest.spyOn(prisma.matchEvent, 'findMany').mockResolvedValue([
         {
           type: 'GOAL',

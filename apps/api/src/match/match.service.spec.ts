@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
@@ -58,7 +59,9 @@ describe('MatchService', () => {
 
   describe('getMatchById', () => {
     it('should return a match with all relations', async () => {
-      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(mockMatch as any);
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
 
       const result = await service.getMatchById('match-1');
 
@@ -78,7 +81,9 @@ describe('MatchService', () => {
 
   describe('findAll', () => {
     it('should return all matches', async () => {
-      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([mockMatch] as any);
+      jest
+        .spyOn(prisma.match, 'findMany')
+        .mockResolvedValue([mockMatch] as any);
 
       const result = await service.findAll();
 
@@ -86,7 +91,9 @@ describe('MatchService', () => {
     });
 
     it('should filter by seasonId if provided', async () => {
-      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([mockMatch] as any);
+      jest
+        .spyOn(prisma.match, 'findMany')
+        .mockResolvedValue([mockMatch] as any);
 
       await service.findAll('season-1');
 
@@ -100,7 +107,9 @@ describe('MatchService', () => {
 
   describe('addEvent', () => {
     it('should create a match event', async () => {
-      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(mockMatch as any);
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
       jest.spyOn(prisma.matchEvent, 'create').mockResolvedValue({
         id: 'event-1',
         matchId: 'match-1',

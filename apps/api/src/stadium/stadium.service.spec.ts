@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
@@ -81,7 +82,11 @@ describe('StadiumService', () => {
 
   describe('create', () => {
     it('should create a new stadium', async () => {
-      const createDto = { name: 'Sân Thống Nhất', city: 'TP.HCM', capacity: 15000 };
+      const createDto = {
+        name: 'Sân Thống Nhất',
+        city: 'TP.HCM',
+        capacity: 15000,
+      };
       jest.spyOn(prisma.stadium, 'create').mockResolvedValue({
         ...mockStadium,
         ...createDto,
@@ -96,7 +101,10 @@ describe('StadiumService', () => {
     it('should throw ConflictException if stadium name exists', async () => {
       const createDto = { name: 'Sân Mỹ Đình', city: 'Hà Nội' };
       const prismaError = new Error('Unique constraint violation');
-      Object.assign(prismaError, { code: 'P2002', name: 'PrismaClientKnownRequestError' });
+      Object.assign(prismaError, {
+        code: 'P2002',
+        name: 'PrismaClientKnownRequestError',
+      });
       jest.spyOn(prisma.stadium, 'create').mockRejectedValue(prismaError);
 
       // The service rethrows as-is if not Prisma.PrismaClientKnownRequestError instance
