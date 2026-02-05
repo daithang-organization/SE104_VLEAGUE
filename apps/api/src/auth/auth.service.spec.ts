@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,7 +26,7 @@ describe('AuthService', () => {
     id: 'user-1',
     email: 'test@example.com',
     passwordHash: 'hashed-password',
-    role: 'USER',
+    role: UserRole.PUBLIC,
     name: 'Test User',
     emailVerified: true,
     avatarUrl: null,
