@@ -117,6 +117,102 @@ describe('TeamsService', () => {
 });
 ```
 
+### Authentication Service Test Pattern
+
+When testing auth service with multiple dependencies:
+
+```typescript
+// auth.service.spec.ts
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthService } from './auth.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
+import { MailService } from '../mail/mail.service';
+import * as bcrypt from 'bcrypt';
+
+// Mock bcrypt at module level
+jest.mock('bcrypt', () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}));
+
+describe('AuthService', () => {
+  let service: AuthService;
+  let prisma: PrismaService;
+
+  const mockUser = {
+    id: 'user-1',
+    email: 'test@example.com',
+    passwordHash: 'hashed-password',
+    role: 'USER',
+    emailVerified: true,
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: PrismaService,
+          useValue: {
+            user: {
+              findUnique: jest.fn(),
+              create: jest.fn(),
+            },
+            otpCode: {
+              create: jest.fn(),
+              findFirst: jest.fn(),
+            },
+            refreshToken: {
+              create: jest.fn(),
+              findUnique: jest.fn(),
+              updateMany: jest.fn(),
+            },
+            $transaction: jest.fn(),
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            signAsync: jest.fn().mockResolvedValue('mock-token'),
+          },
+        },
+        {
+          provide: MailService,
+          useValue: {
+            sendEmailVerificationOtp: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+    prisma = module.get<PrismaService>(PrismaService);
+    jest.clearAllMocks();
+  });
+
+  describe('login', () => {
+    it('should return tokens for valid credentials', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
+      jest.spyOn(prisma.refreshToken, 'create').mockResolvedValue({} as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login('test@example.com', 'password');
+
+      expect(result.accessToken).toBeDefined();
+      expect(result.user.email).toBe(mockUser.email);
+    });
+
+    it('should throw UnauthorizedException for invalid credentials', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.login('test@example.com', 'wrong')).rejects.toThrow();
+    });
+  });
+});
+```
+
 ### E2E Test Example
 
 ```typescript
