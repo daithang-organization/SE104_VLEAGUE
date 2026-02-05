@@ -149,9 +149,9 @@ export class ModuleNameService {
 model EntityName {
   id        String   @id @default(uuid())
   fieldName String   @map("field_name")
-  
+
   status    EnumType @default(VALUE)
-  
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -175,7 +175,7 @@ model Team {
   id      String   @id @default(uuid())
   name    String   @unique
   players Player[]
-  
+
   @@map("teams")
 }
 
@@ -183,7 +183,7 @@ model Player {
   id     String @id @default(uuid())
   teamId String @map("team_id")
   team   Team   @relation(fields: [teamId], references: [id])
-  
+
   @@map("players")
 }
 ```
@@ -193,27 +193,119 @@ model Player {
 > [!IMPORTANT]
 > Always create separate DTOs for requests and responses to maintain clear API contracts.
 
-### Request DTO Example
+### Request DTO with Validation
 
 ```typescript
-// create-<entity>.dto.ts
-export class CreateEntityDto {
+// create-team.dto.ts
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+
+export enum TeamStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+}
+
+export class CreateTeamDto {
+  @ApiProperty({
+    description: 'Team name',
+    example: 'Hoàng Anh Gia Lai',
+  })
+  @IsString()
+  @IsNotEmpty()
   name: string;
-  status: string;
+
+  @ApiPropertyOptional({
+    description: 'Team status',
+    enum: TeamStatus,
+    default: TeamStatus.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(TeamStatus)
+  status?: TeamStatus;
+}
+```
+
+### Player DTO with Date Validation
+
+```typescript
+// create-player.dto.ts
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+
+export enum PlayerPosition {
+  GK = 'GK',
+  DF = 'DF',
+  MF = 'MF',
+  FW = 'FW',
+}
+
+export class CreatePlayerDto {
+  @ApiProperty({ description: 'Full name', example: 'Nguyễn Quang Hải' })
+  @IsString()
+  @IsNotEmpty()
+  fullName: string;
+
+  @ApiProperty({ description: 'Date of birth (ISO 8601)', example: '1997-04-12' })
+  @IsDateString()
+  dob: string;
+
+  @ApiProperty({ description: 'Nationality', example: 'Vietnam' })
+  @IsString()
+  @IsNotEmpty()
+  nationality: string;
+
+  @ApiProperty({ description: 'Position', enum: PlayerPosition })
+  @IsEnum(PlayerPosition)
+  position: PlayerPosition;
+
+  @ApiPropertyOptional({ description: 'Team ID', format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  teamId?: string;
 }
 ```
 
 ### Response DTO Example
 
 ```typescript
-// <entity>-response.dto.ts
-export class EntityResponseDto {
+// team-response.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+
+export class TeamResponseDto {
+  @ApiProperty({ description: 'Team ID', format: 'uuid' })
   id: string;
+
+  @ApiProperty({ description: 'Team name' })
   name: string;
+
+  @ApiProperty({ description: 'Status', enum: ['ACTIVE', 'INACTIVE'] })
   status: string;
+
+  @ApiProperty({ description: 'Created date' })
   createdAt: Date;
+
+  @ApiProperty({ description: 'Updated date' })
   updatedAt: Date;
 }
+```
+
+### Update DTO Pattern (Partial)
+
+```typescript
+// update-team.dto.ts
+import { PartialType } from '@nestjs/swagger';
+import { CreateTeamDto } from './create-team.dto';
+
+export class UpdateTeamDto extends PartialType(CreateTeamDto) {}
+```
+
+### Barrel Export
+
+```typescript
+// dto/index.ts
+export * from './create-team.dto';
+export * from './update-team.dto';
+export * from './team-response.dto';
 ```
 
 ## Error Handling
