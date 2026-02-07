@@ -80,23 +80,26 @@ export class StandingsService {
 
       if (!homeTeam || !awayTeam) continue;
 
+      const homeScore = match.homeScore ?? 0;
+      const awayScore = match.awayScore ?? 0;
+
       // Update matches played
       homeTeam.played++;
       awayTeam.played++;
 
       // Update goals
-      homeTeam.goalsFor += match.homeScore;
-      homeTeam.goalsAgainst += match.awayScore;
-      awayTeam.goalsFor += match.awayScore;
-      awayTeam.goalsAgainst += match.homeScore;
+      homeTeam.goalsFor += homeScore;
+      homeTeam.goalsAgainst += awayScore;
+      awayTeam.goalsFor += awayScore;
+      awayTeam.goalsAgainst += homeScore;
 
       // Determine winner and update points
-      if (match.homeScore > match.awayScore) {
+      if (homeScore > awayScore) {
         // Home win
         homeTeam.won++;
         homeTeam.points += 3;
         awayTeam.lost++;
-      } else if (match.homeScore < match.awayScore) {
+      } else if (homeScore < awayScore) {
         // Away win
         awayTeam.won++;
         awayTeam.points += 3;
@@ -176,7 +179,7 @@ export class StandingsService {
     >();
 
     for (const event of goalEvents) {
-      if (!event.player) continue;
+      if (!event.player || !event.team) continue;
 
       const existing = scorerMap.get(event.player.id);
       if (existing) {
