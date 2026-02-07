@@ -13,10 +13,45 @@ src/
 ├── app.service.ts             # Root service
 │
 ├── auth/                      # Authentication & Authorization module
+├── common/                    # Shared utilities (filters, interceptors, logger)
+├── config/                    # Environment validation
+├── mail/                      # Email service module
 ├── match/                     # Match management module
 ├── prisma/                    # Prisma service module
 ├── registration/              # Team & Player registration module
-└── scheduling/                # Match scheduling module
+├── roster/                    # Team roster management module
+├── scheduling/                # Match scheduling module
+├── season/                    # Season management module
+├── stadium/                   # Stadium management module
+└── standings/                 # League standings module
+```
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Client Request                            │
+└──────────────────────────┬──────────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Global Middleware                            │
+│  - CORS   - Rate Limiting   - Helmet (Prod)   - Logging         │
+└──────────────────────────┬──────────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Controller Layer                            │
+│  - Auth   - Match   - Season   - Stadium   - Registration       │
+└──────────────────────────┬──────────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Service Layer                              │
+│  - Business Logic   - Validation   - Data Transformation        │
+└──────────────────────────┬──────────────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      Prisma ORM Layer                            │
+│  - PostgreSQL Connection   - Migrations   - Transactions        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Mô tả
@@ -24,26 +59,32 @@ src/
 ### Core Files
 
 #### `main.ts`
+
 Entry point của ứng dụng NestJS.
 
 **Vai trò:**
+
 - Bootstrap NestJS application
 - Configure CORS
 - Setup global pipes, filters, interceptors
 - Start HTTP server
 
 #### `app.module.ts`
+
 Root module của ứng dụng.
 
 **Vai trò:**
+
 - Import tất cả feature modules
 - Configure global providers
 - Setup module dependencies
 
 #### `app.controller.ts` & `app.service.ts`
+
 Root controller và service.
 
 **Vai trò:**
+
 - Health check endpoint
 - Application metadata endpoints
 - Basic application-level logic
@@ -51,6 +92,7 @@ Root controller và service.
 ### Feature Modules
 
 Mỗi feature module được tổ chức theo pattern:
+
 ```
 <module-name>/
 ├── <module>.module.ts       # Module definition
@@ -60,9 +102,11 @@ Mỗi feature module được tổ chức theo pattern:
 ```
 
 #### `auth/`
+
 Module xử lý authentication và authorization.
 
 **Chức năng:**
+
 - User login/logout
 - JWT token generation & validation
 - Role-based access control
@@ -71,9 +115,11 @@ Module xử lý authentication và authorization.
 **Chi tiết:** [auth/README.md](./auth/README.md)
 
 #### `match/`
+
 Module quản lý trận đấu.
 
 **Chức năng:**
+
 - CRUD operations cho matches
 - Match events (goals, cards, substitutions)
 - Match statistics
@@ -82,9 +128,11 @@ Module quản lý trận đấu.
 **Chi tiết:** [match/README.md](./match/README.md)
 
 #### `prisma/`
+
 Module wrapper cho Prisma Client.
 
 **Chức năng:**
+
 - Provide Prisma service as injectable dependency
 - Handle database connections
 - Manage connection lifecycle
@@ -92,9 +140,11 @@ Module wrapper cho Prisma Client.
 **Chi tiết:** [prisma/README.md](./prisma/README.md)
 
 #### `registration/`
+
 Module quản lý đăng ký đội bóng và cầu thủ.
 
 **Chức năng:**
+
 - Team registration & management
 - Player registration & management
 - Player transfers
@@ -103,9 +153,11 @@ Module quản lý đăng ký đội bóng và cầu thủ.
 **Chi tiết:** [registration/README.md](./registration/README.md)
 
 #### `scheduling/`
+
 Module quản lý lịch thi đấu.
 
 **Chức năng:**
+
 - Create match schedules
 - Schedule optimization
 - Venue assignment
@@ -116,23 +168,27 @@ Module quản lý lịch thi đấu.
 ## Module Organization Best Practices
 
 ### Controller
+
 - Handle HTTP requests/responses
 - Validate input data (using DTOs)
 - Call service methods
 - Return appropriate status codes
 
 ### Service
+
 - Contain business logic
 - Interact with database (via Prisma)
 - Handle data transformations
 - Throw appropriate exceptions
 
 ### Module
+
 - Import required modules
 - Export providers for other modules
 - Configure module-specific settings
 
 ### DTO (Data Transfer Objects)
+
 - Define request/response shapes
 - Validation decorators
 - Type safety
@@ -155,6 +211,7 @@ pnpm test:cov
 ## Adding New Features
 
 1. Generate new module:
+
    ```bash
    nest g module <module-name>
    nest g controller <module-name>

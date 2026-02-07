@@ -28,8 +28,8 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   }
 
   validate(
-    accessToken: string,
-    refreshToken: string,
+    _accessToken: string,
+    _refreshToken: string,
     profile: Profile,
     done: (err: Error | null, user?: unknown) => void,
   ): void {
