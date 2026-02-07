@@ -93,7 +93,7 @@ describe('Teams API (e2e)', () => {
         .send({ name: teamName })
         .expect(201);
 
-      const teamId = createResponse.body.id;
+      const teamId = (createResponse.body as { id: string }).id;
 
       // Get the team
       const response = await request(app.getHttpServer())
@@ -119,7 +119,7 @@ describe('Teams API (e2e)', () => {
         .send({ name: `Update Team ${Date.now()}` })
         .expect(201);
 
-      const teamId = createResponse.body.id;
+      const teamId = (createResponse.body as { id: string }).id;
       const newName = `Updated Team ${Date.now()}`;
 
       // Update the team
@@ -138,7 +138,7 @@ describe('Teams API (e2e)', () => {
         .send({ name: `Status Team ${Date.now()}` })
         .expect(201);
 
-      const teamId = createResponse.body.id;
+      const teamId = (createResponse.body as { id: string }).id;
 
       // Update status to INACTIVE
       const response = await request(app.getHttpServer())
@@ -158,7 +158,7 @@ describe('Teams API (e2e)', () => {
         .send({ name: `Delete Team ${Date.now()}` })
         .expect(201);
 
-      const teamId = createResponse.body.id;
+      const teamId = (createResponse.body as { id: string }).id;
 
       // Delete the team
       await request(app.getHttpServer())
