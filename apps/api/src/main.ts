@@ -22,6 +22,38 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Security headers with Helmet (only in production to avoid CSP issues in dev)
+  if (process.env.NODE_ENV === 'production') {
+    const helmet = await import('helmet');
+    app.use(
+      helmet.default({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'"],
+            fontSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+          },
+        },
+        hsts: {
+          maxAge: 31536000,
+          includeSubDomains: true,
+          preload: true,
+        },
+        frameguard: { action: 'deny' },
+        hidePoweredBy: true,
+        noSniff: true,
+        xssFilter: true,
+        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      }),
+    );
+    logger.log('🛡️  Helmet security headers enabled', 'Bootstrap');
+  }
+
   // Set global prefix for all routes
   app.setGlobalPrefix('api');
 
