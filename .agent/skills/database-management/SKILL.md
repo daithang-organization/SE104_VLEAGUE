@@ -20,16 +20,19 @@ This skill covers all aspects of database management in the SE104_VLEAGUE projec
 The database includes the following main entities:
 
 ### Teams
+
 - **Table**: `teams`
 - **Fields**: id (UUID), name (unique), status (ACTIVE/INACTIVE), timestamps
 - **Purpose**: Store football team information
 
 ### Players
+
 - **Table**: `players`
 - **Fields**: id (UUID), fullName, dob, nationality, position (GK/DF/MF/FW), timestamps
 - **Purpose**: Store player information
 
 ### Matches
+
 - **Table**: `matches`
 - **Fields**: id (UUID), roundNo, homeTeamId, awayTeamId, stadiumId, kickoffAt, status (DRAFT/PUBLISHED/LOCKED), timestamps
 - **Purpose**: Store match information and scheduling
@@ -44,7 +47,7 @@ Edit `apps/api/prisma/schema.prisma`:
 model NewEntity {
   id        String   @id @default(uuid())
   fieldName String   @map("field_name")
-  
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -63,6 +66,7 @@ pnpm dlx prisma migrate dev --name descriptive_migration_name
 ```
 
 This command will:
+
 1. Generate SQL migration file in `prisma/migrations/`
 2. Apply the migration to your local database
 3. Regenerate Prisma Client
@@ -91,10 +95,10 @@ model Team {
   id        String     @id @default(uuid())
   name      String     @unique
   status    TeamStatus @default(ACTIVE)
-  
+
   // New field added
   logoUrl   String?    @map("logo_url")  // Optional field
-  
+
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 
@@ -123,21 +127,21 @@ enum MatchStatus {
 model Team {
   id      String   @id @default(uuid())
   name    String   @unique
-  
+
   // Add relation
   players Player[]
-  
+
   @@map("teams")
 }
 
 model Player {
   id       String @id @default(uuid())
   fullName String @map("full_name")
-  
+
   // Add foreign key
   teamId   String? @map("team_id")
   team     Team?   @relation(fields: [teamId], references: [id])
-  
+
   @@map("players")
 }
 ```
@@ -149,7 +153,7 @@ model Match {
   id         String      @id @default(uuid())
   roundNo    Int         @map("round_no")
   kickoffAt  DateTime?   @map("kickoff_at")
-  
+
   // Add index for better query performance
   @@index([roundNo])
   @@index([kickoffAt])
@@ -166,6 +170,7 @@ model Match {
 ### Current Seed Data
 
 The seed script creates:
+
 - 2 example teams (Hoang Anh Gia Lai, Cong An Ha Noi)
 - 2 example players
 - 1 example draft match
@@ -239,6 +244,7 @@ pnpm dlx prisma migrate reset
 ```
 
 This command will:
+
 1. Drop the database
 2. Create a new database
 3. Apply all migrations
@@ -308,6 +314,7 @@ docker compose -f infra/docker-compose.db.yml logs -f
 ```
 
 Default connection:
+
 - **Host**: localhost
 - **Port**: 5432
 - **User**: postgres
@@ -352,6 +359,7 @@ pnpm dlx prisma generate
 ### Connection Issues
 
 1. Check PostgreSQL is running:
+
    ```bash
    docker ps | grep postgres
    ```
@@ -392,6 +400,7 @@ pnpm dlx prisma migrate diff \
 > **Production migrations**: In production, migrations should be applied during deployment, not manually. The CI/CD pipeline should handle this.
 
 For production databases:
+
 1. Use `prisma migrate deploy` (not `prisma migrate dev`)
 2. Never use `prisma db push` (it can cause data loss)
 3. Always test migrations on staging first
@@ -419,3 +428,254 @@ pnpm dlx prisma migrate reset         # Reset database (DEV ONLY)
 pnpm dlx prisma migrate resolve       # Mark migration as applied/rolled-back
 pnpm dlx prisma format                # Format schema file
 ```
+
+## Backup and Restore
+
+### Backup Database
+
+```bash
+# Using pg_dump (recommended)
+docker exec vleague-postgres pg_dump -U postgres -d vleague > backup_$(date +%Y%m%d).sql
+
+# Compressed backup
+docker exec vleague-postgres pg_dump -U postgres -d vleague | gzip > backup_$(date +%Y%m%d).sql.gz
+
+# Custom format (supports parallel restore)
+docker exec vleague-postgres pg_dump -U postgres -d vleague -Fc > backup.dump
+```
+
+### Restore Database
+
+```bash
+# From SQL file
+docker exec -i vleague-postgres psql -U postgres -d vleague < backup.sql
+
+# From compressed file
+gunzip -c backup.sql.gz | docker exec -i vleague-postgres psql -U postgres -d vleague
+
+# From custom format
+docker exec -i vleague-postgres pg_restore -U postgres -d vleague < backup.dump
+```
+
+> [!CAUTION]
+> Always backup before major migrations or data changes. Test restore process regularly.
+
+## Soft Delete Pattern
+
+### Schema with Soft Delete
+
+```prisma
+model Team {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  status    TeamStatus @default(ACTIVE)
+
+  deletedAt DateTime? @map("deleted_at")  // Soft delete field
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("teams")
+}
+```
+
+### Prisma Middleware for Soft Delete
+
+```typescript
+// prisma/soft-delete.middleware.ts
+import { Prisma } from '@prisma/client';
+
+export function softDeleteMiddleware(): Prisma.Middleware {
+  return async (params, next) => {
+    // Intercept delete operations
+    if (params.action === 'delete') {
+      params.action = 'update';
+      params.args['data'] = { deletedAt: new Date() };
+    }
+
+    if (params.action === 'deleteMany') {
+      params.action = 'updateMany';
+      if (params.args.data !== undefined) {
+        params.args.data['deletedAt'] = new Date();
+      } else {
+        params.args['data'] = { deletedAt: new Date() };
+      }
+    }
+
+    // Filter out soft-deleted records
+    if (params.action === 'findUnique' || params.action === 'findFirst') {
+      params.action = 'findFirst';
+      params.args.where['deletedAt'] = null;
+    }
+
+    if (params.action === 'findMany') {
+      if (params.args.where) {
+        if (params.args.where.deletedAt === undefined) {
+          params.args.where['deletedAt'] = null;
+        }
+      } else {
+        params.args['where'] = { deletedAt: null };
+      }
+    }
+
+    return next(params);
+  };
+}
+```
+
+### Register Middleware
+
+```typescript
+// prisma.service.ts
+import { softDeleteMiddleware } from './soft-delete.middleware';
+
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleInit {
+  async onModuleInit() {
+    this.$use(softDeleteMiddleware());
+    await this.$connect();
+  }
+}
+```
+
+## Query Optimization
+
+### Using Indexes Effectively
+
+```prisma
+model Match {
+  id         String      @id @default(uuid())
+  roundNo    Int         @map("round_no")
+  seasonId   String      @map("season_id")
+  kickoffAt  DateTime?   @map("kickoff_at")
+  status     MatchStatus @default(DRAFT)
+
+  // Single column indexes
+  @@index([roundNo])
+  @@index([kickoffAt])
+  @@index([status])
+
+  // Composite index for common queries
+  @@index([seasonId, roundNo])
+  @@index([seasonId, status])
+
+  @@map("matches")
+}
+```
+
+### Query Analysis
+
+```bash
+# Enable query logging in development
+# Add to .env
+DEBUG="prisma:query"
+
+# Or in Prisma Client
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+});
+```
+
+### Efficient Queries
+
+```typescript
+// ❌ N+1 Problem
+const teams = await prisma.team.findMany();
+for (const team of teams) {
+  const players = await prisma.player.findMany({ where: { teamId: team.id } });
+}
+
+// ✅ Use include for relations
+const teams = await prisma.team.findMany({
+  include: { players: true },
+});
+
+// ✅ Select only needed fields
+const teams = await prisma.team.findMany({
+  select: {
+    id: true,
+    name: true,
+    _count: { select: { players: true } },
+  },
+});
+
+// ✅ Pagination
+const teams = await prisma.team.findMany({
+  skip: (page - 1) * pageSize,
+  take: pageSize,
+  orderBy: { name: 'asc' },
+});
+```
+
+## Database Testing
+
+### Test Database Configuration
+
+```env
+# .env.test
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vleague_test"
+```
+
+### Jest Setup for Database Tests
+
+```typescript
+// test/setup.ts
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+beforeAll(async () => {
+  // Connect to test database
+  await prisma.$connect();
+});
+
+beforeEach(async () => {
+  // Clean database before each test
+  await prisma.$transaction([
+    prisma.match.deleteMany(),
+    prisma.player.deleteMany(),
+    prisma.team.deleteMany(),
+  ]);
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+```
+
+### Database Test Example
+
+```typescript
+// teams.integration.spec.ts
+describe('Teams Integration', () => {
+  let prisma: PrismaClient;
+
+  beforeAll(() => {
+    prisma = new PrismaClient();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  beforeEach(async () => {
+    await prisma.team.deleteMany();
+  });
+
+  it('should create and retrieve team', async () => {
+    const team = await prisma.team.create({
+      data: { name: 'Test Team', status: 'ACTIVE' },
+    });
+
+    const found = await prisma.team.findUnique({
+      where: { id: team.id },
+    });
+
+    expect(found).toBeDefined();
+    expect(found?.name).toBe('Test Team');
+  });
+});
+```
+
+> [!TIP]
+> Use a separate test database to avoid polluting development data. Consider using Docker for isolated test environments.

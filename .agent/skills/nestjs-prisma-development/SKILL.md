@@ -313,11 +313,7 @@ export * from './team-response.dto';
 Use NestJS built-in exceptions:
 
 ```typescript
-import {
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 
 // Not found
 throw new NotFoundException('Resource not found');
@@ -396,9 +392,7 @@ describe('ModuleNameController (e2e)', () => {
   });
 
   it('/api-prefix (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api-prefix')
-      .expect(200);
+    return request(app.getHttpServer()).get('/api-prefix').expect(200);
   });
 });
 ```
@@ -434,6 +428,7 @@ pnpm format              # Run Prettier
 
 > [!TIP]
 > **Prisma Transactions**: For operations that modify multiple tables, use Prisma transactions:
+>
 > ```typescript
 > await this.prisma.$transaction([
 >   this.prisma.team.create({ data: teamData }),
@@ -482,4 +477,322 @@ import { YourNewModule } from './your-new/your-new.module';
   ],
 })
 export class AppModule {}
+```
+
+## Guards and Custom Decorators
+
+### JWT Auth Guard
+
+```typescript
+// auth/guards/jwt-auth.guard.ts
+import { Injectable, ExecutionContext } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {
+  constructor(private reflector: Reflector) {
+    super();
+  }
+
+  canActivate(context: ExecutionContext) {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+    return super.canActivate(context);
+  }
+}
+```
+
+### Role Guard
+
+```typescript
+// auth/guards/roles.guard.ts
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ROLES_KEY } from '../decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!requiredRoles) return true;
+
+    const { user } = context.switchToHttp().getRequest();
+    return requiredRoles.includes(user.role);
+  }
+}
+```
+
+### Custom Decorators
+
+```typescript
+// auth/decorators/public.decorator.ts
+import { SetMetadata } from '@nestjs/common';
+export const IS_PUBLIC_KEY = 'isPublic';
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+
+// auth/decorators/roles.decorator.ts
+import { SetMetadata } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+export const ROLES_KEY = 'roles';
+export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
+
+// auth/decorators/current-user.decorator.ts
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
+  const request = ctx.switchToHttp().getRequest();
+  return request.user;
+});
+```
+
+### Usage in Controllers
+
+```typescript
+@Controller('teams')
+export class TeamsController {
+  @Get()
+  @Public() // No auth required
+  findAll() {}
+
+  @Post()
+  @Roles(UserRole.ADMIN) // Admin only
+  create(@Body() dto: CreateTeamDto, @CurrentUser() user: User) {}
+}
+```
+
+## Interceptors
+
+### Logging Interceptor
+
+```typescript
+// common/interceptors/logging.interceptor.ts
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable()
+export class LoggingInterceptor implements NestInterceptor {
+  private readonly logger = new Logger('HTTP');
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const request = context.switchToHttp().getRequest();
+    const { method, url } = request;
+    const now = Date.now();
+
+    return next.handle().pipe(
+      tap(() => {
+        const response = context.switchToHttp().getResponse();
+        this.logger.log(`${method} ${url} ${response.statusCode} - ${Date.now() - now}ms`);
+      }),
+    );
+  }
+}
+```
+
+### Response Transform Interceptor
+
+```typescript
+// common/interceptors/transform.interceptor.ts
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+export interface Response<T> {
+  data: T;
+  meta?: { timestamp: string };
+}
+
+@Injectable()
+export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
+    return next.handle().pipe(
+      map((data) => ({
+        data,
+        meta: { timestamp: new Date().toISOString() },
+      })),
+    );
+  }
+}
+```
+
+### Register Interceptors Globally
+
+```typescript
+// main.ts
+app.useGlobalInterceptors(new LoggingInterceptor(), new TransformInterceptor());
+```
+
+## Exception Filters
+
+### Custom HTTP Exception Filter
+
+```typescript
+// common/filters/http-exception.filter.ts
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, Logger } from '@nestjs/common';
+import { Response } from 'express';
+
+@Catch(HttpException)
+export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger('ExceptionFilter');
+
+  catch(exception: HttpException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const status = exception.getStatus();
+    const exceptionResponse = exception.getResponse();
+
+    const errorResponse = {
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      message:
+        typeof exceptionResponse === 'string'
+          ? exceptionResponse
+          : (exceptionResponse as any).message,
+    };
+
+    this.logger.error(`Status ${status}: ${JSON.stringify(errorResponse)}`);
+    response.status(status).json(errorResponse);
+  }
+}
+```
+
+## Pagination Pattern
+
+### Pagination DTO
+
+```typescript
+// common/dto/pagination.dto.ts
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class PaginationQueryDto {
+  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 10;
+}
+
+export class PaginatedResponseDto<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+```
+
+### Pagination Service
+
+```typescript
+// common/services/pagination.service.ts
+import { Injectable } from '@nestjs/common';
+import { PaginationQueryDto, PaginatedResponseDto } from '../dto/pagination.dto';
+
+@Injectable()
+export class PaginationService {
+  paginate<T>(data: T[], total: number, query: PaginationQueryDto): PaginatedResponseDto<T> {
+    const { page = 1, limit = 10 } = query;
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+}
+```
+
+### Usage in Service
+
+```typescript
+async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<Team>> {
+  const { page = 1, limit = 10 } = query;
+  const skip = (page - 1) * limit;
+
+  const [data, total] = await Promise.all([
+    this.prisma.team.findMany({ skip, take: limit, orderBy: { name: 'asc' } }),
+    this.prisma.team.count(),
+  ]);
+
+  return this.paginationService.paginate(data, total, query);
+}
+```
+
+## File Upload
+
+### Multer Configuration
+
+```typescript
+// common/config/multer.config.ts
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { BadRequestException } from '@nestjs/common';
+
+export const multerConfig = {
+  storage: diskStorage({
+    destination: './uploads',
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+      cb(new BadRequestException('Only image files are allowed'), false);
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+};
+```
+
+### File Upload Controller
+
+```typescript
+// teams/teams.controller.ts
+import { Controller, Post, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from '../common/config/multer.config';
+
+@Controller('teams')
+export class TeamsController {
+  @Post(':id/logo')
+  @UseInterceptors(FileInterceptor('file', multerConfig))
+  uploadLogo(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    return this.teamsService.updateLogo(id, file.filename);
+  }
+}
+```
+
+> [!IMPORTANT]
+> Add `@types/multer` to dev dependencies: `pnpm add -D @types/multer`
+
+```
+
 ```
