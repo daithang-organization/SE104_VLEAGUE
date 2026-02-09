@@ -92,10 +92,15 @@ async function bootstrap() {
       'access-token',
     )
     .addTag('Authentication', 'User authentication endpoints')
+    .addTag('Health', 'Application health check')
     .addTag('Teams', 'Team management endpoints')
     .addTag('Players', 'Player management endpoints')
     .addTag('Matches', 'Match scheduling and management')
     .addTag('Scheduling', 'Schedule generation and publishing')
+    .addTag('Standings', 'League standings and statistics')
+    .addTag('Season', 'Season management')
+    .addTag('Stadium', 'Stadium management')
+    .addTag('Roster', 'Team roster management')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

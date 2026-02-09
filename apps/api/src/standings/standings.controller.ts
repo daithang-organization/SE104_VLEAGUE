@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { Controller, Get, Param, Query, UseInterceptors } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -10,10 +11,12 @@ import { StandingsService } from './standings.service';
 
 @ApiTags('Standings')
 @Controller('standings')
+@UseInterceptors(CacheInterceptor)
 export class StandingsController {
   constructor(private readonly standingsService: StandingsService) {}
 
   @Get()
+  @CacheTTL(30000) // Cache for 30 seconds
   @ApiOperation({
     summary: 'Lấy bảng xếp hạng',
     description:
