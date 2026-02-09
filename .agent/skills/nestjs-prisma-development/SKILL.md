@@ -17,9 +17,16 @@ apps/api/
 │   ├── app.module.ts          # Root module
 │   ├── main.ts               # Application entry point
 │   ├── auth/                 # Authentication module
-│   ├── registration/         # Team & player registration module
-│   ├── scheduling/           # Match scheduling module
+│   ├── common/               # Shared utilities (filters, interceptors, etc.)
+│   ├── config/               # Configuration module
+│   ├── mail/                 # Email service module
 │   ├── match/               # Match management module
+│   ├── registration/         # Team & player registration module
+│   ├── roster/              # Team roster management module
+│   ├── scheduling/           # Match scheduling module
+│   ├── season/              # Season management module
+│   ├── stadium/             # Stadium management module
+│   ├── standings/           # League standings module
 │   └── prisma/              # Prisma service
 ├── prisma/
 │   ├── schema.prisma        # Database schema
@@ -793,6 +800,106 @@ export class TeamsController {
 > [!IMPORTANT]
 > Add `@types/multer` to dev dependencies: `pnpm add -D @types/multer`
 
+## Implemented Modules Reference
+
+### Season Module (`src/season/`)
+
+Manages VLeague seasons (e.g., VLeague 2024, VLeague 2025).
+
+| Method   | Endpoint               | Role   | Description                      |
+| -------- | ---------------------- | ------ | -------------------------------- |
+| `GET`    | `/api/seasons`         | Public | List all seasons                 |
+| `GET`    | `/api/seasons/current` | Public | Get current season (IN_PROGRESS) |
+| `GET`    | `/api/seasons/:id`     | Public | Get season details               |
+| `POST`   | `/api/seasons`         | ADMIN  | Create new season                |
+| `PATCH`  | `/api/seasons/:id`     | ADMIN  | Update season                    |
+| `DELETE` | `/api/seasons/:id`     | ADMIN  | Delete season                    |
+
+---
+
+### Stadium Module (`src/stadium/`)
+
+Manages stadium information.
+
+| Method   | Endpoint            | Role   | Description         |
+| -------- | ------------------- | ------ | ------------------- |
+| `GET`    | `/api/stadiums`     | Public | List all stadiums   |
+| `GET`    | `/api/stadiums/:id` | Public | Get stadium details |
+| `POST`   | `/api/stadiums`     | ADMIN  | Create stadium      |
+| `PATCH`  | `/api/stadiums/:id` | ADMIN  | Update stadium      |
+| `DELETE` | `/api/stadiums/:id` | ADMIN  | Delete stadium      |
+
+---
+
+### Roster Module (`src/roster/`)
+
+Manages team-player relationships.
+
+| Method   | Endpoint                              | Role                | Description            |
+| -------- | ------------------------------------- | ------------------- | ---------------------- |
+| `GET`    | `/api/teams/:teamId/roster`           | Public              | Get team roster        |
+| `POST`   | `/api/teams/:teamId/roster`           | ADMIN, TEAM_MANAGER | Add player to team     |
+| `PATCH`  | `/api/teams/:teamId/roster/:playerId` | ADMIN, TEAM_MANAGER | Update (jersey number) |
+| `DELETE` | `/api/teams/:teamId/roster/:playerId` | ADMIN, TEAM_MANAGER | Remove player          |
+
+**Business Rules:**
+
+- One player can only be in one team at a time
+- Jersey numbers must be unique within team
+
+---
+
+### Standings Module (`src/standings/`)
+
+Auto-calculates league standings and top scorers.
+
+| Method | Endpoint                      | Role   | Description                  |
+| ------ | ----------------------------- | ------ | ---------------------------- |
+| `GET`  | `/api/standings`              | Public | Get current season standings |
+| `GET`  | `/api/standings?seasonId=xxx` | Public | Get standings by season      |
+| `GET`  | `/api/standings/top-scorers`  | Public | Get top scorers list         |
+
+**Scoring:** Win=3pts, Draw=1pt, Loss=0pts
+
+**Ranking criteria (priority order):**
+
+1. Points
+2. Goal difference
+3. Goals scored
+4. Team name (alphabetically)
+
+---
+
+### Mail Module (`src/mail/`)
+
+Handles email sending with templates.
+
+```typescript
+// Usage in services
+import { MailService } from './mail';
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly mail: MailService) {}
+
+  async sendOtp(email: string, otp: string) {
+    await this.mail.sendEmailVerificationOtp(email, otp);
+  }
+}
 ```
 
+**Templates:**
+
+- `email-verification.hbs` - Email verification OTP
+- `password-reset.hbs` - Password reset OTP
+- `welcome.hbs` - Welcome email
+
+**Environment Variables:**
+
+```env
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=your-email@gmail.com
+MAIL_PASS=your-app-password
+MAIL_FROM=noreply@vleague.local
 ```

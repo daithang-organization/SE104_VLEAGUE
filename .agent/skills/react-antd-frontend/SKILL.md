@@ -17,11 +17,19 @@ apps/web/
 │   ├── main.tsx              # Application entry point
 │   ├── App.tsx               # Root component with routing
 │   ├── App.css               # Global styles
+│   ├── auth/                 # Authentication context & guards
+│   │   ├── AuthContext.tsx   # Auth state management
+│   │   ├── RequireAuth.tsx   # Protected route guard
+│   │   └── RequireRole.tsx   # Role-based route guard
+│   ├── shell/                # Application shell/layout
+│   │   ├── AppShell.tsx      # Main layout with sidebar
+│   │   └── menu.ts           # Menu configuration
 │   ├── components/           # Reusable components
+│   │   ├── LoadingSkeleton.tsx  # Loading skeletons
+│   │   └── ErrorBoundary.tsx    # Error handling
 │   ├── pages/                # Page components
 │   ├── services/             # API service layer
-│   ├── types/                # TypeScript type definitions
-│   └── utils/                # Utility functions
+│   └── lib/                  # Utilities and helpers
 ├── public/                   # Static assets
 ├── index.html               # HTML template
 ├── vite.config.ts           # Vite configuration
@@ -386,41 +394,59 @@ export function TeamModal() {
 
 ## Layout and Navigation
 
-### Basic Layout with Ant Design
+### AppShell with Role-Based Menu
+
+The project uses `AppShell` component located at `src/shell/AppShell.tsx` which provides:
+
+- Collapsible sidebar with role-based menu filtering
+- Header with user dropdown (profile, change password, logout)
+- Content area with nested routing via `<Outlet />`
 
 ```typescript
-import { Layout, Menu } from 'antd';
-import { Link, Outlet } from 'react-router-dom';
-import {
-  TeamOutlined,
-  TrophyOutlined,
-  CalendarOutlined,
-} from '@ant-design/icons';
+// src/shell/AppShell.tsx
+import { Layout, Menu, Dropdown, Button } from 'antd';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { MENU } from './menu';
 
-const { Header, Content, Sider } = Layout;
+export default function AppShell() {
+  const { user, logout } = useAuth();
+  const nav = useNavigate();
+  const location = useLocation();
 
-export function AppLayout() {
+  // Filter menu items based on user role
+  const menuItems = useMemo(() => {
+    const role = user?.role;
+    return MENU.filter((m) => !m.roles || (role && m.roles.includes(role))).map((m) => ({
+      key: m.key,
+      label: m.label,
+    }));
+  }, [user]);
+
+  const onMenuClick = (e: { key: string }) => {
+    const menuItem = MENU.find((m) => m.key === e.key);
+    if (menuItem) nav(menuItem.path);
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header>
-        <h1 style={{ color: 'white' }}>VLeague Management</h1>
-      </Header>
-
+      <Sider collapsible>
+        <Menu
+          theme="dark"
+          mode="inline"
+          items={menuItems}
+          onClick={onMenuClick}
+        />
+      </Sider>
       <Layout>
-        <Sider width={200}>
-          <Menu mode="inline" defaultSelectedKeys={['teams']}>
-            <Menu.Item key="teams" icon={<TeamOutlined />}>
-              <Link to="/teams">Teams</Link>
-            </Menu.Item>
-            <Menu.Item key="matches" icon={<TrophyOutlined />}>
-              <Link to="/matches">Matches</Link>
-            </Menu.Item>
-            <Menu.Item key="schedule" icon={<CalendarOutlined />}>
-              <Link to="/schedule">Schedule</Link>
-            </Menu.Item>
-          </Menu>
-        </Sider>
-
+        <Header>
+          <Dropdown menu={{ items: userMenuItems }}>
+            <Button type="text" style={{ color: 'white' }}>
+              <UserOutlined /> {user?.email}
+            </Button>
+          </Dropdown>
+        </Header>
         <Content style={{ padding: 24 }}>
           <Outlet />
         </Content>
@@ -428,6 +454,162 @@ export function AppLayout() {
     </Layout>
   );
 }
+```
+
+### Menu Configuration
+
+```typescript
+// src/shell/menu.ts
+type MenuItem = {
+  key: string;
+  label: string;
+  path: string;
+  roles?: string[]; // Allowed roles (undefined = all)
+};
+
+export const MENU: MenuItem[] = [
+  { key: 'dashboard', label: 'Dashboard', path: '/' },
+  { key: 'teams', label: 'Đội bóng', path: '/teams', roles: ['ADMIN', 'TEAM_MANAGER'] },
+  { key: 'standings', label: 'Bảng xếp hạng', path: '/standings' },
+  { key: 'reports', label: 'Báo cáo', path: '/reports', roles: ['ADMIN'] },
+];
+```
+
+## Authentication Guards
+
+### RequireAuth - Protected Routes
+
+```typescript
+// src/auth/RequireAuth.tsx
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+
+export function RequireAuth({ children }: { children: ReactNode }) {
+  const { isAuthed } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthed) {
+    // Save the attempted URL for redirecting after login
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  return children;
+}
+```
+
+### RequireRole - Role-Based Access
+
+```typescript
+// src/auth/RequireRole.tsx
+import { Navigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+
+export function RequireRole({ allow, children }: { allow: string[]; children: ReactNode }) {
+  const { user, isAuthed } = useAuth();
+
+  if (!isAuthed || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allow.includes(user.role)) {
+    return <Navigate to="/403" replace />;
+  }
+
+  return children;
+}
+```
+
+### Usage in Routes
+
+```typescript
+// App.tsx
+<Route element={<RequireAuth><AppShell /></RequireAuth>}>
+  <Route path="/" element={<DashboardPage />} />
+  <Route path="/teams" element={
+    <RequireRole allow={['ADMIN', 'TEAM_MANAGER']}>
+      <TeamsPage />
+    </RequireRole>
+  } />
+</Route>
+```
+
+## Reusable UI Components
+
+### LoadingSkeleton
+
+Multi-purpose loading skeletons for different UI patterns:
+
+```typescript
+// src/components/LoadingSkeleton.tsx
+import { Card, Skeleton, Table } from 'antd';
+
+interface LoadingSkeletonProps {
+  type?: 'card' | 'table' | 'form' | 'profile' | 'list';
+  rows?: number;
+}
+
+export const LoadingSkeleton: FC<LoadingSkeletonProps> = ({ type = 'card', rows = 3 }) => {
+  switch (type) {
+    case 'table':
+      return <TableSkeleton rows={rows} />;
+    case 'form':
+      return <FormSkeleton />;
+    case 'profile':
+      return <ProfileSkeleton />;
+    case 'list':
+      return <ListSkeleton rows={rows} />;
+    default:
+      return <CardSkeleton />;
+  }
+};
+
+// Usage:
+<LoadingSkeleton type="table" rows={5} />
+<LoadingSkeleton type="profile" />
+```
+
+### ErrorBoundary
+
+Catches runtime errors and displays user-friendly error page:
+
+```typescript
+// src/components/ErrorBoundary.tsx
+import { Button, Result } from 'antd';
+import { Component, type ReactNode } from 'react';
+
+export class ErrorBoundary extends Component<Props, State> {
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error);
+    // TODO: Send to error tracking service
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Result
+          status="error"
+          title="Đã xảy ra lỗi"
+          subTitle="Rất tiếc, đã có lỗi xảy ra. Vui lòng thử lại sau."
+          extra={[
+            <Button key="retry" type="primary" onClick={this.handleReset}>
+              Thử lại
+            </Button>,
+          ]}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Usage in App.tsx:
+<ErrorBoundary>
+  <RouterProvider router={router} />
+</ErrorBoundary>
 ```
 
 ## State Management Patterns

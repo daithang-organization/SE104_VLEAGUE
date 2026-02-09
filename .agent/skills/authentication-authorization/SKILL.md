@@ -12,9 +12,21 @@ This skill covers secure authentication and authorization patterns for the SE104
 The project uses:
 
 - **JWT**: Access and refresh tokens for API authentication
-- **Passport.js**: Authentication strategies (JWT, Google OAuth)
+- **Passport.js**: Authentication strategies (JWT, Google OAuth, Facebook OAuth)
 - **bcrypt**: Password hashing
-- **RBAC**: Role-based access control (USER, ADMIN)
+- **RBAC**: Role-based access control (5 roles)
+- **OTP**: Email verification and password reset
+- **Rate Limiting**: Throttle on sensitive endpoints
+
+### User Roles
+
+| Role           | Description      | Permissions                         |
+| -------------- | ---------------- | ----------------------------------- |
+| `ADMIN`        | Quản trị viên    | Toàn quyền - quản lý hệ thống       |
+| `TEAM_MANAGER` | Quản lý đội bóng | Quản lý thông tin đội và cầu thủ    |
+| `REFEREE`      | Trọng tài        | Nhập kết quả trận đấu               |
+| `SUPERVISOR`   | Giám sát viên    | Xem báo cáo và thống kê             |
+| `PUBLIC`       | Công khai        | Xem thông tin (không cần đăng nhập) |
 
 ## JWT Token Strategy
 
@@ -266,10 +278,53 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req, @Res() res: Response) {
     const tokens = await this.authService.generateTokens(req.user);
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${tokens.accessToken}`);
+    res.redirect(`${process.env.FRONTEND_URL}/auth/oauth-callback?token=${tokens.accessToken}`);
   }
 }
 ```
+
+## Facebook OAuth Integration
+
+### Facebook Strategy
+
+```typescript
+// auth/strategies/facebook.strategy.ts
+import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { Profile, Strategy } from 'passport-facebook';
+
+@Injectable()
+export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
+  constructor() {
+    super({
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
+      callbackURL:
+        process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:8080/api/auth/facebook/callback',
+      scope: ['email'],
+      profileFields: ['id', 'emails', 'name', 'displayName', 'photos'],
+    });
+  }
+
+  validate(_accessToken: string, _refreshToken: string, profile: Profile, done: Function) {
+    const { id, emails, displayName, photos } = profile;
+    const user = {
+      facebookId: id,
+      email: emails?.[0]?.value || '',
+      name: displayName,
+      avatarUrl: photos?.[0]?.value,
+    };
+    done(null, user);
+  }
+}
+```
+
+### Facebook OAuth Endpoints
+
+| Method | Endpoint                  | Description                |
+| ------ | ------------------------- | -------------------------- |
+| `GET`  | `/auth/facebook`          | Redirect to Facebook login |
+| `GET`  | `/auth/facebook/callback` | Handle Facebook callback   |
 
 ## Role-Based Access Control (RBAC)
 
@@ -277,18 +332,29 @@ export class AuthController {
 
 ```prisma
 enum UserRole {
-  USER
   ADMIN
+  TEAM_MANAGER
+  REFEREE
+  SUPERVISOR
+  PUBLIC
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String?   @map("password_hash")
-  role         UserRole  @default(USER)
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?   @map("password_hash")
+  role          UserRole  @default(PUBLIC)
+  emailVerified Boolean   @default(false) @map("email_verified")
+  name          String?
+  avatarUrl     String?   @map("avatar_url")
+  googleId      String?   @unique @map("google_id")
+  facebookId    String?   @unique @map("facebook_id")
 
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  refreshTokens RefreshToken[]
+  otpCodes      OtpCode[]
 
   @@map("users")
 }
@@ -414,11 +480,36 @@ JWT_REFRESH_EXPIRES_IN=7d
 # Google OAuth
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=xxx
-GOOGLE_CALLBACK_URL=http://localhost:8080/auth/google/callback
+GOOGLE_CALLBACK_URL=http://localhost:8080/api/auth/google/callback
+
+# Facebook OAuth
+FACEBOOK_APP_ID=xxx
+FACEBOOK_APP_SECRET=xxx
+FACEBOOK_CALLBACK_URL=http://localhost:8080/api/auth/facebook/callback
+
+# Email
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=your-email@gmail.com
+MAIL_PASS=your-app-password
 
 # Frontend
 FRONTEND_URL=http://localhost:5173
 ```
+
+## Sessions Management
+
+The project supports session management with multiple device tracking.
+
+### API Endpoints
+
+| Method   | Endpoint                | Description             |
+| -------- | ----------------------- | ----------------------- |
+| `GET`    | `/auth/sessions`        | Get all active sessions |
+| `DELETE` | `/auth/sessions/:id`    | Revoke specific session |
+| `POST`   | `/auth/logout-all`      | Logout from all devices |
+| `POST`   | `/auth/change-password` | Change password         |
+| `PATCH`  | `/auth/profile`         | Update profile          |
 
 ## Complete Auth Flow Diagram
 
