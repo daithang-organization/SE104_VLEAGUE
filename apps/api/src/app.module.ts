@@ -1,9 +1,11 @@
+import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './common/logger';
+import { HealthModule } from './health/health.module';
 import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationModule } from './registration/registration.module';
@@ -16,6 +18,12 @@ import { StandingsModule } from './standings/standings.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // In-memory cache - TTL 60 seconds, max 100 items
+    CacheModule.register({
+      ttl: 60000,
+      max: 100,
+      isGlobal: true,
+    }),
     // Rate limiting - default: 10 requests per 60 seconds
     ThrottlerModule.forRoot({
       throttlers: [
@@ -43,6 +51,7 @@ import { StandingsModule } from './standings/standings.module';
     }),
     LoggerModule,
     PrismaModule,
+    HealthModule,
     AuthModule,
     RegistrationModule,
     SchedulingModule,
