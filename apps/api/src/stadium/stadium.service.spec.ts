@@ -10,6 +10,7 @@ describe('StadiumService', () => {
   const mockStadium = {
     id: 'stadium-1',
     name: 'Sân Mỹ Đình',
+    address: null,
     city: 'Hà Nội',
     capacity: 40000,
     createdAt: new Date(),

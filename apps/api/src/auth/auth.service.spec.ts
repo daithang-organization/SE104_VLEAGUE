@@ -27,6 +27,7 @@ describe('AuthService', () => {
     email: 'test@example.com',
     passwordHash: 'hashed-password',
     role: UserRole.PUBLIC,
+    roleId: null,
     name: 'Test User',
     emailVerified: true,
     avatarUrl: null,
