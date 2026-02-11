@@ -80,6 +80,7 @@ Table users {
   email          varchar   [unique, not null]
   password_hash  varchar
   role           UserRole  [default: 'PUBLIC']
+  role_id        uuid      [ref: > roles.id]
   email_verified boolean   [default: false]
   name           varchar
   avatar_url     varchar
@@ -87,6 +88,10 @@ Table users {
   facebook_id    varchar   [unique]
   created_at     timestamp [default: `now()`]
   updated_at     timestamp
+
+  indexes {
+    role_id
+  }
 }
 
 // ───────── 3) refresh_tokens ─────────
