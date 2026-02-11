@@ -1,11 +1,13 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
-    MatchStatus,
-    PlayerPosition,
-    PrismaClient,
-    SeasonStatus,
-    TeamStatus,
-    UserRole
+  MatchStatus,
+  PlayerPosition,
+  PlayerType,
+  PrismaClient,
+  SeasonStatus,
+  SeasonTeamStatus,
+  TeamStatus,
+  UserRole,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
@@ -48,61 +50,93 @@ const playersData = [
     dob: new Date('2000-01-10'),
     nationality: 'Vietnam',
     position: PlayerPosition.MF,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Trần Văn B',
     dob: new Date('1999-03-22'),
     nationality: 'Vietnam',
     position: PlayerPosition.DF,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Lê Văn C',
     dob: new Date('2001-07-05'),
     nationality: 'Vietnam',
     position: PlayerPosition.FW,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Phạm Văn D',
     dob: new Date('1998-11-12'),
     nationality: 'Vietnam',
     position: PlayerPosition.GK,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Hoàng Văn E',
     dob: new Date('2002-02-18'),
     nationality: 'Vietnam',
     position: PlayerPosition.MF,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Võ Văn F',
     dob: new Date('2000-08-09'),
     nationality: 'Vietnam',
     position: PlayerPosition.DF,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Đặng Văn G',
     dob: new Date('1999-12-01'),
     nationality: 'Vietnam',
     position: PlayerPosition.FW,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Bùi Văn H',
     dob: new Date('2001-04-14'),
     nationality: 'Vietnam',
     position: PlayerPosition.MF,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Đỗ Văn I',
     dob: new Date('1997-06-30'),
     nationality: 'Vietnam',
     position: PlayerPosition.DF,
+    playerType: PlayerType.DOMESTIC,
   },
   {
     fullName: 'Ngô Văn K',
     dob: new Date('2003-09-21'),
     nationality: 'Vietnam',
     position: PlayerPosition.FW,
+    playerType: PlayerType.DOMESTIC,
   },
+];
+
+// Tham số quy định mặc định cho mùa giải (QĐ1–QĐ6)
+const defaultRegulations = [
+  { key: 'player_age_min', value: '16', valueType: 'INT' },
+  { key: 'player_age_max', value: '40', valueType: 'INT' },
+  { key: 'team_player_min', value: '15', valueType: 'INT' },
+  { key: 'team_player_max', value: '22', valueType: 'INT' },
+  { key: 'foreign_max_registered', value: '3', valueType: 'INT' },
+  { key: 'goal_types', value: '["A","B","C"]', valueType: 'JSON' },
+  { key: 'max_goal_minute', value: '90', valueType: 'INT' },
+  { key: 'points_win', value: '3', valueType: 'INT' },
+  { key: 'points_draw', value: '1', valueType: 'INT' },
+  { key: 'points_loss', value: '0', valueType: 'INT' },
+  {
+    key: 'rank_tiebreak_order',
+    value: '["points","goal_diff","goals_for"]',
+    valueType: 'JSON',
+  },
+  { key: 'total_legs', value: '2', valueType: 'INT' },
+  { key: 'rounds_per_season', value: '26', valueType: 'INT' },
+  { key: 'matches_per_round', value: '7', valueType: 'INT' },
 ];
 
 async function main() {
@@ -127,9 +161,6 @@ async function main() {
       where: { email: u.email },
       update: {
         role: u.role,
-        // Không update passwordHash để tránh đổi password nếu team đang test
-        // Nếu muốn luôn reset password mỗi lần seed thì uncomment dòng dưới:
-        // passwordHash,
       },
       create: {
         email: u.email,
@@ -183,7 +214,51 @@ async function main() {
     console.log(`   ⏭️  Skipped (season "${season.name}" already exists)`);
   }
 
-  // 6) Seed matches nếu chưa có
+  // 6) Seed regulations cho mùa giải (idempotent by season_id + key)
+  console.log('📏 Seeding regulations...');
+  let regulationCount = 0;
+  for (const reg of defaultRegulations) {
+    await prisma.regulation.upsert({
+      where: {
+        seasonId_key: { seasonId: season.id, key: reg.key },
+      },
+      update: { value: reg.value, valueType: reg.valueType },
+      create: {
+        seasonId: season.id,
+        key: reg.key,
+        value: reg.value,
+        valueType: reg.valueType,
+      },
+    });
+    regulationCount++;
+  }
+  console.log(`   ✓ ${regulationCount} regulations upserted`);
+
+  // 7) Seed season_teams (đăng ký đội vào mùa giải)
+  console.log('📝 Seeding season_teams...');
+  const allTeams = await prisma.team.findMany();
+  let stCount = 0;
+  for (const t of allTeams) {
+    const existing = await prisma.seasonTeam.findUnique({
+      where: { seasonId_teamId: { seasonId: season.id, teamId: t.id } },
+    });
+    if (!existing) {
+      await prisma.seasonTeam.create({
+        data: {
+          seasonId: season.id,
+          teamId: t.id,
+          status: SeasonTeamStatus.APPROVED,
+          approvedAt: new Date(),
+        },
+      });
+      stCount++;
+    }
+  }
+  console.log(
+    `   ✓ ${stCount} season_teams created (${allTeams.length - stCount} already existed)`,
+  );
+
+  // 8) Seed matches nếu chưa có
   console.log('📅 Seeding matches...');
   const existingMatchesCount = await prisma.match.count();
   if (existingMatchesCount === 0) {
@@ -196,6 +271,7 @@ async function main() {
           {
             seasonId: season.id,
             roundNo: 1,
+            leg: 1,
             homeTeamId: teamRecords[0].id,
             awayTeamId: teamRecords[1].id,
             stadiumId: null,
@@ -205,6 +281,7 @@ async function main() {
           {
             seasonId: season.id,
             roundNo: 1,
+            leg: 2,
             homeTeamId: teamRecords[1].id,
             awayTeamId: teamRecords[0].id,
             stadiumId: null,

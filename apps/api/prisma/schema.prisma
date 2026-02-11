@@ -6,6 +6,8 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─────────────────────────────── ENUMS ───────────────────────────────
+
 enum TeamStatus {
   ACTIVE
   INACTIVE
@@ -18,16 +20,30 @@ enum PlayerPosition {
   FW
 }
 
+enum PlayerType {
+  DOMESTIC
+  FOREIGN
+}
+
 enum MatchStatus {
   DRAFT
   PUBLISHED
   LOCKED
+  FINISHED
+  POSTPONED
 }
 
 enum SeasonStatus {
   UPCOMING
   IN_PROGRESS
   COMPLETED
+}
+
+enum SeasonTeamStatus {
+  REGISTERED
+  APPROVED
+  REJECTED
+  WITHDRAWN
 }
 
 enum EventType {
@@ -50,6 +66,20 @@ enum OtpType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
 }
+
+// ─────────────────────── 1) ROLES ────────────────────────
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+// ─────────────────────── 2) USERS ────────────────────────
 
 model User {
   id            String    @id @default(uuid())
@@ -75,21 +105,7 @@ model User {
   @@map("users")
 }
 
-model OtpCode {
-  id        String   @id @default(uuid())
-  code      String
-  type      OtpType
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  usedAt    DateTime? @map("used_at")
-  expiresAt DateTime  @map("expires_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-
-  @@index([userId])
-  @@index([code, type])
-  @@map("otp_codes")
-}
+// ─────────────────────── 3) REFRESH_TOKENS ───────────────
 
 model RefreshToken {
   id        String    @id @default(uuid())
@@ -111,25 +127,30 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-model Season {
-  id        String       @id @default(uuid())
-  name      String       @unique
-  year      Int
-  status    SeasonStatus @default(UPCOMING)
-  startDate DateTime?    @map("start_date")
-  endDate   DateTime?    @map("end_date")
+// ─────────────────────── 4) OTP_CODES ────────────────────
 
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+model OtpCode {
+  id        String   @id @default(uuid())
+  code      String
+  type      OtpType
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  matches   Match[]
+  usedAt    DateTime? @map("used_at")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  @@map("seasons")
+  @@index([userId])
+  @@index([code, type])
+  @@map("otp_codes")
 }
+
+// ─────────────────────── 5) STADIUMS ─────────────────────
 
 model Stadium {
   id        String   @id @default(uuid())
   name      String   @unique
+  address   String?
   city      String
   capacity  Int?
 
@@ -142,9 +163,14 @@ model Stadium {
   @@map("stadiums")
 }
 
+// ─────────────────────── 6) TEAMS ────────────────────────
+
 model Team {
   id         String     @id @default(uuid())
   name       String     @unique
+  shortName  String?    @map("short_name")
+  logoUrl    String?    @map("logo_url")
+  city       String?
   status     TeamStatus @default(ACTIVE)
   stadiumId  String?    @map("stadium_id")
   stadium    Stadium?   @relation(fields: [stadiumId], references: [id])
@@ -152,13 +178,38 @@ model Team {
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
-  homeMatches  Match[]      @relation("HomeTeam")
-  awayMatches  Match[]      @relation("AwayTeam")
+  homeMatches  Match[]       @relation("HomeTeam")
+  awayMatches  Match[]       @relation("AwayTeam")
   teamPlayers  TeamPlayer[]
   matchEvents  MatchEvent[]
+  seasonTeams  SeasonTeam[]
+  standings    Standing[]
 
   @@map("teams")
 }
+
+// ─────────────────────── 7) SEASONS ──────────────────────
+
+model Season {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  year      Int
+  status    SeasonStatus @default(UPCOMING)
+  startDate DateTime?    @map("start_date")
+  endDate   DateTime?    @map("end_date")
+
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  matches     Match[]
+  regulations Regulation[]
+  seasonTeams SeasonTeam[]
+  standings   Standing[]
+
+  @@map("seasons")
+}
+
+// ─────────────────────── 8) PLAYERS ──────────────────────
 
 model Player {
   id          String         @id @default(uuid())
@@ -166,32 +217,40 @@ model Player {
   dob         DateTime
   nationality String
   position    PlayerPosition
+  playerType  PlayerType     @default(DOMESTIC) @map("player_type")
+  birthPlace  String?        @map("birth_place")
+  heightCm    Int?           @map("height_cm")
+  weightKg    Int?           @map("weight_kg")
 
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  teamPlayers TeamPlayer[]
-  matchEvents MatchEvent[]
+  teamPlayers       TeamPlayer[]
+  matchEvents       MatchEvent[] @relation("MainPlayer")
+  relatedEvents     MatchEvent[] @relation("RelatedPlayer")
 
   @@index([fullName])
   @@index([nationality])
   @@index([position])
+  @@index([playerType])
   @@map("players")
 }
 
+// ─────────────────────── 9) TEAM_PLAYERS ─────────────────
+
 model TeamPlayer {
-  id        String   @id @default(uuid())
-  teamId    String   @map("team_id")
-  playerId  String   @map("player_id")
-  jerseyNumber  Int?     @map("jersey_number")
-  joinedAt  DateTime @default(now()) @map("joined_at")
-  leftAt    DateTime? @map("left_at")
+  id           String    @id @default(uuid())
+  teamId       String    @map("team_id")
+  playerId     String    @map("player_id")
+  jerseyNumber Int?      @map("jersey_number")
+  joinedAt     DateTime  @default(now()) @map("joined_at")
+  leftAt       DateTime? @map("left_at")
 
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team         Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  player       Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@unique([teamId, playerId, joinedAt])
   @@index([teamId])
@@ -199,10 +258,34 @@ model TeamPlayer {
   @@map("team_players")
 }
 
+// ─────────────────────── 10) SEASON_TEAMS ────────────────
+
+model SeasonTeam {
+  id           String           @id @default(uuid())
+  seasonId     String           @map("season_id")
+  season       Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId       String           @map("team_id")
+  team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  status       SeasonTeamStatus @default(REGISTERED)
+  registeredAt DateTime         @default(now()) @map("registered_at")
+  approvedAt   DateTime?        @map("approved_at")
+
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId])
+  @@index([teamId])
+  @@map("season_teams")
+}
+
+// ─────────────────────── 11) MATCHES ─────────────────────
+
 model Match {
   id         String      @id @default(uuid())
 
   roundNo    Int         @map("round_no")
+  leg        Int         @default(1)
   seasonId   String?     @map("season_id")
   season     Season?     @relation(fields: [seasonId], references: [id])
 
@@ -231,41 +314,81 @@ model Match {
   @@index([homeTeamId])
   @@index([awayTeamId])
   @@index([seasonId])
+  @@index([seasonId, roundNo])
   @@map("matches")
 }
 
+// ─────────────────────── 12) MATCH_EVENTS ────────────────
+
 model MatchEvent {
-  id        String    @id @default(uuid())
-  matchId   String    @map("match_id")
-  match     Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  matchId         String    @map("match_id")
+  match           Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
-  minute    Int
-  type      EventType
+  minute          Int
+  type            EventType
+  goalType        String?   @map("goal_type")
 
-  playerId  String?   @map("player_id")
-  player    Player?   @relation(fields: [playerId], references: [id])
+  playerId        String?   @map("player_id")
+  player          Player?   @relation("MainPlayer", fields: [playerId], references: [id])
 
-  teamId    String?   @map("team_id")
-  team      Team?     @relation(fields: [teamId], references: [id])
+  relatedPlayerId String?   @map("related_player_id")
+  relatedPlayer   Player?   @relation("RelatedPlayer", fields: [relatedPlayerId], references: [id])
 
-  note      String?
+  teamId          String?   @map("team_id")
+  team            Team?     @relation(fields: [teamId], references: [id])
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  note            String?
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@index([matchId])
   @@index([playerId])
   @@index([teamId])
+  @@index([type])
   @@map("match_events")
 }
 
-model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+// ─────────────────────── 13) REGULATIONS ─────────────────
 
-  @@map("roles")
+model Regulation {
+  id        String   @id @default(uuid())
+  seasonId  String   @map("season_id")
+  season    Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  valueType String   @map("value_type")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, key])
+  @@index([seasonId])
+  @@map("regulations")
 }
 
+// ─────────────────────── 14) STANDINGS ───────────────────
+
+model Standing {
+  id           String   @id @default(uuid())
+  seasonId     String   @map("season_id")
+  season       Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId       String   @map("team_id")
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  played       Int      @default(0)
+  win          Int      @default(0)
+  draw         Int      @default(0)
+  loss         Int      @default(0)
+  goalsFor     Int      @default(0) @map("goals_for")
+  goalsAgainst Int      @default(0) @map("goals_against")
+  goalDiff     Int      @default(0) @map("goal_diff")
+  points       Int      @default(0)
+  rank         Int?
+
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId])
+  @@map("standings")
+}
