@@ -70,11 +70,13 @@ enum OtpType {
 // ─────────────────────── 1) ROLES ────────────────────────
 
 model Role {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @db.Uuid
   name        String   @unique
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
 
   @@map("roles")
 }
@@ -82,10 +84,12 @@ model Role {
 // ─────────────────────── 2) USERS ────────────────────────
 
 model User {
-  id            String    @id @default(uuid())
+  id            String    @id @default(uuid()) @db.Uuid
   email         String    @unique
   passwordHash  String?   @map("password_hash")
   role          UserRole  @default(PUBLIC)
+  roleId        String?   @map("role_id") @db.Uuid
+  roleRef       Role?     @relation(fields: [roleId], references: [id])
   emailVerified Boolean   @default(false) @map("email_verified")
 
   // Profile fields
@@ -102,15 +106,16 @@ model User {
   refreshTokens RefreshToken[]
   otpCodes      OtpCode[]
 
+  @@index([roleId])
   @@map("users")
 }
 
 // ─────────────────────── 3) REFRESH_TOKENS ───────────────
 
 model RefreshToken {
-  id        String    @id @default(uuid())
+  id        String    @id @default(uuid()) @db.Uuid
   tokenHash String    @unique @map("token_hash")
-  userId    String    @map("user_id")
+  userId    String    @map("user_id") @db.Uuid
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Session info
@@ -130,10 +135,10 @@ model RefreshToken {
 // ─────────────────────── 4) OTP_CODES ────────────────────
 
 model OtpCode {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   code      String
   type      OtpType
-  userId    String   @map("user_id")
+  userId    String   @map("user_id") @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   usedAt    DateTime? @map("used_at")
@@ -148,7 +153,7 @@ model OtpCode {
 // ─────────────────────── 5) STADIUMS ─────────────────────
 
 model Stadium {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   name      String   @unique
   address   String?
   city      String
@@ -166,13 +171,13 @@ model Stadium {
 // ─────────────────────── 6) TEAMS ────────────────────────
 
 model Team {
-  id         String     @id @default(uuid())
+  id         String     @id @default(uuid()) @db.Uuid
   name       String     @unique
   shortName  String?    @map("short_name")
   logoUrl    String?    @map("logo_url")
   city       String?
   status     TeamStatus @default(ACTIVE)
-  stadiumId  String?    @map("stadium_id")
+  stadiumId  String?    @map("stadium_id") @db.Uuid
   stadium    Stadium?   @relation(fields: [stadiumId], references: [id])
 
   createdAt  DateTime   @default(now()) @map("created_at")
@@ -191,7 +196,7 @@ model Team {
 // ─────────────────────── 7) SEASONS ──────────────────────
 
 model Season {
-  id        String       @id @default(uuid())
+  id        String       @id @default(uuid()) @db.Uuid
   name      String       @unique
   year      Int
   status    SeasonStatus @default(UPCOMING)
@@ -212,7 +217,7 @@ model Season {
 // ─────────────────────── 8) PLAYERS ──────────────────────
 
 model Player {
-  id          String         @id @default(uuid())
+  id          String         @id @default(uuid()) @db.Uuid
   fullName    String         @map("full_name")
   dob         DateTime
   nationality String
@@ -239,9 +244,9 @@ model Player {
 // ─────────────────────── 9) TEAM_PLAYERS ─────────────────
 
 model TeamPlayer {
-  id           String    @id @default(uuid())
-  teamId       String    @map("team_id")
-  playerId     String    @map("player_id")
+  id           String    @id @default(uuid()) @db.Uuid
+  teamId       String    @map("team_id") @db.Uuid
+  playerId     String    @map("player_id") @db.Uuid
   jerseyNumber Int?      @map("jersey_number")
   joinedAt     DateTime  @default(now()) @map("joined_at")
   leftAt       DateTime? @map("left_at")
@@ -261,10 +266,10 @@ model TeamPlayer {
 // ─────────────────────── 10) SEASON_TEAMS ────────────────
 
 model SeasonTeam {
-  id           String           @id @default(uuid())
-  seasonId     String           @map("season_id")
+  id           String           @id @default(uuid()) @db.Uuid
+  seasonId     String           @map("season_id") @db.Uuid
   season       Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  teamId       String           @map("team_id")
+  teamId       String           @map("team_id") @db.Uuid
   team         Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
   status       SeasonTeamStatus @default(REGISTERED)
   registeredAt DateTime         @default(now()) @map("registered_at")
@@ -282,22 +287,22 @@ model SeasonTeam {
 // ─────────────────────── 11) MATCHES ─────────────────────
 
 model Match {
-  id         String      @id @default(uuid())
+  id         String      @id @default(uuid()) @db.Uuid
 
   roundNo    Int         @map("round_no")
   leg        Int         @default(1)
-  seasonId   String?     @map("season_id")
+  seasonId   String?     @map("season_id") @db.Uuid
   season     Season?     @relation(fields: [seasonId], references: [id])
 
-  homeTeamId String      @map("home_team_id")
-  awayTeamId String      @map("away_team_id")
+  homeTeamId String      @map("home_team_id") @db.Uuid
+  awayTeamId String      @map("away_team_id") @db.Uuid
   homeTeam   Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam   Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
 
   homeScore  Int?        @map("home_score")
   awayScore  Int?        @map("away_score")
 
-  stadiumId  String?     @map("stadium_id")
+  stadiumId  String?     @map("stadium_id") @db.Uuid
   stadium    Stadium?    @relation(fields: [stadiumId], references: [id])
   kickoffAt  DateTime?   @map("kickoff_at")
 
@@ -321,21 +326,21 @@ model Match {
 // ─────────────────────── 12) MATCH_EVENTS ────────────────
 
 model MatchEvent {
-  id              String    @id @default(uuid())
-  matchId         String    @map("match_id")
+  id              String    @id @default(uuid()) @db.Uuid
+  matchId         String    @map("match_id") @db.Uuid
   match           Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   minute          Int
   type            EventType
   goalType        String?   @map("goal_type")
 
-  playerId        String?   @map("player_id")
+  playerId        String?   @map("player_id") @db.Uuid
   player          Player?   @relation("MainPlayer", fields: [playerId], references: [id])
 
-  relatedPlayerId String?   @map("related_player_id")
+  relatedPlayerId String?   @map("related_player_id") @db.Uuid
   relatedPlayer   Player?   @relation("RelatedPlayer", fields: [relatedPlayerId], references: [id])
 
-  teamId          String?   @map("team_id")
+  teamId          String?   @map("team_id") @db.Uuid
   team            Team?     @relation(fields: [teamId], references: [id])
 
   note            String?
@@ -353,8 +358,8 @@ model MatchEvent {
 // ─────────────────────── 13) REGULATIONS ─────────────────
 
 model Regulation {
-  id        String   @id @default(uuid())
-  seasonId  String   @map("season_id")
+  id        String   @id @default(uuid()) @db.Uuid
+  seasonId  String   @map("season_id") @db.Uuid
   season    Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   key       String
   value     String
@@ -371,10 +376,10 @@ model Regulation {
 // ─────────────────────── 14) STANDINGS ───────────────────
 
 model Standing {
-  id           String   @id @default(uuid())
-  seasonId     String   @map("season_id")
+  id           String   @id @default(uuid()) @db.Uuid
+  seasonId     String   @map("season_id") @db.Uuid
   season       Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  teamId       String   @map("team_id")
+  teamId       String   @map("team_id") @db.Uuid
   team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   played       Int      @default(0)
   win          Int      @default(0)
