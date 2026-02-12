@@ -33,6 +33,30 @@ The system supports two complementary role mechanisms:
 | `SUPERVISOR`   | Giám sát viên    | Xem báo cáo và thống kê             |
 | `PUBLIC`       | Công khai        | Xem thông tin (không cần đăng nhập) |
 
+### Complete Auth API Endpoints
+
+| Method   | Endpoint                      | Auth     | Description                   |
+| -------- | ----------------------------- | -------- | ----------------------------- |
+| `POST`   | `/api/auth/register`          | Public   | Register new account          |
+| `POST`   | `/api/auth/verify-email`      | Public   | Verify email with OTP         |
+| `POST`   | `/api/auth/resend-otp`        | Public   | Resend verification OTP       |
+| `POST`   | `/api/auth/forgot-password`   | Public   | Request password reset OTP    |
+| `POST`   | `/api/auth/reset-password`    | Public   | Reset password with OTP       |
+| `POST`   | `/api/auth/login`             | Public   | Login with email/password     |
+| `POST`   | `/api/auth/refresh`           | Public   | Refresh access token          |
+| `POST`   | `/api/auth/logout`            | Public   | Logout (revoke refresh token) |
+| `GET`    | `/api/auth/me`                | JWT      | Get current user profile      |
+| `POST`   | `/api/auth/change-password`   | JWT      | Change password               |
+| `POST`   | `/api/auth/logout-all`        | JWT      | Revoke all sessions           |
+| `PATCH`  | `/api/auth/profile`           | JWT      | Update name/avatar            |
+| `GET`    | `/api/auth/sessions`          | JWT      | List active sessions          |
+| `DELETE` | `/api/auth/sessions/:id`      | JWT      | Revoke specific session       |
+| `POST`   | `/api/auth/set-password`      | JWT      | Set password (OAuth users)    |
+| `GET`    | `/api/auth/google`            | Redirect | Start Google OAuth flow       |
+| `GET`    | `/api/auth/google/callback`   | Redirect | Google OAuth callback         |
+| `GET`    | `/api/auth/facebook`          | Redirect | Start Facebook OAuth flow     |
+| `GET`    | `/api/auth/facebook/callback` | Redirect | Facebook OAuth callback       |
+
 ## JWT Token Strategy
 
 ### Access & Refresh Token Pattern
@@ -524,13 +548,72 @@ The project supports session management with multiple device tracking.
 
 ### API Endpoints
 
-| Method   | Endpoint                | Description             |
-| -------- | ----------------------- | ----------------------- |
-| `GET`    | `/auth/sessions`        | Get all active sessions |
-| `DELETE` | `/auth/sessions/:id`    | Revoke specific session |
-| `POST`   | `/auth/logout-all`      | Logout from all devices |
-| `POST`   | `/auth/change-password` | Change password         |
-| `PATCH`  | `/auth/profile`         | Update profile          |
+| Method   | Endpoint                    | Description                |
+| -------- | --------------------------- | -------------------------- |
+| `GET`    | `/api/auth/sessions`        | Get all active sessions    |
+| `DELETE` | `/api/auth/sessions/:id`    | Revoke specific session    |
+| `POST`   | `/api/auth/logout-all`      | Logout from all devices    |
+| `POST`   | `/api/auth/change-password` | Change password            |
+| `PATCH`  | `/api/auth/profile`         | Update profile             |
+| `POST`   | `/api/auth/set-password`    | Set password (OAuth users) |
+
+## Frontend Auth Flow
+
+The frontend authentication is managed through these key files:
+
+### Auth Architecture
+
+| File                       | Purpose                                               |
+| -------------------------- | ----------------------------------------------------- |
+| `src/auth/AuthContext.tsx` | Auth state management (login, logout, token handling) |
+| `src/auth/auth.types.ts`   | TypeScript types (User, AuthState, AuthContextValue)  |
+| `src/auth/RequireAuth.tsx` | Route guard for authenticated routes                  |
+| `src/auth/RequireRole.tsx` | Route guard for role-based access                     |
+| `src/lib/api.ts`           | Axios instance with token refresh interceptor         |
+| `src/services/authApi.ts`  | All auth API call functions (16 functions)            |
+
+### Token Storage Strategy
+
+```
+Access Token:  in-memory only (never localStorage) → security best practice
+Refresh Token: localStorage → persists across page reloads
+```
+
+### Auto Token Refresh Flow (Axios Interceptor)
+
+```
+1. Request fails with 401
+2. Check if refresh token exists in localStorage
+3. If refreshing already → queue request
+4. Call POST /api/auth/refresh
+5. On success → update access token, flush queue, retry original request
+6. On failure → clear tokens, dispatch 'auth:expired' event → redirect to login
+```
+
+### AuthContext (`useAuth` hook)
+
+```typescript
+const { user, isAuthed, login, logout, applyOAuthTokens } = useAuth();
+
+// Login flow: calls API → stores tokens → sets user state
+await login(email, password, rememberMe);
+
+// OAuth flow: receives tokens from callback → decodes JWT → sets user
+applyOAuthTokens(accessToken, refreshToken);
+
+// Logout: calls API → clears all tokens and state
+await logout();
+```
+
+### Session Restoration on Page Reload
+
+```
+1. AuthProvider checks localStorage for refresh token
+2. If found → calls POST /api/auth/refresh
+3. Decodes new access token JWT payload → extracts user info
+4. Sets auth state (user, accessToken, isAuthed)
+5. If no refresh token or refresh fails → redirects to login
+```
 
 ## Complete Auth Flow Diagram
 

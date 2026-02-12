@@ -9,61 +9,80 @@ This skill covers logging, monitoring, caching, and performance optimization for
 
 ## Structured Logging
 
-### NestJS Logger Configuration
+### Actual Logging Setup — `nestjs-pino`
+
+The project uses **`nestjs-pino`** (Pino) for structured JSON logging, configured in `src/common/logger/logger.module.ts`:
 
 ```typescript
-// main.ts
-import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-  });
-
-  const logger = new Logger('Bootstrap');
-  logger.log(`Application running on port ${process.env.PORT || 8080}`);
-
-  await app.listen(process.env.PORT || 8080);
-}
+// main.ts — uses Pino Logger globally
+const app = await NestFactory.create(AppModule, { bufferLogs: true });
+const logger = app.get(Logger); // from 'nestjs-pino'
+app.useLogger(logger);
 ```
 
-### Custom Logger Service
+### LoggerModule Configuration
 
 ```typescript
-// common/logger/custom-logger.service.ts
-import { LoggerService, Injectable } from '@nestjs/common';
+// src/common/logger/logger.module.ts
+PinoLoggerModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => {
+    const isProduction = configService.get('NODE_ENV') === 'production';
+    return {
+      pinoHttp: {
+        // Auto-assign request ID from header or generate UUID
+        genReqId: (req) => req.headers['x-request-id'] || crypto.randomUUID(),
 
-@Injectable()
-export class CustomLoggerService implements LoggerService {
-  private formatMessage(level: string, message: string, context?: string) {
-    const timestamp = new Date().toISOString();
-    return JSON.stringify({
-      timestamp,
-      level,
-      context: context || 'Application',
-      message,
-    });
-  }
+        // Custom log level based on status code
+        customLogLevel: (_req, res, err) => {
+          if (res.statusCode >= 500 || err) return 'error';
+          if (res.statusCode >= 400) return 'warn';
+          return 'info';
+        },
 
-  log(message: string, context?: string) {
-    console.log(this.formatMessage('INFO', message, context));
-  }
+        // Disable auto-logging (use LoggingInterceptor instead)
+        autoLogging: false,
 
-  error(message: string, trace?: string, context?: string) {
-    console.error(this.formatMessage('ERROR', message, context));
-    if (trace) console.error(trace);
-  }
+        // Redact sensitive data
+        redact: {
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.body.password',
+            'req.body.confirmPassword',
+          ],
+          censor: '***REDACTED***',
+        },
 
-  warn(message: string, context?: string) {
-    console.warn(this.formatMessage('WARN', message, context));
-  }
-
-  debug(message: string, context?: string) {
-    console.debug(this.formatMessage('DEBUG', message, context));
-  }
-}
+        // Dev: pino-pretty with colors  |  Prod: JSON logs
+        transport: isProduction
+          ? undefined
+          : {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'SYS:HH:mm:ss',
+                ignore: 'pid,hostname',
+                messageFormat: '{if context}[{context}]{end} {msg}',
+                customColors: 'error:red,warn:yellow,info:green,debug:blue,trace:gray',
+              },
+            },
+        level: isProduction ? 'info' : 'debug',
+      },
+    };
+  },
+});
 ```
+
+### Key Features
+
+| Feature                  | Description                                 |
+| ------------------------ | ------------------------------------------- |
+| Request ID               | Auto-generated UUID per request for tracing |
+| Sensitive Data Redaction | Auth headers, cookies, passwords masked     |
+| Custom Log Levels        | 5xx → error, 4xx → warn, 2xx/3xx → info     |
+| Dev Mode                 | pino-pretty with colors and readable output |
+| Production               | Raw JSON for log aggregation tools          |
 
 ### Using Logger in Services
 
