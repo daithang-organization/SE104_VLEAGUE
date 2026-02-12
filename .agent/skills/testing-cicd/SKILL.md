@@ -145,6 +145,7 @@ describe('AuthService', () => {
     email: 'test@example.com',
     passwordHash: 'hashed-password',
     role: 'USER',
+    roleId: null, // Required: UUID FK to roles table
     emailVerified: true,
   };
 
@@ -330,11 +331,11 @@ module.exports = {
 
 The project has multiple CI/CD workflows in `.github/workflows/`:
 
-| Workflow | File | Purpose |
-|----------|------|---------|
-| CI | `ci.yml` | Main CI pipeline (lint, test, build) |
+| Workflow   | File             | Purpose                                    |
+| ---------- | ---------------- | ------------------------------------------ |
+| CI         | `ci.yml`         | Main CI pipeline (lint, test, build)       |
 | PR Labeler | `pr-labeler.yml` | Auto-label PRs based on title, files, size |
-| CodeQL | `codeql.yml` | Security analysis for JS/TS |
+| CodeQL     | `codeql.yml`     | Security analysis for JS/TS                |
 
 ### CI Pipeline Features
 
@@ -397,10 +398,10 @@ pnpm audit --audit-level high
 
 CI uses these environment variables:
 
-| Variable | Purpose |
-|----------|---------|
-| `NODE_VERSION` | Node.js version (20) |
-| `STORE_PATH` | pnpm store directory for caching |
+| Variable       | Purpose                          |
+| -------------- | -------------------------------- |
+| `NODE_VERSION` | Node.js version (20)             |
+| `STORE_PATH`   | pnpm store directory for caching |
 
 ### Dependabot Configuration
 
@@ -453,6 +454,7 @@ All PRs to `main` must follow Conventional Commits format:
 ```
 
 **Allowed types**:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `chore`: Maintenance tasks
@@ -462,6 +464,7 @@ All PRs to `main` must follow Conventional Commits format:
 - `ci`: CI/CD changes
 
 **Examples**:
+
 - ✅ `feat: add team registration endpoint`
 - ✅ `fix: resolve match scheduling conflict`
 - ✅ `chore: update dependencies`
@@ -493,6 +496,7 @@ The CI pipeline includes a PR title check that validates the format using a GitH
 ### Standard Workflow
 
 1. **Create Feature Branch**:
+
    ```bash
    git checkout -b feat/add-player-management
    ```
@@ -503,21 +507,25 @@ The CI pipeline includes a PR title check that validates the format using a GitH
    - Run tests locally
 
 3. **Lint and Format**:
+
    ```bash
    pnpm lint
    pnpm format
    ```
 
 4. **Commit Changes**:
+
    ```bash
    git add .
    git commit -m "feat: add player management endpoints"
    ```
 
 5. **Push and Create PR**:
+
    ```bash
    git push origin feat/add-player-management
    ```
+
    - Create PR with Conventional Commits title
    - Wait for CI to pass
    - Request review
@@ -559,6 +567,7 @@ Before pushing code, ensure:
 **Cause**: Prisma Client not generated
 
 **Solution**: The `postinstall` script should handle this, but if it fails:
+
 ```yaml
 - name: Generate Prisma Client
   working-directory: apps/api
@@ -568,11 +577,13 @@ Before pushing code, ensure:
 ### Tests Fail in CI but Pass Locally
 
 **Causes**:
+
 1. Missing environment variables
 2. Database connection issues
 3. Different Node.js versions
 
 **Solutions**:
+
 1. Check `DATABASE_URL` is set in workflow
 2. Verify PostgreSQL service is running
 3. Match Node.js version (20.x) in workflow
@@ -582,6 +593,7 @@ Before pushing code, ensure:
 **Cause**: Code doesn't follow ESLint rules
 
 **Solution**:
+
 ```bash
 cd apps/api  # or apps/web
 pnpm lint    # Shows errors
@@ -594,6 +606,7 @@ Fix manually or use auto-fix where possible.
 **Cause**: PR title doesn't follow Conventional Commits
 
 **Solution**: Edit PR title to match format:
+
 ```
 feat: description
 ```
@@ -643,6 +656,7 @@ After successful CI runs, the following artifacts are produced:
 ### CI Status Badge
 
 Add to README.md:
+
 ```markdown
 ![CI](https://github.com/username/SE104_VLEAGUE/workflows/CI/badge.svg)
 ```
@@ -650,6 +664,7 @@ Add to README.md:
 ## Future CI/CD Enhancements
 
 Potential additions:
+
 - [ ] Automated deployment to staging
 - [ ] E2E tests with Playwright/Cypress
 - [ ] Performance testing

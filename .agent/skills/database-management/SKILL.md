@@ -15,27 +15,40 @@ This skill covers all aspects of database management in the SE104_VLEAGUE projec
 - **Migrations**: `apps/api/prisma/migrations/`
 - **Connection**: PostgreSQL adapter (@prisma/adapter-pg)
 
-## Current Database Schema
+## Current Database Schema (14 Tables)
 
-The database includes the following main entities:
+All primary keys (PK) and foreign keys (FK) use native PostgreSQL `UUID` type (`@db.Uuid` in Prisma).
 
-### Teams
+### Enums (9)
 
-- **Table**: `teams`
-- **Fields**: id (UUID), name (unique), status (ACTIVE/INACTIVE), timestamps
-- **Purpose**: Store football team information
+`TeamStatus`, `PlayerPosition`, `PlayerType`, `MatchStatus`, `SeasonStatus`, `SeasonTeamStatus`, `EventType`, `UserRole`, `OtpType`
 
-### Players
+### Tables
 
-- **Table**: `players`
-- **Fields**: id (UUID), fullName, dob, nationality, position (GK/DF/MF/FW), timestamps
-- **Purpose**: Store player information
+| #   | Table            | Key Columns                                                                                                          | Notes                         |
+| --- | ---------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1   | `roles`          | id, name (unique), description                                                                                       | RBAC roles                    |
+| 2   | `users`          | id, email, role (enum), roleId (FK→roles), passwordHash, emailVerified                                               | Dual auth: enum + FK          |
+| 3   | `refresh_tokens` | id, tokenHash, userId (FK→users), expiresAt, revokedAt                                                               | Session management            |
+| 4   | `otp_codes`      | id, code, type, userId (FK→users), expiresAt                                                                         | Email verify + password reset |
+| 5   | `stadiums`       | id, name (unique), address, city, capacity                                                                           | Venues                        |
+| 6   | `teams`          | id, name (unique), shortName, logoUrl, city, status, stadiumId (FK→stadiums)                                         | Clubs                         |
+| 7   | `seasons`        | id, name (unique), year, status, startDate, endDate                                                                  | League seasons                |
+| 8   | `players`        | id, fullName, dob, nationality, position, playerType, birthPlace, heightCm, weightKg                                 | Players                       |
+| 9   | `team_players`   | id, teamId (FK), playerId (FK), jerseyNumber, joinedAt, leftAt                                                       | Roster join-table             |
+| 10  | `season_teams`   | id, seasonId (FK), teamId (FK), status, registeredAt, approvedAt                                                     | Season registration           |
+| 11  | `matches`        | id, roundNo, leg, seasonId (FK), homeTeamId/awayTeamId (FK), stadiumId (FK), kickoffAt, status, homeScore, awayScore | Match scheduling              |
+| 12  | `match_events`   | id, matchId (FK), minute, type, goalType, playerId (FK), relatedPlayerId (FK), teamId (FK)                           | In-match events               |
+| 13  | `regulations`    | id, seasonId (FK), key, value, valueType                                                                             | Season config params          |
+| 14  | `standings`      | id, seasonId (FK), teamId (FK), played, win, draw, loss, goalsFor, goalsAgainst, goalDiff, points, rank              | League table                  |
 
-### Matches
+### Key Constraints
 
-- **Table**: `matches`
-- **Fields**: id (UUID), roundNo, homeTeamId, awayTeamId, stadiumId, kickoffAt, status (DRAFT/PUBLISHED/LOCKED), timestamps
-- **Purpose**: Store match information and scheduling
+- `team_players`: `@@unique([teamId, playerId, joinedAt])`
+- `season_teams`: `@@unique([seasonId, teamId])`
+- `regulations`: `@@unique([seasonId, key])`
+- `standings`: `@@unique([seasonId, teamId])`
+- `matches`: `@@index([seasonId, roundNo])`
 
 ## Schema Development Workflow
 
@@ -45,7 +58,7 @@ Edit `apps/api/prisma/schema.prisma`:
 
 ```prisma
 model NewEntity {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   fieldName String   @map("field_name")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -92,7 +105,7 @@ pnpm dlx prisma migrate dev --name changes
 
 ```prisma
 model Team {
-  id        String     @id @default(uuid())
+  id        String     @id @default(uuid()) @db.Uuid
   name      String     @unique
   status    TeamStatus @default(ACTIVE)
 
@@ -125,7 +138,7 @@ enum MatchStatus {
 
 ```prisma
 model Team {
-  id      String   @id @default(uuid())
+  id      String   @id @default(uuid()) @db.Uuid
   name    String   @unique
 
   // Add relation
@@ -135,11 +148,11 @@ model Team {
 }
 
 model Player {
-  id       String @id @default(uuid())
+  id       String @id @default(uuid()) @db.Uuid
   fullName String @map("full_name")
 
   // Add foreign key
-  teamId   String? @map("team_id")
+  teamId   String? @map("team_id") @db.Uuid
   team     Team?   @relation(fields: [teamId], references: [id])
 
   @@map("players")
@@ -150,13 +163,15 @@ model Player {
 
 ```prisma
 model Match {
-  id         String      @id @default(uuid())
+  id         String      @id @default(uuid()) @db.Uuid
   roundNo    Int         @map("round_no")
+  seasonId   String?     @map("season_id") @db.Uuid
   kickoffAt  DateTime?   @map("kickoff_at")
 
-  // Add index for better query performance
+  // Add indexes for better query performance
   @@index([roundNo])
   @@index([kickoffAt])
+  @@index([seasonId, roundNo])  // Composite index
   @@map("matches")
 }
 ```
@@ -171,9 +186,12 @@ model Match {
 
 The seed script creates:
 
-- 2 example teams (Hoang Anh Gia Lai, Cong An Ha Noi)
-- 2 example players
-- 1 example draft match
+- **5 roles**: ADMIN, TEAM_MANAGER, REFEREE, SUPERVISOR, PUBLIC
+- **3 demo users**: admin, referee, viewer — each linked to its role via `roleId` FK
+- **Default regulations**: min/max player age, max foreign players, scoring rules
+
+> [!IMPORTANT]
+> When adding new seeded users, always find the matching `Role` record and set `roleId` to ensure the RBAC FK relationship is populated.
 
 ### Running Seeds
 
@@ -466,7 +484,7 @@ docker exec -i vleague-postgres pg_restore -U postgres -d vleague < backup.dump
 
 ```prisma
 model Team {
-  id        String    @id @default(uuid())
+  id        String    @id @default(uuid()) @db.Uuid
   name      String    @unique
   status    TeamStatus @default(ACTIVE)
 
@@ -544,9 +562,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
 ```prisma
 model Match {
-  id         String      @id @default(uuid())
+  id         String      @id @default(uuid()) @db.Uuid
   roundNo    Int         @map("round_no")
-  seasonId   String      @map("season_id")
+  seasonId   String?     @map("season_id") @db.Uuid
   kickoffAt  DateTime?   @map("kickoff_at")
   status     MatchStatus @default(DRAFT)
 

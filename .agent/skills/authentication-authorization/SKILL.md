@@ -18,7 +18,12 @@ The project uses:
 - **OTP**: Email verification and password reset
 - **Rate Limiting**: Throttle on sensitive endpoints
 
-### User Roles
+### User Roles (Dual RBAC)
+
+The system supports two complementary role mechanisms:
+
+1. **`role` enum** on `users` — fast in-memory checks via JWT payload
+2. **`roleId` FK** → `roles` table — extensible RBAC for future permission matrix
 
 | Role           | Description      | Permissions                         |
 | -------------- | ---------------- | ----------------------------------- |
@@ -339,11 +344,23 @@ enum UserRole {
   PUBLIC
 }
 
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  users       User[]
+  @@map("roles")
+}
+
 model User {
-  id            String    @id @default(uuid())
+  id            String    @id @default(uuid()) @db.Uuid
   email         String    @unique
   passwordHash  String?   @map("password_hash")
-  role          UserRole  @default(PUBLIC)
+  role          UserRole  @default(PUBLIC)          // Enum for fast JWT checks
+  roleId        String?   @map("role_id") @db.Uuid  // FK for extensible RBAC
+  roleRef       Role?     @relation(fields: [roleId], references: [id])
   emailVerified Boolean   @default(false) @map("email_verified")
   name          String?
   avatarUrl     String?   @map("avatar_url")
@@ -356,9 +373,13 @@ model User {
   refreshTokens RefreshToken[]
   otpCodes      OtpCode[]
 
+  @@index([roleId])
   @@map("users")
 }
 ```
+
+> [!NOTE]
+> When seeding users, always find the matching `Role` record and assign its `id` to `roleId` to keep both mechanisms in sync.
 
 ### Role Decorator and Guard
 
