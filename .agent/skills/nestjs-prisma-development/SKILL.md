@@ -154,7 +154,7 @@ export class ModuleNameService {
 
 ```prisma
 model EntityName {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.Uuid
   fieldName String   @map("field_name")
 
   status    EnumType @default(VALUE)
@@ -165,6 +165,9 @@ model EntityName {
   @@map("table_name")
 }
 ```
+
+> [!IMPORTANT]
+> All PK and FK columns must use `@db.Uuid` for native PostgreSQL UUID type. This provides better performance and data integrity compared to `TEXT`.
 
 ### Enum Definition
 
@@ -179,7 +182,7 @@ enum EnumName {
 
 ```prisma
 model Team {
-  id      String   @id @default(uuid())
+  id      String   @id @default(uuid()) @db.Uuid
   name    String   @unique
   players Player[]
 
@@ -187,8 +190,8 @@ model Team {
 }
 
 model Player {
-  id     String @id @default(uuid())
-  teamId String @map("team_id")
+  id     String @id @default(uuid()) @db.Uuid
+  teamId String @map("team_id") @db.Uuid
   team   Team   @relation(fields: [teamId], references: [id])
 
   @@map("players")
@@ -448,14 +451,36 @@ pnpm format              # Run Prettier
 
 ## Current Modules Reference
 
-- **`auth/`**: Authentication and authorization
-- **`registration/`**: Team and player registration, includes:
+- **`auth/`**: Authentication (JWT, OAuth, OTP, sessions) and authorization (RBAC)
+- **`registration/`**: Team and player registration
   - `teams.controller.ts`: Team management endpoints
   - `players.controller.ts`: Player management endpoints
   - `registration.service.ts`: Shared registration logic
 - **`scheduling/`**: Match scheduling logic
 - **`match/`**: Match management and events
+- **`season/`**: Season management (CRUD, status transitions)
+- **`stadium/`**: Stadium management
+- **`roster/`**: Team roster management (player assignments, jersey numbers)
+- **`standings/`**: League standings computation and caching
+- **`health/`**: Health check endpoint
+- **`mail/`**: Email service (verification OTP, password reset, welcome)
+- **`config/`**: Configuration module
+- **`common/`**: Shared utilities (filters, interceptors, middleware)
 - **`prisma/`**: Database service wrapper
+
+### Database Schema (14 Tables, 9 Enums)
+
+All ID fields use native PostgreSQL `UUID` type. Key tables:
+
+| Table                                     | Purpose                                 |
+| ----------------------------------------- | --------------------------------------- |
+| `roles`, `users`                          | Authentication & RBAC (dual: enum + FK) |
+| `refresh_tokens`, `otp_codes`             | Session & verification                  |
+| `stadiums`, `teams`, `seasons`, `players` | Core domain entities                    |
+| `team_players`, `season_teams`            | Many-to-many join tables                |
+| `matches`, `match_events`                 | Match scheduling & events               |
+| `regulations`                             | Per-season config rules                 |
+| `standings`                               | League table (computed & cached)        |
 
 ## Environment Variables
 
