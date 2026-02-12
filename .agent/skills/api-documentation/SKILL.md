@@ -27,34 +27,42 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // All routes prefixed with /api
+  app.setGlobalPrefix('api');
+
   const config = new DocumentBuilder()
     .setTitle('VLeague API')
-    .setDescription('API documentation for VLeague Management System')
+    .setDescription('V-League Football Management System API')
     .setVersion('1.0')
-    .addBearerAuth({
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-    })
-    .addTag('auth', 'Authentication endpoints')
-    .addTag('teams', 'Team management')
-    .addTag('players', 'Player management')
-    .addTag('matches', 'Match scheduling and results')
-    .addTag('stadiums', 'Stadium management')
-    .addTag('seasons', 'Season management')
-    .addTag('standings', 'League standings')
-    .addTag('regulations', 'Season regulations')
-    .addTag('roster', 'Team roster management')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT access token',
+        in: 'header',
+      },
+      'access-token', // Security scheme name
+    )
+    .addTag('Authentication', 'User authentication endpoints')
+    .addTag('Health', 'Application health check')
+    .addTag('Teams', 'Team management endpoints')
+    .addTag('Players', 'Player management endpoints')
+    .addTag('Matches', 'Match scheduling and management')
+    .addTag('Scheduling', 'Schedule generation and publishing')
+    .addTag('Standings', 'League standings and statistics')
+    .addTag('Season', 'Season management')
+    .addTag('Stadium', 'Stadium management')
+    .addTag('Roster', 'Team roster management')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+  SwaggerModule.setup('docs', app, document);
 
-  await app.listen(8080);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  // Swagger UI available at: http://localhost:{port}/api/docs
 }
 bootstrap();
 ```

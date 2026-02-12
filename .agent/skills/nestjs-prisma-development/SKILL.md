@@ -827,6 +827,70 @@ export class TeamsController {
 
 ## Implemented Modules Reference
 
+### Registration Module (`src/registration/`)
+
+Handles team and player registration.
+
+| Method | Endpoint       | Role                | Description      |
+| ------ | -------------- | ------------------- | ---------------- |
+| `GET`  | `/api/teams`   | ADMIN, TEAM_MANAGER | List all teams   |
+| `GET`  | `/api/players` | Public              | List all players |
+
+> [!NOTE]
+> Teams and Players are registered via separate controllers (`teams.controller.ts`, `players.controller.ts`) but share the same `RegistrationService`.
+
+---
+
+### Match Module (`src/match/`)
+
+Manages match details and match events (goals, cards, substitutions).
+
+| Method | Endpoint                  | Role                         | Description                       |
+| ------ | ------------------------- | ---------------------------- | --------------------------------- |
+| `GET`  | `/api/matches/:id`        | ADMIN, TEAM_MANAGER, REFEREE | Get match details with events     |
+| `POST` | `/api/matches/:id/events` | ADMIN, REFEREE               | Add match event (goal, card, sub) |
+
+**Event types:** `GOAL`, `YELLOW_CARD`, `RED_CARD`, `SUBSTITUTION`
+
+---
+
+### Scheduling Module (`src/scheduling/`)
+
+Handles match schedule generation and publishing.
+
+| Method | Endpoint                 | Role                         | Description                  |
+| ------ | ------------------------ | ---------------------------- | ---------------------------- |
+| `POST` | `/api/schedule/generate` | ADMIN                        | Auto-generate match schedule |
+| `POST` | `/api/schedule/publish`  | ADMIN                        | Publish schedule to public   |
+| `GET`  | `/api/schedule`          | ADMIN, TEAM_MANAGER, REFEREE | Get all scheduled matches    |
+
+---
+
+### Common Module (`src/common/`)
+
+Shared utilities used across all modules:
+
+| Directory       | File                       | Purpose                                        |
+| --------------- | -------------------------- | ---------------------------------------------- |
+| `errors/`       | `app-error.ts`             | Custom `AppError` class with error codes       |
+| `filters/`      | `http-exception.filter.ts` | Unified error response shape (global filter)   |
+| `interceptors/` | `logging.interceptor.ts`   | Request/response performance logging           |
+| `logger/`       | `logger.module.ts`         | `nestjs-pino` structured logging configuration |
+| `middleware/`   | `security.middleware.ts`   | Security headers middleware                    |
+
+**Error Response Shape** (from `HttpExceptionFilter`):
+
+```json
+{
+  "statusCode": 400,
+  "message": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "timestamp": "2025-01-01T00:00:00.000Z"
+}
+```
+
+---
+
 ### Season Module (`src/season/`)
 
 Manages VLeague seasons (e.g., VLeague 2024, VLeague 2025).
