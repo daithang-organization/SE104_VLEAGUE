@@ -1,60 +1,104 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 import { RegistrationService } from './registration.service';
 
 @ApiTags('Teams')
-@ApiBearerAuth('access-token')
-@Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('teams')
 export class TeamsController {
   constructor(private readonly reg: RegistrationService) {}
 
-  @Get('/teams')
-  @Roles(Role.ADMIN, Role.TEAM_MANAGER)
+  @Get()
   @ApiOperation({
     summary: 'Lấy danh sách đội bóng',
-    description:
-      'Trả về danh sách tất cả đội bóng. Yêu cầu quyền ADMIN hoặc TEAM_MANAGER.',
+    description: 'Trả về danh sách tất cả đội bóng (bao gồm thông tin sân nhà)',
   })
-  @ApiOkResponse({
-    description: 'Danh sách đội bóng',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            format: 'uuid',
-            example: '550e8400-e29b-41d4-a716-446655440001',
-          },
-          name: { type: 'string', example: 'Hà Nội FC' },
-          status: {
-            type: 'string',
-            enum: ['ACTIVE', 'INACTIVE'],
-            example: 'ACTIVE',
-          },
-          createdAt: { type: 'string', format: 'date-time' },
-          updatedAt: { type: 'string', format: 'date-time' },
-        },
-      },
-    },
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Chưa đăng nhập hoặc token không hợp lệ',
-  })
-  @ApiForbiddenResponse({
-    description: 'Không có quyền truy cập (yêu cầu ADMIN hoặc TEAM_MANAGER)',
-  })
-  async getTeams(): Promise<Awaited<ReturnType<typeof this.reg.listTeams>>> {
+  @ApiOkResponse({ description: 'Danh sách đội bóng' })
+  async getTeams() {
     return await this.reg.listTeams();
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Lấy chi tiết đội bóng',
+    description: 'Trả về thông tin chi tiết của một đội bóng',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiOkResponse({ description: 'Thông tin đội bóng' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy đội bóng' })
+  async getTeam(@Param('id') id: string) {
+    return await this.reg.findOneTeam(id);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Tạo đội bóng mới',
+    description: 'Chỉ ADMIN có quyền tạo đội bóng',
+  })
+  @ApiBody({ type: CreateTeamDto })
+  @ApiOkResponse({ description: 'Đội bóng đã được tạo' })
+  @ApiConflictResponse({ description: 'Tên đội bóng đã tồn tại' })
+  @ApiUnauthorizedResponse({ description: 'Chưa đăng nhập' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  async createTeam(@Body() dto: CreateTeamDto) {
+    return await this.reg.createTeam(dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Cập nhật đội bóng',
+    description: 'Chỉ ADMIN có quyền cập nhật',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({ type: UpdateTeamDto })
+  @ApiOkResponse({ description: 'Đội bóng đã được cập nhật' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy đội bóng' })
+  @ApiConflictResponse({ description: 'Tên đội bóng đã tồn tại' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  async updateTeam(@Param('id') id: string, @Body() dto: UpdateTeamDto) {
+    return await this.reg.updateTeam(id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Xóa đội bóng',
+    description: 'Chỉ ADMIN có quyền xóa',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiOkResponse({ description: 'Đội bóng đã được xóa' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy đội bóng' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  async deleteTeam(@Param('id') id: string) {
+    return await this.reg.deleteTeam(id);
   }
 }
