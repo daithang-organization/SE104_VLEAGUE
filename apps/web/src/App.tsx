@@ -16,6 +16,7 @@ import SchedulePage from './pages/SchedulePage';
 import SessionsPage from './pages/SessionsPage';
 import StandingsPage from './pages/StandingsPage';
 import TeamsPage from './pages/TeamsPage';
+import UsersPage from './pages/UsersPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import AppShell from './shell/AppShell';
 
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/matches" element={<MatchesPage />} />
         <Route path="/standings" element={<StandingsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/sessions" element={<SessionsPage />} />

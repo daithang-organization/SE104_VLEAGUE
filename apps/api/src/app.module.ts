@@ -14,6 +14,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { SeasonModule } from './season/season.module';
 import { StadiumModule } from './stadium/stadium.module';
 import { StandingsModule } from './standings/standings.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { StandingsModule } from './standings/standings.module';
     StadiumModule,
     StandingsModule,
     RosterModule,
+    UsersModule,
   ],
   providers: [
     // Apply throttler globally
