@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlayerPosition } from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
 describe('RegistrationService', () => {
@@ -226,7 +227,7 @@ describe('RegistrationService', () => {
         fullName: 'Test Player',
         dob: '2000-01-01',
         nationality: 'Vietnam',
-        position: 'FW' as const,
+        position: PlayerPosition.FW,
       };
       jest.spyOn(prisma.player, 'create').mockResolvedValue({
         ...mockPlayers[0],
