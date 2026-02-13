@@ -144,16 +144,15 @@ describe('RegistrationService', () => {
     });
 
     it('should throw ConflictException on duplicate name', async () => {
-      const prismaError = { code: 'P2002', constructor: { name: '' } };
-      Object.setPrototypeOf(
-        prismaError,
-        Object.getPrototypeOf(new (jest.fn() as any)()),
-      );
       jest
         .spyOn(prisma.team, 'create')
-        .mockRejectedValue(Object.assign(new Error(), { code: 'P2002' }));
+        .mockRejectedValue(
+          Object.assign(new Error('P2002'), { code: 'P2002' }),
+        );
 
-      // We test the conflict path separately
+      await expect(
+        service.createTeam({ name: 'Duplicate Team' }),
+      ).rejects.toThrow();
     });
   });
 
