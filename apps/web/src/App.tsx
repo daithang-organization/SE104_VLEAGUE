@@ -5,13 +5,18 @@ import DashboardPage from './pages/DashboardPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage';
+import MatchesPage from './pages/MatchesPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
+import PlayersPage from './pages/PlayersPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import ReportsPage from './pages/ReportsPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import SchedulePage from './pages/SchedulePage';
 import SessionsPage from './pages/SessionsPage';
 import StandingsPage from './pages/StandingsPage';
+import TeamsPage from './pages/TeamsPage';
+import UsersPage from './pages/UsersPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import AppShell from './shell/AppShell';
 
@@ -36,12 +41,16 @@ export default function App() {
         }
       >
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/players" element={<PlayersPage />} />
+        <Route path="/schedule" element={<SchedulePage />} />
+        <Route path="/matches" element={<MatchesPage />} />
         <Route path="/standings" element={<StandingsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/sessions" element={<SessionsPage />} />
-        {/* Add more protected routes here */}
       </Route>
 
       {/* Fallback redirect */}
