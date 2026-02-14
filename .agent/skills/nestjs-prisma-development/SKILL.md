@@ -27,6 +27,7 @@ apps/api/
 │   ├── season/              # Season management module
 │   ├── stadium/             # Stadium management module
 │   ├── standings/           # League standings module
+│   ├── users/               # User management module (ADMIN)
 │   └── prisma/              # Prisma service
 ├── prisma/
 │   ├── schema.prisma        # Database schema
@@ -462,6 +463,10 @@ pnpm format              # Run Prettier
 - **`stadium/`**: Stadium management
 - **`roster/`**: Team roster management (player assignments, jersey numbers)
 - **`standings/`**: League standings computation and caching
+- **`users/`**: User management (ADMIN-only CRUD, role assignment)
+  - `users.controller.ts`: User CRUD endpoints (list, create, update role, delete)
+  - `users.service.ts`: User management logic
+  - `dto/update-role.dto.ts`, `dto/create-user.dto.ts`: Validation DTOs
 - **`health/`**: Health check endpoint
 - **`mail/`**: Email service (verification OTP, password reset, welcome)
 - **`config/`**: Configuration module
