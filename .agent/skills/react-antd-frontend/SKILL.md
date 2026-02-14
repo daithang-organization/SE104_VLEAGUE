@@ -91,7 +91,12 @@ All routes are defined in `src/App.tsx`. Routes are split into **public** (no au
 | Route              | Page Component       | Description                |
 | ------------------ | -------------------- | -------------------------- |
 | `/`                | `DashboardPage`      | Main dashboard             |
+| `/teams`           | `TeamsPage`          | Team management (CRUD)     |
+| `/players`         | `PlayersPage`        | Player management (CRUD)   |
+| `/schedule`        | `SchedulePage`       | Match schedule management  |
+| `/matches`         | `MatchesPage`        | Match results & events     |
 | `/standings`       | `StandingsPage`      | League standings table     |
+| `/users`           | `UsersPage`          | User management (ADMIN)    |
 | `/reports`         | `ReportsPage`        | Reports (Admin only)       |
 | `/profile`         | `ProfilePage`        | User profile management    |
 | `/change-password` | `ChangePasswordPage` | Password change form       |
@@ -590,6 +595,7 @@ export const MENU: MenuItem[] = [
     path: '/standings',
     roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE'],
   },
+  { key: 'users', label: 'Quản lý người dùng', path: '/users', roles: ['ADMIN'] },
   { key: 'reports', label: 'Báo cáo', path: '/reports', roles: ['ADMIN'] },
 ];
 ```

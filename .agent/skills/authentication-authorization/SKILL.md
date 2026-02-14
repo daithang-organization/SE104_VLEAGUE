@@ -57,6 +57,18 @@ The system supports two complementary role mechanisms:
 | `GET`    | `/api/auth/facebook`          | Redirect | Start Facebook OAuth flow     |
 | `GET`    | `/api/auth/facebook/callback` | Redirect | Facebook OAuth callback       |
 
+### User Management API (ADMIN-only)
+
+| Method   | Endpoint              | Auth      | Description           |
+| -------- | --------------------- | --------- | --------------------- |
+| `GET`    | `/api/users`          | JWT+ADMIN | List all users        |
+| `POST`   | `/api/users`          | JWT+ADMIN | Create user with role |
+| `PATCH`  | `/api/users/:id/role` | JWT+ADMIN | Update user role      |
+| `DELETE` | `/api/users/:id`      | JWT+ADMIN | Delete user           |
+
+> [!NOTE]
+> Public registration creates users with `PUBLIC` role by default. Only ADMIN can change roles via the Users Management page (`/users`). Admin-created accounts are pre-verified (no OTP needed).
+
 ## JWT Token Strategy
 
 ### Access & Refresh Token Pattern
