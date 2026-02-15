@@ -95,6 +95,48 @@ export class StandingsController {
     return this.standingsService.getTopScorers(seasonId, limit ?? 10);
   }
 
+  @Get('card-stats')
+  @ApiOperation({
+    summary: 'Thống kê thẻ phạt',
+    description: 'Trả về danh sách cầu thủ bị thẻ vàng/đỏ nhiều nhất',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: 'integer',
+    description: 'Số lượng (mặc định: 20)',
+  })
+  @ApiOkResponse({ description: 'Danh sách thẻ phạt' })
+  getCardStats(
+    @Query('seasonId') seasonId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.standingsService.getCardStats(seasonId, limit ?? 20);
+  }
+
+  @Get('team-stats')
+  @ApiOperation({
+    summary: 'Thống kê theo đội',
+    description:
+      'Trả về thống kê tổng hợp theo đội: trận, bàn thắng, thẻ, sạch lưới',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải',
+  })
+  @ApiOkResponse({ description: 'Thống kê đội' })
+  getTeamStats(@Query('seasonId') seasonId?: string) {
+    return this.standingsService.getTeamStats(seasonId);
+  }
+
   @Get(':seasonId')
   @ApiOperation({
     summary: 'Lấy bảng xếp hạng theo mùa giải',

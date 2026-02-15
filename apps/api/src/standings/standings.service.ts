@@ -200,4 +200,166 @@ export class StandingsService {
       .slice(0, limit)
       .map((scorer, index) => ({ position: index + 1, ...scorer }));
   }
+
+  /**
+   * Get card statistics per player for a season
+   */
+  async getCardStats(seasonId?: string, limit = 20) {
+    let targetSeasonId = seasonId;
+    if (!targetSeasonId) {
+      const currentSeason = await this.prisma.season.findFirst({
+        where: { status: 'IN_PROGRESS' },
+      });
+      targetSeasonId = currentSeason?.id;
+    }
+
+    const cardEvents = await this.prisma.matchEvent.findMany({
+      where: {
+        type: { in: ['YELLOW_CARD', 'RED_CARD'] },
+        match: {
+          seasonId: targetSeasonId,
+          status: 'LOCKED',
+        },
+        playerId: { not: null },
+      },
+      include: {
+        player: { select: { id: true, fullName: true } },
+        team: { select: { id: true, name: true } },
+      },
+    });
+
+    const cardMap = new Map<
+      string,
+      {
+        playerId: string;
+        playerName: string;
+        teamId: string;
+        teamName: string;
+        yellowCards: number;
+        redCards: number;
+      }
+    >();
+
+    for (const event of cardEvents) {
+      if (!event.player || !event.team) continue;
+
+      const existing = cardMap.get(event.player.id);
+      if (existing) {
+        if (event.type === 'YELLOW_CARD') existing.yellowCards++;
+        else existing.redCards++;
+      } else {
+        cardMap.set(event.player.id, {
+          playerId: event.player.id,
+          playerName: event.player.fullName,
+          teamId: event.team.id,
+          teamName: event.team.name,
+          yellowCards: event.type === 'YELLOW_CARD' ? 1 : 0,
+          redCards: event.type === 'RED_CARD' ? 1 : 0,
+        });
+      }
+    }
+
+    return Array.from(cardMap.values())
+      .sort((a, b) => {
+        const totalA = a.yellowCards + a.redCards * 3;
+        const totalB = b.yellowCards + b.redCards * 3;
+        return totalB - totalA;
+      })
+      .slice(0, limit)
+      .map((card, index) => ({
+        position: index + 1,
+        ...card,
+        totalCards: card.yellowCards + card.redCards,
+      }));
+  }
+
+  /**
+   * Get aggregated team statistics for a season
+   */
+  async getTeamStats(seasonId?: string) {
+    let targetSeasonId = seasonId;
+    if (!targetSeasonId) {
+      const currentSeason = await this.prisma.season.findFirst({
+        where: { status: 'IN_PROGRESS' },
+      });
+      targetSeasonId = currentSeason?.id;
+    }
+
+    // Get standings for base stats
+    const standings = await this.getStandings(targetSeasonId);
+
+    // Get card counts per team
+    const cardEvents = await this.prisma.matchEvent.findMany({
+      where: {
+        type: { in: ['YELLOW_CARD', 'RED_CARD'] },
+        match: {
+          seasonId: targetSeasonId,
+          status: 'LOCKED',
+        },
+        teamId: { not: null },
+      },
+      select: { teamId: true, type: true },
+    });
+
+    const teamCards = new Map<
+      string,
+      { yellowCards: number; redCards: number }
+    >();
+    for (const event of cardEvents) {
+      if (!event.teamId) continue;
+      const existing = teamCards.get(event.teamId) || {
+        yellowCards: 0,
+        redCards: 0,
+      };
+      if (event.type === 'YELLOW_CARD') existing.yellowCards++;
+      else existing.redCards++;
+      teamCards.set(event.teamId, existing);
+    }
+
+    // Count clean sheets (matches where team conceded 0 goals)
+    const matches = await this.prisma.match.findMany({
+      where: {
+        seasonId: targetSeasonId,
+        status: 'LOCKED',
+      },
+      select: {
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+      },
+    });
+
+    const cleanSheets = new Map<string, number>();
+    for (const m of matches) {
+      if (m.awayScore === 0 && m.homeTeamId) {
+        cleanSheets.set(m.homeTeamId, (cleanSheets.get(m.homeTeamId) ?? 0) + 1);
+      }
+      if (m.homeScore === 0 && m.awayTeamId) {
+        cleanSheets.set(m.awayTeamId, (cleanSheets.get(m.awayTeamId) ?? 0) + 1);
+      }
+    }
+
+    return standings.map((team) => {
+      const cards = teamCards.get(team.teamId) || {
+        yellowCards: 0,
+        redCards: 0,
+      };
+      return {
+        teamId: team.teamId,
+        teamName: team.teamName,
+        played: team.played,
+        won: team.won,
+        drawn: team.drawn,
+        lost: team.lost,
+        goalsFor: team.goalsFor,
+        goalsAgainst: team.goalsAgainst,
+        goalDifference: team.goalDifference,
+        points: team.points,
+        cleanSheets: cleanSheets.get(team.teamId) ?? 0,
+        yellowCards: cards.yellowCards,
+        redCards: cards.redCards,
+      };
+    });
+  }
 }
