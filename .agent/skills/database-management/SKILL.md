@@ -50,6 +50,88 @@ All primary keys (PK) and foreign keys (FK) use native PostgreSQL `UUID` type (`
 - `standings`: `@@unique([seasonId, teamId])`
 - `matches`: `@@index([seasonId, roundNo])`
 
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    roles ||--o{ users : "has"
+    users ||--o{ refresh_tokens : "has"
+    users ||--o{ otp_codes : "has"
+
+    stadiums ||--o{ teams : "home of"
+    stadiums ||--o{ matches : "hosted at"
+
+    teams ||--o{ team_players : "roster"
+    players ||--o{ team_players : "belongs to"
+
+    seasons ||--o{ season_teams : "registration"
+    teams ||--o{ season_teams : "registers"
+
+    seasons ||--o{ matches : "scheduled in"
+    teams ||--o{ matches : "home team"
+    teams ||--o{ matches : "away team"
+
+    matches ||--o{ match_events : "has"
+    players ||--o{ match_events : "involved"
+    teams ||--o{ match_events : "scored by"
+
+    seasons ||--o{ regulations : "config"
+    seasons ||--o{ standings : "ranking"
+    teams ||--o{ standings : "ranked"
+
+    roles {
+        UUID id PK
+        String name UK
+        String description
+    }
+    users {
+        UUID id PK
+        String email UK
+        UserRole role
+        UUID roleId FK
+        String passwordHash
+        Boolean emailVerified
+    }
+    teams {
+        UUID id PK
+        String name UK
+        String shortName
+        TeamStatus status
+        UUID stadiumId FK
+    }
+    players {
+        UUID id PK
+        String fullName
+        DateTime dob
+        PlayerPosition position
+        PlayerType playerType
+    }
+    matches {
+        UUID id PK
+        Int roundNo
+        Int leg
+        UUID seasonId FK
+        UUID homeTeamId FK
+        UUID awayTeamId FK
+        MatchStatus status
+    }
+    match_events {
+        UUID id PK
+        UUID matchId FK
+        Int minute
+        EventType type
+        UUID playerId FK
+        UUID teamId FK
+    }
+    standings {
+        UUID id PK
+        UUID seasonId FK
+        UUID teamId FK
+        Int points
+        Int rank
+    }
+```
+
 ## Schema Development Workflow
 
 ### 1. Modify Schema

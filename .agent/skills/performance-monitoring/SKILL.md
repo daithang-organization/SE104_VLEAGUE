@@ -7,6 +7,21 @@ description: Guide for logging, monitoring, caching, and performance optimizatio
 
 This skill covers logging, monitoring, caching, and performance optimization for the SE104_VLEAGUE project.
 
+### Implementation Status
+
+| Feature                   | Status         | Location                                     |
+| ------------------------- | -------------- | -------------------------------------------- |
+| Pino structured logging   | ✅ Implemented | `common/logger/logger.module.ts`, `main.ts`  |
+| LoggingInterceptor        | ✅ Implemented | `common/interceptors/logging.interceptor.ts` |
+| HttpExceptionFilter       | ✅ Implemented | `common/filters/http-exception.filter.ts`    |
+| Prisma query logging      | ✅ Implemented | `prisma/prisma.service.ts`                   |
+| `@nestjs/cache-manager`   | 📋 Recommended | —                                            |
+| `@nestjs/terminus` health | 📋 Recommended | —                                            |
+| Timing interceptor        | 📋 Recommended | —                                            |
+
+> [!NOTE]
+> Sections marked 📋 below are **recommendations** — not yet implemented in the codebase.
+
 ## Structured Logging
 
 ### Actual Logging Setup — `nestjs-pino`

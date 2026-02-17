@@ -996,325 +996,91 @@ async function handleUpdate(id: string, updates: Partial<Team>) {
 }
 ```
 
-## Authentication Context
+## Frontend Service API Reference
 
-### Auth Context Provider
+All service files are located in `src/services/` and use the primary Axios client (`lib/api.ts`).
 
-```typescript
-// src/contexts/AuthContext.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService } from '../services/auth';
-import type { User } from '../types';
+> [!IMPORTANT]
+> All service functions follow the naming pattern `api<Action><Entity>()`. Types are co-located and exported from each service file.
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-}
+### Service Files Overview
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+| Service File      | #Functions | Key Types Exported                               |
+| ----------------- | ---------- | ------------------------------------------------ |
+| `authApi.ts`      | 16         | `LoginResponse`, `UserProfile`, `Session`        |
+| `teamApi.ts`      | 5          | `Team`, `CreateTeamPayload`, `UpdateTeamPayload` |
+| `playerApi.ts`    | 5          | `Player`, `CreatePlayerPayload`                  |
+| `matchApi.ts`     | 3          | `Match`, `MatchEvent`, `AddMatchEventPayload`    |
+| `scheduleApi.ts`  | 3          | `ScheduleMatch`                                  |
+| `seasonApi.ts`    | 3          | `Season`                                         |
+| `standingsApi.ts` | 4          | `TeamStanding`, `TopScorer`, `CardStat`          |
+| `userApi.ts`      | 4          | `User`, `CreateUserPayload`                      |
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+### Detailed Function Reference
 
-  useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      authService.getProfile()
-        .then(setUser)
-        .catch(() => localStorage.removeItem('accessToken'))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    const { accessToken, user } = await authService.login(email, password);
-    localStorage.setItem('accessToken', accessToken);
-    setUser(user);
-  };
-
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
-}
-```
-
-### Usage
+#### `teamApi.ts`
 
 ```typescript
-// main.tsx
-import { AuthProvider } from './contexts/AuthContext';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <AuthProvider>
-    <App />
-  </AuthProvider>
-);
-
-// In components
-function UserProfile() {
-  const { user, logout } = useAuth();
-  return (
-    <div>
-      <span>Welcome, {user?.email}</span>
-      <Button onClick={logout}>Logout</Button>
-    </div>
-  );
-}
+apiGetTeams()                        → Team[]
+apiGetTeam(id)                       → Team
+apiCreateTeam(data)                  → Team
+apiUpdateTeam(id, data)              → Team
+apiDeleteTeam(id)                    → { success: boolean }
 ```
 
-## Protected Routes
-
-### ProtectedRoute Component
+#### `playerApi.ts`
 
 ```typescript
-// src/components/ProtectedRoute.tsx
-import { Navigate, useLocation } from 'react-router-dom';
-import { Spin } from 'antd';
-import { useAuth } from '../contexts/AuthContext';
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredRole?: string;
-}
-
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }} />;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  return <>{children}</>;
-}
+apiGetPlayers()                      → Player[]
+apiGetPlayer(id)                     → Player
+apiCreatePlayer(data)                → Player
+apiUpdatePlayer(id, data)            → Player
+apiDeletePlayer(id)                  → { success: boolean }
 ```
 
-### Router Setup
+#### `matchApi.ts`
 
 ```typescript
-// src/App.tsx
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ProtectedRoute } from './components/ProtectedRoute';
-
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<HomePage />} />
-
-        {/* Protected routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        } />
-
-        {/* Admin only */}
-        <Route path="/admin" element={
-          <ProtectedRoute requiredRole="ADMIN">
-            <AdminPage />
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
-  );
-}
+apiGetMatches(seasonId?)             → Match[]
+apiGetMatch(id)                      → Match
+apiAddMatchEvent(matchId, data)      → { ok, matchId, createdEvent }
 ```
 
-## Axios Interceptors
-
-### API Client Setup
+#### `scheduleApi.ts`
 
 ```typescript
-// src/services/apiClient.ts
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-// Request interceptor - add auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
-
-// Response interceptor - handle token refresh
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-
-        localStorage.setItem('accessToken', data.accessToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed - logout user
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
+apiGetSchedule()                     → { ok, matches: ScheduleMatch[] }
+apiGenerateSchedule()                → { ok, message }
+apiPublishSchedule()                 → { ok, message }
 ```
 
-### Usage in Services
+#### `seasonApi.ts`
 
 ```typescript
-// src/services/teams.ts
-import { apiClient } from './apiClient';
-import type { Team, CreateTeamDto } from '../types';
-
-export const teamsService = {
-  getAll: () => apiClient.get<Team[]>('/teams').then((res) => res.data),
-  getById: (id: string) => apiClient.get<Team>(`/teams/${id}`).then((res) => res.data),
-  create: (data: CreateTeamDto) => apiClient.post<Team>('/teams', data).then((res) => res.data),
-  update: (id: string, data: Partial<CreateTeamDto>) =>
-    apiClient.patch<Team>(`/teams/${id}`, data).then((res) => res.data),
-  delete: (id: string) => apiClient.delete(`/teams/${id}`),
-};
+apiGetSeasons()                      → Season[]
+apiGetSeason(id)                     → Season
+apiGetCurrentSeason()                → Season | null
 ```
 
-## Form Validation with Zod
-
-### Install Zod
-
-```bash
-pnpm add zod
-```
-
-### Define Schema
+#### `standingsApi.ts`
 
 ```typescript
-// src/schemas/team.schema.ts
-import { z } from 'zod';
-
-export const createTeamSchema = z.object({
-  name: z.string().min(2, 'Team name must be at least 2 characters').max(100),
-  status: z.enum(['ACTIVE', 'INACTIVE']).default('ACTIVE'),
-});
-
-export const createPlayerSchema = z.object({
-  fullName: z.string().min(2, 'Name is required').max(100),
-  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-  nationality: z.string().min(2, 'Nationality is required'),
-  position: z.enum(['GK', 'DF', 'MF', 'FW']),
-  teamId: z.string().uuid().optional(),
-});
-
-export type CreateTeamInput = z.infer<typeof createTeamSchema>;
-export type CreatePlayerInput = z.infer<typeof createPlayerSchema>;
+apiGetStandings(seasonId?)           → TeamStanding[]
+apiGetTopScorers(seasonId?, limit?)  → TopScorer[]
+apiGetCardStats(seasonId?, limit?)   → CardStat[]
+apiGetTeamStats(seasonId?)           → TeamStat[]
 ```
 
-### Validation with Ant Design Form
+#### `userApi.ts`
 
 ```typescript
-// src/components/TeamForm.tsx
-import { Form, Input, Select, Button, message } from 'antd';
-import { createTeamSchema, CreateTeamInput } from '../schemas/team.schema';
-
-export function TeamForm({ onSuccess }: { onSuccess?: () => void }) {
-  const [form] = Form.useForm<CreateTeamInput>();
-
-  const validateWithZod = async (values: CreateTeamInput) => {
-    const result = createTeamSchema.safeParse(values);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors;
-      Object.entries(errors).forEach(([field, messages]) => {
-        form.setFields([{ name: field, errors: messages }]);
-      });
-      throw new Error('Validation failed');
-    }
-    return result.data;
-  };
-
-  const onFinish = async (values: CreateTeamInput) => {
-    try {
-      const validData = await validateWithZod(values);
-      await teamsService.create(validData);
-      message.success('Team created successfully');
-      form.resetFields();
-      onSuccess?.();
-    } catch (error) {
-      if (error instanceof Error && error.message !== 'Validation failed') {
-        message.error('Failed to create team');
-      }
-    }
-  };
-
-  return (
-    <Form form={form} onFinish={onFinish} layout="vertical">
-      <Form.Item name="name" label="Team Name" rules={[{ required: true }]}>
-        <Input placeholder="Enter team name" />
-      </Form.Item>
-      <Form.Item name="status" label="Status" initialValue="ACTIVE">
-        <Select>
-          <Select.Option value="ACTIVE">Active</Select.Option>
-          <Select.Option value="INACTIVE">Inactive</Select.Option>
-        </Select>
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" htmlType="submit">Create Team</Button>
-      </Form.Item>
-    </Form>
-  );
-}
+apiGetUsers()                        → User[]
+apiCreateUser(data)                  → User
+apiUpdateUserRole(id, role)          → User
+apiDeleteUser(id)                    → { success: boolean }
 ```
 
-> [!TIP]
-> Using Zod provides runtime type checking and better error messages compared to class-validator on the frontend.
+### Legacy HTTP Client — `services/http.ts`
 
-```
-
-```
+> [!WARNING]
+> The fetch-based `http.ts` wrapper exists for legacy compatibility. It provides its own error toast notifications and status-specific handling (401→logout, 403→forbidden toast, 429→rate limit toast). **Do not use for new code** — use `lib/api.ts` (Axios) instead.
