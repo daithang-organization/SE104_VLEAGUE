@@ -997,3 +997,90 @@ MAIL_USER=your-email@gmail.com
 MAIL_PASS=your-app-password
 MAIL_FROM=noreply@vleague.local
 ```
+
+---
+
+## Global Configuration (main.ts)
+
+The application bootstraps with several global configurations in `src/main.ts`:
+
+### Global Validation Pipe
+
+> [!IMPORTANT]
+> **All incoming DTOs are automatically validated.** Fields not in the DTO are stripped (`whitelist`) and rejected if present with `forbidNonWhitelisted`.
+
+```typescript
+// main.ts — already configured
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true, // Strip unknown properties
+    forbidNonWhitelisted: true, // Throw on unexpected properties
+    transform: true, // Auto-transform payloads to DTO classes
+    transformOptions: {
+      enableImplicitConversion: true, // Convert string "1" → number 1
+    },
+  }),
+);
+```
+
+### Global Exception Filter
+
+```typescript
+// main.ts — already configured
+app.useGlobalFilters(new HttpExceptionFilter());
+```
+
+All exceptions are caught and normalized to `{ code, message, details?, requestId?, timestamp }`. See the **Error Handling** skill for details.
+
+### Global Logging Interceptor
+
+```typescript
+// main.ts — already configured
+app.useGlobalInterceptors(new LoggingInterceptor());
+```
+
+The `LoggingInterceptor` logs request entry/exit with performance timing (🟢 <100ms, 🟡 <500ms, 🔴 >500ms).
+
+### CORS Configuration
+
+```typescript
+// main.ts — already configured
+app.enableCors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+});
+```
+
+### Helmet Security Headers (Production Only)
+
+```typescript
+// main.ts — only in production
+if (process.env.NODE_ENV === 'production') {
+  const helmet = await import('helmet');
+  app.use(
+    helmet.default({
+      contentSecurityPolicy: {
+        directives: {
+          /* ... */
+        },
+      },
+      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+      frameguard: { action: 'deny' },
+      hidePoweredBy: true,
+      noSniff: true,
+      xssFilter: true,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    }),
+  );
+}
+```
+
+> [!TIP]
+> There is also a `SecurityMiddleware` class in `src/common/middleware/security.middleware.ts` that wraps Helmet as a NestJS middleware. Use it for module-level application via `configure(consumer)` if needed.
+
+### Global API Prefix
+
+```typescript
+app.setGlobalPrefix('api');
+// All routes become /api/... — Swagger docs at /api/docs (via SwaggerModule.setup('docs', ...))
+```
