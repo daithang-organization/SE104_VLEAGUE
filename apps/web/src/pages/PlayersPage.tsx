@@ -29,6 +29,7 @@ import {
   type CreatePlayerPayload,
   type Player,
 } from '../services/playerApi';
+import { apiGetTeams, type Team } from '../services/teamApi';
 
 const POSITION_LABELS: Record<string, string> = {
   GK: 'Thủ môn',
@@ -49,6 +50,7 @@ const CAN_EDIT_ROLES = ['ADMIN', 'TEAM_MANAGER'];
 export default function PlayersPage() {
   const { user } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -74,6 +76,9 @@ export default function PlayersPage() {
 
   useEffect(() => {
     fetchPlayers();
+    apiGetTeams()
+      .then(setTeams)
+      .catch(() => {});
   }, [fetchPlayers]);
 
   const openCreateModal = () => {
@@ -94,6 +99,7 @@ export default function PlayersPage() {
       birthPlace: player.birthPlace ?? '',
       heightCm: player.heightCm ?? undefined,
       weightKg: player.weightKg ?? undefined,
+      teamId: player.teamPlayers?.[0]?.team?.id ?? undefined,
     });
     setModalOpen(true);
   };
@@ -112,6 +118,7 @@ export default function PlayersPage() {
         birthPlace: values.birthPlace || undefined,
         heightCm: values.heightCm || undefined,
         weightKg: values.weightKg || undefined,
+        teamId: values.teamId || undefined,
       };
 
       if (editingPlayer) {
@@ -333,6 +340,21 @@ export default function PlayersPage() {
             rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
           >
             <Input placeholder="VD: Nguyễn Quang Hải" />
+          </Form.Item>
+
+          <Form.Item name="teamId" label="Câu lạc bộ">
+            <Select
+              placeholder="Chọn câu lạc bộ"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={teams
+                .filter((t) => t.status === 'ACTIVE')
+                .map((t) => ({
+                  value: t.id,
+                  label: `${t.name}${t.shortName ? ` (${t.shortName})` : ''}`,
+                }))}
+            />
           </Form.Item>
 
           <Row gutter={16}>

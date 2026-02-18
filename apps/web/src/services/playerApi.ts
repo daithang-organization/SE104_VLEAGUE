@@ -27,6 +27,7 @@ export type CreatePlayerPayload = {
   birthPlace?: string;
   heightCm?: number;
   weightKg?: number;
+  teamId?: string;
 };
 
 export type UpdatePlayerPayload = {
@@ -38,6 +39,7 @@ export type UpdatePlayerPayload = {
   birthPlace?: string;
   heightCm?: number;
   weightKg?: number;
+  teamId?: string;
 };
 
 // ─────────── API calls ───────────
