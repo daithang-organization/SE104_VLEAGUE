@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationModule } from './registration/registration.module';
+import { RegulationModule } from './regulation/regulation.module';
 import { RosterModule } from './roster/roster.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SeasonModule } from './season/season.module';
