@@ -8,6 +8,7 @@ import {
   InputNumber,
   message,
   Modal,
+  Radio,
   Select,
   Space,
   Table,
@@ -17,14 +18,17 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
 import {
   apiAddMatchEvent,
   apiGetMatch,
   apiGetMatches,
+  apiGetTeamRoster,
   type AddMatchEventPayload,
   type Match,
   type MatchEvent,
+  type RosterPlayer,
 } from '../services/matchApi';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -38,12 +42,17 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 const EVENT_TYPE_MAP: Record<string, { label: string; color: string; icon: string }> = {
   GOAL: { label: 'Bàn thắng', color: 'green', icon: '⚽' },
   OWN_GOAL: { label: 'Phản lưới', color: 'red', icon: '⚽🔴' },
+  PENALTY: { label: 'Phạt đền (ghi bàn)', color: 'green', icon: '⚽🎯' },
+  PENALTY_MISS: { label: 'Phạt đền (hỏng)', color: 'orange', icon: '❌🎯' },
   YELLOW_CARD: { label: 'Thẻ vàng', color: 'gold', icon: '🟨' },
   RED_CARD: { label: 'Thẻ đỏ', color: 'red', icon: '🟥' },
   SUBSTITUTION: { label: 'Thay người', color: 'blue', icon: '🔄' },
 };
 
+const CAN_ADD_EVENT_ROLES = ['ADMIN', 'REFEREE'];
+
 export default function MatchesPage() {
+  const { user } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailMatch, setDetailMatch] = useState<Match | null>(null);
@@ -51,6 +60,16 @@ export default function MatchesPage() {
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
   const [form] = Form.useForm();
+
+  // Roster state
+  const [selectedTeamSide, setSelectedTeamSide] = useState<'home' | 'away' | null>(null);
+  const [homeRoster, setHomeRoster] = useState<RosterPlayer[]>([]);
+  const [awayRoster, setAwayRoster] = useState<RosterPlayer[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+
+  const canAddEvent = useMemo(() => {
+    return user?.role && CAN_ADD_EVENT_ROLES.includes(user.role);
+  }, [user]);
 
   const fetchMatches = useCallback(async () => {
     setLoading(true);
@@ -68,11 +87,31 @@ export default function MatchesPage() {
     fetchMatches();
   }, [fetchMatches]);
 
+  const loadRosters = async (match: Match) => {
+    setRosterLoading(true);
+    try {
+      const [home, away] = await Promise.all([
+        apiGetTeamRoster(match.homeTeamId),
+        apiGetTeamRoster(match.awayTeamId),
+      ]);
+      setHomeRoster(home.players ?? []);
+      setAwayRoster(away.players ?? []);
+    } catch {
+      // Rosters may be empty, that's ok
+      setHomeRoster([]);
+      setAwayRoster([]);
+    } finally {
+      setRosterLoading(false);
+    }
+  };
+
   const viewDetail = async (matchId: string) => {
     setDetailLoading(true);
     try {
       const data = await apiGetMatch(matchId);
       setDetailMatch(data);
+      // Load rosters for both teams
+      loadRosters(data);
     } catch {
       message.error('Không thể tải chi tiết trận đấu');
     } finally {
@@ -85,10 +124,23 @@ export default function MatchesPage() {
     try {
       const values = await form.validateFields();
       setSavingEvent(true);
-      await apiAddMatchEvent(detailMatch.id, values as AddMatchEventPayload);
+
+      // Determine teamId from selected side
+      const teamId = values.teamSide === 'home' ? detailMatch.homeTeamId : detailMatch.awayTeamId;
+
+      const payload: AddMatchEventPayload = {
+        minute: values.minute,
+        type: values.type,
+        teamId,
+        playerId: values.playerId || undefined,
+        note: values.note || undefined,
+      };
+
+      await apiAddMatchEvent(detailMatch.id, payload);
       message.success('Đã thêm sự kiện!');
       setEventModalOpen(false);
       form.resetFields();
+      setSelectedTeamSide(null);
       // Reload detail
       viewDetail(detailMatch.id);
       fetchMatches();
@@ -99,6 +151,13 @@ export default function MatchesPage() {
       setSavingEvent(false);
     }
   };
+
+  // Get players for selected team side
+  const currentRoster = useMemo(() => {
+    if (selectedTeamSide === 'home') return homeRoster;
+    if (selectedTeamSide === 'away') return awayRoster;
+    return [];
+  }, [selectedTeamSide, homeRoster, awayRoster]);
 
   const columns: ColumnsType<Match> = [
     {
@@ -210,11 +269,15 @@ export default function MatchesPage() {
         locale={{ emptyText: 'Chưa có trận đấu nào' }}
       />
 
-      {/* Match Detail Drawer */}
+      {/* Match Detail Modal */}
       <Modal
         title="Chi tiết trận đấu"
         open={!!detailMatch}
-        onCancel={() => setDetailMatch(null)}
+        onCancel={() => {
+          setDetailMatch(null);
+          setHomeRoster([]);
+          setAwayRoster([]);
+        }}
         footer={null}
         width={700}
         loading={detailLoading}
@@ -258,16 +321,19 @@ export default function MatchesPage() {
                 <Typography.Title level={5} style={{ margin: 0 }}>
                   Sự kiện trận đấu
                 </Typography.Title>
-                <Button
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={() => {
-                    form.resetFields();
-                    setEventModalOpen(true);
-                  }}
-                >
-                  Thêm sự kiện
-                </Button>
+                {canAddEvent && (
+                  <Button
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      form.resetFields();
+                      setSelectedTeamSide(null);
+                      setEventModalOpen(true);
+                    }}
+                  >
+                    Thêm sự kiện
+                  </Button>
+                )}
               </Space>
               {renderEventTimeline(detailMatch.events ?? [])}
             </div>
@@ -279,7 +345,10 @@ export default function MatchesPage() {
       <Modal
         title="Thêm sự kiện trận đấu"
         open={eventModalOpen}
-        onCancel={() => setEventModalOpen(false)}
+        onCancel={() => {
+          setEventModalOpen(false);
+          setSelectedTeamSide(null);
+        }}
         onOk={handleAddEvent}
         confirmLoading={savingEvent}
         okText="Thêm"
@@ -287,14 +356,31 @@ export default function MatchesPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          {/* Team Selector */}
           <Form.Item
-            name="minute"
-            label="Phút"
-            rules={[{ required: true, message: 'Vui lòng nhập phút' }]}
+            name="teamSide"
+            label="Đội"
+            rules={[{ required: true, message: 'Vui lòng chọn đội' }]}
           >
-            <InputNumber min={0} max={120} style={{ width: '100%' }} placeholder="VD: 45" />
+            <Radio.Group
+              onChange={(e) => {
+                setSelectedTeamSide(e.target.value);
+                form.setFieldValue('playerId', undefined);
+              }}
+              optionType="button"
+              buttonStyle="solid"
+              style={{ width: '100%' }}
+            >
+              <Radio.Button value="home" style={{ width: '50%', textAlign: 'center' }}>
+                🏠 {detailMatch?.homeTeam?.name ?? 'Đội nhà'}
+              </Radio.Button>
+              <Radio.Button value="away" style={{ width: '50%', textAlign: 'center' }}>
+                ✈️ {detailMatch?.awayTeam?.name ?? 'Đội khách'}
+              </Radio.Button>
+            </Radio.Group>
           </Form.Item>
 
+          {/* Event Type */}
           <Form.Item
             name="type"
             label="Loại sự kiện"
@@ -309,6 +395,38 @@ export default function MatchesPage() {
             </Select>
           </Form.Item>
 
+          {/* Minute */}
+          <Form.Item
+            name="minute"
+            label="Phút"
+            rules={[{ required: true, message: 'Vui lòng nhập phút' }]}
+          >
+            <InputNumber min={0} max={150} style={{ width: '100%' }} placeholder="VD: 45" />
+          </Form.Item>
+
+          {/* Player Selector */}
+          <Form.Item name="playerId" label="Cầu thủ">
+            <Select
+              placeholder={
+                selectedTeamSide
+                  ? rosterLoading
+                    ? 'Đang tải...'
+                    : 'Chọn cầu thủ'
+                  : 'Vui lòng chọn đội trước'
+              }
+              disabled={!selectedTeamSide || rosterLoading}
+              loading={rosterLoading}
+              showSearch
+              optionFilterProp="label"
+              allowClear
+              options={currentRoster.map((p) => ({
+                value: p.playerId,
+                label: `${p.jerseyNumber ? `#${p.jerseyNumber} ` : ''}${p.fullName} (${p.position})`,
+              }))}
+            />
+          </Form.Item>
+
+          {/* Note */}
           <Form.Item name="note" label="Ghi chú">
             <Input.TextArea rows={2} placeholder="Ghi chú thêm (tùy chọn)" />
           </Form.Item>

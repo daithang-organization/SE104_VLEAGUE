@@ -4,7 +4,14 @@ import { api } from '../lib/api';
 export type MatchEvent = {
   id: string;
   minute: number;
-  type: 'GOAL' | 'OWN_GOAL' | 'YELLOW_CARD' | 'RED_CARD' | 'SUBSTITUTION';
+  type:
+    | 'GOAL'
+    | 'OWN_GOAL'
+    | 'PENALTY'
+    | 'PENALTY_MISS'
+    | 'YELLOW_CARD'
+    | 'RED_CARD'
+    | 'SUBSTITUTION';
   goalType?: string | null;
   playerId?: string | null;
   player?: { id: string; fullName: string } | null;
@@ -38,10 +45,32 @@ export type Match = {
 
 export type AddMatchEventPayload = {
   minute: number;
-  type: 'GOAL' | 'OWN_GOAL' | 'YELLOW_CARD' | 'RED_CARD' | 'SUBSTITUTION';
+  type:
+    | 'GOAL'
+    | 'OWN_GOAL'
+    | 'PENALTY'
+    | 'PENALTY_MISS'
+    | 'YELLOW_CARD'
+    | 'RED_CARD'
+    | 'SUBSTITUTION';
   playerId?: string;
-  teamId?: string;
+  teamId: string;
   note?: string;
+};
+
+export type RosterPlayer = {
+  id: string;
+  playerId: string;
+  fullName: string;
+  position: string;
+  jerseyNumber?: number | null;
+};
+
+export type TeamRoster = {
+  teamId: string;
+  teamName: string;
+  count: number;
+  players: RosterPlayer[];
 };
 
 // ─────────── API calls ───────────
@@ -62,4 +91,8 @@ export function apiAddMatchEvent(matchId: string, data: AddMatchEventPayload) {
       createdEvent: MatchEvent;
     }>(`/matches/${matchId}/events`, data)
     .then((res) => res.data);
+}
+
+export function apiGetTeamRoster(teamId: string) {
+  return api.get<TeamRoster>(`/teams/${teamId}/roster`).then((res) => res.data);
 }
