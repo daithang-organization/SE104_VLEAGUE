@@ -176,6 +176,42 @@ export class MatchController {
     return this.match.addEvent(id, dto);
   }
 
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Cập nhật thông tin trận đấu',
+    description: 'Cập nhật sân vận động và giờ thi đấu. Chỉ ADMIN có quyền.',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        stadiumId: {
+          type: 'string',
+          format: 'uuid',
+          nullable: true,
+          description: 'ID sân vận động',
+        },
+        kickoffAt: {
+          type: 'string',
+          format: 'date-time',
+          nullable: true,
+          description: 'Thời gian thi đấu',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Trận đấu đã được cập nhật' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  updateMatch(
+    @Param('id') id: string,
+    @Body() body: { stadiumId?: string | null; kickoffAt?: string | null },
+  ) {
+    return this.match.updateMatch(id, body);
+  }
+
   @Patch(':id/status')
   @Roles(Role.ADMIN)
   @ApiOperation({

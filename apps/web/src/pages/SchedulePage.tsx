@@ -1,14 +1,30 @@
 import {
+  EditOutlined,
   ExclamationCircleOutlined,
   ReloadOutlined,
   SendOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Button, Card, message, Modal, Select, Space, Table, Tabs, Tag, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Form,
+  message,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { apiUpdateMatch } from '../services/matchApi';
 import {
   apiGenerateSchedule,
   apiGetSchedule,
@@ -16,6 +32,7 @@ import {
   type ScheduleMatch,
 } from '../services/scheduleApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetStadiums, type Stadium } from '../services/teamApi';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Nháp', color: 'default' },
@@ -29,27 +46,34 @@ export default function SchedulePage() {
   const { user } = useAuth();
   const [matches, setMatches] = useState<ScheduleMatch[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [stadiums, setStadiums] = useState<Stadium[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [activeLeg, setActiveLeg] = useState<string>('all');
 
+  // Edit modal
+  const [editingMatch, setEditingMatch] = useState<ScheduleMatch | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form] = Form.useForm();
+
   const isAdmin = user?.role === 'ADMIN';
 
-  // Fetch seasons on mount
+  // Fetch seasons + stadiums on mount
   useEffect(() => {
     apiGetSeasons()
       .then((list) => {
         setSeasons(list);
-        // Auto-select first active season
         const active = list.find((s) => s.status === 'IN_PROGRESS' || s.status === 'UPCOMING');
         if (active) setSelectedSeasonId(active.id);
         else if (list.length > 0) setSelectedSeasonId(list[0].id);
       })
-      .catch(() => {
-        /* ignore */
-      });
+      .catch(() => {});
+    apiGetStadiums()
+      .then(setStadiums)
+      .catch(() => {});
   }, []);
 
   const fetchSchedule = useCallback(async () => {
@@ -68,7 +92,7 @@ export default function SchedulePage() {
     fetchSchedule();
   }, [fetchSchedule]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     Modal.confirm({
       title: 'Tạo lịch thi đấu tự động?',
       icon: <ExclamationCircleOutlined />,
@@ -105,6 +129,35 @@ export default function SchedulePage() {
       message.error('Không thể công bố lịch thi đấu');
     } finally {
       setPublishing(false);
+    }
+  };
+
+  // Edit match
+  const openEditModal = (match: ScheduleMatch) => {
+    setEditingMatch(match);
+    form.setFieldsValue({
+      stadiumId: match.stadiumId || undefined,
+      kickoffAt: match.kickoffAt ? dayjs(match.kickoffAt) : null,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveMatch = async () => {
+    if (!editingMatch) return;
+    setSaving(true);
+    try {
+      const values = form.getFieldsValue();
+      await apiUpdateMatch(editingMatch.id, {
+        stadiumId: values.stadiumId || null,
+        kickoffAt: values.kickoffAt ? (values.kickoffAt as dayjs.Dayjs).toISOString() : null,
+      });
+      message.success('Đã cập nhật trận đấu');
+      setEditModalOpen(false);
+      fetchSchedule();
+    } catch {
+      message.error('Không thể cập nhật trận đấu');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -161,13 +214,14 @@ export default function SchedulePage() {
     {
       title: 'Sân',
       key: 'stadium',
-      render: (_, r) => r.stadium?.name ?? '—',
+      render: (_, r) => r.stadium?.name || <span style={{ color: '#ccc' }}>Chưa chọn</span>,
     },
     {
       title: 'Giờ thi đấu',
       dataIndex: 'kickoffAt',
       width: 160,
-      render: (v: string | null) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—'),
+      render: (v: string | null) =>
+        v ? dayjs(v).format('DD/MM/YYYY HH:mm') : <span style={{ color: '#ccc' }}>Chưa đặt</span>,
       sorter: (a, b) => new Date(a.kickoffAt ?? 0).getTime() - new Date(b.kickoffAt ?? 0).getTime(),
     },
     {
@@ -184,6 +238,25 @@ export default function SchedulePage() {
       })),
       onFilter: (value, record) => record.status === value,
     },
+    ...(isAdmin
+      ? [
+          {
+            title: '',
+            key: 'actions',
+            width: 50,
+            render: (_: unknown, r: ScheduleMatch) => (
+              <Tooltip title="Sửa sân & giờ">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => openEditModal(r)}
+                />
+              </Tooltip>
+            ),
+          } as const,
+        ]
+      : []),
   ];
 
   return (
@@ -216,7 +289,8 @@ export default function SchedulePage() {
           )}
           {totalMatches > 0 && (
             <Typography.Text type="secondary">
-              {totalMatches} trận{draftCount > 0 ? ` · ${draftCount} nháp` : ''}
+              {totalMatches} trận
+              {draftCount > 0 ? ` · ${draftCount} nháp` : ''}
             </Typography.Text>
           )}
         </Space>
@@ -273,6 +347,44 @@ export default function SchedulePage() {
             : 'Chưa có lịch thi đấu. Nhấn "Tạo lịch tự động" để bắt đầu.',
         }}
       />
+
+      {/* Edit Match Modal */}
+      <Modal
+        title={
+          editingMatch
+            ? `Sửa: ${editingMatch.homeTeam?.name ?? '?'} vs ${editingMatch.awayTeam?.name ?? '?'} (V${editingMatch.roundNo})`
+            : 'Sửa trận đấu'
+        }
+        open={editModalOpen}
+        onCancel={() => setEditModalOpen(false)}
+        onOk={handleSaveMatch}
+        confirmLoading={saving}
+        okText="Lưu"
+        cancelText="Hủy"
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="stadiumId" label="Sân vận động">
+            <Select
+              placeholder="Chọn sân"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={stadiums.map((s) => ({
+                value: s.id,
+                label: `${s.name}${s.city ? ` (${s.city})` : ''}`,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="kickoffAt" label="Giờ thi đấu">
+            <DatePicker
+              showTime={{ format: 'HH:mm' }}
+              format="DD/MM/YYYY HH:mm"
+              style={{ width: '100%' }}
+              placeholder="Chọn ngày giờ"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Card>
   );
 }

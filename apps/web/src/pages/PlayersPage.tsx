@@ -161,6 +161,37 @@ export default function PlayersPage() {
       sorter: (a, b) => a.fullName.localeCompare(b.fullName),
     },
     {
+      title: 'Câu lạc bộ',
+      key: 'club',
+      width: 180,
+      render: (_, record) => {
+        const tp = record.teamPlayers?.[0];
+        if (!tp?.team) return <span style={{ color: '#ccc' }}>Chưa có CLB</span>;
+        const team = tp.team;
+        return (
+          <Space size={4}>
+            {team.logoUrl && (
+              <img
+                src={team.logoUrl}
+                alt={team.name}
+                style={{ width: 20, height: 20, objectFit: 'contain' }}
+              />
+            )}
+            <span>{team.shortName || team.name}</span>
+          </Space>
+        );
+      },
+      filters: (() => {
+        const clubs = new Map<string, string>();
+        players.forEach((p) => {
+          const tp = p.teamPlayers?.[0];
+          if (tp?.team) clubs.set(tp.team.id, tp.team.name);
+        });
+        return [...clubs.entries()].map(([id, name]) => ({ text: name, value: id }));
+      })(),
+      onFilter: (value, record) => record.teamPlayers?.[0]?.team?.id === value,
+    },
+    {
       title: 'Ngày sinh',
       dataIndex: 'dob',
       width: 120,

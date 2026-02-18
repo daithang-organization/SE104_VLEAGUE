@@ -96,3 +96,10 @@ export function apiAddMatchEvent(matchId: string, data: AddMatchEventPayload) {
 export function apiGetTeamRoster(teamId: string) {
   return api.get<TeamRoster>(`/teams/${teamId}/roster`).then((res) => res.data);
 }
+
+export function apiUpdateMatch(
+  matchId: string,
+  data: { stadiumId?: string | null; kickoffAt?: string | null },
+) {
+  return api.patch<Match>(`/matches/${matchId}`, data).then((res) => res.data);
+}

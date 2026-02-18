@@ -42,12 +42,12 @@ import { UsersModule } from './users/users.module';
         {
           name: 'medium',
           ttl: 10000, // 10 seconds
-          limit: 5, // 5 requests
+          limit: 50, // 50 requests
         },
         {
           name: 'long',
           ttl: 60000, // 60 seconds
-          limit: 5, // 5 requests (for login/register)
+          limit: 30, // 30 requests (for login/register)
         },
       ],
     }),

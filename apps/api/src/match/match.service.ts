@@ -55,6 +55,37 @@ export class MatchService {
     });
   }
 
+  async updateMatch(
+    matchId: string,
+    data: {
+      stadiumId?: string | null;
+      kickoffAt?: string | null;
+    },
+  ) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${matchId} not found`);
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (data.stadiumId !== undefined) updateData.stadiumId = data.stadiumId;
+    if (data.kickoffAt !== undefined)
+      updateData.kickoffAt = data.kickoffAt ? new Date(data.kickoffAt) : null;
+
+    return this.prisma.match.update({
+      where: { id: matchId },
+      data: updateData,
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+        stadium: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   async addEvent(matchId: string, dto: AddMatchEventDto) {
     // Check match exists
     const match = await this.prisma.match.findUnique({

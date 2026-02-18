@@ -14,7 +14,7 @@ export type Player = {
   createdAt: string;
   updatedAt: string;
   teamPlayers?: Array<{
-    team: { id: string; name: string };
+    team: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
   }>;
 };
 

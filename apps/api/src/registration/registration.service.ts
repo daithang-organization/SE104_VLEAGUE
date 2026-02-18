@@ -93,9 +93,20 @@ export class RegistrationService {
 
   // ───────────────── PLAYERS ─────────────────
 
-  async listPlayers(): Promise<Player[]> {
+  async listPlayers() {
     return await this.prisma.player.findMany({
       orderBy: { fullName: 'asc' },
+      include: {
+        teamPlayers: {
+          where: { leftAt: null },
+          include: {
+            team: {
+              select: { id: true, name: true, shortName: true, logoUrl: true },
+            },
+          },
+          take: 1,
+        },
+      },
     });
   }
 
