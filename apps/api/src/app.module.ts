@@ -26,18 +26,18 @@ import { UsersModule } from './users/users.module';
       max: 100,
       isGlobal: true,
     }),
-    // Rate limiting - default: 10 requests per 60 seconds
+    // Rate limiting - default: 100 requests per 60 seconds
     ThrottlerModule.forRoot({
       throttlers: [
         {
           name: 'default',
           ttl: 60000, // 60 seconds
-          limit: 10, // 10 requests
+          limit: 100, // 100 requests
         },
         {
           name: 'short',
           ttl: 1000, // 1 second
-          limit: 3, // 3 requests
+          limit: 20, // 20 requests
         },
         {
           name: 'medium',
