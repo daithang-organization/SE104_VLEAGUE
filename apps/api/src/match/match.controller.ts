@@ -31,7 +31,13 @@ export class MatchController {
   constructor(private readonly match: MatchService) {}
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.TEAM_MANAGER, Role.REFEREE)
+  @Roles(
+    Role.ADMIN,
+    Role.TEAM_MANAGER,
+    Role.REFEREE,
+    Role.SUPERVISOR,
+    Role.PUBLIC,
+  )
   @ApiOperation({
     summary: 'Lấy thông tin trận đấu',
     description: 'Trả về thông tin chi tiết của một trận đấu theo ID',

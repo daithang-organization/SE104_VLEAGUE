@@ -72,7 +72,13 @@ export class SchedulingController {
   }
 
   @Get('/schedule')
-  @Roles(Role.ADMIN, Role.TEAM_MANAGER, Role.REFEREE)
+  @Roles(
+    Role.ADMIN,
+    Role.TEAM_MANAGER,
+    Role.REFEREE,
+    Role.SUPERVISOR,
+    Role.PUBLIC,
+  )
   @ApiOperation({
     summary: 'Lấy lịch thi đấu',
     description:
