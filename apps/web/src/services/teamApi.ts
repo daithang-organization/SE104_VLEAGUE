@@ -16,12 +16,27 @@ export type Team = {
 
 export type CreateTeamPayload = {
   name: string;
+  shortName?: string;
+  city?: string;
+  stadiumId?: string;
+  logoUrl?: string;
   status?: 'ACTIVE' | 'INACTIVE';
 };
 
 export type UpdateTeamPayload = {
   name?: string;
+  shortName?: string;
+  city?: string;
+  stadiumId?: string;
+  logoUrl?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+};
+
+export type Stadium = {
+  id: string;
+  name: string;
+  city: string;
+  capacity?: number | null;
 };
 
 // ─────────── API calls ───────────
@@ -43,4 +58,8 @@ export function apiUpdateTeam(id: string, data: UpdateTeamPayload) {
 
 export function apiDeleteTeam(id: string) {
   return api.delete<{ success: boolean }>(`/teams/${id}`).then((res) => res.data);
+}
+
+export function apiGetStadiums() {
+  return api.get<Stadium[]>('/stadiums').then((res) => res.data);
 }

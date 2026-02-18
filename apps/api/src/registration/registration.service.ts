@@ -45,6 +45,10 @@ export class RegistrationService {
       return await this.prisma.team.create({
         data: {
           name: dto.name,
+          shortName: dto.shortName,
+          city: dto.city,
+          stadiumId: dto.stadiumId,
+          logoUrl: dto.logoUrl,
           status: (dto.status ?? 'ACTIVE') as never,
         },
       });
@@ -142,6 +146,10 @@ export class RegistrationService {
         dob,
         nationality: dto.nationality,
         position: dto.position as never,
+        playerType: (dto.playerType ?? 'DOMESTIC') as never,
+        birthPlace: dto.birthPlace,
+        heightCm: dto.heightCm,
+        weightKg: dto.weightKg,
       },
     });
   }
@@ -154,6 +162,10 @@ export class RegistrationService {
     if (dto.dob !== undefined) data.dob = new Date(dto.dob);
     if (dto.nationality !== undefined) data.nationality = dto.nationality;
     if (dto.position !== undefined) data.position = dto.position;
+    if (dto.playerType !== undefined) data.playerType = dto.playerType;
+    if (dto.birthPlace !== undefined) data.birthPlace = dto.birthPlace;
+    if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
+    if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
 
     return await this.prisma.player.update({
       where: { id },

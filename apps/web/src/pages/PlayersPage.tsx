@@ -2,12 +2,15 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant
 import {
   Button,
   Card,
+  Col,
   DatePicker,
   Form,
   Input,
+  InputNumber,
   message,
   Modal,
   Popconfirm,
+  Row,
   Select,
   Space,
   Table,
@@ -16,7 +19,8 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
 import {
   apiCreatePlayer,
   apiDeletePlayer,
@@ -40,7 +44,10 @@ const POSITION_COLORS: Record<string, string> = {
   FW: 'red',
 };
 
+const CAN_EDIT_ROLES = ['ADMIN', 'TEAM_MANAGER'];
+
 export default function PlayersPage() {
+  const { user } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -48,6 +55,10 @@ export default function PlayersPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form] = Form.useForm();
+
+  const canEdit = useMemo(() => {
+    return user?.role && CAN_EDIT_ROLES.includes(user.role);
+  }, [user]);
 
   const fetchPlayers = useCallback(async () => {
     setLoading(true);
@@ -68,6 +79,7 @@ export default function PlayersPage() {
   const openCreateModal = () => {
     setEditingPlayer(null);
     form.resetFields();
+    form.setFieldsValue({ playerType: 'DOMESTIC' });
     setModalOpen(true);
   };
 
@@ -78,6 +90,10 @@ export default function PlayersPage() {
       dob: dayjs(player.dob),
       nationality: player.nationality,
       position: player.position,
+      playerType: player.playerType ?? 'DOMESTIC',
+      birthPlace: player.birthPlace ?? '',
+      heightCm: player.heightCm ?? undefined,
+      weightKg: player.weightKg ?? undefined,
     });
     setModalOpen(true);
   };
@@ -87,16 +103,22 @@ export default function PlayersPage() {
       const values = await form.validateFields();
       setSaving(true);
 
-      const payload = {
-        ...values,
+      const payload: CreatePlayerPayload = {
+        fullName: values.fullName,
         dob: values.dob.format('YYYY-MM-DD'),
+        nationality: values.nationality,
+        position: values.position,
+        playerType: values.playerType || undefined,
+        birthPlace: values.birthPlace || undefined,
+        heightCm: values.heightCm || undefined,
+        weightKg: values.weightKg || undefined,
       };
 
       if (editingPlayer) {
         await apiUpdatePlayer(editingPlayer.id, payload);
         message.success('Cập nhật cầu thủ thành công!');
       } else {
-        await apiCreatePlayer(payload as CreatePlayerPayload);
+        await apiCreatePlayer(payload);
         message.success('Tạo cầu thủ thành công!');
       }
 
@@ -177,27 +199,50 @@ export default function PlayersPage() {
           {type === 'FOREIGN' ? 'Ngoại binh' : 'Nội binh'}
         </Tag>
       ),
+      filters: [
+        { text: 'Nội binh', value: 'DOMESTIC' },
+        { text: 'Ngoại binh', value: 'FOREIGN' },
+      ],
+      onFilter: (value, record) => record.playerType === value,
     },
     {
-      title: 'Hành động',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-          <Popconfirm
-            title="Xóa cầu thủ?"
-            description={`Bạn có chắc muốn xóa "${record.fullName}"?`}
-            onConfirm={() => handleDelete(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      title: 'Chiều cao',
+      dataIndex: 'heightCm',
+      width: 90,
+      render: (v: number | null) => (v ? `${v} cm` : '—'),
+      sorter: (a, b) => (a.heightCm ?? 0) - (b.heightCm ?? 0),
     },
+    {
+      title: 'Cân nặng',
+      dataIndex: 'weightKg',
+      width: 90,
+      render: (v: number | null) => (v ? `${v} kg` : '—'),
+      sorter: (a, b) => (a.weightKg ?? 0) - (b.weightKg ?? 0),
+    },
+    ...(canEdit
+      ? [
+          {
+            title: 'Hành động',
+            key: 'actions',
+            width: 120,
+            render: (_: unknown, record: Player) => (
+              <Space>
+                <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
+                <Popconfirm
+                  title="Xóa cầu thủ?"
+                  description={`Bạn có chắc muốn xóa "${record.fullName}"?`}
+                  onConfirm={() => handleDelete(record.id)}
+                  okText="Xóa"
+                  cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button type="text" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+              </Space>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -222,9 +267,11 @@ export default function PlayersPage() {
             style={{ width: 300 }}
             allowClear
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-            Thêm cầu thủ
-          </Button>
+          {canEdit && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+              Thêm cầu thủ
+            </Button>
+          )}
         </Space>
       </div>
 
@@ -246,6 +293,7 @@ export default function PlayersPage() {
         okText={editingPlayer ? 'Lưu' : 'Tạo'}
         cancelText="Hủy"
         destroyOnClose
+        width={650}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -256,38 +304,73 @@ export default function PlayersPage() {
             <Input placeholder="VD: Nguyễn Quang Hải" />
           </Form.Item>
 
-          <Form.Item
-            name="dob"
-            label="Ngày sinh"
-            rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: '100%' }}
-              placeholder="Chọn ngày sinh"
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="dob"
+                label="Ngày sinh"
+                rules={[{ required: true, message: 'Vui lòng chọn ngày sinh' }]}
+              >
+                <DatePicker
+                  format="DD/MM/YYYY"
+                  style={{ width: '100%' }}
+                  placeholder="Chọn ngày sinh"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="birthPlace" label="Nơi sinh">
+                <Input placeholder="VD: Hà Nội" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="nationality"
-            label="Quốc tịch"
-            rules={[{ required: true, message: 'Vui lòng nhập quốc tịch' }]}
-          >
-            <Input placeholder="VD: Vietnam" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="nationality"
+                label="Quốc tịch"
+                rules={[{ required: true, message: 'Vui lòng nhập quốc tịch' }]}
+              >
+                <Input placeholder="VD: Vietnam" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="playerType" label="Loại cầu thủ">
+                <Select>
+                  <Select.Option value="DOMESTIC">🇻🇳 Nội binh</Select.Option>
+                  <Select.Option value="FOREIGN">🌍 Ngoại binh</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="position"
-            label="Vị trí"
-            rules={[{ required: true, message: 'Vui lòng chọn vị trí' }]}
-          >
-            <Select placeholder="Chọn vị trí">
-              <Select.Option value="GK">Thủ môn (GK)</Select.Option>
-              <Select.Option value="DF">Hậu vệ (DF)</Select.Option>
-              <Select.Option value="MF">Tiền vệ (MF)</Select.Option>
-              <Select.Option value="FW">Tiền đạo (FW)</Select.Option>
-            </Select>
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                name="position"
+                label="Vị trí"
+                rules={[{ required: true, message: 'Vui lòng chọn vị trí' }]}
+              >
+                <Select placeholder="Chọn vị trí">
+                  <Select.Option value="GK">🧤 Thủ môn (GK)</Select.Option>
+                  <Select.Option value="DF">🛡️ Hậu vệ (DF)</Select.Option>
+                  <Select.Option value="MF">⚙️ Tiền vệ (MF)</Select.Option>
+                  <Select.Option value="FW">⚽ Tiền đạo (FW)</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="heightCm" label="Chiều cao (cm)">
+                <InputNumber min={100} max={250} style={{ width: '100%' }} placeholder="VD: 168" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="weightKg" label="Cân nặng (kg)">
+                <InputNumber min={30} max={200} style={{ width: '100%' }} placeholder="VD: 65" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
     </Card>

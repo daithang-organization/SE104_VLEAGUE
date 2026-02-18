@@ -23,6 +23,10 @@ export type CreatePlayerPayload = {
   dob: string;
   nationality: string;
   position: 'GK' | 'DF' | 'MF' | 'FW';
+  playerType?: 'DOMESTIC' | 'FOREIGN';
+  birthPlace?: string;
+  heightCm?: number;
+  weightKg?: number;
 };
 
 export type UpdatePlayerPayload = {
@@ -30,6 +34,10 @@ export type UpdatePlayerPayload = {
   dob?: string;
   nationality?: string;
   position?: 'GK' | 'DF' | 'MF' | 'FW';
+  playerType?: 'DOMESTIC' | 'FOREIGN';
+  birthPlace?: string;
+  heightCm?: number;
+  weightKg?: number;
 };
 
 // ─────────── API calls ───────────

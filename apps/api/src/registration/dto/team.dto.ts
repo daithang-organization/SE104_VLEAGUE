@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export enum TeamStatus {
   ACTIVE = 'ACTIVE',
@@ -14,6 +20,38 @@ export class CreateTeamDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiPropertyOptional({
+    description: 'Tên viết tắt',
+    example: 'HAGL',
+  })
+  @IsOptional()
+  @IsString()
+  shortName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Thành phố',
+    example: 'Pleiku',
+  })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID sân nhà',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  stadiumId?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL logo đội',
+    example: 'https://example.com/logo.png',
+  })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 
   @ApiPropertyOptional({
     description: 'Trạng thái đội bóng',
@@ -37,6 +75,37 @@ export class UpdateTeamDto {
   name?: string;
 
   @ApiPropertyOptional({
+    description: 'Tên viết tắt',
+    example: 'HAGL',
+  })
+  @IsOptional()
+  @IsString()
+  shortName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Thành phố',
+    example: 'Pleiku',
+  })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID sân nhà',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  stadiumId?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL logo đội',
+  })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @ApiPropertyOptional({
     description: 'Trạng thái đội bóng',
     enum: TeamStatus,
     example: 'ACTIVE',
@@ -52,6 +121,12 @@ export class TeamResponseDto {
 
   @ApiProperty({ description: 'Tên đội bóng', example: 'Hoàng Anh Gia Lai' })
   name: string;
+
+  @ApiPropertyOptional({ description: 'Tên viết tắt', example: 'HAGL' })
+  shortName?: string;
+
+  @ApiPropertyOptional({ description: 'Thành phố', example: 'Pleiku' })
+  city?: string;
 
   @ApiProperty({ description: 'Trạng thái', enum: TeamStatus })
   status: TeamStatus;
