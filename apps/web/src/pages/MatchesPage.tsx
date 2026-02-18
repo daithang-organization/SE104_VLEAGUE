@@ -496,9 +496,8 @@ export default function MatchesPage() {
       >
         {detailMatch && (
           <div>
-            {/* Score display with goal scorers */}
+            {/* Score display with goal scorers + cards */}
             {(() => {
-              const GOAL_TYPES = ['GOAL', 'PENALTY', 'OWN_GOAL'];
               const events = detailMatch.events ?? [];
               // Home goals: scored by home team (GOAL/PENALTY) OR own-goal by away team
               const homeGoals = events
@@ -518,16 +517,29 @@ export default function MatchesPage() {
                     (e.type === 'OWN_GOAL' && e.team?.id === detailMatch.homeTeamId),
                 )
                 .sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
-              void GOAL_TYPES; // suppress unused warning
+              // Cards per team
+              const homeCards = events
+                .filter(
+                  (e) =>
+                    (e.type === 'YELLOW_CARD' || e.type === 'RED_CARD') &&
+                    e.team?.id === detailMatch.homeTeamId,
+                )
+                .sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
+              const awayCards = events
+                .filter(
+                  (e) =>
+                    (e.type === 'YELLOW_CARD' || e.type === 'RED_CARD') &&
+                    e.team?.id === detailMatch.awayTeamId,
+                )
+                .sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
 
-              const renderScorers = (goals: MatchEvent[], align: 'left' | 'right' | 'center') => {
-                if (goals.length === 0) return null;
-                // Group by playerId
+              // Group events by player → { name, minutes[] }
+              const groupByPlayer = (evts: MatchEvent[]) => {
                 const grouped = new Map<
                   string,
                   { name: string; minutes: { minute: number; type: string }[] }
                 >();
-                for (const g of goals) {
+                for (const g of evts) {
                   const pid = g.player?.id ?? g.id;
                   const existing = grouped.get(pid);
                   if (existing) {
@@ -539,17 +551,17 @@ export default function MatchesPage() {
                     });
                   }
                 }
+                return Array.from(grouped.entries());
+              };
+
+              const renderScorers = (goals: MatchEvent[], align: 'left' | 'right' | 'center') => {
+                if (goals.length === 0) return null;
                 return (
                   <div style={{ marginTop: 6 }}>
-                    {Array.from(grouped.entries()).map(([pid, { name, minutes }]) => (
+                    {groupByPlayer(goals).map(([pid, { name, minutes }]) => (
                       <div
                         key={pid}
-                        style={{
-                          fontSize: 12,
-                          color: '#555',
-                          textAlign: align,
-                          lineHeight: 1.7,
-                        }}
+                        style={{ fontSize: 12, color: '#555', textAlign: align, lineHeight: 1.7 }}
                       >
                         ⚽ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
                         <span style={{ color: '#999' }}>
@@ -564,6 +576,36 @@ export default function MatchesPage() {
                                     : '';
                               return `${m.minute}'${suffix}`;
                             })
+                            .join(', ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              };
+
+              const renderCards = (cards: MatchEvent[], align: 'left' | 'right' | 'center') => {
+                if (cards.length === 0) return null;
+                return (
+                  <div style={{ marginTop: 4 }}>
+                    {groupByPlayer(cards).map(([pid, { name, minutes }]) => (
+                      <div
+                        key={pid}
+                        style={{ fontSize: 11, color: '#777', textAlign: align, lineHeight: 1.7 }}
+                      >
+                        {minutes
+                          .sort((a, b) => a.minute - b.minute)
+                          .map((m, i) => (
+                            <span key={i}>
+                              {i > 0 && ', '}
+                              {m.type === 'RED_CARD' ? '🟥' : '🟨'}
+                            </span>
+                          ))}{' '}
+                        <span style={{ fontWeight: 500 }}>{name}</span>{' '}
+                        <span style={{ color: '#aaa' }}>
+                          {minutes
+                            .sort((a, b) => a.minute - b.minute)
+                            .map((m) => `${m.minute}'`)
                             .join(', ')}
                         </span>
                       </div>
@@ -588,6 +630,7 @@ export default function MatchesPage() {
                       </Typography.Text>
                       <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>Đội nhà</div>
                       {renderScorers(homeGoals, 'center')}
+                      {renderCards(homeCards, 'center')}
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 80 }}>
                       <Typography.Title level={2} style={{ margin: 0 }}>
@@ -606,6 +649,7 @@ export default function MatchesPage() {
                       </Typography.Text>
                       <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>Đội khách</div>
                       {renderScorers(awayGoals, 'center')}
+                      {renderCards(awayCards, 'center')}
                     </div>
                   </Flex>
                 </div>
