@@ -60,6 +60,8 @@ export class MatchService {
     data: {
       stadiumId?: string | null;
       kickoffAt?: string | null;
+      homeScore?: number | null;
+      awayScore?: number | null;
     },
   ) {
     const match = await this.prisma.match.findUnique({
@@ -74,6 +76,8 @@ export class MatchService {
     if (data.stadiumId !== undefined) updateData.stadiumId = data.stadiumId;
     if (data.kickoffAt !== undefined)
       updateData.kickoffAt = data.kickoffAt ? new Date(data.kickoffAt) : null;
+    if (data.homeScore !== undefined) updateData.homeScore = data.homeScore;
+    if (data.awayScore !== undefined) updateData.awayScore = data.awayScore;
 
     return this.prisma.match.update({
       where: { id: matchId },

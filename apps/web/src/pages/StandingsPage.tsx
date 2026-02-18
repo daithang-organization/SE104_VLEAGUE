@@ -10,7 +10,8 @@ import {
   type TopScorer,
 } from '../services/standingsApi';
 
-// VLeague: bottom 2 teams get relegated
+// VLeague: top 2 qualify for AFC Champions League, bottom 2 get relegated
+const AFC_CL_COUNT = 2;
 const RELEGATION_COUNT = 2;
 
 export default function StandingsPage() {
@@ -103,9 +104,9 @@ export default function StandingsPage() {
     },
   ];
 
-  // Row class for champion / relegation zone
+  // Row class for AFC CL / relegation zone
   const getRowClassName = (record: TeamStanding) => {
-    if (record.position === 1) return 'standings-champion';
+    if (record.position <= AFC_CL_COUNT) return 'standings-afc-cl';
     if (totalTeams > 0 && record.position > totalTeams - RELEGATION_COUNT) {
       return 'standings-relegation';
     }
@@ -116,12 +117,12 @@ export default function StandingsPage() {
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Inline styles for row highlighting */}
       <style>{`
-        .standings-champion {
-          background: #fffbe6 !important;
-          border-left: 4px solid #faad14 !important;
+        .standings-afc-cl {
+          background: #f6ffed !important;
+          border-left: 4px solid #52c41a !important;
         }
-        .standings-champion td {
-          background: #fffbe6 !important;
+        .standings-afc-cl td {
+          background: #f6ffed !important;
         }
         .standings-relegation {
           background: #fff1f0 !important;
@@ -178,19 +179,19 @@ export default function StandingsPage() {
 
         {/* Legend */}
         {totalTeams > 0 && (
-          <Flex gap={16} style={{ marginTop: 12, paddingLeft: 4 }}>
+          <Flex gap={16} style={{ marginTop: 12, paddingLeft: 4 }} wrap="wrap">
             <Flex align="center" gap={6}>
               <div
                 style={{
                   width: 16,
                   height: 16,
                   borderRadius: 3,
-                  background: '#fffbe6',
-                  border: '2px solid #faad14',
+                  background: '#f6ffed',
+                  border: '2px solid #52c41a',
                 }}
               />
               <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                Vô địch
+                AFC Champions League ({AFC_CL_COUNT} đội đầu)
               </Typography.Text>
             </Flex>
             <Flex align="center" gap={6}>

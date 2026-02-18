@@ -99,7 +99,16 @@ export function apiGetTeamRoster(teamId: string) {
 
 export function apiUpdateMatch(
   matchId: string,
-  data: { stadiumId?: string | null; kickoffAt?: string | null },
+  data: {
+    stadiumId?: string | null;
+    kickoffAt?: string | null;
+    homeScore?: number | null;
+    awayScore?: number | null;
+  },
 ) {
   return api.patch<Match>(`/matches/${matchId}`, data).then((res) => res.data);
+}
+
+export function apiUpdateMatchStatus(matchId: string, status: string) {
+  return api.patch<Match>(`/matches/${matchId}/status`, { status }).then((res) => res.data);
 }

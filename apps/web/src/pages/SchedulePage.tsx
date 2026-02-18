@@ -366,7 +366,7 @@ export default function SchedulePage() {
               placeholder="Chọn mùa giải"
               options={seasons.map((s) => ({
                 value: s.id,
-                label: `${s.name} (${s.year})`,
+                label: `${s.name} (${s.year}/${s.year + 1})`,
               }))}
             />
           )}
@@ -497,7 +497,7 @@ export default function SchedulePage() {
           size="large"
           options={seasons.map((s) => ({
             value: s.id,
-            label: `${s.name} (${s.year})`,
+            label: `${s.name} (${s.year}/${s.year + 1})`,
           }))}
         />
         <div

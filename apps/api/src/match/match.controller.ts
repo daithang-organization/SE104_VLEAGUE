@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -29,6 +30,23 @@ import { MatchService } from './match.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MatchController {
   constructor(private readonly match: MatchService) {}
+
+  @Get()
+  @Roles(
+    Role.ADMIN,
+    Role.TEAM_MANAGER,
+    Role.REFEREE,
+    Role.SUPERVISOR,
+    Role.PUBLIC,
+  )
+  @ApiOperation({
+    summary: 'Lấy danh sách trận đấu',
+    description: 'Trả về tất cả trận đấu, có thể lọc theo mùa giải',
+  })
+  @ApiOkResponse({ description: 'Danh sách trận đấu' })
+  findAll(@Query('seasonId') seasonId?: string) {
+    return this.match.findAll(seasonId);
+  }
 
   @Get(':id')
   @Roles(
@@ -199,6 +217,16 @@ export class MatchController {
           nullable: true,
           description: 'Thời gian thi đấu',
         },
+        homeScore: {
+          type: 'integer',
+          nullable: true,
+          description: 'Số bàn thắng đội nhà',
+        },
+        awayScore: {
+          type: 'integer',
+          nullable: true,
+          description: 'Số bàn thắng đội khách',
+        },
       },
     },
   })
@@ -207,7 +235,13 @@ export class MatchController {
   @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
   updateMatch(
     @Param('id') id: string,
-    @Body() body: { stadiumId?: string | null; kickoffAt?: string | null },
+    @Body()
+    body: {
+      stadiumId?: string | null;
+      kickoffAt?: string | null;
+      homeScore?: number | null;
+      awayScore?: number | null;
+    },
   ) {
     return this.match.updateMatch(id, body);
   }
