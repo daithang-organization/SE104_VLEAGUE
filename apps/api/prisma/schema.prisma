@@ -49,6 +49,8 @@ enum SeasonTeamStatus {
 enum EventType {
   GOAL
   OWN_GOAL
+  PENALTY
+  PENALTY_MISS
   YELLOW_CARD
   RED_CARD
   SUBSTITUTION
