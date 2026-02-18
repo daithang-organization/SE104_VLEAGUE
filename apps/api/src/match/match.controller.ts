@@ -21,7 +21,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
-import type { AddMatchEventDto } from './dto/add-match-event.dto';
+import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { MatchService } from './match.service';
 
 @ApiTags('Matches')
