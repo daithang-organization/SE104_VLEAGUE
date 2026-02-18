@@ -7,9 +7,9 @@ export type ScheduleMatch = {
   leg: number;
   homeTeamId: string;
   awayTeamId: string;
-  homeTeam?: { id: string; name: string };
-  awayTeam?: { id: string; name: string };
-  stadium?: { id: string; name: string } | null;
+  homeTeam?: { id: string; name: string; shortName?: string | null };
+  awayTeam?: { id: string; name: string; shortName?: string | null };
+  stadium?: { id: string; name: string; city?: string } | null;
   stadiumId?: string | null;
   kickoffAt?: string | null;
   status: 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'FINISHED' | 'POSTPONED';
@@ -20,14 +20,29 @@ export type ScheduleMatch = {
 };
 
 // ─────────── API calls ───────────
-export function apiGetSchedule() {
-  return api.get<{ ok: boolean; matches: ScheduleMatch[] }>('/schedule').then((res) => res.data);
+export function apiGetSchedule(seasonId?: string) {
+  const params = seasonId ? { seasonId } : {};
+  return api
+    .get<{ ok: boolean; matches: ScheduleMatch[] }>('/schedule', { params })
+    .then((res) => res.data);
 }
 
-export function apiGenerateSchedule() {
-  return api.post<{ ok: boolean; message: string }>('/schedule/generate').then((res) => res.data);
+export function apiGenerateSchedule(seasonId?: string) {
+  const params = seasonId ? { seasonId } : {};
+  return api
+    .post<{
+      ok: boolean;
+      message: string;
+      totalMatches: number;
+    }>('/schedule/generate', null, { params })
+    .then((res) => res.data);
 }
 
-export function apiPublishSchedule() {
-  return api.post<{ ok: boolean; message: string }>('/schedule/publish').then((res) => res.data);
+export function apiPublishSchedule(seasonId?: string) {
+  const params = seasonId ? { seasonId } : {};
+  return api
+    .post<{ ok: boolean; message: string }>('/schedule/publish', null, {
+      params,
+    })
+    .then((res) => res.data);
 }

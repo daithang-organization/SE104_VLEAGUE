@@ -1,14 +1,21 @@
-import { ReloadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Button, Card, message, Space, Table, Tag, Typography } from 'antd';
+import {
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  SendOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
+import { Button, Card, message, Modal, Select, Space, Table, Tabs, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
 import {
   apiGenerateSchedule,
   apiGetSchedule,
   apiPublishSchedule,
   type ScheduleMatch,
 } from '../services/scheduleApi';
+import { apiGetSeasons, type Season } from '../services/seasonApi';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Nháp', color: 'default' },
@@ -19,44 +26,79 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 export default function SchedulePage() {
+  const { user } = useAuth();
   const [matches, setMatches] = useState<ScheduleMatch[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [activeLeg, setActiveLeg] = useState<string>('all');
+
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Fetch seasons on mount
+  useEffect(() => {
+    apiGetSeasons()
+      .then((list) => {
+        setSeasons(list);
+        // Auto-select first active season
+        const active = list.find((s) => s.status === 'IN_PROGRESS' || s.status === 'UPCOMING');
+        if (active) setSelectedSeasonId(active.id);
+        else if (list.length > 0) setSelectedSeasonId(list[0].id);
+      })
+      .catch(() => {
+        /* ignore */
+      });
+  }, []);
 
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGetSchedule();
+      const data = await apiGetSchedule(selectedSeasonId);
       setMatches(data.matches ?? []);
     } catch {
       message.error('Không thể tải lịch thi đấu');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedSeasonId]);
 
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
 
   const handleGenerate = async () => {
-    setGenerating(true);
-    try {
-      const result = await apiGenerateSchedule();
-      message.success(result.message || 'Tạo lịch thi đấu thành công!');
-      fetchSchedule();
-    } catch {
-      message.error('Không thể tạo lịch thi đấu');
-    } finally {
-      setGenerating(false);
-    }
+    Modal.confirm({
+      title: 'Tạo lịch thi đấu tự động?',
+      icon: <ExclamationCircleOutlined />,
+      content: 'Lịch thi đấu nháp hiện tại (nếu có) sẽ bị xóa và tạo lại. Bạn có chắc không?',
+      okText: 'Tạo lịch',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        setGenerating(true);
+        try {
+          const result = await apiGenerateSchedule(selectedSeasonId);
+          message.success(result.message || 'Tạo lịch thi đấu thành công!');
+          fetchSchedule();
+        } catch (err: unknown) {
+          const msg =
+            err &&
+            typeof err === 'object' &&
+            'response' in err &&
+            (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+          message.error(msg || 'Không thể tạo lịch thi đấu');
+        } finally {
+          setGenerating(false);
+        }
+      },
+    });
   };
 
   const handlePublish = async () => {
     setPublishing(true);
     try {
-      const result = await apiPublishSchedule();
+      const result = await apiPublishSchedule(selectedSeasonId);
       message.success(result.message || 'Công bố lịch thi đấu thành công!');
       fetchSchedule();
     } catch {
@@ -65,6 +107,16 @@ export default function SchedulePage() {
       setPublishing(false);
     }
   };
+
+  // Filter by leg
+  const filteredMatches = useMemo(() => {
+    if (activeLeg === 'all') return matches;
+    return matches.filter((m) => m.leg === Number(activeLeg));
+  }, [matches, activeLeg]);
+
+  // Stats
+  const totalMatches = matches.length;
+  const draftCount = matches.filter((m) => m.status === 'DRAFT').length;
 
   const columns: ColumnsType<ScheduleMatch> = [
     {
@@ -77,13 +129,15 @@ export default function SchedulePage() {
     {
       title: 'Lượt',
       dataIndex: 'leg',
-      width: 70,
-      render: (leg: number) => (leg === 1 ? 'Lượt đi' : 'Lượt về'),
+      width: 80,
+      render: (leg: number) => (
+        <Tag color={leg === 1 ? 'blue' : 'volcano'}>{leg === 1 ? 'Lượt đi' : 'Lượt về'}</Tag>
+      ),
     },
     {
       title: 'Đội nhà',
       key: 'home',
-      render: (_, r) => r.homeTeam?.name ?? r.homeTeamId.slice(0, 8),
+      render: (_, r) => <strong>{r.homeTeam?.name ?? r.homeTeamId.slice(0, 8)}</strong>,
     },
     {
       title: 'Tỉ số',
@@ -93,7 +147,7 @@ export default function SchedulePage() {
       render: (_, r) =>
         r.homeScore != null && r.awayScore != null ? (
           <strong>
-            {r.homeScore} - {r.awayScore}
+            {r.homeScore} – {r.awayScore}
           </strong>
         ) : (
           <span style={{ color: '#999' }}>— : —</span>
@@ -140,32 +194,75 @@ export default function SchedulePage() {
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 8,
         }}
       >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Lịch thi đấu
-        </Typography.Title>
+        <Space>
+          <Typography.Title level={4} style={{ margin: 0 }}>
+            Lịch thi đấu
+          </Typography.Title>
+          {seasons.length > 0 && (
+            <Select
+              value={selectedSeasonId}
+              onChange={(v) => setSelectedSeasonId(v)}
+              style={{ width: 200 }}
+              placeholder="Chọn mùa giải"
+              options={seasons.map((s) => ({
+                value: s.id,
+                label: `${s.name} (${s.year})`,
+              }))}
+            />
+          )}
+          {totalMatches > 0 && (
+            <Typography.Text type="secondary">
+              {totalMatches} trận{draftCount > 0 ? ` · ${draftCount} nháp` : ''}
+            </Typography.Text>
+          )}
+        </Space>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={fetchSchedule} loading={loading}>
             Tải lại
           </Button>
-          <Button icon={<ThunderboltOutlined />} onClick={handleGenerate} loading={generating}>
-            Tạo lịch tự động
-          </Button>
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handlePublish}
-            loading={publishing}
-          >
-            Công bố lịch
-          </Button>
+          {isAdmin && (
+            <>
+              <Button icon={<ThunderboltOutlined />} onClick={handleGenerate} loading={generating}>
+                Tạo lịch tự động
+              </Button>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handlePublish}
+                loading={publishing}
+                disabled={draftCount === 0}
+              >
+                Công bố lịch
+              </Button>
+            </>
+          )}
         </Space>
       </div>
 
+      <Tabs
+        activeKey={activeLeg}
+        onChange={setActiveLeg}
+        items={[
+          { key: 'all', label: `Tất cả (${matches.length})` },
+          {
+            key: '1',
+            label: `Lượt đi (${matches.filter((m) => m.leg === 1).length})`,
+          },
+          {
+            key: '2',
+            label: `Lượt về (${matches.filter((m) => m.leg === 2).length})`,
+          },
+        ]}
+        style={{ marginBottom: 8 }}
+      />
+
       <Table
         columns={columns}
-        dataSource={matches}
+        dataSource={filteredMatches}
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 20, showSizeChanger: true }}
