@@ -1,14 +1,19 @@
 import {
+  CalendarOutlined,
   EditOutlined,
-  ExclamationCircleOutlined,
   ReloadOutlined,
   SendOutlined,
   ThunderboltOutlined,
+  TrophyOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
+  Badge,
   Button,
   Card,
+  Collapse,
   DatePicker,
+  Flex,
   Form,
   message,
   Modal,
@@ -59,6 +64,10 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
 
+  // Generate modal
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [generateSeasonId, setGenerateSeasonId] = useState<string | undefined>();
+
   const isAdmin = user?.role === 'ADMIN';
 
   // Fetch seasons + stadiums on mount
@@ -92,31 +101,32 @@ export default function SchedulePage() {
     fetchSchedule();
   }, [fetchSchedule]);
 
-  const handleGenerate = () => {
-    Modal.confirm({
-      title: 'Tạo lịch thi đấu tự động?',
-      icon: <ExclamationCircleOutlined />,
-      content: 'Lịch thi đấu nháp hiện tại (nếu có) sẽ bị xóa và tạo lại. Bạn có chắc không?',
-      okText: 'Tạo lịch',
-      cancelText: 'Hủy',
-      onOk: async () => {
-        setGenerating(true);
-        try {
-          const result = await apiGenerateSchedule(selectedSeasonId);
-          message.success(result.message || 'Tạo lịch thi đấu thành công!');
-          fetchSchedule();
-        } catch (err: unknown) {
-          const msg =
-            err &&
-            typeof err === 'object' &&
-            'response' in err &&
-            (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-          message.error(msg || 'Không thể tạo lịch thi đấu');
-        } finally {
-          setGenerating(false);
-        }
-      },
-    });
+  const openGenerateModal = () => {
+    setGenerateSeasonId(selectedSeasonId);
+    setGenerateModalOpen(true);
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const result = await apiGenerateSchedule(generateSeasonId);
+      message.success(result.message || 'Tạo lịch thi đấu thành công!');
+      // Switch to the generated season view
+      if (generateSeasonId && generateSeasonId !== selectedSeasonId) {
+        setSelectedSeasonId(generateSeasonId);
+      }
+      setGenerateModalOpen(false);
+      fetchSchedule();
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error(msg || 'Không thể tạo lịch thi đấu');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handlePublish = async () => {
@@ -167,35 +177,47 @@ export default function SchedulePage() {
     return matches.filter((m) => m.leg === Number(activeLeg));
   }, [matches, activeLeg]);
 
+  // Group matches by round
+  const roundGroups = useMemo(() => {
+    const map = new Map<number, ScheduleMatch[]>();
+    filteredMatches.forEach((m) => {
+      const list = map.get(m.roundNo) ?? [];
+      list.push(m);
+      map.set(m.roundNo, list);
+    });
+    return [...map.entries()].sort(([a], [b]) => a - b);
+  }, [filteredMatches]);
+
   // Stats
   const totalMatches = matches.length;
   const draftCount = matches.filter((m) => m.status === 'DRAFT').length;
 
-  const columns: ColumnsType<ScheduleMatch> = [
-    {
-      title: 'Vòng',
-      dataIndex: 'roundNo',
-      width: 80,
-      sorter: (a, b) => a.roundNo - b.roundNo,
-      render: (roundNo: number) => <strong>V{roundNo}</strong>,
-    },
+  // Compact columns for per-round table
+  const roundColumns: ColumnsType<ScheduleMatch> = [
     {
       title: 'Lượt',
       dataIndex: 'leg',
       width: 80,
       render: (leg: number) => (
-        <Tag color={leg === 1 ? 'blue' : 'volcano'}>{leg === 1 ? 'Lượt đi' : 'Lượt về'}</Tag>
+        <Tag color={leg === 1 ? 'blue' : 'volcano'} style={{ margin: 0 }}>
+          {leg === 1 ? 'Lượt đi' : 'Lượt về'}
+        </Tag>
       ),
     },
     {
       title: 'Đội nhà',
       key: 'home',
-      render: (_, r) => <strong>{r.homeTeam?.name ?? r.homeTeamId.slice(0, 8)}</strong>,
+      width: '20%',
+      render: (_, r) => (
+        <strong style={{ whiteSpace: 'nowrap' }}>
+          {r.homeTeam?.name || r.homeTeamId.slice(0, 8)}
+        </strong>
+      ),
     },
     {
       title: 'Tỉ số',
       key: 'score',
-      width: 100,
+      width: 80,
       align: 'center',
       render: (_, r) =>
         r.homeScore != null && r.awayScore != null ? (
@@ -203,54 +225,66 @@ export default function SchedulePage() {
             {r.homeScore} – {r.awayScore}
           </strong>
         ) : (
-          <span style={{ color: '#999' }}>— : —</span>
+          <span style={{ color: '#bbb' }}>vs</span>
         ),
     },
     {
       title: 'Đội khách',
       key: 'away',
-      render: (_, r) => r.awayTeam?.name ?? r.awayTeamId.slice(0, 8),
+      width: '22%',
+      render: (_, r) => (
+        <span style={{ whiteSpace: 'nowrap' }}>{r.awayTeam?.name || r.awayTeamId.slice(0, 8)}</span>
+      ),
     },
     {
-      title: 'Sân',
+      title: 'Sân vận động',
       key: 'stadium',
-      render: (_, r) => r.stadium?.name || <span style={{ color: '#ccc' }}>Chưa chọn</span>,
+      render: (_, r) =>
+        r.stadium?.name ? (
+          <span style={{ fontSize: 13 }}>{r.stadium.name}</span>
+        ) : (
+          <span style={{ color: '#ccc', fontSize: 13 }}>Chưa chọn</span>
+        ),
     },
     {
       title: 'Giờ thi đấu',
       dataIndex: 'kickoffAt',
-      width: 160,
+      width: 150,
       render: (v: string | null) =>
-        v ? dayjs(v).format('DD/MM/YYYY HH:mm') : <span style={{ color: '#ccc' }}>Chưa đặt</span>,
-      sorter: (a, b) => new Date(a.kickoffAt ?? 0).getTime() - new Date(b.kickoffAt ?? 0).getTime(),
+        v ? (
+          <Flex align="center" gap={4}>
+            <CalendarOutlined style={{ color: '#1677ff', fontSize: 12 }} />
+            <span style={{ fontSize: 13 }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</span>
+          </Flex>
+        ) : (
+          <span style={{ color: '#ccc', fontSize: 13 }}>Chưa đặt</span>
+        ),
     },
     {
-      title: 'Trạng thái',
+      title: 'TT',
       dataIndex: 'status',
-      width: 120,
+      width: 90,
       render: (status: string) => {
         const s = STATUS_MAP[status] ?? { label: status, color: 'default' };
         return <Tag color={s.color}>{s.label}</Tag>;
       },
-      filters: Object.entries(STATUS_MAP).map(([value, { label }]) => ({
-        text: label,
-        value,
-      })),
-      onFilter: (value, record) => record.status === value,
     },
     ...(isAdmin
       ? [
           {
             title: '',
             key: 'actions',
-            width: 50,
+            width: 40,
             render: (_: unknown, r: ScheduleMatch) => (
               <Tooltip title="Sửa sân & giờ">
                 <Button
                   type="text"
                   size="small"
                   icon={<EditOutlined />}
-                  onClick={() => openEditModal(r)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditModal(r);
+                  }}
                 />
               </Tooltip>
             ),
@@ -259,19 +293,68 @@ export default function SchedulePage() {
       : []),
   ];
 
+  // Build Collapse items for each round
+  const collapseItems = roundGroups.map(([roundNo, roundMatches]) => {
+    // Get date range for the round
+    const dates = roundMatches.filter((m) => m.kickoffAt).map((m) => dayjs(m.kickoffAt!));
+    const dateLabel =
+      dates.length > 0 ? dates.reduce((a, b) => (a.isBefore(b) ? a : b)).format('DD/MM/YYYY') : '';
+
+    const finishedCount = roundMatches.filter((m) => m.status === 'FINISHED').length;
+    const allFinished = finishedCount === roundMatches.length;
+
+    return {
+      key: `round-${roundNo}`,
+      label: (
+        <Flex align="center" gap={12} style={{ width: '100%' }}>
+          <Badge
+            count={`V${roundNo}`}
+            style={{
+              backgroundColor: allFinished ? '#52c41a' : '#1677ff',
+              fontWeight: 600,
+              fontSize: 13,
+              minWidth: 36,
+            }}
+          />
+          <Typography.Text strong style={{ fontSize: 15 }}>
+            Vòng {roundNo}
+          </Typography.Text>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            {roundMatches.length} trận
+            {dateLabel ? ` · ${dateLabel}` : ''}
+          </Typography.Text>
+          {allFinished && (
+            <Tag color="green" style={{ marginLeft: 'auto' }}>
+              Đã kết thúc
+            </Tag>
+          )}
+          {finishedCount > 0 && !allFinished && (
+            <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>
+              {finishedCount}/{roundMatches.length} xong
+            </Typography.Text>
+          )}
+        </Flex>
+      ),
+      children: (
+        <Table
+          columns={roundColumns}
+          dataSource={roundMatches}
+          rowKey="id"
+          pagination={false}
+          size="small"
+          showHeader={false}
+          style={{ margin: -12 }}
+        />
+      ),
+    };
+  });
+
   return (
     <Card>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
+      {/* Header */}
+      <Flex justify="space-between" align="center" wrap="wrap" gap={8} style={{ marginBottom: 16 }}>
         <Space>
+          <TrophyOutlined style={{ fontSize: 22, color: '#faad14' }} />
           <Typography.Title level={4} style={{ margin: 0 }}>
             Lịch thi đấu
           </Typography.Title>
@@ -289,8 +372,7 @@ export default function SchedulePage() {
           )}
           {totalMatches > 0 && (
             <Typography.Text type="secondary">
-              {totalMatches} trận
-              {draftCount > 0 ? ` · ${draftCount} nháp` : ''}
+              {totalMatches} trận{draftCount > 0 ? ` · ${draftCount} nháp` : ''}
             </Typography.Text>
           )}
         </Space>
@@ -300,7 +382,11 @@ export default function SchedulePage() {
           </Button>
           {isAdmin && (
             <>
-              <Button icon={<ThunderboltOutlined />} onClick={handleGenerate} loading={generating}>
+              <Button
+                icon={<ThunderboltOutlined />}
+                onClick={openGenerateModal}
+                loading={generating}
+              >
                 Tạo lịch tự động
               </Button>
               <Button
@@ -315,38 +401,36 @@ export default function SchedulePage() {
             </>
           )}
         </Space>
-      </div>
+      </Flex>
 
+      {/* Leg tabs */}
       <Tabs
         activeKey={activeLeg}
         onChange={setActiveLeg}
         items={[
           { key: 'all', label: `Tất cả (${matches.length})` },
-          {
-            key: '1',
-            label: `Lượt đi (${matches.filter((m) => m.leg === 1).length})`,
-          },
-          {
-            key: '2',
-            label: `Lượt về (${matches.filter((m) => m.leg === 2).length})`,
-          },
+          { key: '1', label: `Lượt đi (${matches.filter((m) => m.leg === 1).length})` },
+          { key: '2', label: `Lượt về (${matches.filter((m) => m.leg === 2).length})` },
         ]}
-        style={{ marginBottom: 8 }}
+        style={{ marginBottom: 12 }}
       />
 
-      <Table
-        columns={columns}
-        dataSource={filteredMatches}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 20, showSizeChanger: true }}
-        size="middle"
-        locale={{
-          emptyText: loading
-            ? 'Đang tải...'
-            : 'Chưa có lịch thi đấu. Nhấn "Tạo lịch tự động" để bắt đầu.',
-        }}
-      />
+      {/* Rounds grouped by Collapse */}
+      {roundGroups.length === 0 && !loading ? (
+        <Flex justify="center" align="center" style={{ padding: 48, color: '#999' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 15 }}>
+            Chưa có lịch thi đấu. Nhấn "Tạo lịch tự động" để bắt đầu.
+          </Typography.Text>
+        </Flex>
+      ) : (
+        <Collapse
+          items={collapseItems}
+          defaultActiveKey={roundGroups.length > 0 ? [`round-${roundGroups[0][0]}`] : []}
+          expandIconPosition="end"
+          style={{ background: 'transparent', border: 'none' }}
+          size="small"
+        />
+      )}
 
       {/* Edit Match Modal */}
       <Modal
@@ -384,6 +468,54 @@ export default function SchedulePage() {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Generate Schedule Modal */}
+      <Modal
+        title={
+          <Space>
+            <ThunderboltOutlined style={{ color: '#faad14' }} />
+            <span>Tạo lịch thi đấu tự động</span>
+          </Space>
+        }
+        open={generateModalOpen}
+        onCancel={() => setGenerateModalOpen(false)}
+        onOk={handleGenerate}
+        confirmLoading={generating}
+        okText="Tạo lịch"
+        cancelText="Hủy"
+        okButtonProps={{ type: 'primary', icon: <ThunderboltOutlined /> }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Text>Chọn mùa giải để tạo lịch thi đấu round-robin:</Typography.Text>
+        </div>
+        <Select
+          value={generateSeasonId}
+          onChange={(v) => setGenerateSeasonId(v)}
+          style={{ width: '100%', marginBottom: 16 }}
+          placeholder="Chọn mùa giải"
+          size="large"
+          options={seasons.map((s) => ({
+            value: s.id,
+            label: `${s.name} (${s.year})`,
+          }))}
+        />
+        <div
+          style={{
+            background: '#fffbe6',
+            border: '1px solid #ffe58f',
+            borderRadius: 8,
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <WarningOutlined style={{ color: '#faad14', fontSize: 16 }} />
+          <Typography.Text style={{ fontSize: 13 }}>
+            Lịch thi đấu nháp hiện tại (nếu có) sẽ bị xóa và tạo lại.
+          </Typography.Text>
+        </div>
       </Modal>
     </Card>
   );

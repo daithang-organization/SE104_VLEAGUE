@@ -34,15 +34,19 @@ export function apiGenerateSchedule(seasonId?: string) {
       ok: boolean;
       message: string;
       totalMatches: number;
-    }>('/schedule/generate', null, { params })
+    }>('/schedule/generate', {}, { params })
     .then((res) => res.data);
 }
 
 export function apiPublishSchedule(seasonId?: string) {
   const params = seasonId ? { seasonId } : {};
   return api
-    .post<{ ok: boolean; message: string }>('/schedule/publish', null, {
-      params,
-    })
+    .post<{ ok: boolean; message: string }>(
+      '/schedule/publish',
+      {},
+      {
+        params,
+      },
+    )
     .then((res) => res.data);
 }

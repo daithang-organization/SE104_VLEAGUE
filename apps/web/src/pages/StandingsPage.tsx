@@ -1,4 +1,5 @@
-import { Card, Empty, message, Select, Space, Table, Typography } from 'antd';
+import { CrownOutlined } from '@ant-design/icons';
+import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
@@ -8,6 +9,9 @@ import {
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
+
+// VLeague: bottom 2 teams get relegated
+const RELEGATION_COUNT = 2;
 
 export default function StandingsPage() {
   const [loading, setLoading] = useState(true);
@@ -46,12 +50,24 @@ export default function StandingsPage() {
     setSelectedSeason(value || undefined);
   };
 
+  const totalTeams = standings.length;
+
   const standingsColumns: ColumnsType<TeamStanding> = [
     {
       title: '#',
       dataIndex: 'position',
       width: 50,
-      render: (pos: number) => <strong>{pos}</strong>,
+      render: (pos: number) => {
+        if (pos === 1) {
+          return (
+            <strong style={{ color: '#d4a017' }}>
+              <CrownOutlined style={{ marginRight: 4 }} />
+              {pos}
+            </strong>
+          );
+        }
+        return <strong>{pos}</strong>;
+      },
     },
     { title: 'Đội bóng', dataIndex: 'teamName' },
     { title: 'Trận', dataIndex: 'played', width: 60, align: 'center' },
@@ -87,8 +103,35 @@ export default function StandingsPage() {
     },
   ];
 
+  // Row class for champion / relegation zone
+  const getRowClassName = (record: TeamStanding) => {
+    if (record.position === 1) return 'standings-champion';
+    if (totalTeams > 0 && record.position > totalTeams - RELEGATION_COUNT) {
+      return 'standings-relegation';
+    }
+    return '';
+  };
+
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      {/* Inline styles for row highlighting */}
+      <style>{`
+        .standings-champion {
+          background: #fffbe6 !important;
+          border-left: 4px solid #faad14 !important;
+        }
+        .standings-champion td {
+          background: #fffbe6 !important;
+        }
+        .standings-relegation {
+          background: #fff1f0 !important;
+          border-left: 4px solid #ff4d4f !important;
+        }
+        .standings-relegation td {
+          background: #fff1f0 !important;
+        }
+      `}</style>
+
       <Card>
         <div
           style={{
@@ -99,7 +142,7 @@ export default function StandingsPage() {
           }}
         >
           <Typography.Title level={4} style={{ margin: 0 }}>
-            Bảng xếp hạng
+            🏆 Bảng xếp hạng
           </Typography.Title>
           <Select
             placeholder="Chọn mùa giải"
@@ -123,6 +166,7 @@ export default function StandingsPage() {
           loading={loading}
           pagination={false}
           size="middle"
+          rowClassName={getRowClassName}
           locale={{
             emptyText: loading ? (
               'Đang tải...'
@@ -131,6 +175,40 @@ export default function StandingsPage() {
             ),
           }}
         />
+
+        {/* Legend */}
+        {totalTeams > 0 && (
+          <Flex gap={16} style={{ marginTop: 12, paddingLeft: 4 }}>
+            <Flex align="center" gap={6}>
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 3,
+                  background: '#fffbe6',
+                  border: '2px solid #faad14',
+                }}
+              />
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                Vô địch
+              </Typography.Text>
+            </Flex>
+            <Flex align="center" gap={6}>
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 3,
+                  background: '#fff1f0',
+                  border: '2px solid #ff4d4f',
+                }}
+              />
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                Xuống hạng ({RELEGATION_COUNT} đội cuối)
+              </Typography.Text>
+            </Flex>
+          </Flex>
+        )}
       </Card>
 
       <Card>

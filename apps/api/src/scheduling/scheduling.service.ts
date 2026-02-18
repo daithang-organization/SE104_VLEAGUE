@@ -72,13 +72,13 @@ export class SchedulingService {
       );
     }
 
-    // 3) Delete existing DRAFT matches for this season
+    // 3) Delete ALL existing matches for this season (clean slate)
     const deleted = await this.prisma.match.deleteMany({
-      where: { seasonId: resolvedSeasonId, status: 'DRAFT' },
+      where: { seasonId: resolvedSeasonId },
     });
     if (deleted.count > 0) {
       this.logger.log(
-        `Deleted ${deleted.count} existing DRAFT matches for season ${resolvedSeasonId}`,
+        `Deleted ${deleted.count} existing matches for season ${resolvedSeasonId}`,
       );
     }
 
@@ -182,9 +182,9 @@ export class SchedulingService {
           status: 'DRAFT',
         });
 
-        // Leg 2 (lượt về) — swap home/away
+        // Leg 2 (lượt về) — swap home/away, separate round number
         matchData.push({
-          roundNo: round + 1,
+          roundNo: numRounds + round + 1,
           leg: 2,
           homeTeamId: away.id,
           awayTeamId: home.id,
@@ -210,7 +210,7 @@ export class SchedulingService {
 
     return {
       ok: true,
-      message: `Đã tạo ${result.count} trận đấu cho mùa giải "${season?.name}" (${teams.length} đội, ${numRounds} vòng × 2 lượt)`,
+      message: `Đã tạo ${result.count} trận đấu cho mùa giải "${season?.name}" (${teams.length} đội, ${numRounds * 2} vòng: lượt đi V1–V${numRounds}, lượt về V${numRounds + 1}–V${numRounds * 2})`,
       totalMatches: result.count,
     };
   }
