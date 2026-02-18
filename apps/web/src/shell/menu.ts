@@ -44,6 +44,12 @@ export const MENU: MenuItem[] = [
     roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE'],
   },
   {
+    key: 'regulations',
+    label: 'Quy định',
+    path: '/regulations',
+    roles: ['ADMIN'],
+  },
+  {
     key: 'users',
     label: 'Quản lý người dùng',
     path: '/users',

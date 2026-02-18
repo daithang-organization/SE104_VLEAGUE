@@ -165,4 +165,84 @@ describe('MatchService', () => {
       );
     });
   });
+
+  describe('updateStatus', () => {
+    it('should allow DRAFT → PUBLISHED transition', async () => {
+      const match = { ...mockMatch, status: 'DRAFT' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'PUBLISHED',
+      } as any);
+
+      const result = await service.updateStatus('match-1', 'PUBLISHED');
+
+      expect(result.status).toBe('PUBLISHED');
+    });
+
+    it('should allow PUBLISHED → LOCKED transition', async () => {
+      const match = { ...mockMatch, status: 'PUBLISHED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'LOCKED',
+      } as any);
+
+      const result = await service.updateStatus('match-1', 'LOCKED');
+
+      expect(result.status).toBe('LOCKED');
+    });
+
+    it('should allow LOCKED → FINISHED transition', async () => {
+      const match = { ...mockMatch, status: 'LOCKED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'FINISHED',
+      } as any);
+
+      const result = await service.updateStatus('match-1', 'FINISHED');
+
+      expect(result.status).toBe('FINISHED');
+    });
+
+    it('should reject invalid transition DRAFT → FINISHED', async () => {
+      const match = { ...mockMatch, status: 'DRAFT' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+
+      await expect(service.updateStatus('match-1', 'FINISHED')).rejects.toThrow(
+        'Không thể chuyển trạng thái',
+      );
+    });
+
+    it('should reject invalid transition FINISHED → DRAFT', async () => {
+      const match = { ...mockMatch, status: 'FINISHED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+
+      await expect(service.updateStatus('match-1', 'DRAFT')).rejects.toThrow(
+        'Không thể chuyển trạng thái',
+      );
+    });
+
+    it('should allow DRAFT → POSTPONED transition', async () => {
+      const match = { ...mockMatch, status: 'DRAFT' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'POSTPONED',
+      } as any);
+
+      const result = await service.updateStatus('match-1', 'POSTPONED');
+
+      expect(result.status).toBe('POSTPONED');
+    });
+
+    it('should throw NotFoundException for non-existent match', async () => {
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.updateStatus('non-existent', 'PUBLISHED'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });

@@ -243,7 +243,7 @@ describe('RegistrationService', () => {
     it('should delete a player', async () => {
       jest
         .spyOn(prisma.player, 'findUnique')
-        .mockResolvedValue(mockPlayers[0] as any);
+        .mockResolvedValue({ ...mockPlayers[0], teamPlayers: [] } as any);
       jest
         .spyOn(prisma.player, 'delete')
         .mockResolvedValue(mockPlayers[0] as any);
@@ -258,6 +258,102 @@ describe('RegistrationService', () => {
       await expect(service.deletePlayer('not-found')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('createPlayer - age validation', () => {
+    it('should reject a player under 16 years old', async () => {
+      const today = new Date();
+      const youngDob = new Date(
+        today.getFullYear() - 15,
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      await expect(
+        service.createPlayer({
+          fullName: 'Young Player',
+          dob: youngDob.toISOString(),
+          nationality: 'VN',
+          position: 'FORWARD',
+        } as any),
+      ).rejects.toThrow('ít nhất 16 tuổi');
+    });
+
+    it('should reject a player over 40 years old', async () => {
+      const today = new Date();
+      const oldDob = new Date(
+        today.getFullYear() - 41,
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      await expect(
+        service.createPlayer({
+          fullName: 'Old Player',
+          dob: oldDob.toISOString(),
+          nationality: 'VN',
+          position: 'FORWARD',
+        } as any),
+      ).rejects.toThrow('không được quá 40 tuổi');
+    });
+
+    it('should allow a player exactly 16 years old', async () => {
+      const today = new Date();
+      const dob = new Date(
+        today.getFullYear() - 16,
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      jest.spyOn(prisma.player, 'create').mockResolvedValue({
+        id: 'new-id',
+        fullName: 'Valid Player',
+        dob,
+        nationality: 'VN',
+        position: 'FORWARD',
+        playerType: 'DOMESTIC',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const result = await service.createPlayer({
+        fullName: 'Valid Player',
+        dob: dob.toISOString(),
+        nationality: 'VN',
+        position: 'FORWARD',
+      } as any);
+
+      expect(result.fullName).toBe('Valid Player');
+    });
+
+    it('should allow a player exactly 40 years old', async () => {
+      const today = new Date();
+      const dob = new Date(
+        today.getFullYear() - 40,
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      jest.spyOn(prisma.player, 'create').mockResolvedValue({
+        id: 'new-id',
+        fullName: 'Veteran Player',
+        dob,
+        nationality: 'VN',
+        position: 'GOALKEEPER',
+        playerType: 'DOMESTIC',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const result = await service.createPlayer({
+        fullName: 'Veteran Player',
+        dob: dob.toISOString(),
+        nationality: 'VN',
+        position: 'GOALKEEPER',
+      } as any);
+
+      expect(result.fullName).toBe('Veteran Player');
     });
   });
 });

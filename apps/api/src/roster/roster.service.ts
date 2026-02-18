@@ -89,6 +89,32 @@ export class RosterService {
       );
     }
 
+    // Check roster size (max 22 active players)
+    const activeCount = await this.prisma.teamPlayer.count({
+      where: { teamId, leftAt: null },
+    });
+
+    if (activeCount >= 22) {
+      throw new BadRequestException(
+        `Đội đã đạt giới hạn 22 cầu thủ trong đội hình`,
+      );
+    }
+
+    // Check foreign player limit (max 3)
+    if ((player as Record<string, unknown>).playerType === 'FOREIGN') {
+      const foreignCount = await this.prisma.teamPlayer.count({
+        where: {
+          teamId,
+          leftAt: null,
+          player: { playerType: 'FOREIGN' },
+        },
+      });
+
+      if (foreignCount >= 3) {
+        throw new BadRequestException(`Đội đã đạt giới hạn 3 cầu thủ ngoại`);
+      }
+    }
+
     // Check jersey number availability
     if (dto.jerseyNumber) {
       const jerseyTaken = await this.prisma.teamPlayer.findFirst({

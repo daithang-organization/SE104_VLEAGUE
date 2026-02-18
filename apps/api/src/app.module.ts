@@ -62,6 +62,7 @@ import { UsersModule } from './users/users.module';
     StadiumModule,
     StandingsModule,
     RosterModule,
+    RegulationModule,
     UsersModule,
   ],
   providers: [

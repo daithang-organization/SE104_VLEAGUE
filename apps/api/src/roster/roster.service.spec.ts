@@ -52,6 +52,7 @@ describe('RosterService', () => {
             teamPlayer: {
               findMany: jest.fn(),
               findFirst: jest.fn(),
+              count: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
             },
@@ -175,6 +176,76 @@ describe('RosterService', () => {
       await expect(
         service.removePlayerFromRoster('team-1', 'player-1'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('addPlayerToRoster - roster limits', () => {
+    it('should reject when roster has 22 active players', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ id: 'player-new', playerType: 'DOMESTIC' } as any);
+      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null); // not in another team
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(22); // full roster
+
+      await expect(
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-new',
+          jerseyNumber: 99,
+        }),
+      ).rejects.toThrow('22 cầu thủ');
+    });
+
+    it('should reject when team has 3 foreign players and adding another', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ id: 'player-new', playerType: 'FOREIGN' } as any);
+      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockResolvedValueOnce(18) // active count < 22
+        .mockResolvedValueOnce(3); // foreign count = 3
+
+      await expect(
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-new',
+          jerseyNumber: 99,
+        }),
+      ).rejects.toThrow('3 cầu thủ ngoại');
+    });
+
+    it('should allow adding when roster has space and foreign limit not reached', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest.spyOn(prisma.player, 'findUnique').mockResolvedValue({
+        id: 'player-new',
+        fullName: 'Test',
+        playerType: 'DOMESTIC',
+      } as any);
+      jest
+        .spyOn(prisma.teamPlayer, 'findFirst')
+        .mockResolvedValueOnce(null) // not in another team
+        .mockResolvedValueOnce(null); // jersey not taken
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(15); // plenty of room
+      jest.spyOn(prisma.teamPlayer, 'create').mockResolvedValue({
+        teamId: 'team-1',
+        playerId: 'player-new',
+        jerseyNumber: 99,
+        player: { fullName: 'Test' },
+      } as any);
+
+      const result = await service.addPlayerToRoster('team-1', {
+        playerId: 'player-new',
+        jerseyNumber: 99,
+      });
+
+      expect(result.success).toBe(true);
     });
   });
 });

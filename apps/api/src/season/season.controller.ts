@@ -161,4 +161,35 @@ export class SeasonController {
   delete(@Param('id') id: string) {
     return this.seasonService.delete(id);
   }
+
+  @Patch(':id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Cập nhật trạng thái mùa giải',
+    description:
+      'Chuyển trạng thái mùa giải: UPCOMING → IN_PROGRESS → COMPLETED. ' +
+      'Chỉ một mùa giải được phép ở trạng thái IN_PROGRESS. Chỉ ADMIN có quyền.',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['status'],
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['UPCOMING', 'IN_PROGRESS', 'COMPLETED'],
+          example: 'IN_PROGRESS',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Trạng thái mùa giải đã được cập nhật' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy mùa giải' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    return this.seasonService.updateStatus(id, body.status);
+  }
 }

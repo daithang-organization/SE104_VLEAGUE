@@ -10,6 +10,7 @@ import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import PlayersPage from './pages/PlayersPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
+import RegulationsPage from './pages/RegulationsPage';
 import ReportsPage from './pages/ReportsPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SchedulePage from './pages/SchedulePage';
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/matches" element={<MatchesPage />} />
         <Route path="/standings" element={<StandingsPage />} />
+        <Route path="/regulations" element={<RegulationsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/profile" element={<ProfilePage />} />

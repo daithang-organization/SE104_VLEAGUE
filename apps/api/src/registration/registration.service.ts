@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,9 @@ import { Prisma, type Player, type Team } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePlayerDto, UpdatePlayerDto } from './dto/player.dto';
 import type { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
+
+const MIN_PLAYER_AGE = 16;
+const MAX_PLAYER_AGE = 40;
 
 @Injectable()
 export class RegistrationService {
@@ -111,10 +115,31 @@ export class RegistrationService {
   }
 
   async createPlayer(dto: CreatePlayerDto): Promise<Player> {
+    // Validate player age (must be between 16 and 40)
+    const dob = new Date(dto.dob);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+
+    if (age < MIN_PLAYER_AGE) {
+      throw new BadRequestException(
+        `Cầu thủ phải ít nhất ${MIN_PLAYER_AGE} tuổi (hiện tại: ${age} tuổi)`,
+      );
+    }
+
+    if (age > MAX_PLAYER_AGE) {
+      throw new BadRequestException(
+        `Cầu thủ không được quá ${MAX_PLAYER_AGE} tuổi (hiện tại: ${age} tuổi)`,
+      );
+    }
+
     return await this.prisma.player.create({
       data: {
         fullName: dto.fullName,
-        dob: new Date(dto.dob),
+        dob,
         nationality: dto.nationality,
         position: dto.position as never,
       },

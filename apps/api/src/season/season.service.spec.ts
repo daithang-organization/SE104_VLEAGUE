@@ -141,4 +141,83 @@ describe('SeasonService', () => {
       expect(result.success).toBe(true);
     });
   });
+
+  describe('updateStatus', () => {
+    it('should allow UPCOMING → IN_PROGRESS transition', async () => {
+      const upcomingSeason = { ...mockSeason, status: 'UPCOMING' };
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(upcomingSeason as any);
+      jest.spyOn(prisma.season, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.season, 'update').mockResolvedValue({
+        ...upcomingSeason,
+        status: 'IN_PROGRESS',
+      });
+
+      const result = await service.updateStatus('season-1', 'IN_PROGRESS');
+
+      expect(result.status).toBe('IN_PROGRESS');
+    });
+
+    it('should allow IN_PROGRESS → COMPLETED transition', async () => {
+      const activeSeason = { ...mockSeason, status: 'IN_PROGRESS' };
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(activeSeason as any);
+      jest.spyOn(prisma.season, 'update').mockResolvedValue({
+        ...activeSeason,
+        status: 'COMPLETED',
+      });
+
+      const result = await service.updateStatus('season-1', 'COMPLETED');
+
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should reject invalid transition UPCOMING → COMPLETED', async () => {
+      const upcomingSeason = { ...mockSeason, status: 'UPCOMING' };
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(upcomingSeason as any);
+
+      await expect(
+        service.updateStatus('season-1', 'COMPLETED'),
+      ).rejects.toThrow('Không thể chuyển trạng thái');
+    });
+
+    it('should reject invalid transition COMPLETED → IN_PROGRESS', async () => {
+      const completedSeason = { ...mockSeason, status: 'COMPLETED' };
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(completedSeason as any);
+
+      await expect(
+        service.updateStatus('season-1', 'IN_PROGRESS'),
+      ).rejects.toThrow('Không thể chuyển trạng thái');
+    });
+
+    it('should reject IN_PROGRESS if another season is already active', async () => {
+      const upcomingSeason = {
+        ...mockSeason,
+        id: 'season-2',
+        status: 'UPCOMING',
+      };
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(upcomingSeason as any);
+      jest.spyOn(prisma.season, 'findFirst').mockResolvedValue(mockSeason); // existing active
+
+      await expect(
+        service.updateStatus('season-2', 'IN_PROGRESS'),
+      ).rejects.toThrow('đang diễn ra');
+    });
+
+    it('should throw NotFoundException for non-existent season', async () => {
+      jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.updateStatus('non-existent', 'IN_PROGRESS'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });
