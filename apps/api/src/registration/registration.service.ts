@@ -151,7 +151,7 @@ export class RegistrationService {
       );
     }
 
-    return await this.prisma.player.create({
+    const player = await this.prisma.player.create({
       data: {
         fullName: dto.fullName,
         dob,
@@ -163,6 +163,18 @@ export class RegistrationService {
         weightKg: dto.weightKg,
       },
     });
+
+    // Assign to team if teamId provided
+    if (dto.teamId) {
+      await this.prisma.teamPlayer.create({
+        data: {
+          teamId: dto.teamId,
+          playerId: player.id,
+        },
+      });
+    }
+
+    return player;
   }
 
   async updatePlayer(id: string, dto: UpdatePlayerDto): Promise<Player> {
@@ -178,10 +190,31 @@ export class RegistrationService {
     if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
     if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
 
-    return await this.prisma.player.update({
+    const player = await this.prisma.player.update({
       where: { id },
       data: data as never,
     });
+
+    // Handle team assignment change
+    if (dto.teamId !== undefined) {
+      // Close current team assignment
+      await this.prisma.teamPlayer.updateMany({
+        where: { playerId: id, leftAt: null },
+        data: { leftAt: new Date() },
+      });
+
+      // Create new assignment if teamId is not null
+      if (dto.teamId) {
+        await this.prisma.teamPlayer.create({
+          data: {
+            teamId: dto.teamId,
+            playerId: id,
+          },
+        });
+      }
+    }
+
+    return player;
   }
 
   async deletePlayer(id: string): Promise<{ success: boolean }> {
