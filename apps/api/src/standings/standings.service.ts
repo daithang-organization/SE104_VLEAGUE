@@ -44,6 +44,7 @@ export class StandingsService {
       where: {
         seasonId: targetSeasonId,
         status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        homeScore: { not: null },
       },
       select: {
         homeTeamId: true,
@@ -321,6 +322,7 @@ export class StandingsService {
       where: {
         seasonId: targetSeasonId,
         status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        homeScore: { not: null },
       },
       select: {
         homeTeamId: true,
