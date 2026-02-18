@@ -13,6 +13,12 @@ export const MENU: MenuItem[] = [
     path: '/',
   },
   {
+    key: 'seasons',
+    label: 'Mùa giải',
+    path: '/seasons',
+    roles: ['ADMIN'],
+  },
+  {
     key: 'teams',
     label: 'Đội bóng',
     path: '/teams',
