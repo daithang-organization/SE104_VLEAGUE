@@ -1,9 +1,10 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -20,9 +21,15 @@ export class SchedulingController {
   @Post('/schedule/generate')
   @Roles(Role.ADMIN)
   @ApiOperation({
-    summary: 'Tạo lịch thi đấu tự động',
+    summary: 'Tạo lịch thi đấu tự động (Round-robin)',
     description:
-      'Tự động tạo lịch thi đấu cho mùa giải. Chỉ ADMIN có quyền thực hiện.',
+      'Tự động tạo lịch thi đấu round-robin cho mùa giải. Nếu không truyền seasonId, sẽ tìm mùa giải IN_PROGRESS hoặc UPCOMING. Chỉ ADMIN có quyền.',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải (UUID). Bỏ trống để chọn mùa giải hiện tại.',
   })
   @ApiOkResponse({
     description: 'Lịch thi đấu đã được tạo',
@@ -30,18 +37,15 @@ export class SchedulingController {
       type: 'object',
       properties: {
         ok: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'schedule generation stub' },
+        message: { type: 'string' },
+        totalMatches: { type: 'integer', example: 24 },
       },
     },
   })
-  @ApiUnauthorizedResponse({
-    description: 'Chưa đăng nhập hoặc token không hợp lệ',
-  })
-  @ApiForbiddenResponse({
-    description: 'Không có quyền truy cập (yêu cầu ADMIN)',
-  })
-  generate() {
-    return this.scheduling.generateStub();
+  @ApiUnauthorizedResponse({ description: 'Chưa đăng nhập' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  generate(@Query('seasonId') seasonId?: string) {
+    return this.scheduling.generate(seasonId);
   }
 
   @Post('/schedule/publish')
@@ -49,7 +53,13 @@ export class SchedulingController {
   @ApiOperation({
     summary: 'Công bố lịch thi đấu',
     description:
-      'Công bố lịch thi đấu ra công chúng. Chỉ ADMIN có quyền thực hiện.',
+      'Chuyển trạng thái tất cả trận DRAFT sang PUBLISHED. Chỉ ADMIN có quyền.',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải (UUID). Bỏ trống để publish tất cả.',
   })
   @ApiOkResponse({
     description: 'Lịch thi đấu đã được công bố',
@@ -57,65 +67,39 @@ export class SchedulingController {
       type: 'object',
       properties: {
         ok: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'schedule publish stub' },
+        message: { type: 'string' },
       },
     },
   })
-  @ApiUnauthorizedResponse({
-    description: 'Chưa đăng nhập hoặc token không hợp lệ',
-  })
-  @ApiForbiddenResponse({
-    description: 'Không có quyền truy cập (yêu cầu ADMIN)',
-  })
-  publish() {
-    return this.scheduling.publishStub();
+  @ApiUnauthorizedResponse({ description: 'Chưa đăng nhập' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  publish(@Query('seasonId') seasonId?: string) {
+    return this.scheduling.publish(seasonId);
   }
 
   @Get('/schedule')
-  @Roles(Role.ADMIN, Role.TEAM_MANAGER, Role.REFEREE)
+  @Roles(
+    Role.ADMIN,
+    Role.TEAM_MANAGER,
+    Role.REFEREE,
+    Role.SUPERVISOR,
+    Role.PUBLIC,
+  )
   @ApiOperation({
     summary: 'Lấy lịch thi đấu',
     description:
-      'Trả về danh sách tất cả trận đấu theo lịch. Yêu cầu đăng nhập.',
+      'Trả về danh sách trận đấu kèm thông tin đội & sân. Yêu cầu đăng nhập.',
   })
-  @ApiOkResponse({
-    description: 'Danh sách trận đấu',
-    schema: {
-      type: 'object',
-      properties: {
-        ok: { type: 'boolean', example: true },
-        matches: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string', format: 'uuid' },
-              roundNo: { type: 'integer', example: 1 },
-              homeTeamId: { type: 'string', format: 'uuid' },
-              awayTeamId: { type: 'string', format: 'uuid' },
-              stadiumId: { type: 'string', format: 'uuid', nullable: true },
-              kickoffAt: {
-                type: 'string',
-                format: 'date-time',
-                nullable: true,
-              },
-              status: {
-                type: 'string',
-                enum: ['DRAFT', 'PUBLISHED', 'LOCKED'],
-              },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
-            },
-          },
-        },
-      },
-    },
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'Lọc theo mùa giải (UUID).',
   })
-  @ApiUnauthorizedResponse({
-    description: 'Chưa đăng nhập hoặc token không hợp lệ',
-  })
+  @ApiOkResponse({ description: 'Danh sách trận đấu' })
+  @ApiUnauthorizedResponse({ description: 'Chưa đăng nhập' })
   @ApiForbiddenResponse({ description: 'Không có quyền truy cập' })
-  getSchedule() {
-    return this.scheduling.getSchedule();
+  getSchedule(@Query('seasonId') seasonId?: string) {
+    return this.scheduling.getSchedule(seasonId);
   }
 }

@@ -1,5 +1,15 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
   ApiForbiddenResponse,
@@ -11,7 +21,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
-import type { AddMatchEventDto } from './dto/add-match-event.dto';
+import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { MatchService } from './match.service';
 
 @ApiTags('Matches')
@@ -21,8 +31,31 @@ import { MatchService } from './match.service';
 export class MatchController {
   constructor(private readonly match: MatchService) {}
 
+  @Get()
+  @Roles(
+    Role.ADMIN,
+    Role.TEAM_MANAGER,
+    Role.REFEREE,
+    Role.SUPERVISOR,
+    Role.PUBLIC,
+  )
+  @ApiOperation({
+    summary: 'Lấy danh sách trận đấu',
+    description: 'Trả về tất cả trận đấu, có thể lọc theo mùa giải',
+  })
+  @ApiOkResponse({ description: 'Danh sách trận đấu' })
+  findAll(@Query('seasonId') seasonId?: string) {
+    return this.match.findAll(seasonId);
+  }
+
   @Get(':id')
-  @Roles(Role.ADMIN, Role.TEAM_MANAGER, Role.REFEREE)
+  @Roles(
+    Role.ADMIN,
+    Role.TEAM_MANAGER,
+    Role.REFEREE,
+    Role.SUPERVISOR,
+    Role.PUBLIC,
+  )
   @ApiOperation({
     summary: 'Lấy thông tin trận đấu',
     description: 'Trả về thông tin chi tiết của một trận đấu theo ID',
@@ -159,5 +192,87 @@ export class MatchController {
   @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
   addEvent(@Param('id') id: string, @Body() dto: AddMatchEventDto) {
     return this.match.addEvent(id, dto);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Cập nhật thông tin trận đấu',
+    description: 'Cập nhật sân vận động và giờ thi đấu. Chỉ ADMIN có quyền.',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        stadiumId: {
+          type: 'string',
+          format: 'uuid',
+          nullable: true,
+          description: 'ID sân vận động',
+        },
+        kickoffAt: {
+          type: 'string',
+          format: 'date-time',
+          nullable: true,
+          description: 'Thời gian thi đấu',
+        },
+        homeScore: {
+          type: 'integer',
+          nullable: true,
+          description: 'Số bàn thắng đội nhà',
+        },
+        awayScore: {
+          type: 'integer',
+          nullable: true,
+          description: 'Số bàn thắng đội khách',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Trận đấu đã được cập nhật' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  updateMatch(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      stadiumId?: string | null;
+      kickoffAt?: string | null;
+      homeScore?: number | null;
+      awayScore?: number | null;
+    },
+  ) {
+    return this.match.updateMatch(id, body);
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Cập nhật trạng thái trận đấu',
+    description:
+      'Chuyển trạng thái trận đấu theo state machine: DRAFT → PUBLISHED → LOCKED → FINISHED. ' +
+      'DRAFT/PUBLISHED có thể chuyển sang POSTPONED. Chỉ ADMIN có quyền.',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['status'],
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['DRAFT', 'PUBLISHED', 'LOCKED', 'FINISHED', 'POSTPONED'],
+          example: 'PUBLISHED',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Trạng thái đã được cập nhật' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
+  @ApiBadRequestResponse({ description: 'Chuyển trạng thái không hợp lệ' })
+  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    return this.match.updateStatus(id, body.status);
   }
 }

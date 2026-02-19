@@ -1,7 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 
+// Valid match status transitions
+const MATCH_STATUS_TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ['PUBLISHED', 'POSTPONED'],
+  PUBLISHED: ['LOCKED', 'POSTPONED'],
+  LOCKED: ['FINISHED'],
+  FINISHED: [],
+  POSTPONED: ['DRAFT'],
+};
 @Injectable()
 export class MatchService {
   constructor(private prisma: PrismaService) {}
@@ -40,6 +52,41 @@ export class MatchService {
         stadium: { select: { id: true, name: true } },
       },
       orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
+    });
+  }
+
+  async updateMatch(
+    matchId: string,
+    data: {
+      stadiumId?: string | null;
+      kickoffAt?: string | null;
+      homeScore?: number | null;
+      awayScore?: number | null;
+    },
+  ) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${matchId} not found`);
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (data.stadiumId !== undefined) updateData.stadiumId = data.stadiumId;
+    if (data.kickoffAt !== undefined)
+      updateData.kickoffAt = data.kickoffAt ? new Date(data.kickoffAt) : null;
+    if (data.homeScore !== undefined) updateData.homeScore = data.homeScore;
+    if (data.awayScore !== undefined) updateData.awayScore = data.awayScore;
+
+    return this.prisma.match.update({
+      where: { id: matchId },
+      data: updateData,
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+        stadium: { select: { id: true, name: true } },
+      },
     });
   }
 
@@ -143,6 +190,38 @@ export class MatchService {
     await this.prisma.match.update({
       where: { id: matchId },
       data: { homeScore, awayScore },
+    });
+  }
+
+  /**
+   * Update match status with state machine enforcement
+   */
+  async updateStatus(matchId: string, newStatus: string) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match) {
+      throw new NotFoundException(`Match with ID ${matchId} not found`);
+    }
+
+    const currentStatus = match.status;
+    const allowedTransitions = MATCH_STATUS_TRANSITIONS[currentStatus] ?? [];
+
+    if (!allowedTransitions.includes(newStatus)) {
+      throw new BadRequestException(
+        `Không thể chuyển trạng thái từ ${currentStatus} sang ${newStatus}. ` +
+          `Trạng thái hợp lệ: ${allowedTransitions.length ? allowedTransitions.join(', ') : 'không có'}`,
+      );
+    }
+
+    return this.prisma.match.update({
+      where: { id: matchId },
+      data: { status: newStatus as never },
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+      },
     });
   }
 }

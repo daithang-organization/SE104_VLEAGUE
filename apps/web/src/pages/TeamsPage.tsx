@@ -2,11 +2,13 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant
 import {
   Button,
   Card,
+  Col,
   Form,
   Input,
   message,
   Modal,
   Popconfirm,
+  Row,
   Select,
   Space,
   Table,
@@ -14,24 +16,35 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../auth/AuthContext';
 import {
   apiCreateTeam,
   apiDeleteTeam,
+  apiGetStadiums,
   apiGetTeams,
   apiUpdateTeam,
   type CreateTeamPayload,
+  type Stadium,
   type Team,
 } from '../services/teamApi';
 
+const CAN_EDIT_ROLES = ['ADMIN'];
+
 export default function TeamsPage() {
+  const { user } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
+  const [stadiums, setStadiums] = useState<Stadium[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form] = Form.useForm();
+
+  const canEdit = useMemo(() => {
+    return user?.role && CAN_EDIT_ROLES.includes(user.role);
+  }, [user]);
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
@@ -45,9 +58,19 @@ export default function TeamsPage() {
     }
   }, []);
 
+  const fetchStadiums = useCallback(async () => {
+    try {
+      const data = await apiGetStadiums();
+      setStadiums(data);
+    } catch {
+      // Stadiums may fail to load, that's ok
+    }
+  }, []);
+
   useEffect(() => {
     fetchTeams();
-  }, [fetchTeams]);
+    fetchStadiums();
+  }, [fetchTeams, fetchStadiums]);
 
   const openCreateModal = () => {
     setEditingTeam(null);
@@ -58,7 +81,14 @@ export default function TeamsPage() {
 
   const openEditModal = (team: Team) => {
     setEditingTeam(team);
-    form.setFieldsValue({ name: team.name, status: team.status });
+    form.setFieldsValue({
+      name: team.name,
+      shortName: team.shortName ?? '',
+      city: team.city ?? '',
+      stadiumId: team.stadiumId ?? undefined,
+      logoUrl: team.logoUrl ?? '',
+      status: team.status,
+    });
     setModalOpen(true);
   };
 
@@ -67,18 +97,28 @@ export default function TeamsPage() {
       const values = await form.validateFields();
       setSaving(true);
 
+      // Clean up empty strings to undefined
+      const payload: CreateTeamPayload = {
+        name: values.name,
+        shortName: values.shortName || undefined,
+        city: values.city || undefined,
+        stadiumId: values.stadiumId || undefined,
+        logoUrl: values.logoUrl || undefined,
+        status: values.status,
+      };
+
       if (editingTeam) {
-        await apiUpdateTeam(editingTeam.id, values);
+        await apiUpdateTeam(editingTeam.id, payload);
         message.success('Cập nhật đội bóng thành công!');
       } else {
-        await apiCreateTeam(values as CreateTeamPayload);
+        await apiCreateTeam(payload);
         message.success('Tạo đội bóng thành công!');
       }
 
       setModalOpen(false);
       fetchTeams();
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return; // form validation error
+      if (err && typeof err === 'object' && 'errorFields' in err) return;
       message.error('Đã xảy ra lỗi. Vui lòng thử lại.');
     } finally {
       setSaving(false);
@@ -110,6 +150,18 @@ export default function TeamsPage() {
       sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
+      title: 'Viết tắt',
+      dataIndex: 'shortName',
+      width: 100,
+      render: (v: string | null) => v ?? '—',
+    },
+    {
+      title: 'Thành phố',
+      dataIndex: 'city',
+      width: 130,
+      render: (v: string | null) => v ?? '—',
+    },
+    {
       title: 'Sân nhà',
       key: 'stadium',
       render: (_, record) => record.stadium?.name ?? '—',
@@ -129,26 +181,30 @@ export default function TeamsPage() {
       ],
       onFilter: (value, record) => record.status === value,
     },
-    {
-      title: 'Hành động',
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-          <Popconfirm
-            title="Xóa đội bóng?"
-            description={`Bạn có chắc muốn xóa "${record.name}"?`}
-            onConfirm={() => handleDelete(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
-    },
+    ...(canEdit
+      ? [
+          {
+            title: 'Hành động',
+            key: 'actions',
+            width: 120,
+            render: (_: unknown, record: Team) => (
+              <Space>
+                <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
+                <Popconfirm
+                  title="Xóa đội bóng?"
+                  description={`Bạn có chắc muốn xóa "${record.name}"?`}
+                  onConfirm={() => handleDelete(record.id)}
+                  okText="Xóa"
+                  cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button type="text" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+              </Space>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -173,9 +229,11 @@ export default function TeamsPage() {
             style={{ width: 250 }}
             allowClear
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-            Thêm đội bóng
-          </Button>
+          {canEdit && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+              Thêm đội bóng
+            </Button>
+          )}
         </Space>
       </div>
 
@@ -197,14 +255,50 @@ export default function TeamsPage() {
         okText={editingTeam ? 'Lưu' : 'Tạo'}
         cancelText="Hủy"
         destroyOnClose
+        width={600}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="name"
-            label="Tên đội bóng"
-            rules={[{ required: true, message: 'Vui lòng nhập tên đội bóng' }]}
-          >
-            <Input placeholder="VD: Hoàng Anh Gia Lai" />
+          <Row gutter={16}>
+            <Col span={16}>
+              <Form.Item
+                name="name"
+                label="Tên đội bóng"
+                rules={[{ required: true, message: 'Vui lòng nhập tên đội bóng' }]}
+              >
+                <Input placeholder="VD: Hoàng Anh Gia Lai" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="shortName" label="Tên viết tắt">
+                <Input placeholder="VD: HAGL" maxLength={10} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="city" label="Thành phố">
+                <Input placeholder="VD: Pleiku" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="stadiumId" label="Sân nhà">
+                <Select
+                  placeholder="Chọn sân nhà"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={stadiums.map((s) => ({
+                    value: s.id,
+                    label: `${s.name} (${s.city})`,
+                  }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="logoUrl" label="URL Logo">
+            <Input placeholder="https://example.com/logo.png" />
           </Form.Item>
 
           <Form.Item name="status" label="Trạng thái">

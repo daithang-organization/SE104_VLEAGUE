@@ -43,7 +43,8 @@ export class StandingsService {
     const matches = await this.prisma.match.findMany({
       where: {
         seasonId: targetSeasonId,
-        status: 'LOCKED', // Only count completed matches
+        status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        homeScore: { not: null },
       },
       select: {
         homeTeamId: true,
@@ -156,7 +157,7 @@ export class StandingsService {
         type: 'GOAL',
         match: {
           seasonId: targetSeasonId,
-          status: 'LOCKED',
+          status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
         },
         playerId: { not: null },
       },
@@ -218,7 +219,7 @@ export class StandingsService {
         type: { in: ['YELLOW_CARD', 'RED_CARD'] },
         match: {
           seasonId: targetSeasonId,
-          status: 'LOCKED',
+          status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
         },
         playerId: { not: null },
       },
@@ -294,7 +295,7 @@ export class StandingsService {
         type: { in: ['YELLOW_CARD', 'RED_CARD'] },
         match: {
           seasonId: targetSeasonId,
-          status: 'LOCKED',
+          status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
         },
         teamId: { not: null },
       },
@@ -320,7 +321,8 @@ export class StandingsService {
     const matches = await this.prisma.match.findMany({
       where: {
         seasonId: targetSeasonId,
-        status: 'LOCKED',
+        status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        homeScore: { not: null },
       },
       select: {
         homeTeamId: true,

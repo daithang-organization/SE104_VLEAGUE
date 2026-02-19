@@ -161,11 +161,13 @@ async function main() {
       where: { email: u.email },
       update: {
         role: u.role,
+        emailVerified: true,
       },
       create: {
         email: u.email,
         role: u.role,
         passwordHash,
+        emailVerified: true,
       },
     });
   }

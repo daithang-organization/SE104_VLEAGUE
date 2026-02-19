@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationModule } from './registration/registration.module';
+import { RegulationModule } from './regulation/regulation.module';
 import { RosterModule } from './roster/roster.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SeasonModule } from './season/season.module';
@@ -25,28 +26,28 @@ import { UsersModule } from './users/users.module';
       max: 100,
       isGlobal: true,
     }),
-    // Rate limiting - default: 10 requests per 60 seconds
+    // Rate limiting - default: 100 requests per 60 seconds
     ThrottlerModule.forRoot({
       throttlers: [
         {
           name: 'default',
           ttl: 60000, // 60 seconds
-          limit: 10, // 10 requests
+          limit: 100, // 100 requests
         },
         {
           name: 'short',
           ttl: 1000, // 1 second
-          limit: 3, // 3 requests
+          limit: 20, // 20 requests
         },
         {
           name: 'medium',
           ttl: 10000, // 10 seconds
-          limit: 5, // 5 requests
+          limit: 50, // 50 requests
         },
         {
           name: 'long',
           ttl: 60000, // 60 seconds
-          limit: 5, // 5 requests (for login/register)
+          limit: 30, // 30 requests (for login/register)
         },
       ],
     }),
@@ -62,6 +63,7 @@ import { UsersModule } from './users/users.module';
     StadiumModule,
     StandingsModule,
     RosterModule,
+    RegulationModule,
     UsersModule,
   ],
   providers: [

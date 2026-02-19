@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,9 @@ import { Prisma, type Player, type Team } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePlayerDto, UpdatePlayerDto } from './dto/player.dto';
 import type { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
+
+const MIN_PLAYER_AGE = 16;
+const MAX_PLAYER_AGE = 40;
 
 @Injectable()
 export class RegistrationService {
@@ -41,6 +45,10 @@ export class RegistrationService {
       return await this.prisma.team.create({
         data: {
           name: dto.name,
+          shortName: dto.shortName,
+          city: dto.city,
+          stadiumId: dto.stadiumId,
+          logoUrl: dto.logoUrl,
           status: (dto.status ?? 'ACTIVE') as never,
         },
       });
@@ -85,9 +93,20 @@ export class RegistrationService {
 
   // ───────────────── PLAYERS ─────────────────
 
-  async listPlayers(): Promise<Player[]> {
+  async listPlayers() {
     return await this.prisma.player.findMany({
       orderBy: { fullName: 'asc' },
+      include: {
+        teamPlayers: {
+          where: { leftAt: null },
+          include: {
+            team: {
+              select: { id: true, name: true, shortName: true, logoUrl: true },
+            },
+          },
+          take: 1,
+        },
+      },
     });
   }
 
@@ -111,14 +130,51 @@ export class RegistrationService {
   }
 
   async createPlayer(dto: CreatePlayerDto): Promise<Player> {
-    return await this.prisma.player.create({
+    // Validate player age (must be between 16 and 40)
+    const dob = new Date(dto.dob);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+
+    if (age < MIN_PLAYER_AGE) {
+      throw new BadRequestException(
+        `Cầu thủ phải ít nhất ${MIN_PLAYER_AGE} tuổi (hiện tại: ${age} tuổi)`,
+      );
+    }
+
+    if (age > MAX_PLAYER_AGE) {
+      throw new BadRequestException(
+        `Cầu thủ không được quá ${MAX_PLAYER_AGE} tuổi (hiện tại: ${age} tuổi)`,
+      );
+    }
+
+    const player = await this.prisma.player.create({
       data: {
         fullName: dto.fullName,
-        dob: new Date(dto.dob),
+        dob,
         nationality: dto.nationality,
         position: dto.position as never,
+        playerType: (dto.playerType ?? 'DOMESTIC') as never,
+        birthPlace: dto.birthPlace,
+        heightCm: dto.heightCm,
+        weightKg: dto.weightKg,
       },
     });
+
+    // Assign to team if teamId provided
+    if (dto.teamId) {
+      await this.prisma.teamPlayer.create({
+        data: {
+          teamId: dto.teamId,
+          playerId: player.id,
+        },
+      });
+    }
+
+    return player;
   }
 
   async updatePlayer(id: string, dto: UpdatePlayerDto): Promise<Player> {
@@ -129,11 +185,36 @@ export class RegistrationService {
     if (dto.dob !== undefined) data.dob = new Date(dto.dob);
     if (dto.nationality !== undefined) data.nationality = dto.nationality;
     if (dto.position !== undefined) data.position = dto.position;
+    if (dto.playerType !== undefined) data.playerType = dto.playerType;
+    if (dto.birthPlace !== undefined) data.birthPlace = dto.birthPlace;
+    if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
+    if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
 
-    return await this.prisma.player.update({
+    const player = await this.prisma.player.update({
       where: { id },
       data: data as never,
     });
+
+    // Handle team assignment change
+    if (dto.teamId !== undefined) {
+      // Close current team assignment
+      await this.prisma.teamPlayer.updateMany({
+        where: { playerId: id, leftAt: null },
+        data: { leftAt: new Date() },
+      });
+
+      // Create new assignment if teamId is not null
+      if (dto.teamId) {
+        await this.prisma.teamPlayer.create({
+          data: {
+            teamId: dto.teamId,
+            playerId: id,
+          },
+        });
+      }
+    }
+
+    return player;
   }
 
   async deletePlayer(id: string): Promise<{ success: boolean }> {

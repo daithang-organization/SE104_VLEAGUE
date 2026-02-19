@@ -14,7 +14,7 @@ export type Player = {
   createdAt: string;
   updatedAt: string;
   teamPlayers?: Array<{
-    team: { id: string; name: string };
+    team: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
   }>;
 };
 
@@ -23,6 +23,11 @@ export type CreatePlayerPayload = {
   dob: string;
   nationality: string;
   position: 'GK' | 'DF' | 'MF' | 'FW';
+  playerType?: 'DOMESTIC' | 'FOREIGN';
+  birthPlace?: string;
+  heightCm?: number;
+  weightKg?: number;
+  teamId?: string;
 };
 
 export type UpdatePlayerPayload = {
@@ -30,6 +35,11 @@ export type UpdatePlayerPayload = {
   dob?: string;
   nationality?: string;
   position?: 'GK' | 'DF' | 'MF' | 'FW';
+  playerType?: 'DOMESTIC' | 'FOREIGN';
+  birthPlace?: string;
+  heightCm?: number;
+  weightKg?: number;
+  teamId?: string;
 };
 
 // ─────────── API calls ───────────

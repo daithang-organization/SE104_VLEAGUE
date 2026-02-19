@@ -2,10 +2,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
+  Min,
 } from 'class-validator';
 
 export enum PlayerPosition {
@@ -13,6 +16,11 @@ export enum PlayerPosition {
   DF = 'DF', // Defender
   MF = 'MF', // Midfielder
   FW = 'FW', // Forward
+}
+
+export enum PlayerType {
+  DOMESTIC = 'DOMESTIC',
+  FOREIGN = 'FOREIGN',
 }
 
 export class CreatePlayerDto {
@@ -46,6 +54,44 @@ export class CreatePlayerDto {
   })
   @IsEnum(PlayerPosition)
   position: PlayerPosition;
+
+  @ApiPropertyOptional({
+    description: 'Loại cầu thủ',
+    enum: PlayerType,
+    default: PlayerType.DOMESTIC,
+    example: 'DOMESTIC',
+  })
+  @IsOptional()
+  @IsEnum(PlayerType)
+  playerType?: PlayerType;
+
+  @ApiPropertyOptional({
+    description: 'Nơi sinh',
+    example: 'Hà Nội',
+  })
+  @IsOptional()
+  @IsString()
+  birthPlace?: string;
+
+  @ApiPropertyOptional({
+    description: 'Chiều cao (cm)',
+    example: 168,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(250)
+  heightCm?: number;
+
+  @ApiPropertyOptional({
+    description: 'Cân nặng (kg)',
+    example: 65,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(200)
+  weightKg?: number;
 
   @ApiPropertyOptional({
     description: 'ID đội bóng (nếu có)',
@@ -93,6 +139,43 @@ export class UpdatePlayerDto {
   position?: PlayerPosition;
 
   @ApiPropertyOptional({
+    description: 'Loại cầu thủ',
+    enum: PlayerType,
+    example: 'DOMESTIC',
+  })
+  @IsOptional()
+  @IsEnum(PlayerType)
+  playerType?: PlayerType;
+
+  @ApiPropertyOptional({
+    description: 'Nơi sinh',
+    example: 'Hà Nội',
+  })
+  @IsOptional()
+  @IsString()
+  birthPlace?: string;
+
+  @ApiPropertyOptional({
+    description: 'Chiều cao (cm)',
+    example: 168,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(250)
+  heightCm?: number;
+
+  @ApiPropertyOptional({
+    description: 'Cân nặng (kg)',
+    example: 65,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(200)
+  weightKg?: number;
+
+  @ApiPropertyOptional({
     description: 'ID đội bóng',
     format: 'uuid',
   })
@@ -119,6 +202,18 @@ export class PlayerResponseDto {
 
   @ApiProperty({ description: 'Vị trí', enum: PlayerPosition })
   position: PlayerPosition;
+
+  @ApiProperty({ description: 'Loại cầu thủ', enum: PlayerType })
+  playerType: PlayerType;
+
+  @ApiPropertyOptional({ description: 'Nơi sinh' })
+  birthPlace?: string;
+
+  @ApiPropertyOptional({ description: 'Chiều cao (cm)' })
+  heightCm?: number;
+
+  @ApiPropertyOptional({ description: 'Cân nặng (kg)' })
+  weightKg?: number;
 
   @ApiPropertyOptional({ description: 'ID đội bóng', format: 'uuid' })
   teamId?: string;
