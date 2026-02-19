@@ -227,7 +227,7 @@ export default function MatchesPage() {
         typeof err === 'object' &&
         'response' in err &&
         (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      message.error(msg || 'Không thể cập nhật trạng thái');
+      message.error((msg as string) || 'Không thể cập nhật trạng thái');
     }
   };
 

@@ -198,6 +198,22 @@ describe('RegistrationService', () => {
       await service.listPlayers();
       expect(prisma.player.findMany).toHaveBeenCalledWith({
         orderBy: { fullName: 'asc' },
+        include: {
+          teamPlayers: {
+            where: { leftAt: null },
+            include: {
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  shortName: true,
+                  logoUrl: true,
+                },
+              },
+            },
+            take: 1,
+          },
+        },
       });
     });
   });

@@ -123,7 +123,7 @@ export default function SchedulePage() {
         typeof err === 'object' &&
         'response' in err &&
         (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      message.error(msg || 'Không thể tạo lịch thi đấu');
+      message.error((msg as string) || 'Không thể tạo lịch thi đấu');
     } finally {
       setGenerating(false);
     }
