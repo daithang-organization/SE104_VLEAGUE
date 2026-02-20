@@ -88,19 +88,21 @@ All routes are defined in `src/App.tsx`. Routes are split into **public** (no au
 
 ### Protected Routes (inside `AppShell`)
 
-| Route              | Page Component       | Description                |
-| ------------------ | -------------------- | -------------------------- |
-| `/`                | `DashboardPage`      | Main dashboard             |
-| `/teams`           | `TeamsPage`          | Team management (CRUD)     |
-| `/players`         | `PlayersPage`        | Player management (CRUD)   |
-| `/schedule`        | `SchedulePage`       | Match schedule management  |
-| `/matches`         | `MatchesPage`        | Match results & events     |
-| `/standings`       | `StandingsPage`      | League standings table     |
-| `/users`           | `UsersPage`          | User management (ADMIN)    |
-| `/reports`         | `ReportsPage`        | Reports (Admin only)       |
-| `/profile`         | `ProfilePage`        | User profile management    |
-| `/change-password` | `ChangePasswordPage` | Password change form       |
-| `/sessions`        | `SessionsPage`       | Active sessions management |
+| Route              | Page Component       | Description                   |
+| ------------------ | -------------------- | ----------------------------- |
+| `/`                | `DashboardPage`      | Main dashboard                |
+| `/teams`           | `TeamsPage`          | Team management (CRUD)        |
+| `/players`         | `PlayersPage`        | Player management (CRUD)      |
+| `/schedule`        | `SchedulePage`       | Match schedule management     |
+| `/seasons`         | `SeasonsPage`        | Season management (ADMIN)     |
+| `/matches`         | `MatchesPage`        | Match results & events        |
+| `/standings`       | `StandingsPage`      | League standings table        |
+| `/regulations`     | `RegulationsPage`    | Regulation management (ADMIN) |
+| `/reports`         | `ReportsPage`        | Reports & statistics          |
+| `/users`           | `UsersPage`          | User management (ADMIN)       |
+| `/profile`         | `ProfilePage`        | User profile management       |
+| `/change-password` | `ChangePasswordPage` | Password change form          |
+| `/sessions`        | `SessionsPage`       | Active sessions management    |
 
 ### Route Structure
 
