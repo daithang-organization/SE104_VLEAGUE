@@ -113,6 +113,7 @@ Based on actual `@Roles()` decorators in controllers:
 | Create/Update/Delete teams    | ✅    |              |         |            |        |
 | Create/Update/Delete stadiums | ✅    |              |         |            |        |
 | Create/Update/Delete seasons  | ✅    |              |         |            |        |
+| Manage regulations            | ✅    |              |         |            |        |
 | Generate/Publish schedule     | ✅    |              |         |            |        |
 | Register players              | ✅    | ✅           |         |            |        |
 | Manage roster                 | ✅    | ✅           |         |            |        |

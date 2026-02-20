@@ -98,9 +98,11 @@ async function bootstrap() {
     .addTag('Matches', 'Match scheduling and management')
     .addTag('Scheduling', 'Schedule generation and publishing')
     .addTag('Standings', 'League standings and statistics')
-    .addTag('Season', 'Season management')
-    .addTag('Stadium', 'Stadium management')
+    .addTag('Seasons', 'Season management')
+    .addTag('Stadiums', 'Stadium management')
     .addTag('Roster', 'Team roster management')
+    .addTag('Regulations', 'Season regulation rules')
+    .addTag('Users', 'User management (ADMIN)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

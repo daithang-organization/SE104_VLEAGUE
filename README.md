@@ -29,6 +29,7 @@
 **VLeague Management System** là hệ thống quản lý giải bóng đá chuyên nghiệp, được xây dựng như đồ án môn học **SE104 - Nhập môn Công nghệ Phần mềm** tại **Trường Đại học Công nghệ Thông tin - ĐHQG TP.HCM (UIT)**.
 
 Hệ thống cung cấp các công cụ để quản lý:
+
 - 🏆 Thông tin đội bóng và cầu thủ
 - 📅 Lịch thi đấu các vòng đấu
 - 📊 Bảng xếp hạng và thống kê
@@ -40,57 +41,83 @@ Hệ thống cung cấp các công cụ để quản lý:
 ## ✨ Tính năng
 
 ### 🔐 Xác thực & Phân quyền
-- Đăng nhập/Đăng xuất
-- Phân quyền người dùng (Admin, Manager, Viewer)
+
+- Đăng nhập/Đăng ký với email, Google OAuth, Facebook OAuth
+- Xác thực email qua OTP, quên/đặt lại mật khẩu
+- Phân quyền 5 vai trò: Admin, Team Manager, Referee, Supervisor, Public
+- Quản lý phiên đăng nhập (nhiều thiết bị)
+- JWT access/refresh token pattern
+
+### 🏆 Quản lý Mùa giải & Quy định
+
+- CRUD mùa giải với trạng thái (Upcoming → In Progress → Completed)
+- Quy định giải đấu tùy chỉnh theo mùa (tuổi cầu thủ, số lượng ngoại binh, điểm thắng/thua/hòa,...)
+- Seeding quy định mặc định
 
 ### 👥 Quản lý Đội bóng & Cầu thủ
+
 - Đăng ký đội bóng tham gia giải
 - Quản lý thông tin cầu thủ (tên, ngày sinh, quốc tịch, vị trí)
-- Theo dõi trạng thái đội bóng
+- Quản lý đội hình (roster) với số áo, giới hạn ngoại binh
+
+### 🏟️ Quản lý Sân vận động
+
+- CRUD thông tin sân vận động (tên, địa chỉ, sức chứa)
 
 ### 📅 Lập lịch thi đấu
-- Tự động tạo lịch thi đấu theo vòng tròn
+
+- Tự động tạo lịch thi đấu theo vòng tròn (round-robin)
 - Quản lý sân vận động và thời gian thi đấu
 - Xuất bản lịch thi đấu
 
 ### ⚽ Ghi nhận kết quả
+
 - Cập nhật tỷ số trận đấu
-- Ghi nhận sự kiện (bàn thắng, thẻ vàng, thẻ đỏ)
-- Trạng thái trận đấu (Nháp, Đã xuất bản, Khóa)
+- Ghi nhận sự kiện (bàn thắng, phản lưới, thẻ vàng, thẻ đỏ, thay người)
+- Trạng thái trận đấu (Draft → Published → Locked → Finished)
 
 ### 📊 Bảng xếp hạng & Báo cáo
-- Bảng xếp hạng real-time
-- Thống kê vua phá lưới
+
+- Bảng xếp hạng real-time với caching
+- Thống kê vua phá lưới, thẻ phạt, đội bóng
 - Báo cáo tổng hợp theo mùa giải
+
+### 👤 Quản lý Người dùng (Admin)
+
+- CRUD tài khoản người dùng
+- Phân quyền và thay đổi vai trò
 
 ---
 
 ## 🛠 Công nghệ sử dụng
 
 ### Backend
-| Công nghệ | Mô tả |
-|-----------|-------|
-| **NestJS** | Framework Node.js cho việc xây dựng API |
-| **Prisma** | ORM hiện đại cho TypeScript |
-| **PostgreSQL** | Hệ quản trị CSDL quan hệ |
-| **TypeScript** | Ngôn ngữ lập trình typed |
+
+| Công nghệ      | Mô tả                                   |
+| -------------- | --------------------------------------- |
+| **NestJS**     | Framework Node.js cho việc xây dựng API |
+| **Prisma**     | ORM hiện đại cho TypeScript             |
+| **PostgreSQL** | Hệ quản trị CSDL quan hệ                |
+| **TypeScript** | Ngôn ngữ lập trình typed                |
 
 ### Frontend
-| Công nghệ | Mô tả |
-|-----------|-------|
-| **React 19** | Thư viện UI hiện đại |
-| **Vite** | Build tool nhanh chóng |
-| **Ant Design** | UI Component Library |
-| **React Router** | Routing cho SPA |
+
+| Công nghệ        | Mô tả                  |
+| ---------------- | ---------------------- |
+| **React 19**     | Thư viện UI hiện đại   |
+| **Vite**         | Build tool nhanh chóng |
+| **Ant Design**   | UI Component Library   |
+| **React Router** | Routing cho SPA        |
 
 ### DevOps & Tools
-| Công nghệ | Mô tả |
-|-----------|-------|
-| **Docker** | Container hóa ứng dụng |
-| **Docker Compose** | Orchestration cho development |
-| **pnpm** | Package manager hiệu quả |
-| **GitHub Actions** | CI/CD pipeline |
-| **ESLint + Prettier** | Code quality tools |
+
+| Công nghệ             | Mô tả                         |
+| --------------------- | ----------------------------- |
+| **Docker**            | Container hóa ứng dụng        |
+| **Docker Compose**    | Orchestration cho development |
+| **pnpm**              | Package manager hiệu quả      |
+| **GitHub Actions**    | CI/CD pipeline                |
+| **ESLint + Prettier** | Code quality tools            |
 
 ---
 
@@ -103,24 +130,32 @@ Hệ thống cung cấp các công cụ để quản lý:
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Frontend (React + Vite)                     │
+│              Frontend (React 19 + Vite + Ant Design)            │
 │                        :5173                                    │
+│  21 pages · 11 API services · Auth context + protected routes   │
 └─────────────────────────────┬───────────────────────────────────┘
-                              │ HTTP/REST
+                              │ HTTP/REST (Axios)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Backend (NestJS)                           │
-│                        :8080                                    │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
-│  │    Auth     │ │Registration │ │ Scheduling  │ │   Match    │ │
-│  │   Module    │ │   Module    │ │   Module    │ │   Module   │ │
-│  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
+│                   Backend (NestJS) :8080                         │
+│                                                                  │
+│  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
+│  │   Auth   │ │ Registration │ │ Scheduling │ │  Match   │      │
+│  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
+│  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
+│  │  Season  │ │   Stadium    │ │   Roster   │ │Standings │      │
+│  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
+│  ┌──────────┐ ┌──────────────┐ ┌────────────┐                   │
+│  │Regulation│ │    Users     │ │   Health   │                   │
+│  └──────────┘ └──────────────┘ └────────────┘                   │
+│                                                                  │
+│  Swagger docs: /api/docs · Rate limiting · Caching              │
 └─────────────────────────────┬───────────────────────────────────┘
                               │ Prisma ORM
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Database (PostgreSQL)                         │
-│                        :5432                                    │
+│              Database (PostgreSQL) :5432                         │
+│         14 tables · 9 enums · UUID primary keys                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -132,25 +167,39 @@ Hệ thống cung cấp các công cụ để quản lý:
 SE104_VLEAGUE/
 ├── 📂 apps/
 │   ├── 📂 api/                    # Backend NestJS
-│   │   ├── 📂 prisma/             # Schema & migrations
+│   │   ├── 📂 prisma/             # Schema, migrations & seed
 │   │   ├── 📂 src/
-│   │   │   ├── 📂 auth/           # Xác thực người dùng
-│   │   │   ├── 📂 match/          # Quản lý trận đấu
-│   │   │   ├── 📂 prisma/         # Prisma service
-│   │   │   ├── 📂 registration/   # Đăng ký đội/cầu thủ
-│   │   │   └── 📂 scheduling/     # Lập lịch thi đấu
+│   │   │   ├── 📂 auth/           # Xác thực (JWT, OAuth, OTP)
+│   │   │   ├── 📂 registration/   # Đăng ký đội (teams) & cầu thủ (players)
+│   │   │   ├── 📂 season/         # Quản lý mùa giải
+│   │   │   ├── 📂 stadium/        # Quản lý sân vận động
+│   │   │   ├── 📂 scheduling/     # Lập lịch thi đấu
+│   │   │   ├── 📂 match/          # Quản lý trận đấu & sự kiện
+│   │   │   ├── 📂 roster/         # Quản lý đội hình
+│   │   │   ├── 📂 standings/      # Bảng xếp hạng & thống kê
+│   │   │   ├── 📂 regulation/     # Quy định giải đấu
+│   │   │   ├── 📂 users/          # Quản lý người dùng (ADMIN)
+│   │   │   ├── 📂 health/         # Health check endpoint
+│   │   │   ├── 📂 common/         # Filters, guards, interceptors
+│   │   │   ├── 📂 config/         # App configuration
+│   │   │   ├── 📂 mail/           # Email service (OTP, verification)
+│   │   │   └── 📂 prisma/         # Prisma service & middleware
 │   │   └── 📂 test/               # E2E tests
 │   │
 │   └── 📂 web/                    # Frontend React
 │       └── 📂 src/
-│           ├── 📂 auth/           # Auth context & types
-│           ├── 📂 pages/          # Các trang UI
-│           └── 📂 services/       # API services
+│           ├── 📂 auth/           # Auth context, guards & types
+│           ├── 📂 shell/          # AppShell layout & menu
+│           ├── 📂 components/     # Shared components
+│           ├── 📂 lib/            # API client (Axios) & utilities
+│           ├── 📂 pages/          # 21 trang UI
+│           └── 📂 services/       # 11 API service files
 │
 ├── 📂 docs/                       # Tài liệu dự án
 ├── 📂 infra/                      # Docker configs
 ├── 📂 scripts/                    # Utility scripts
-├── 📂 .github/                    # GitHub workflows & templates
+├── 📂 .agent/                     # Agent skills & workflows
+├── 📂 .github/                    # GitHub Actions CI/CD
 │
 ├── 📄 docker-compose.yml          # Full stack compose
 ├── 📄 package.json                # Workspace config
@@ -165,11 +214,11 @@ SE104_VLEAGUE/
 ### Yêu cầu hệ thống
 
 | Phần mềm | Phiên bản |
-|----------|-----------|
-| Node.js | >= 20.0.0 |
-| pnpm | >= 8.0.0 |
-| Docker | Latest |
-| Git | Latest |
+| -------- | --------- |
+| Node.js  | >= 20.0.0 |
+| pnpm     | >= 8.0.0  |
+| Docker   | Latest    |
+| Git      | Latest    |
 
 ### Cách 1: Chạy với Docker (Khuyến nghị)
 
@@ -186,6 +235,7 @@ docker exec -it vleague_api npx prisma db seed
 ```
 
 🎉 **Xong!** Truy cập:
+
 - 🌐 Web: http://localhost:5173
 - 🔌 API: http://localhost:8080
 - 🗄️ Database: localhost:5432
@@ -196,13 +246,13 @@ docker exec -it vleague_api npx prisma db seed
 
 Password chung cho tất cả demo users: `Demo@12345`
 
-| Role | Email | Mô tả |
-|------|-------|-------|
-| **ADMIN** | admin@demo.local | Quản trị viên hệ thống |
-| **TEAM_MANAGER** | teammanager@demo.local | Quản lý đội bóng |
-| **REFEREE** | referee@demo.local | Trọng tài |
-| **SUPERVISOR** | supervisor@demo.local | Giám sát viên |
-| **PUBLIC** | public@demo.local | Người dùng công khai |
+| Role             | Email                  | Mô tả                  |
+| ---------------- | ---------------------- | ---------------------- |
+| **ADMIN**        | admin@demo.local       | Quản trị viên hệ thống |
+| **TEAM_MANAGER** | teammanager@demo.local | Quản lý đội bóng       |
+| **REFEREE**      | referee@demo.local     | Trọng tài              |
+| **SUPERVISOR**   | supervisor@demo.local  | Giám sát viên          |
+| **PUBLIC**       | public@demo.local      | Người dùng công khai   |
 
 ### Chạy Seed
 
@@ -250,32 +300,32 @@ pnpm dev
 
 ## 📝 Các lệnh thường dùng
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm dev` | Chạy cả API và Web ở chế độ development |
-| `pnpm build` | Build production cho tất cả apps |
-| `pnpm lint` | Kiểm tra code style |
-| `pnpm format` | Format code với Prettier |
-| `pnpm test` | Chạy unit tests |
+| Lệnh          | Mô tả                                   |
+| ------------- | --------------------------------------- |
+| `pnpm dev`    | Chạy cả API và Web ở chế độ development |
+| `pnpm build`  | Build production cho tất cả apps        |
+| `pnpm lint`   | Kiểm tra code style                     |
+| `pnpm format` | Format code với Prettier                |
+| `pnpm test`   | Chạy unit tests                         |
 
 ### API Commands (trong `apps/api/`)
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm dev` | Chạy API với hot-reload |
-| `pnpm build` | Build production |
-| `pnpm test` | Chạy unit tests |
-| `pnpm test:e2e` | Chạy E2E tests |
-| `pnpm db:seed` | Seed dữ liệu mẫu |
+| Lệnh            | Mô tả                   |
+| --------------- | ----------------------- |
+| `pnpm dev`      | Chạy API với hot-reload |
+| `pnpm build`    | Build production        |
+| `pnpm test`     | Chạy unit tests         |
+| `pnpm test:e2e` | Chạy E2E tests          |
+| `pnpm db:seed`  | Seed dữ liệu mẫu        |
 
 ### Prisma Commands
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm dlx prisma migrate dev` | Tạo & chạy migration |
-| `pnpm dlx prisma studio` | Mở Prisma Studio GUI |
-| `pnpm dlx prisma generate` | Generate Prisma Client |
-| `pnpm dlx prisma db push` | Push schema (dev) |
+| Lệnh                          | Mô tả                  |
+| ----------------------------- | ---------------------- |
+| `pnpm dlx prisma migrate dev` | Tạo & chạy migration   |
+| `pnpm dlx prisma studio`      | Mở Prisma Studio GUI   |
+| `pnpm dlx prisma generate`    | Generate Prisma Client |
+| `pnpm dlx prisma db push`     | Push schema (dev)      |
 
 ---
 
@@ -306,6 +356,7 @@ VITE_API_BASE_URL=http://localhost:8080
 ```
 
 **Ví dụ:**
+
 - `feat/standings-api` - Tính năng mới
 - `fix/auth-token-expiry` - Sửa lỗi
 - `chore/update-deps` - Cập nhật dependencies
@@ -338,15 +389,15 @@ Sử dụng [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## 📚 Tài liệu bổ sung
 
-| Tài liệu | Mô tả |
-|----------|-------|
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Hướng dẫn đóng góp code |
-| [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) | Quy trình làm việc với Git |
+| Tài liệu                                     | Mô tả                       |
+| -------------------------------------------- | --------------------------- |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Hướng dẫn đóng góp code     |
+| [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) | Quy trình làm việc với Git  |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Kiến trúc hệ thống chi tiết |
-| [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) | Hướng dẫn phát triển local |
-| [docs/api-outline.md](docs/api-outline.md) | API endpoints outline |
-| [apps/api/README.md](apps/api/README.md) | Hướng dẫn Backend |
-| [apps/web/README.md](apps/web/README.md) | Hướng dẫn Frontend |
+| [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md)       | Hướng dẫn phát triển local  |
+| [docs/api-outline.md](docs/api-outline.md)   | API endpoints outline       |
+| [apps/api/README.md](apps/api/README.md)     | Hướng dẫn Backend           |
+| [apps/web/README.md](apps/web/README.md)     | Hướng dẫn Frontend          |
 
 ---
 
