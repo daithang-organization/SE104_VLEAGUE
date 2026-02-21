@@ -100,6 +100,14 @@ export class CreatePlayerDto {
   @IsOptional()
   @IsUUID()
   teamId?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID mùa giải (dùng để áp dụng quy định tuổi theo mùa)',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  seasonId?: string;
 }
 
 export class UpdatePlayerDto {

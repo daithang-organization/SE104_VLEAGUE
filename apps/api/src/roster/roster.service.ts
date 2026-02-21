@@ -6,11 +6,19 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import { AddPlayerToRosterDto, UpdateRosterPlayerDto } from './dto';
+
+/** Fallback limits when no season regulation is available */
+const DEFAULT_MAX_ROSTER = 22;
+const DEFAULT_MAX_FOREIGN = 3;
 
 @Injectable()
 export class RosterService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private regulationHelper: RegulationHelper,
+  ) {}
 
   /**
    * Get team roster (all players in a team)
@@ -89,19 +97,31 @@ export class RosterService {
       );
     }
 
-    // Check roster size (max 22 active players)
+    // Check roster size against regulation
+    const maxRoster = await this.regulationHelper.getNumericValue(
+      dto.seasonId,
+      'MAX_ROSTER',
+      DEFAULT_MAX_ROSTER,
+    );
+
     const activeCount = await this.prisma.teamPlayer.count({
       where: { teamId, leftAt: null },
     });
 
-    if (activeCount >= 22) {
+    if (activeCount >= maxRoster) {
       throw new BadRequestException(
-        `Đội đã đạt giới hạn 22 cầu thủ trong đội hình`,
+        `Đội đã đạt giới hạn ${maxRoster} cầu thủ trong đội hình`,
       );
     }
 
-    // Check foreign player limit (max 3)
+    // Check foreign player limit against regulation
     if ((player as Record<string, unknown>).playerType === 'FOREIGN') {
+      const maxForeign = await this.regulationHelper.getNumericValue(
+        dto.seasonId,
+        'MAX_FOREIGN_PLAYERS',
+        DEFAULT_MAX_FOREIGN,
+      );
+
       const foreignCount = await this.prisma.teamPlayer.count({
         where: {
           teamId,
@@ -110,8 +130,10 @@ export class RosterService {
         },
       });
 
-      if (foreignCount >= 3) {
-        throw new BadRequestException(`Đội đã đạt giới hạn 3 cầu thủ ngoại`);
+      if (foreignCount >= maxForeign) {
+        throw new BadRequestException(
+          `Đội đã đạt giới hạn ${maxForeign} cầu thủ ngoại`,
+        );
       }
     }
 

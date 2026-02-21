@@ -1,12 +1,14 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import { PlayerPosition } from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
 describe('RegistrationService', () => {
   let service: RegistrationService;
   let prisma: PrismaService;
+  let regulationHelper: RegulationHelper;
 
   const mockTeams = [
     {
@@ -87,11 +89,22 @@ describe('RegistrationService', () => {
             },
           },
         },
+        {
+          provide: RegulationHelper,
+          useValue: {
+            getNumericValue: jest.fn().mockImplementation((_sid, key, fb) => {
+              if (key === 'MIN_AGE') return Promise.resolve(16);
+              if (key === 'MAX_AGE') return Promise.resolve(40);
+              return Promise.resolve(fb);
+            }),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<RegistrationService>(RegistrationService);
     prisma = module.get<PrismaService>(PrismaService);
+    regulationHelper = module.get<RegulationHelper>(RegulationHelper);
   });
 
   it('should be defined', () => {
@@ -370,6 +383,66 @@ describe('RegistrationService', () => {
       } as any);
 
       expect(result.fullName).toBe('Veteran Player');
+    });
+  });
+
+  describe('createPlayer - regulation-based age limits', () => {
+    it('should use season-specific age limits from regulations', async () => {
+      // Custom season with MIN_AGE=18, MAX_AGE=35
+      jest
+        .spyOn(regulationHelper, 'getNumericValue')
+        .mockImplementation((_sid, key) => {
+          if (key === 'MIN_AGE') return Promise.resolve(18);
+          if (key === 'MAX_AGE') return Promise.resolve(35);
+          return Promise.resolve(0);
+        });
+
+      const today = new Date();
+      const dob17 = new Date(
+        today.getFullYear() - 17,
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      await expect(
+        service.createPlayer({
+          fullName: 'Young Player',
+          dob: dob17.toISOString(),
+          nationality: 'VN',
+          position: 'FORWARD',
+          seasonId: 'season-custom',
+        } as any),
+      ).rejects.toThrow('ít nhất 18 tuổi');
+    });
+
+    it('should fall back to defaults when no seasonId provided', async () => {
+      const today = new Date();
+      const dob17 = new Date(
+        today.getFullYear() - 17,
+        today.getMonth(),
+        today.getDate(),
+      );
+
+      jest.spyOn(prisma.player, 'create').mockResolvedValue({
+        id: 'new-id',
+        fullName: 'Player 17',
+        dob: dob17,
+        nationality: 'VN',
+        position: 'FORWARD',
+        playerType: 'DOMESTIC',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      // 17 years old should pass with default MIN_AGE=16 (no seasonId)
+      const result = await service.createPlayer({
+        fullName: 'Player 17',
+        dob: dob17.toISOString(),
+        nationality: 'VN',
+        position: 'FORWARD',
+      } as any);
+
+      expect(result.fullName).toBe('Player 17');
     });
   });
 });

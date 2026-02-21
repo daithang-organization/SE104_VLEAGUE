@@ -6,15 +6,20 @@ import {
 } from '@nestjs/common';
 import { Prisma, type Player, type Team } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import type { CreatePlayerDto, UpdatePlayerDto } from './dto/player.dto';
 import type { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 
-const MIN_PLAYER_AGE = 16;
-const MAX_PLAYER_AGE = 40;
+/** Fallback age limits when no season regulation is available */
+const DEFAULT_MIN_AGE = 16;
+const DEFAULT_MAX_AGE = 40;
 
 @Injectable()
 export class RegistrationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private regulationHelper: RegulationHelper,
+  ) {}
 
   // ───────────────── TEAMS ─────────────────
 
@@ -130,7 +135,19 @@ export class RegistrationService {
   }
 
   async createPlayer(dto: CreatePlayerDto): Promise<Player> {
-    // Validate player age (must be between 16 and 40)
+    // Query age limits from regulations (or use defaults)
+    const minAge = await this.regulationHelper.getNumericValue(
+      dto.seasonId,
+      'MIN_AGE',
+      DEFAULT_MIN_AGE,
+    );
+    const maxAge = await this.regulationHelper.getNumericValue(
+      dto.seasonId,
+      'MAX_AGE',
+      DEFAULT_MAX_AGE,
+    );
+
+    // Validate player age
     const dob = new Date(dto.dob);
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
@@ -139,15 +156,15 @@ export class RegistrationService {
       age--;
     }
 
-    if (age < MIN_PLAYER_AGE) {
+    if (age < minAge) {
       throw new BadRequestException(
-        `Cầu thủ phải ít nhất ${MIN_PLAYER_AGE} tuổi (hiện tại: ${age} tuổi)`,
+        `Cầu thủ phải ít nhất ${minAge} tuổi (hiện tại: ${age} tuổi)`,
       );
     }
 
-    if (age > MAX_PLAYER_AGE) {
+    if (age > maxAge) {
       throw new BadRequestException(
-        `Cầu thủ không được quá ${MAX_PLAYER_AGE} tuổi (hiện tại: ${age} tuổi)`,
+        `Cầu thủ không được quá ${maxAge} tuổi (hiện tại: ${age} tuổi)`,
       );
     }
 

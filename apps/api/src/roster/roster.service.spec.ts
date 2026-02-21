@@ -5,11 +5,13 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import { RosterService } from './roster.service';
 
 describe('RosterService', () => {
   let service: RosterService;
   let prisma: PrismaService;
+  let regulationHelper: RegulationHelper;
 
   const mockTeam = {
     id: 'team-1',
@@ -58,11 +60,22 @@ describe('RosterService', () => {
             },
           },
         },
+        {
+          provide: RegulationHelper,
+          useValue: {
+            getNumericValue: jest.fn().mockImplementation((_sid, key, fb) => {
+              if (key === 'MAX_ROSTER') return Promise.resolve(22);
+              if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(3);
+              return Promise.resolve(fb);
+            }),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<RosterService>(RosterService);
     prisma = module.get<PrismaService>(PrismaService);
+    regulationHelper = module.get<RegulationHelper>(RegulationHelper);
   });
 
   it('should be defined', () => {
@@ -246,6 +259,66 @@ describe('RosterService', () => {
       });
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('addPlayerToRoster - regulation-based limits', () => {
+    it('should use season-specific roster limit from regulations', async () => {
+      // Custom season with MAX_ROSTER=18
+      jest
+        .spyOn(regulationHelper, 'getNumericValue')
+        .mockImplementation((_sid, key) => {
+          if (key === 'MAX_ROSTER') return Promise.resolve(18);
+          if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(3);
+          return Promise.resolve(0);
+        });
+
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ id: 'player-new', playerType: 'DOMESTIC' } as any);
+      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(18); // At custom limit
+
+      await expect(
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-new',
+          jerseyNumber: 99,
+          seasonId: 'season-custom',
+        }),
+      ).rejects.toThrow('18 cầu thủ');
+    });
+
+    it('should use season-specific foreign limit from regulations', async () => {
+      jest
+        .spyOn(regulationHelper, 'getNumericValue')
+        .mockImplementation((_sid, key) => {
+          if (key === 'MAX_ROSTER') return Promise.resolve(22);
+          if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(2);
+          return Promise.resolve(0);
+        });
+
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ id: 'player-new', playerType: 'FOREIGN' } as any);
+      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockResolvedValueOnce(10) // active < 22
+        .mockResolvedValueOnce(2); // foreign = custom limit
+
+      await expect(
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-new',
+          jerseyNumber: 99,
+          seasonId: 'season-custom',
+        }),
+      ).rejects.toThrow('2 cầu thủ ngoại');
     });
   });
 });
