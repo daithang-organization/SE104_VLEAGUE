@@ -1,11 +1,15 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
+import { StandingsService } from '../standings/standings.service';
 import { MatchService } from './match.service';
 
 describe('MatchService', () => {
   let service: MatchService;
   let prisma: PrismaService;
+  let standingsService: StandingsService;
+  let regulationHelper: RegulationHelper;
 
   const mockMatch = {
     id: 'match-1',
@@ -45,11 +49,25 @@ describe('MatchService', () => {
             },
           },
         },
+        {
+          provide: StandingsService,
+          useValue: {
+            getStandings: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: RegulationHelper,
+          useValue: {
+            getNumericValue: jest.fn().mockResolvedValue(96),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<MatchService>(MatchService);
     prisma = module.get<PrismaService>(PrismaService);
+    standingsService = module.get<StandingsService>(StandingsService);
+    regulationHelper = module.get<RegulationHelper>(RegulationHelper);
   });
 
   it('should be defined', () => {
@@ -243,6 +261,55 @@ describe('MatchService', () => {
       await expect(
         service.updateStatus('non-existent', 'PUBLISHED'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should reject LOCKED → FINISHED when scores are null', async () => {
+      const match = {
+        ...mockMatch,
+        status: 'LOCKED',
+        homeScore: null,
+        awayScore: null,
+      };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+
+      await expect(service.updateStatus('match-1', 'FINISHED')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should trigger standings recalculation on FINISHED', async () => {
+      const match = {
+        ...mockMatch,
+        status: 'LOCKED',
+        homeScore: 2,
+        awayScore: 1,
+        seasonId: 'season-1',
+      };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'FINISHED',
+      } as any);
+
+      await service.updateStatus('match-1', 'FINISHED');
+
+      expect(standingsService.getStandings).toHaveBeenCalledWith('season-1');
+    });
+  });
+
+  describe('addEvent - MAX_GOAL_TIME validation', () => {
+    it('should reject goal event when minute exceeds MAX_GOAL_TIME', async () => {
+      const match = { ...mockMatch, seasonId: 'season-1' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(regulationHelper, 'getNumericValue').mockResolvedValue(96);
+
+      await expect(
+        service.addEvent('match-1', {
+          minute: 120,
+          type: 'GOAL' as any,
+          teamId: 'team-1',
+        }),
+      ).rejects.toThrow('vượt quá 96');
     });
   });
 });

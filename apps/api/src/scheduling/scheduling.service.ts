@@ -57,7 +57,7 @@ export class SchedulingService {
       include: { team: { select: { id: true, name: true, stadiumId: true } } },
     });
 
-    let teams =
+    const teams =
       seasonTeams.length > 0
         ? seasonTeams.map((st) => st.team)
         : // Fallback: get all ACTIVE teams if no seasonTeams registered

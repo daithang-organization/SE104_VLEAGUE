@@ -1,10 +1,16 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
+import { StandingsService } from '../standings/standings.service';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
+
+/** Fallback for max goal minute when no regulation is available */
+const DEFAULT_MAX_GOAL_TIME = 96;
 
 // Valid match status transitions
 const MATCH_STATUS_TRANSITIONS: Record<string, string[]> = {
@@ -16,7 +22,13 @@ const MATCH_STATUS_TRANSITIONS: Record<string, string[]> = {
 };
 @Injectable()
 export class MatchService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(MatchService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private standingsService: StandingsService,
+    private regulationHelper: RegulationHelper,
+  ) {}
 
   async getMatchById(id: string) {
     const match = await this.prisma.match.findUnique({
@@ -98,6 +110,21 @@ export class MatchService {
 
     if (!match) {
       throw new NotFoundException(`Match with ID ${matchId} not found`);
+    }
+
+    // Validate goal minute against MAX_GOAL_TIME regulation
+    if (['GOAL', 'OWN_GOAL', 'PENALTY'].includes(dto.type) && match.seasonId) {
+      const maxGoalTime = await this.regulationHelper.getNumericValue(
+        match.seasonId,
+        'MAX_GOAL_TIME',
+        DEFAULT_MAX_GOAL_TIME,
+      );
+
+      if (dto.minute > maxGoalTime) {
+        throw new BadRequestException(
+          `Phút ghi bàn không được vượt quá ${maxGoalTime} (hiện tại: phút ${dto.minute})`,
+        );
+      }
     }
 
     // Create the event
@@ -215,7 +242,16 @@ export class MatchService {
       );
     }
 
-    return this.prisma.match.update({
+    // Validate that scores are set before transitioning to FINISHED
+    if (newStatus === 'FINISHED') {
+      if (match.homeScore === null || match.awayScore === null) {
+        throw new BadRequestException(
+          'Phải có tỷ số trước khi kết thúc trận đấu',
+        );
+      }
+    }
+
+    const updated = await this.prisma.match.update({
       where: { id: matchId },
       data: { status: newStatus as never },
       include: {
@@ -223,5 +259,22 @@ export class MatchService {
         awayTeam: { select: { id: true, name: true } },
       },
     });
+
+    // Trigger standings recalculation when match finishes
+    if (newStatus === 'FINISHED' && match.seasonId) {
+      try {
+        await this.standingsService.getStandings(match.seasonId);
+        this.logger.log(
+          `Standings recalculated for season ${match.seasonId} after match ${matchId} finished`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to recalculate standings for season ${match.seasonId}`,
+          error,
+        );
+      }
+    }
+
+    return updated;
   }
 }

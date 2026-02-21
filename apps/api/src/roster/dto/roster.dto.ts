@@ -29,6 +29,14 @@ export class AddPlayerToRosterDto {
   @Min(1)
   @Max(99)
   jerseyNumber?: number;
+
+  @ApiPropertyOptional({
+    description: 'ID mùa giải (dùng để áp dụng quy định roster theo mùa)',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  seasonId?: string;
 }
 
 export class UpdateRosterPlayerDto {
