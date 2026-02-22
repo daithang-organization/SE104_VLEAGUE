@@ -450,19 +450,50 @@ pnpm format              # Run Prettier
 > [!WARNING]
 > **Don't forget postinstall**: The project has a `postinstall` script that runs `prisma generate`. This ensures Prisma Client is always up-to-date after `npm install`.
 
+> [!TIP]
+> **Cross-Module Dependency Injection**: When a service needs functionality from another module, import that module and inject its exported service. Example pattern used by `MatchService`:
+>
+> ```typescript
+> // match.module.ts
+> @Module({
+>   imports: [PrismaModule, StandingsModule, RegulationModule],
+>   providers: [MatchService],
+> })
+>
+> // match.service.ts
+> constructor(
+>   private prisma: PrismaService,
+>   private standingsService: StandingsService,
+>   private regulationHelper: RegulationHelper,
+> ) {}
+> ```
+>
+> The source module must `export` the service (e.g., `RegulationModule` exports `RegulationHelper`).
+
 ## Current Modules Reference
 
 - **`auth/`**: Authentication (JWT, OAuth, OTP, sessions) and authorization (RBAC)
 - **`registration/`**: Team and player registration
+  - Imports: `PrismaModule`, `RegulationModule`
+  - Uses `RegulationHelper` for dynamic age validation (`MIN_AGE`, `MAX_AGE`)
   - `teams.controller.ts`: Team management endpoints
   - `players.controller.ts`: Player management endpoints
   - `registration.service.ts`: Shared registration logic
 - **`scheduling/`**: Match scheduling logic
 - **`match/`**: Match management and events
+  - Imports: `PrismaModule`, `StandingsModule`, `RegulationModule`
+  - Uses `StandingsService` for auto-recalculation on FINISHED
+  - Uses `RegulationHelper` for MAX_GOAL_TIME validation
 - **`season/`**: Season management (CRUD, status transitions)
 - **`stadium/`**: Stadium management
 - **`roster/`**: Team roster management (player assignments, jersey numbers)
-- **`standings/`**: League standings computation and caching
+  - Imports: `PrismaModule`, `RegulationModule`
+  - Uses `RegulationHelper` for dynamic roster/foreign limits
+- **`standings/`**: League standings computation
+  - Auto-triggered by `MatchService` when match finishes
+- **`regulation/`**: Season-scoped regulations
+  - Exports: `RegulationService`, `RegulationHelper`
+  - `RegulationHelper` provides `getNumericValue(seasonId, key, fallback)` for cross-module regulation queries
 - **`users/`**: User management (ADMIN-only CRUD, role assignment)
   - `users.controller.ts`: User CRUD endpoints (list, create, update role, delete)
   - `users.service.ts`: User management logic

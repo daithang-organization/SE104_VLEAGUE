@@ -11,27 +11,43 @@ This skill documents all VLeague-specific business rules, configurable regulatio
 
 Regulations are stored in the `regulations` table, scoped per season (`@@unique([seasonId, key])`). Each regulation has a `key`, `value`, and `valueType` (`INT` or `JSON`).
 
-### Default Regulation Values (from seed)
+### Default Regulation Values
 
-| Key                      | Default Value                        | Type | Description                     |
-| ------------------------ | ------------------------------------ | ---- | ------------------------------- |
-| `player_age_min`         | `16`                                 | INT  | Minimum player age              |
-| `player_age_max`         | `40`                                 | INT  | Maximum player age              |
-| `team_player_min`        | `15`                                 | INT  | Minimum players per team        |
-| `team_player_max`        | `22`                                 | INT  | Maximum players per team        |
-| `foreign_max_registered` | `3`                                  | INT  | Max foreign players per team    |
-| `goal_types`             | `["A","B","C"]`                      | JSON | Valid goal type categories      |
-| `max_goal_minute`        | `90`                                 | INT  | Maximum goal minute             |
-| `points_win`             | `3`                                  | INT  | Points for a win                |
-| `points_draw`            | `1`                                  | INT  | Points for a draw               |
-| `points_loss`            | `0`                                  | INT  | Points for a loss               |
-| `rank_tiebreak_order`    | `["points","goal_diff","goals_for"]` | JSON | Tiebreak ranking criteria order |
-| `total_legs`             | `2`                                  | INT  | Number of legs per season       |
-| `rounds_per_season`      | `26`                                 | INT  | Rounds per season               |
-| `matches_per_round`      | `7`                                  | INT  | Matches per round               |
+Defined in `DEFAULT_REGULATIONS` in `regulation.service.ts` and seeded per season:
+
+| Key                   | Default | Type   | Description                  |
+| --------------------- | ------- | ------ | ---------------------------- |
+| `MIN_AGE`             | `16`    | number | Minimum player age           |
+| `MAX_AGE`             | `40`    | number | Maximum player age           |
+| `MIN_ROSTER`          | `15`    | number | Minimum players per team     |
+| `MAX_ROSTER`          | `22`    | number | Maximum players per team     |
+| `MAX_FOREIGN_PLAYERS` | `3`     | number | Max foreign players per team |
+| `WIN_POINTS`          | `3`     | number | Points for a win             |
+| `DRAW_POINTS`         | `1`     | number | Points for a draw            |
+| `LOSS_POINTS`         | `0`     | number | Points for a loss            |
+| `MAX_GOAL_TIME`       | `96`    | number | Maximum goal minute allowed  |
 
 > [!TIP]
-> To add a new regulation, add it to `defaultRegulations` in `prisma/seed.ts` and to the relevant service logic.
+> To add a new regulation, add it to `DEFAULT_REGULATIONS` in `regulation.service.ts` and use `RegulationHelper.getNumericValue()` to query it.
+
+### RegulationHelper Service
+
+`RegulationHelper` (`regulation/regulation.helper.ts`) provides a clean interface for querying regulation values:
+
+```typescript
+// Query with season-specific override + fallback
+const minAge = await this.regulationHelper.getNumericValue(
+  seasonId, // optional — falls back to DEFAULT_REGULATIONS if null
+  'MIN_AGE', // regulation key
+  16, // fallback if neither DB nor defaults have the key
+);
+```
+
+**Used by:**
+
+- `RegistrationService` — age validation (`MIN_AGE`, `MAX_AGE`)
+- `RosterService` — roster limits (`MAX_ROSTER`, `MAX_FOREIGN_PLAYERS`)
+- `MatchService` — goal time validation (`MAX_GOAL_TIME`)
 
 ## Scoring & Ranking System
 
@@ -56,11 +72,20 @@ Regulations are stored in the `regulations` table, scoped per season (`@@unique(
 stateDiagram-v2
     [*] --> DRAFT
     DRAFT --> PUBLISHED: Admin publishes schedule
+    DRAFT --> POSTPONED: Match postponed
     PUBLISHED --> LOCKED: Match day begins
-    LOCKED --> FINISHED: Match completed
     PUBLISHED --> POSTPONED: Match postponed
-    POSTPONED --> PUBLISHED: Rescheduled
+    LOCKED --> FINISHED: Match completed (scores required)
+    POSTPONED --> DRAFT: Rescheduled
 ```
+
+**FINISHED transition guards:**
+
+- `homeScore` and `awayScore` must both be set (not null)
+- After FINISHED: standings are auto-recalculated for the season
+
+> [!IMPORTANT]
+> When a match transitions to FINISHED, `MatchService` automatically calls `StandingsService.getStandings(seasonId)` to recalculate the season standings.
 
 ### Season Status Flow
 
@@ -82,26 +107,31 @@ stateDiagram-v2
 
 ## Player Constraints
 
-| Constraint    | Rule                                            |
-| ------------- | ----------------------------------------------- |
-| Age range     | Between `player_age_min` and `player_age_max`   |
-| Roster size   | Between `team_player_min` and `team_player_max` |
-| Foreign limit | Max `foreign_max_registered` foreign players    |
-| Jersey number | Unique per team (via `team_players` table)      |
-| Player type   | `DOMESTIC` or `FOREIGN`                         |
-| Position      | `GK`, `DF`, `MF`, or `FW`                       |
+| Constraint    | Rule                                                                            |
+| ------------- | ------------------------------------------------------------------------------- |
+| Age range     | Between `MIN_AGE` and `MAX_AGE` (queried from regulations via RegulationHelper) |
+| Roster size   | Max `MAX_ROSTER` players (queried from regulations via RegulationHelper)        |
+| Foreign limit | Max `MAX_FOREIGN_PLAYERS` foreign players (queried via RegulationHelper)        |
+| Jersey number | Unique per team (via `team_players` table)                                      |
+| Player type   | `DOMESTIC` or `FOREIGN`                                                         |
+| Position      | `GK`, `DF`, `MF`, or `FW`                                                       |
 
 ## Match Events
 
-| Event Type     | Description         |
-| -------------- | ------------------- |
-| `GOAL`         | Regular goal        |
-| `OWN_GOAL`     | Own goal            |
-| `YELLOW_CARD`  | Yellow card         |
-| `RED_CARD`     | Red card            |
-| `SUBSTITUTION` | Player substitution |
+| Event Type     | Description         | Goal Time Check  |
+| -------------- | ------------------- | ---------------- |
+| `GOAL`         | Regular goal        | ✅ MAX_GOAL_TIME |
+| `OWN_GOAL`     | Own goal            | ✅ MAX_GOAL_TIME |
+| `PENALTY`      | Penalty scored      | ✅ MAX_GOAL_TIME |
+| `PENALTY_MISS` | Penalty missed      |                  |
+| `YELLOW_CARD`  | Yellow card         |                  |
+| `RED_CARD`     | Red card            |                  |
+| `SUBSTITUTION` | Player substitution |                  |
 
-Events are recorded with `minute`, `playerId`, `teamId`, and optional `relatedPlayerId` (for substitutions or assists).
+Events are recorded with `minute`, `playerId`, `teamId`, and optional `note`.
+
+> [!NOTE]
+> Goal events (GOAL, OWN_GOAL, PENALTY) are validated against `MAX_GOAL_TIME` regulation. If `minute > MAX_GOAL_TIME`, the event is rejected.
 
 ## RBAC Permission Matrix
 
