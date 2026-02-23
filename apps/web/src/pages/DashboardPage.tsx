@@ -34,7 +34,7 @@ export default function DashboardPage() {
 
         setStats({
           teams: teams.status === 'fulfilled' ? teams.value.length : 0,
-          players: players.status === 'fulfilled' ? players.value.length : 0,
+          players: players.status === 'fulfilled' ? players.value.total : 0,
           matches: schedule.status === 'fulfilled' ? (schedule.value.matches?.length ?? 0) : 0,
           seasons: seasons.status === 'fulfilled' ? seasons.value.length : 0,
         });

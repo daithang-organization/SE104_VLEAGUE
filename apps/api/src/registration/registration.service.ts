@@ -98,21 +98,43 @@ export class RegistrationService {
 
   // ───────────────── PLAYERS ─────────────────
 
-  async listPlayers() {
-    return await this.prisma.player.findMany({
-      orderBy: { fullName: 'asc' },
-      include: {
-        teamPlayers: {
-          where: { leftAt: null },
-          include: {
-            team: {
-              select: { id: true, name: true, shortName: true, logoUrl: true },
+  async listPlayers(pagination?: { page?: number; limit?: number }) {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.player.findMany({
+        orderBy: { fullName: 'asc' },
+        include: {
+          teamPlayers: {
+            where: { leftAt: null },
+            include: {
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  shortName: true,
+                  logoUrl: true,
+                },
+              },
             },
+            take: 1,
           },
-          take: 1,
         },
-      },
-    });
+        skip,
+        take: limit,
+      }),
+      this.prisma.player.count(),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOnePlayer(id: string): Promise<Player> {

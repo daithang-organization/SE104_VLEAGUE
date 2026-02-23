@@ -21,6 +21,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { MatchService } from './match.service';
 
@@ -41,11 +42,15 @@ export class MatchController {
   )
   @ApiOperation({
     summary: 'Lấy danh sách trận đấu',
-    description: 'Trả về tất cả trận đấu, có thể lọc theo mùa giải',
+    description:
+      'Trả về danh sách trận đấu có hỗ trợ phân trang, có thể lọc theo mùa giải',
   })
-  @ApiOkResponse({ description: 'Danh sách trận đấu' })
-  findAll(@Query('seasonId') seasonId?: string) {
-    return this.match.findAll(seasonId);
+  @ApiOkResponse({ description: 'Danh sách trận đấu (phân trang)' })
+  findAll(
+    @Query('seasonId') seasonId?: string,
+    @Query() pagination?: PaginationQueryDto,
+  ) {
+    return this.match.findAll(seasonId, pagination);
   }
 
   @Get(':id')

@@ -40,6 +40,7 @@ describe('MatchService', () => {
               findUnique: jest.fn(),
               findMany: jest.fn(),
               update: jest.fn(),
+              count: jest.fn(),
             },
             matchEvent: {
               create: jest.fn(),
@@ -97,20 +98,24 @@ describe('MatchService', () => {
   });
 
   describe('findAll', () => {
-    it('should return all matches', async () => {
+    it('should return paginated matches', async () => {
       jest
         .spyOn(prisma.match, 'findMany')
         .mockResolvedValue([mockMatch] as any);
+      jest.spyOn(prisma.match, 'count').mockResolvedValue(1);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(1);
+      expect(result.data).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
     });
 
     it('should filter by seasonId if provided', async () => {
       jest
         .spyOn(prisma.match, 'findMany')
         .mockResolvedValue([mockMatch] as any);
+      jest.spyOn(prisma.match, 'count').mockResolvedValue(1);
 
       await service.findAll('season-1');
 

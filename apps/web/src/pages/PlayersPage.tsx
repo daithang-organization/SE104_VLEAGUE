@@ -56,17 +56,19 @@ export default function PlayersPage() {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
   const [form] = Form.useForm();
 
   const canEdit = useMemo(() => {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
 
-  const fetchPlayers = useCallback(async () => {
+  const fetchPlayers = useCallback(async (page = 1, limit = 20) => {
     setLoading(true);
     try {
-      const data = await apiGetPlayers();
-      setPlayers(data);
+      const res = await apiGetPlayers(page, limit);
+      setPlayers(res.data);
+      setPagination({ page: res.page, limit: res.limit, total: res.total });
     } catch {
       message.error('Không thể tải danh sách cầu thủ');
     } finally {
@@ -318,7 +320,14 @@ export default function PlayersPage() {
         dataSource={filteredPlayers}
         rowKey="id"
         loading={loading}
-        pagination={{ pageSize: 15, showSizeChanger: true }}
+        pagination={{
+          current: pagination.page,
+          pageSize: pagination.limit,
+          total: pagination.total,
+          showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} cầu thủ`,
+          onChange: (page, pageSize) => fetchPlayers(page, pageSize),
+        }}
         size="middle"
       />
 

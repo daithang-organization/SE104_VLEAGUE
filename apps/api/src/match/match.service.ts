@@ -55,16 +55,37 @@ export class MatchService {
     return match;
   }
 
-  async findAll(seasonId?: string) {
-    return this.prisma.match.findMany({
-      where: seasonId ? { seasonId } : undefined,
-      include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
-        stadium: { select: { id: true, name: true } },
-      },
-      orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
-    });
+  async findAll(
+    seasonId?: string,
+    pagination?: { page?: number; limit?: number },
+  ) {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = seasonId ? { seasonId } : undefined;
+
+    const [data, total] = await Promise.all([
+      this.prisma.match.findMany({
+        where,
+        include: {
+          homeTeam: { select: { id: true, name: true } },
+          awayTeam: { select: { id: true, name: true } },
+          stadium: { select: { id: true, name: true } },
+        },
+        orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
+        skip,
+        take: limit,
+      }),
+      this.prisma.match.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async updateMatch(
