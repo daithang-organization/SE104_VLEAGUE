@@ -104,8 +104,8 @@ export default function MatchesPage() {
   const fetchMatches = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGetMatches(selectedSeasonId);
-      setMatches(data);
+      const res = await apiGetMatches(selectedSeasonId, 1, 200);
+      setMatches(res.data);
     } catch {
       message.error('Không thể tải danh sách trận đấu');
     } finally {

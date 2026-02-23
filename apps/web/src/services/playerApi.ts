@@ -1,6 +1,13 @@
 import { api } from '../lib/api';
 
 // ─────────── Types ───────────
+export type PaginatedResponse<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 export type Player = {
   id: string;
   fullName: string;
@@ -43,8 +50,10 @@ export type UpdatePlayerPayload = {
 };
 
 // ─────────── API calls ───────────
-export function apiGetPlayers() {
-  return api.get<Player[]>('/players').then((res) => res.data);
+export function apiGetPlayers(page = 1, limit = 20) {
+  return api
+    .get<PaginatedResponse<Player>>('/players', { params: { page, limit } })
+    .then((res) => res.data);
 }
 
 export function apiGetPlayer(id: string) {

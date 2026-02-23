@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,6 +21,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { CreatePlayerDto, UpdatePlayerDto } from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
@@ -31,11 +33,11 @@ export class PlayersController {
   @Get()
   @ApiOperation({
     summary: 'Lấy danh sách cầu thủ',
-    description: 'Trả về danh sách tất cả cầu thủ đã đăng ký trong hệ thống',
+    description: 'Trả về danh sách cầu thủ có hỗ trợ phân trang (page, limit)',
   })
-  @ApiOkResponse({ description: 'Danh sách cầu thủ' })
-  async getPlayers() {
-    return await this.reg.listPlayers();
+  @ApiOkResponse({ description: 'Danh sách cầu thủ (phân trang)' })
+  async getPlayers(@Query() pagination: PaginationQueryDto) {
+    return await this.reg.listPlayers(pagination);
   }
 
   @Get(':id')

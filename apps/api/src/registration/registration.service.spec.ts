@@ -86,6 +86,7 @@ describe('RegistrationService', () => {
               create: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+              count: jest.fn(),
             },
           },
         },
@@ -193,20 +194,25 @@ describe('RegistrationService', () => {
   // ───────────── PLAYERS ─────────────
 
   describe('listPlayers', () => {
-    it('should return all players', async () => {
+    it('should return paginated players', async () => {
       jest
         .spyOn(prisma.player, 'findMany')
         .mockResolvedValue(mockPlayers as any);
+      jest.spyOn(prisma.player, 'count').mockResolvedValue(2);
 
       const result = await service.listPlayers();
-      expect(result).toHaveLength(2);
-      expect(result[0].fullName).toBe('Nguyễn Quang Hải');
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].fullName).toBe('Nguyễn Quang Hải');
+      expect(result.total).toBe(2);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(20);
     });
 
-    it('should order players by fullName ascending', async () => {
+    it('should order players by fullName ascending with skip/take', async () => {
       jest
         .spyOn(prisma.player, 'findMany')
         .mockResolvedValue(mockPlayers as any);
+      jest.spyOn(prisma.player, 'count').mockResolvedValue(2);
 
       await service.listPlayers();
       expect(prisma.player.findMany).toHaveBeenCalledWith({
@@ -227,6 +233,8 @@ describe('RegistrationService', () => {
             take: 1,
           },
         },
+        skip: 0,
+        take: 20,
       });
     });
   });

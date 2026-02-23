@@ -1,6 +1,13 @@
 import { api } from '../lib/api';
 
 // ─────────── Types ───────────
+export type PaginatedResponse<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 export type MatchEvent = {
   id: string;
   minute: number;
@@ -74,9 +81,10 @@ export type TeamRoster = {
 };
 
 // ─────────── API calls ───────────
-export function apiGetMatches(seasonId?: string) {
-  const params = seasonId ? `?seasonId=${seasonId}` : '';
-  return api.get<Match[]>(`/matches${params}`).then((res) => res.data);
+export function apiGetMatches(seasonId?: string, page = 1, limit = 20) {
+  const params: Record<string, string | number> = { page, limit };
+  if (seasonId) params.seasonId = seasonId;
+  return api.get<PaginatedResponse<Match>>('/matches', { params }).then((res) => res.data);
 }
 
 export function apiGetMatch(id: string) {
