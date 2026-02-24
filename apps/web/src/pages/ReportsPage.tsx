@@ -1,6 +1,7 @@
-import { Alert, Card, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { Alert, Card, Flex, Space, Table, Tabs, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
+import ExportButton from '../components/ExportButton';
 import {
   apiGetCardStats,
   apiGetTeamStats,
@@ -46,15 +47,29 @@ function TopScorersTab() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
   return (
-    <Table
-      rowKey="playerId"
-      columns={scorerColumns}
-      dataSource={data}
-      loading={loading}
-      pagination={false}
-      size="middle"
-      locale={{ emptyText: 'Chưa có dữ liệu bàn thắng' }}
-    />
+    <>
+      <Flex justify="flex-end" style={{ marginBottom: 8 }}>
+        <ExportButton
+          columns={[
+            { title: '#', key: 'position' },
+            { title: 'Cầu thủ', key: 'playerName' },
+            { title: 'Đội', key: 'teamName' },
+            { title: 'Bàn thắng', key: 'goals' },
+          ]}
+          dataSource={data as unknown as Record<string, unknown>[]}
+          filename="vua-pha-luoi"
+        />
+      </Flex>
+      <Table
+        rowKey="playerId"
+        columns={scorerColumns}
+        dataSource={data}
+        loading={loading}
+        pagination={false}
+        size="middle"
+        locale={{ emptyText: 'Chưa có dữ liệu bàn thắng' }}
+      />
+    </>
   );
 }
 
@@ -136,15 +151,31 @@ function CardStatsTab() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
   return (
-    <Table
-      rowKey="playerId"
-      columns={cardColumns}
-      dataSource={data}
-      loading={loading}
-      pagination={false}
-      size="middle"
-      locale={{ emptyText: 'Chưa có dữ liệu thẻ phạt' }}
-    />
+    <>
+      <Flex justify="flex-end" style={{ marginBottom: 8 }}>
+        <ExportButton
+          columns={[
+            { title: '#', key: 'position' },
+            { title: 'Cầu thủ', key: 'playerName' },
+            { title: 'Đội', key: 'teamName' },
+            { title: 'Thẻ vàng', key: 'yellowCards' },
+            { title: 'Thẻ đỏ', key: 'redCards' },
+            { title: 'Tổng', key: 'totalCards' },
+          ]}
+          dataSource={data as unknown as Record<string, unknown>[]}
+          filename="the-phat"
+        />
+      </Flex>
+      <Table
+        rowKey="playerId"
+        columns={cardColumns}
+        dataSource={data}
+        loading={loading}
+        pagination={false}
+        size="middle"
+        locale={{ emptyText: 'Chưa có dữ liệu thẻ phạt' }}
+      />
+    </>
   );
 }
 

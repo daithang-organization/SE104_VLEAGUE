@@ -142,4 +142,97 @@ export class SeasonService {
       data: { status: newStatus as never },
     });
   }
+
+  // ───────────── Season Teams ─────────────
+
+  async getSeasonTeams(seasonId: string) {
+    await this.findOne(seasonId); // ensure season exists
+    return this.prisma.seasonTeam.findMany({
+      where: { seasonId },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            logoUrl: true,
+            city: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { registeredAt: 'asc' },
+    });
+  }
+
+  async registerTeam(seasonId: string, teamId: string) {
+    await this.findOne(seasonId); // ensure season exists
+    try {
+      return await this.prisma.seasonTeam.create({
+        data: {
+          seasonId,
+          teamId,
+          status: 'REGISTERED' as never,
+        },
+        include: {
+          team: {
+            select: { id: true, name: true, shortName: true, logoUrl: true },
+          },
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException('Đội đã được đăng ký vào mùa giải này');
+        }
+      }
+      throw error;
+    }
+  }
+
+  async updateTeamStatus(seasonId: string, teamId: string, status: string) {
+    const record = await this.prisma.seasonTeam.findUnique({
+      where: { seasonId_teamId: { seasonId, teamId } },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Không tìm thấy đội trong mùa giải này');
+    }
+
+    const validStatuses = ['REGISTERED', 'APPROVED', 'REJECTED', 'WITHDRAWN'];
+    if (!validStatuses.includes(status)) {
+      throw new BadRequestException(
+        `Trạng thái không hợp lệ. Chấp nhận: ${validStatuses.join(', ')}`,
+      );
+    }
+
+    return this.prisma.seasonTeam.update({
+      where: { seasonId_teamId: { seasonId, teamId } },
+      data: {
+        status: status as never,
+        approvedAt: status === 'APPROVED' ? new Date() : undefined,
+      },
+      include: {
+        team: {
+          select: { id: true, name: true, shortName: true, logoUrl: true },
+        },
+      },
+    });
+  }
+
+  async removeTeam(seasonId: string, teamId: string) {
+    const record = await this.prisma.seasonTeam.findUnique({
+      where: { seasonId_teamId: { seasonId, teamId } },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Không tìm thấy đội trong mùa giải này');
+    }
+
+    await this.prisma.seasonTeam.delete({
+      where: { seasonId_teamId: { seasonId, teamId } },
+    });
+
+    return { success: true };
+  }
 }

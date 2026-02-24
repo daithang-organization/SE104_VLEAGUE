@@ -2,6 +2,7 @@ import { CrownOutlined } from '@ant-design/icons';
 import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
+import ExportButton from '../components/ExportButton';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetStandings,
@@ -145,19 +146,37 @@ export default function StandingsPage() {
           <Typography.Title level={4} style={{ margin: 0 }}>
             🏆 Bảng xếp hạng
           </Typography.Title>
-          <Select
-            placeholder="Chọn mùa giải"
-            value={selectedSeason}
-            onChange={handleSeasonChange}
-            style={{ width: 200 }}
-            allowClear
-          >
-            {seasons.map((s) => (
-              <Select.Option key={s.id} value={s.id}>
-                {s.name}
-              </Select.Option>
-            ))}
-          </Select>
+          <Space>
+            <ExportButton
+              columns={[
+                { title: '#', key: 'position' },
+                { title: 'Đội bóng', key: 'teamName' },
+                { title: 'Trận', key: 'played' },
+                { title: 'Thắng', key: 'won' },
+                { title: 'Hòa', key: 'drawn' },
+                { title: 'Thua', key: 'lost' },
+                { title: 'BT', key: 'goalsFor' },
+                { title: 'BN', key: 'goalsAgainst' },
+                { title: 'HS', key: 'goalDifference' },
+                { title: 'Điểm', key: 'points' },
+              ]}
+              dataSource={standings as unknown as Record<string, unknown>[]}
+              filename="bang-xep-hang"
+            />
+            <Select
+              placeholder="Chọn mùa giải"
+              value={selectedSeason}
+              onChange={handleSeasonChange}
+              style={{ width: 200 }}
+              allowClear
+            >
+              {seasons.map((s) => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Space>
         </div>
 
         <Table
@@ -213,9 +232,21 @@ export default function StandingsPage() {
       </Card>
 
       <Card>
-        <Typography.Title level={4} style={{ marginTop: 0 }}>
-          ⚽ Vua phá lưới (Top 10)
-        </Typography.Title>
+        <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
+          <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
+            ⚽ Vua phá lưới (Top 10)
+          </Typography.Title>
+          <ExportButton
+            columns={[
+              { title: '#', key: 'position' },
+              { title: 'Cầu thủ', key: 'playerName' },
+              { title: 'Đội bóng', key: 'teamName' },
+              { title: 'Bàn thắng', key: 'goals' },
+            ]}
+            dataSource={topScorers as unknown as Record<string, unknown>[]}
+            filename="vua-pha-luoi"
+          />
+        </Flex>
 
         <Table
           columns={scorerColumns}

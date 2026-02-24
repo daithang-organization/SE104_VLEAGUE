@@ -25,6 +25,12 @@ export const MENU: MenuItem[] = [
     roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
   },
   {
+    key: 'stadiums',
+    label: 'Sân vận động',
+    path: '/stadiums',
+    roles: ['ADMIN'],
+  },
+  {
     key: 'players',
     label: 'Cầu thủ',
     path: '/players',

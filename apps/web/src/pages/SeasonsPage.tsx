@@ -1,4 +1,12 @@
-import { CalendarOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  CalendarOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -13,6 +21,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -28,6 +37,14 @@ import {
   type CreateSeasonPayload,
   type Season,
 } from '../services/seasonApi';
+import {
+  apiGetSeasonTeams,
+  apiRegisterTeam,
+  apiRemoveSeasonTeam,
+  apiUpdateSeasonTeamStatus,
+  type SeasonTeam,
+} from '../services/seasonTeamApi';
+import { apiGetTeams, type Team } from '../services/teamApi';
 
 const STATUS_OPTIONS = [
   { value: 'UPCOMING', label: 'Sắp diễn ra', color: 'blue' },
@@ -46,6 +63,208 @@ function generateYearOptions() {
     });
   }
   return options;
+}
+
+const TEAM_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  REGISTERED: { label: 'Đã đăng ký', color: 'processing' },
+  APPROVED: { label: 'Đã duyệt', color: 'success' },
+  REJECTED: { label: 'Từ chối', color: 'error' },
+  WITHDRAWN: { label: 'Rút lui', color: 'default' },
+};
+
+// ─── Season Team Panel (expandable row) ───
+function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
+  const [teams, setTeams] = useState<SeasonTeam[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>();
+
+  const fetchTeams = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [seasonTeams, teamList] = await Promise.all([
+        apiGetSeasonTeams(seasonId),
+        apiGetTeams(),
+      ]);
+      setTeams(seasonTeams);
+      setAllTeams(teamList);
+    } catch {
+      message.error('Không thể tải danh sách đội');
+    } finally {
+      setLoading(false);
+    }
+  }, [seasonId]);
+
+  useEffect(() => {
+    fetchTeams();
+  }, [fetchTeams]);
+
+  const registeredTeamIds = new Set(teams.map((t) => t.teamId));
+  const availableTeams = allTeams.filter(
+    (t) => !registeredTeamIds.has(t.id) && t.status === 'ACTIVE',
+  );
+
+  const handleAdd = async () => {
+    if (!selectedTeamId) return;
+    setAdding(true);
+    try {
+      await apiRegisterTeam(seasonId, selectedTeamId);
+      message.success('Đã đăng ký đội');
+      setSelectedTeamId(undefined);
+      fetchTeams();
+    } catch {
+      message.error('Không thể đăng ký đội');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleStatus = async (teamId: string, status: string) => {
+    try {
+      await apiUpdateSeasonTeamStatus(seasonId, teamId, status);
+      message.success('Đã cập nhật trạng thái');
+      fetchTeams();
+    } catch {
+      message.error('Không thể cập nhật');
+    }
+  };
+
+  const handleRemove = async (teamId: string) => {
+    try {
+      await apiRemoveSeasonTeam(seasonId, teamId);
+      message.success('Đã xóa đội');
+      fetchTeams();
+    } catch {
+      message.error('Không thể xóa đội');
+    }
+  };
+
+  const cols: ColumnsType<SeasonTeam> = [
+    {
+      title: 'Đội',
+      key: 'team',
+      render: (_, r) => (
+        <Space size={6}>
+          {r.team.logoUrl && (
+            <img
+              src={r.team.logoUrl}
+              alt=""
+              style={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
+          )}
+          <strong>{r.team.name}</strong>
+          {r.team.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
+        </Space>
+      ),
+    },
+    {
+      title: 'Thành phố',
+      key: 'city',
+      width: 140,
+      render: (_, r) => r.team.city ?? '—',
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      width: 120,
+      align: 'center',
+      render: (s: string) => {
+        const m = TEAM_STATUS_MAP[s] ?? { label: s, color: 'default' };
+        return <Tag color={m.color}>{m.label}</Tag>;
+      },
+    },
+    {
+      title: 'Ngày ĐK',
+      dataIndex: 'registeredAt',
+      width: 120,
+      render: (d: string) => dayjs(d).format('DD/MM/YYYY'),
+    },
+    {
+      title: '',
+      key: 'actions',
+      width: 140,
+      render: (_, r) => (
+        <Space size={4}>
+          {r.status === 'REGISTERED' && (
+            <>
+              <Tooltip title="Duyệt">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CheckOutlined />}
+                  style={{ color: '#52c41a' }}
+                  onClick={() => handleStatus(r.teamId, 'APPROVED')}
+                />
+              </Tooltip>
+              <Tooltip title="Từ chối">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CloseOutlined />}
+                  danger
+                  onClick={() => handleStatus(r.teamId, 'REJECTED')}
+                />
+              </Tooltip>
+            </>
+          )}
+          <Popconfirm
+            title="Xóa đội khỏi mùa giải?"
+            onConfirm={() => handleRemove(r.teamId)}
+            okText="Xóa"
+            cancelText="Hủy"
+          >
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ padding: '8px 0' }}>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
+        <Typography.Text strong>
+          <TeamOutlined /> Đội tham gia ({teams.filter((t) => t.status === 'APPROVED').length} duyệt
+          / {teams.length} ĐK)
+        </Typography.Text>
+        <Space>
+          <Select
+            value={selectedTeamId}
+            onChange={setSelectedTeamId}
+            placeholder="Chọn đội để thêm"
+            style={{ width: 250 }}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={availableTeams.map((t) => ({
+              value: t.id,
+              label: `${t.name}${t.shortName ? ` (${t.shortName})` : ''}`,
+            }))}
+          />
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            disabled={!selectedTeamId}
+            loading={adding}
+            onClick={handleAdd}
+          >
+            Thêm
+          </Button>
+        </Space>
+      </Flex>
+      <Table
+        columns={cols}
+        dataSource={teams}
+        rowKey="id"
+        loading={loading}
+        pagination={false}
+        size="small"
+        locale={{ emptyText: 'Chưa có đội nào đăng ký' }}
+      />
+    </div>
+  );
 }
 
 export default function SeasonsPage() {
@@ -264,6 +483,14 @@ export default function SeasonsPage() {
         loading={loading}
         pagination={false}
         size="middle"
+        expandable={
+          isAdmin
+            ? {
+                expandedRowRender: (record) => <SeasonTeamPanel seasonId={record.id} />,
+                expandRowByClick: false,
+              }
+            : undefined
+        }
       />
 
       {/* Create/Edit Modal */}

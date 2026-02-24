@@ -1,15 +1,51 @@
-import { CalendarOutlined, TeamOutlined, TrophyOutlined, UserOutlined } from '@ant-design/icons';
-import { Card, Col, message, Row, Statistic, Table, Tag, Typography } from 'antd';
+import {
+  CalendarOutlined,
+  PlusOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  TrophyOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import {
+  Badge,
+  Button,
+  Card,
+  Col,
+  message,
+  Progress,
+  Row,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { apiGetMatches } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule, type ScheduleMatch } from '../services/scheduleApi';
-import { apiGetSeasons } from '../services/seasonApi';
+import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetStandings, type TeamStanding } from '../services/standingsApi';
 import { apiGetTeams } from '../services/teamApi';
 
+type RecentResult = {
+  id: string;
+  roundNo: number;
+  homeTeam: { name: string };
+  awayTeam: { name: string };
+  homeScore: number | null;
+  awayScore: number | null;
+  kickoffAt: string | null;
+};
+
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = user?.role === 'ADMIN';
   const [stats, setStats] = useState({
     teams: 0,
     players: 0,
@@ -18,19 +54,24 @@ export default function DashboardPage() {
   });
   const [standings, setStandings] = useState<TeamStanding[]>([]);
   const [upcoming, setUpcoming] = useState<ScheduleMatch[]>([]);
+  const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
+  const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [teams, players, schedule, seasons, standingsData] = await Promise.allSettled([
-          apiGetTeams(),
-          apiGetPlayers(),
-          apiGetSchedule(),
-          apiGetSeasons(),
-          apiGetStandings(),
-        ]);
+        const [teams, players, schedule, seasons, standingsData, matchesData, curSeason] =
+          await Promise.allSettled([
+            apiGetTeams(),
+            apiGetPlayers(),
+            apiGetSchedule(),
+            apiGetSeasons(),
+            apiGetStandings(),
+            apiGetMatches(undefined, 1, 100),
+            apiGetCurrentSeason(),
+          ]);
 
         setStats({
           teams: teams.status === 'fulfilled' ? teams.value.length : 0,
@@ -49,6 +90,23 @@ export default function DashboardPage() {
             .filter((m) => m.kickoffAt && new Date(m.kickoffAt) > now && m.status !== 'FINISHED')
             .slice(0, 5);
           setUpcoming(upcomingMatches);
+        }
+
+        // Recent finished results
+        if (matchesData.status === 'fulfilled') {
+          const finished = matchesData.value.data
+            .filter((m) => m.status === 'FINISHED')
+            .sort((a, b) => {
+              if (a.kickoffAt && b.kickoffAt)
+                return new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
+              return b.roundNo - a.roundNo;
+            })
+            .slice(0, 5) as RecentResult[];
+          setRecentResults(finished);
+        }
+
+        if (curSeason.status === 'fulfilled') {
+          setCurrentSeason(curSeason.value);
         }
       } catch {
         message.error('Không thể tải dữ liệu dashboard');
@@ -92,6 +150,45 @@ export default function DashboardPage() {
       render: (s: string) => <Tag color={s === 'PUBLISHED' ? 'blue' : 'default'}>{s}</Tag>,
     },
   ];
+
+  const recentCols: ColumnsType<RecentResult> = [
+    {
+      title: 'V',
+      dataIndex: 'roundNo',
+      width: 50,
+      render: (v: number) => `V${v}`,
+    },
+    {
+      title: 'Trận đấu',
+      key: 'match',
+      render: (_, r) => (
+        <span>
+          <strong>{r.homeTeam.name}</strong>
+          <Tag color="blue" style={{ margin: '0 6px' }}>
+            {r.homeScore ?? 0} – {r.awayScore ?? 0}
+          </Tag>
+          <strong>{r.awayTeam.name}</strong>
+        </span>
+      ),
+    },
+    {
+      title: 'Ngày',
+      dataIndex: 'kickoffAt',
+      width: 100,
+      render: (v: string | null) => (v ? dayjs(v).format('DD/MM') : '—'),
+    },
+  ];
+
+  // Calculate season progress
+  const seasonProgress = (() => {
+    if (!currentSeason?.startDate || !currentSeason?.endDate) return null;
+    const start = dayjs(currentSeason.startDate);
+    const end = dayjs(currentSeason.endDate);
+    const now = dayjs();
+    const total = end.diff(start, 'day');
+    const elapsed = now.diff(start, 'day');
+    return total > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / total) * 100))) : 0;
+  })();
 
   return (
     <div>
@@ -143,7 +240,66 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]}>
+      {/* Current season + Quick actions row */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        {currentSeason && (
+          <Col xs={24} md={isAdmin ? 16 : 24}>
+            <Card size="small" loading={loading}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Space>
+                  <Badge status="processing" />
+                  <Typography.Text strong>{currentSeason.name}</Typography.Text>
+                  <Tag color="green">Đang diễn ra</Tag>
+                </Space>
+                {seasonProgress !== null && (
+                  <Progress
+                    percent={seasonProgress}
+                    size="small"
+                    format={(p) => `${p}% mùa giải`}
+                  />
+                )}
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {currentSeason.startDate
+                    ? dayjs(currentSeason.startDate).format('DD/MM/YYYY')
+                    : '?'}{' '}
+                  →{' '}
+                  {currentSeason.endDate ? dayjs(currentSeason.endDate).format('DD/MM/YYYY') : '?'}
+                </Typography.Text>
+              </Space>
+            </Card>
+          </Col>
+        )}
+        {isAdmin && (
+          <Col xs={24} md={currentSeason ? 8 : 24}>
+            <Card title="⚡ Thao tác nhanh" size="small" loading={loading}>
+              <Space wrap>
+                <Button icon={<PlusOutlined />} size="small" onClick={() => navigate('/seasons')}>
+                  Mùa giải
+                </Button>
+                <Button icon={<TeamOutlined />} size="small" onClick={() => navigate('/teams')}>
+                  Đội bóng
+                </Button>
+                <Button
+                  icon={<CalendarOutlined />}
+                  size="small"
+                  onClick={() => navigate('/schedule')}
+                >
+                  Lịch thi đấu
+                </Button>
+                <Button
+                  icon={<SettingOutlined />}
+                  size="small"
+                  onClick={() => navigate('/regulations')}
+                >
+                  Quy định
+                </Button>
+              </Space>
+            </Card>
+          </Col>
+        )}
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={12}>
           <Card title="🏆 Bảng xếp hạng (Top 5)" size="small">
             <Table
@@ -167,6 +323,23 @@ export default function DashboardPage() {
               pagination={false}
               size="small"
               locale={{ emptyText: 'Chưa có trận đấu sắp tới' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Recent results */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24}>
+          <Card title="⚽ Kết quả gần đây" size="small">
+            <Table
+              columns={recentCols}
+              dataSource={recentResults}
+              rowKey="id"
+              loading={loading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có kết quả trận đấu' }}
             />
           </Card>
         </Col>
