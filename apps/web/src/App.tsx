@@ -16,6 +16,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import SchedulePage from './pages/SchedulePage';
 import SeasonsPage from './pages/SeasonsPage';
 import SessionsPage from './pages/SessionsPage';
+import StadiumsPage from './pages/StadiumsPage';
 import StandingsPage from './pages/StandingsPage';
 import TeamsPage from './pages/TeamsPage';
 import UsersPage from './pages/UsersPage';
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/players" element={<PlayersPage />} />
+        <Route path="/stadiums" element={<StadiumsPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/seasons" element={<SeasonsPage />} />
         <Route path="/matches" element={<MatchesPage />} />
