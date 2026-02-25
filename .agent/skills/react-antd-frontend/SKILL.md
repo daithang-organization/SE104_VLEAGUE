@@ -88,21 +88,22 @@ All routes are defined in `src/App.tsx`. Routes are split into **public** (no au
 
 ### Protected Routes (inside `AppShell`)
 
-| Route              | Page Component       | Description                   |
-| ------------------ | -------------------- | ----------------------------- |
-| `/`                | `DashboardPage`      | Main dashboard                |
-| `/teams`           | `TeamsPage`          | Team management (CRUD)        |
-| `/players`         | `PlayersPage`        | Player management (CRUD)      |
-| `/schedule`        | `SchedulePage`       | Match schedule management     |
-| `/seasons`         | `SeasonsPage`        | Season management (ADMIN)     |
-| `/matches`         | `MatchesPage`        | Match results & events        |
-| `/standings`       | `StandingsPage`      | League standings table        |
-| `/regulations`     | `RegulationsPage`    | Regulation management (ADMIN) |
-| `/reports`         | `ReportsPage`        | Reports & statistics          |
-| `/users`           | `UsersPage`          | User management (ADMIN)       |
-| `/profile`         | `ProfilePage`        | User profile management       |
-| `/change-password` | `ChangePasswordPage` | Password change form          |
-| `/sessions`        | `SessionsPage`       | Active sessions management    |
+| Route              | Page Component       | Description                    |
+| ------------------ | -------------------- | ------------------------------ |
+| `/`                | `DashboardPage`      | Main dashboard + quick actions |
+| `/teams`           | `TeamsPage`          | Team management (CRUD)         |
+| `/players`         | `PlayersPage`        | Player management (CRUD)       |
+| `/schedule`        | `SchedulePage`       | Match schedule management      |
+| `/seasons`         | `SeasonsPage`        | Season + team registration     |
+| `/stadiums`        | `StadiumsPage`       | Stadium management (ADMIN)     |
+| `/matches`         | `MatchesPage`        | Match results & events         |
+| `/standings`       | `StandingsPage`      | League standings + CSV export  |
+| `/regulations`     | `RegulationsPage`    | Regulation management (ADMIN)  |
+| `/reports`         | `ReportsPage`        | Reports & stats + CSV export   |
+| `/users`           | `UsersPage`          | User management (ADMIN)        |
+| `/profile`         | `ProfilePage`        | User profile management        |
+| `/change-password` | `ChangePasswordPage` | Password change form           |
+| `/sessions`        | `SessionsPage`       | Active sessions management     |
 
 ### Route Structure
 
@@ -586,19 +587,37 @@ type MenuItem = {
 };
 
 export const MENU: MenuItem[] = [
-  { key: 'dashboard', label: 'Dashboard', path: '/', roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE'] },
-  { key: 'teams', label: 'Đội bóng', path: '/teams', roles: ['ADMIN', 'TEAM_MANAGER'] },
-  { key: 'players', label: 'Cầu thủ', path: '/players', roles: ['ADMIN', 'TEAM_MANAGER'] },
-  { key: 'schedule', label: 'Lịch thi đấu', path: '/schedule', roles: ['ADMIN'] },
-  { key: 'matches', label: 'Kết quả trận đấu', path: '/matches', roles: ['ADMIN', 'REFEREE'] },
+  { key: 'dashboard', label: 'Dashboard', path: '/' },
+  { key: 'seasons', label: 'Mùa giải', path: '/seasons', roles: ['ADMIN'] },
   {
-    key: 'standings',
-    label: 'Bảng xếp hạng',
-    path: '/standings',
-    roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE'],
+    key: 'teams',
+    label: 'Đội bóng',
+    path: '/teams',
+    roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
   },
+  { key: 'stadiums', label: 'Sân vận động', path: '/stadiums', roles: ['ADMIN'] },
+  {
+    key: 'players',
+    label: 'Cầu thủ',
+    path: '/players',
+    roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
+  },
+  {
+    key: 'schedule',
+    label: 'Lịch thi đấu',
+    path: '/schedule',
+    roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
+  },
+  {
+    key: 'matches',
+    label: 'Kết quả trận đấu',
+    path: '/matches',
+    roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
+  },
+  { key: 'standings', label: 'Bảng xếp hạng', path: '/standings' },
+  { key: 'reports', label: 'Báo cáo', path: '/reports' },
+  { key: 'regulations', label: 'Quy định', path: '/regulations', roles: ['ADMIN'] },
   { key: 'users', label: 'Quản lý người dùng', path: '/users', roles: ['ADMIN'] },
-  { key: 'reports', label: 'Báo cáo', path: '/reports', roles: ['ADMIN'] },
 ];
 ```
 
@@ -738,6 +757,43 @@ export class ErrorBoundary extends Component<Props, State> {
   <RouterProvider router={router} />
 </ErrorBoundary>
 ```
+
+### ExportButton
+
+Reusable CSV export component (`src/components/ExportButton.tsx`). Generates downloadable CSV files with UTF-8 BOM for Excel compatibility:
+
+```typescript
+// src/components/ExportButton.tsx
+import { DownloadOutlined } from '@ant-design/icons';
+import { Button, message } from 'antd';
+
+interface ExportColumn {
+  title: string;    // CSV column header
+  key: string;      // Data field key
+}
+
+interface ExportButtonProps {
+  columns: ExportColumn[];
+  dataSource: Record<string, unknown>[];
+  filename?: string;  // Without extension, defaults to 'export'
+}
+
+// Usage in any page:
+<ExportButton
+  columns={[
+    { title: '#', key: 'position' },
+    { title: 'Đội bóng', key: 'teamName' },
+    { title: 'Điểm', key: 'points' },
+  ]}
+  dataSource={standings as unknown as Record<string, unknown>[]}
+  filename="bang-xep-hang"
+/>
+```
+
+Currently integrated in:
+
+- **StandingsPage**: Export standings table + top scorers
+- **ReportsPage**: Export top scorers + card stats tabs
 
 ## State Management Patterns
 

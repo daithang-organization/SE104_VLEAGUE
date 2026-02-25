@@ -485,6 +485,13 @@ pnpm format              # Run Prettier
   - Uses `StandingsService` for auto-recalculation on FINISHED
   - Uses `RegulationHelper` for MAX_GOAL_TIME validation
 - **`season/`**: Season management (CRUD, status transitions)
+  - `season.controller.ts`: Season CRUD endpoints
+  - `season-team.controller.ts`: Season team registration endpoints (`/seasons/:seasonId/teams`)
+    - `GET /` — List registered teams
+    - `POST /` — Register a team (ADMIN)
+    - `PATCH /:teamId/status` — Approve/Reject/Withdraw (ADMIN)
+    - `DELETE /:teamId` — Remove team (ADMIN)
+  - `season.service.ts`: Season + team management logic
 - **`stadium/`**: Stadium management
 - **`roster/`**: Team roster management (player assignments, jersey numbers)
   - Imports: `PrismaModule`, `RegulationModule`
