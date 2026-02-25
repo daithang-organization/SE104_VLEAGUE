@@ -14,6 +14,49 @@ export type Team = {
   updatedAt: string;
 };
 
+export type TeamDetail = Team & {
+  teamPlayers: {
+    id: string;
+    jerseyNumber: number | null;
+    player: {
+      id: string;
+      fullName: string;
+      position: string;
+      nationality: string;
+      playerType: string;
+      dob: string;
+    };
+  }[];
+  homeMatches: MatchSummary[];
+  awayMatches: MatchSummary[];
+  standings: {
+    id: string;
+    played: number;
+    win: number;
+    draw: number;
+    loss: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    goalDiff: number;
+    points: number;
+    rank: number | null;
+    season: { id: string; name: string };
+  }[];
+};
+
+type MatchSummary = {
+  id: string;
+  roundNo: number;
+  leg: number;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string;
+  kickoffAt: string | null;
+  homeTeam?: { id: string; name: string; shortName?: string | null };
+  awayTeam?: { id: string; name: string; shortName?: string | null };
+  stadium?: { name: string } | null;
+};
+
 export type CreateTeamPayload = {
   name: string;
   shortName?: string;
@@ -45,7 +88,7 @@ export function apiGetTeams() {
 }
 
 export function apiGetTeam(id: string) {
-  return api.get<Team>(`/teams/${id}`).then((res) => res.data);
+  return api.get<TeamDetail>(`/teams/${id}`).then((res) => res.data);
 }
 
 export function apiCreateTeam(data: CreateTeamPayload) {

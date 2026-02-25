@@ -82,4 +82,22 @@ export class AddMatchEventDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({
+    description: 'Loại bàn thắng',
+    enum: ['NORMAL', 'HEADER', 'FREE_KICK', 'PENALTY_KICK', 'LONG_RANGE'],
+    example: 'NORMAL',
+  })
+  @IsOptional()
+  @IsString()
+  goalType?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID cầu thủ liên quan (kiến tạo / bị thay thế)',
+    format: 'uuid',
+    example: '550e8400-e29b-41d4-a716-446655440002',
+  })
+  @IsOptional()
+  @IsUUID()
+  relatedPlayerId?: string;
 }

@@ -157,9 +157,12 @@ export class MatchService {
         playerId: dto.playerId,
         teamId: dto.teamId,
         note: dto.note,
+        goalType: dto.goalType,
+        relatedPlayerId: dto.relatedPlayerId,
       },
       include: {
         player: { select: { id: true, fullName: true } },
+        relatedPlayer: { select: { id: true, fullName: true } },
         team: { select: { id: true, name: true } },
       },
     });

@@ -63,6 +63,8 @@ export type AddMatchEventPayload = {
   playerId?: string;
   teamId: string;
   note?: string;
+  goalType?: string;
+  relatedPlayerId?: string;
 };
 
 export type RosterPlayer = {

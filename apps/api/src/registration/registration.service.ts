@@ -30,11 +30,48 @@ export class RegistrationService {
     });
   }
 
-  async findOneTeam(id: string): Promise<Team> {
+  async findOneTeam(id: string) {
     const team = await this.prisma.team.findUnique({
       where: { id },
       include: {
         stadium: { select: { id: true, name: true, city: true } },
+        teamPlayers: {
+          where: { leftAt: null },
+          include: {
+            player: {
+              select: {
+                id: true,
+                fullName: true,
+                position: true,
+                nationality: true,
+                playerType: true,
+                dob: true,
+              },
+            },
+          },
+          orderBy: { jerseyNumber: 'asc' },
+        },
+        homeMatches: {
+          include: {
+            awayTeam: { select: { id: true, name: true, shortName: true } },
+            stadium: { select: { name: true } },
+          },
+          orderBy: { kickoffAt: 'desc' },
+          take: 10,
+        },
+        awayMatches: {
+          include: {
+            homeTeam: { select: { id: true, name: true, shortName: true } },
+            stadium: { select: { name: true } },
+          },
+          orderBy: { kickoffAt: 'desc' },
+          take: 10,
+        },
+        standings: {
+          include: {
+            season: { select: { id: true, name: true } },
+          },
+        },
       },
     });
 
@@ -137,14 +174,29 @@ export class RegistrationService {
     };
   }
 
-  async findOnePlayer(id: string): Promise<Player> {
+  async findOnePlayer(id: string) {
     const player = await this.prisma.player.findUnique({
       where: { id },
       include: {
         teamPlayers: {
-          where: { leftAt: null },
-          include: { team: { select: { id: true, name: true } } },
-          take: 1,
+          include: {
+            team: { select: { id: true, name: true, shortName: true } },
+          },
+          orderBy: { joinedAt: 'desc' },
+        },
+        matchEvents: {
+          include: {
+            match: {
+              select: {
+                id: true,
+                roundNo: true,
+                kickoffAt: true,
+                season: { select: { id: true, name: true } },
+              },
+            },
+            team: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
         },
       },
     });
