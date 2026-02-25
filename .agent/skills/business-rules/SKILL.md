@@ -100,10 +100,22 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING
-    PENDING --> APPROVED: Admin approves
-    PENDING --> REJECTED: Admin rejects
+    [*] --> REGISTERED
+    REGISTERED --> APPROVED: Admin approves
+    REGISTERED --> REJECTED: Admin rejects
+    APPROVED --> WITHDRAWN: Team withdraws
+    REJECTED --> REGISTERED: Re-register
 ```
+
+**Transition guards:**
+
+- Only transitions from `REGISTERED` → `APPROVED` or `REJECTED` are allowed
+- `APPROVED` → `WITHDRAWN` for teams that leave after approval
+- `approvedAt` timestamp is set automatically when status becomes `APPROVED`
+- Duplicate registration (same team + season) is prevented via `@@unique([seasonId, teamId])`
+
+> [!NOTE]
+> Season team management is handled by `SeasonTeamController` at `/seasons/:seasonId/teams`. Teams are registered via `POST`, approved/rejected via `PATCH :teamId/status`, and removed via `DELETE :teamId`.
 
 ## Player Constraints
 
@@ -143,6 +155,8 @@ Based on actual `@Roles()` decorators in controllers:
 | Create/Update/Delete teams    | ✅    |              |         |            |        |
 | Create/Update/Delete stadiums | ✅    |              |         |            |        |
 | Create/Update/Delete seasons  | ✅    |              |         |            |        |
+| Register teams to season      | ✅    |              |         |            |        |
+| Approve/Reject season teams   | ✅    |              |         |            |        |
 | Manage regulations            | ✅    |              |         |            |        |
 | Generate/Publish schedule     | ✅    |              |         |            |        |
 | Register players              | ✅    | ✅           |         |            |        |
@@ -150,6 +164,7 @@ Based on actual `@Roles()` decorators in controllers:
 | Add match events              | ✅    |              | ✅      |            |        |
 | View schedule                 | ✅    | ✅           | ✅      |            |        |
 | View matches (all)            | ✅    | ✅           | ✅      |            |        |
+| View season teams             | ✅    | ✅           | ✅      | ✅         | ✅     |
 | View standings (public)       | ✅    | ✅           | ✅      | ✅         | ✅     |
 
 > [!NOTE]

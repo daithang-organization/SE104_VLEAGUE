@@ -51,6 +51,7 @@ Hệ thống cung cấp các công cụ để quản lý:
 ### 🏆 Quản lý Mùa giải & Quy định
 
 - CRUD mùa giải với trạng thái (Upcoming → In Progress → Completed)
+- Đăng ký đội bóng tham gia mùa giải (duyệt/từ chối/rút lui)
 - Quy định giải đấu tùy chỉnh theo mùa (tuổi cầu thủ, số lượng ngoại binh, điểm thắng/thua/hòa,...)
 - Seeding quy định mặc định
 
@@ -81,6 +82,7 @@ Hệ thống cung cấp các công cụ để quản lý:
 - Bảng xếp hạng real-time với caching
 - Thống kê vua phá lưới, thẻ phạt, đội bóng
 - Báo cáo tổng hợp theo mùa giải
+- Xuất dữ liệu CSV (bảng xếp hạng, vua phá lưới, thẻ phạt)
 
 ### 👤 Quản lý Người dùng (Admin)
 
@@ -132,7 +134,7 @@ Hệ thống cung cấp các công cụ để quản lý:
 ┌─────────────────────────────────────────────────────────────────┐
 │              Frontend (React 19 + Vite + Ant Design)            │
 │                        :5173                                    │
-│  21 pages · 11 API services · Auth context + protected routes   │
+│  21 pages · 12 API services · Auth context + protected routes   │
 └─────────────────────────────┬───────────────────────────────────┘
                               │ HTTP/REST (Axios)
                               ▼
@@ -193,7 +195,7 @@ SE104_VLEAGUE/
 │           ├── 📂 components/     # Shared components
 │           ├── 📂 lib/            # API client (Axios) & utilities
 │           ├── 📂 pages/          # 21 trang UI
-│           └── 📂 services/       # 11 API service files
+│           └── 📂 services/       # 12 API service files
 │
 ├── 📂 docs/                       # Tài liệu dự án
 ├── 📂 infra/                      # Docker configs

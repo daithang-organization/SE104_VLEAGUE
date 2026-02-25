@@ -55,6 +55,7 @@ async function bootstrap() {
     .addTag('Seasons', 'Season management')
     .addTag('Stadiums', 'Stadium management')
     .addTag('Roster', 'Team roster management')
+    .addTag('Season Teams', 'Season team registration management')
     .addTag('Regulations', 'Season regulation rules')
     .addTag('Users', 'User management (ADMIN)')
     .build();
