@@ -1,12 +1,23 @@
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
-import { Controller, Get, Param, Query, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Param,
+  Query,
+  Res,
+  UseInterceptors,
+} from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
+import { toCsv } from '../common/utils/csv';
 import { StandingsService } from './standings.service';
 
 @ApiTags('Standings')
@@ -136,6 +147,107 @@ export class StandingsController {
   getTeamStats(@Query('seasonId') seasonId?: string) {
     return this.standingsService.getTeamStats(seasonId);
   }
+
+  // ── CSV Export Endpoints ──────────────────────────────────────
+
+  @Get('export/standings')
+  @ApiOperation({
+    summary: 'Export bảng xếp hạng ra CSV',
+    description: 'Tải xuống bảng xếp hạng dưới dạng file CSV',
+  })
+  @ApiProduces('text/csv')
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  async exportStandingsCsv(
+    @Res() res: Response,
+    @Query('seasonId') seasonId?: string,
+  ) {
+    const data = await this.standingsService.getStandings(seasonId);
+    const csv = toCsv(data, [
+      'position',
+      'teamName',
+      'played',
+      'won',
+      'drawn',
+      'lost',
+      'goalsFor',
+      'goalsAgainst',
+      'goalDifference',
+      'points',
+    ]);
+    res
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', 'attachment; filename="standings.csv"')
+      .send(csv);
+  }
+
+  @Get('export/top-scorers')
+  @ApiOperation({
+    summary: 'Export vua phá lưới ra CSV',
+    description: 'Tải xuống danh sách vua phá lưới dưới dạng file CSV',
+  })
+  @ApiProduces('text/csv')
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
+  async exportTopScorersCsv(
+    @Res() res: Response,
+    @Query('seasonId') seasonId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const data = await this.standingsService.getTopScorers(
+      seasonId,
+      limit ?? 50,
+    );
+    const csv = toCsv(data);
+    res
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', 'attachment; filename="top-scorers.csv"')
+      .send(csv);
+  }
+
+  @Get('export/card-stats')
+  @ApiOperation({
+    summary: 'Export thống kê thẻ phạt ra CSV',
+    description: 'Tải xuống danh sách thẻ phạt dưới dạng file CSV',
+  })
+  @ApiProduces('text/csv')
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
+  async exportCardStatsCsv(
+    @Res() res: Response,
+    @Query('seasonId') seasonId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const data = await this.standingsService.getCardStats(
+      seasonId,
+      limit ?? 100,
+    );
+    const csv = toCsv(data);
+    res
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', 'attachment; filename="card-stats.csv"')
+      .send(csv);
+  }
+
+  @Get('export/team-stats')
+  @ApiOperation({
+    summary: 'Export thống kê đội ra CSV',
+    description: 'Tải xuống thống kê tổng hợp theo đội dưới dạng file CSV',
+  })
+  @ApiProduces('text/csv')
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  async exportTeamStatsCsv(
+    @Res() res: Response,
+    @Query('seasonId') seasonId?: string,
+  ) {
+    const data = await this.standingsService.getTeamStats(seasonId);
+    const csv = toCsv(data);
+    res
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', 'attachment; filename="team-stats.csv"')
+      .send(csv);
+  }
+
+  // ── Season-specific Standings ─────────────────────────────────
 
   @Get(':seasonId')
   @ApiOperation({

@@ -1,26 +1,16 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import 'dotenv/config';
-import { existsSync, mkdirSync } from 'fs';
 import { Logger } from 'nestjs-pino';
-import { join } from 'path';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
-  // Ensure uploads directory exists
-  const uploadsDir = join(process.cwd(), 'uploads');
-  if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
-
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bufferLogs: true,
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true, // Buffer logs cho đến khi Logger được khởi tạo
   });
-
-  // Serve uploaded files statically
-  app.useStaticAssets(uploadsDir, { prefix: '/uploads/' });
 
   // Sử dụng Pino Logger cho toàn bộ app
   const logger = app.get(Logger);
@@ -31,38 +21,6 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true,
   });
-
-  // Security headers with Helmet (only in production to avoid CSP issues in dev)
-  if (process.env.NODE_ENV === 'production') {
-    const helmet = await import('helmet');
-    app.use(
-      helmet.default({
-        contentSecurityPolicy: {
-          directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'"],
-            fontSrc: ["'self'"],
-            objectSrc: ["'none'"],
-            frameAncestors: ["'none'"],
-          },
-        },
-        hsts: {
-          maxAge: 31536000,
-          includeSubDomains: true,
-          preload: true,
-        },
-        frameguard: { action: 'deny' },
-        hidePoweredBy: true,
-        noSniff: true,
-        xssFilter: true,
-        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-      }),
-    );
-    logger.log('🛡️  Helmet security headers enabled', 'Bootstrap');
-  }
 
   // Set global prefix for all routes
   app.setGlobalPrefix('api');
@@ -102,17 +60,10 @@ async function bootstrap() {
       'access-token',
     )
     .addTag('Authentication', 'User authentication endpoints')
-    .addTag('Health', 'Application health check')
     .addTag('Teams', 'Team management endpoints')
     .addTag('Players', 'Player management endpoints')
     .addTag('Matches', 'Match scheduling and management')
     .addTag('Scheduling', 'Schedule generation and publishing')
-    .addTag('Standings', 'League standings and statistics')
-    .addTag('Seasons', 'Season management')
-    .addTag('Stadiums', 'Stadium management')
-    .addTag('Roster', 'Team roster management')
-    .addTag('Regulations', 'Season regulation rules')
-    .addTag('Users', 'User management (ADMIN)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

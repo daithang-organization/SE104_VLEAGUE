@@ -7,26 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+---
+
+## [1.1.0] - 2026-02-26
+
 ### Added
-- **Season Module**: CRUD API for managing seasons (VLeague 2024, 2025...)
-- **Stadium Module**: CRUD API for stadium management
-- **Standings Module**: Auto-calculated league standings with points, goal difference
-- **Top Scorers API**: Vua phá lưới endpoint
-- **Roster Module**: Team-Player relationship management (add/remove players from teams)
-- **MatchEvent Model**: Database storage for goals, cards, substitutions
+
+- **Season Module**: Full CRUD API for managing seasons (UPCOMING → IN_PROGRESS → COMPLETED)
+- **Stadium Module**: Full CRUD API for stadium management with address, city, capacity
+- **Standings Module**: Auto-calculated league standings with points, goal difference, ranking tiebreaks
+- **Top Scorers API**: Vua phá lưới endpoint (`GET /standings/top-scorers`)
+- **Card Stats API**: Card statistics endpoint (`GET /standings/card-stats`)
+- **Team Stats API**: Per-team season statistics (`GET /standings/team-stats`)
+- **Roster Module**: Team-Player relationship management (add/remove/update roster entries)
+- **Season Teams Module**: Team registration per season with approval workflow (REGISTERED → APPROVED/REJECTED → WITHDRAWN)
+- **MatchEvent Model**: Database storage for goals, cards, substitutions with minute tracking
+- **Regulation Module**: Configurable tournament regulations per season (MIN_AGE, MAX_ROSTER, WIN_POINTS, etc.)
 - **Auto Score Calculation**: Match scores auto-calculated from goal events
+- **CSV Export**: Export standings, top scorers, and card stats as CSV
+- **PlayerType enum**: Distinguish DOMESTIC vs FOREIGN players with foreign player limit enforcement
+- **EventType enum**: GOAL, OWN_GOAL, YELLOW_CARD, RED_CARD, SUBSTITUTION, PENALTY, PENALTY_MISS
+- **UUID migration**: All primary/foreign keys converted from TEXT to native PostgreSQL UUID
+- **Role FK on User**: Users now have optional FK to `roles` table for extended role management
 
 ### Changed
-- Updated Prisma schema with new models: Season, Stadium, MatchEvent, TeamPlayer
-- Enhanced Match model with homeScore, awayScore, events relation
-- Enhanced Team model with stadium and roster relations
-- Enhanced Player model with roster and events relations
 
-### Planned
-- Stadium management module
-- Team-Player relationship management
-- Auto-calculated standings
-- Goals/Events recording in matches
+- Updated Prisma schema with 7 new models: Season, Stadium, TeamPlayer, SeasonTeam, MatchEvent, Regulation, Standing
+- Enhanced Match model: `homeScore`, `awayScore`, `leg`, `seasonId` fields; FINISHED and POSTPONED statuses
+- Enhanced Team model: `shortName`, `city`, `logoUrl`, `stadiumId` fields with Stadium relation
+- Enhanced Player model: `birthPlace`, `heightCm`, `weightKg`, `playerType` fields
+- Prisma schema now fully synced with database migrations (was previously out of date)
 
 ---
 
@@ -35,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Authentication & Authorization
+
 - User registration with email/password
 - Email verification with OTP (6-digit code)
 - Login/Logout functionality
@@ -47,20 +60,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limiting on sensitive endpoints
 
 #### Team Management
+
 - List all registered teams
 - Team status tracking (ACTIVE/INACTIVE)
 
 #### Player Management
+
 - List all registered players
 - Player info: name, date of birth, nationality, position
 
 #### Match Scheduling
+
 - Auto-generate match schedule
 - Publish/unpublish schedule
 - View schedule with match details
 - Add match events (GOAL, YELLOW_CARD, RED_CARD, SUBSTITUTION)
 
 #### Infrastructure & DevOps
+
 - Docker containerization (API, Web, PostgreSQL)
 - Docker Compose for local development
 - GitHub Actions CI/CD pipeline
@@ -69,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PR labeling automation
 
 #### Documentation
+
 - Swagger/OpenAPI documentation at `/docs`
 - Postman collection export
 - Comprehensive README with setup instructions
@@ -77,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Git workflow documentation
 
 ### Technical Stack
+
 - **Backend**: NestJS, Prisma, PostgreSQL, TypeScript
 - **Frontend**: React 19, Vite, Ant Design, React Router
 - **Tools**: pnpm, Docker, GitHub Actions, ESLint, Prettier
@@ -86,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-01-15
 
 ### Added
+
 - Initial project setup
 - Monorepo structure with pnpm workspaces
 - Basic NestJS API scaffold
@@ -93,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PostgreSQL database with Prisma ORM
 - Docker Compose configuration
 
-[Unreleased]: https://github.com/daithang-organization/SE104_VLEAGUE/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/daithang-organization/SE104_VLEAGUE/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/daithang-organization/SE104_VLEAGUE/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/daithang-organization/SE104_VLEAGUE/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/daithang-organization/SE104_VLEAGUE/releases/tag/v0.1.0

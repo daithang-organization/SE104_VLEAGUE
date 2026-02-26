@@ -1,5 +1,6 @@
 import { Button, Result } from 'antd';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Sentry } from '../lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -30,8 +31,8 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error);
     console.error('Error info:', errorInfo);
 
-    // TODO: Send error to error tracking service (e.g., Sentry)
-    // Sentry.captureException(error, { extra: errorInfo });
+    // Send error to Sentry (no-op when DSN is not configured)
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
   handleReset = () => {
