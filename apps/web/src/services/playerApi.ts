@@ -78,3 +78,15 @@ export function apiUpdatePlayer(id: string, data: UpdatePlayerPayload) {
 export function apiDeletePlayer(id: string) {
   return api.delete<{ success: boolean }>(`/players/${id}`).then((res) => res.data);
 }
+
+export function apiImportPlayersCsv(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api
+    .post<{
+      imported: number;
+      errors: string[];
+      total: number;
+    }>('/players/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((res) => res.data);
+}
