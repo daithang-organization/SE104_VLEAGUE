@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,6 +22,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 import { RegistrationService } from './registration.service';
 
@@ -32,11 +34,16 @@ export class TeamsController {
   @Get()
   @ApiOperation({
     summary: 'Lấy danh sách đội bóng',
-    description: 'Trả về danh sách tất cả đội bóng (bao gồm thông tin sân nhà)',
+    description:
+      'Trả về danh sách đội bóng có hỗ trợ phân trang và tìm kiếm (search, status)',
   })
-  @ApiOkResponse({ description: 'Danh sách đội bóng' })
-  async getTeams() {
-    return await this.reg.listTeams();
+  @ApiOkResponse({ description: 'Danh sách đội bóng (phân trang)' })
+  async getTeams(
+    @Query() pagination: PaginationQueryDto,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    return await this.reg.listTeams({ ...pagination, search, status });
   }
 
   @Get(':id')

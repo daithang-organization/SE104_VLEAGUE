@@ -23,11 +23,46 @@ export class RegistrationService {
 
   // ───────────────── TEAMS ─────────────────
 
-  async listTeams(): Promise<Team[]> {
-    return await this.prisma.team.findMany({
-      orderBy: { name: 'asc' },
-      include: { stadium: { select: { id: true, name: true } } },
-    });
+  async listTeams(pagination?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 100;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {};
+    if (pagination?.search) {
+      where.OR = [
+        { name: { contains: pagination.search, mode: 'insensitive' } },
+        { shortName: { contains: pagination.search, mode: 'insensitive' } },
+        { city: { contains: pagination.search, mode: 'insensitive' } },
+      ];
+    }
+    if (pagination?.status) {
+      where.status = pagination.status;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.team.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        include: { stadium: { select: { id: true, name: true } } },
+        skip,
+        take: limit,
+      }),
+      this.prisma.team.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOneTeam(id: string) {
@@ -135,13 +170,41 @@ export class RegistrationService {
 
   // ───────────────── PLAYERS ─────────────────
 
-  async listPlayers(pagination?: { page?: number; limit?: number }) {
+  async listPlayers(pagination?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    position?: string;
+    nationality?: string;
+    teamId?: string;
+  }) {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 20;
     const skip = (page - 1) * limit;
 
+    // Build where clause
+    const where: Record<string, unknown> = {};
+    if (pagination?.search) {
+      where.fullName = { contains: pagination.search, mode: 'insensitive' };
+    }
+    if (pagination?.position) {
+      where.position = pagination.position;
+    }
+    if (pagination?.nationality) {
+      where.nationality = {
+        contains: pagination.nationality,
+        mode: 'insensitive',
+      };
+    }
+    if (pagination?.teamId) {
+      where.teamPlayers = {
+        some: { teamId: pagination.teamId, leftAt: null },
+      };
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.player.findMany({
+        where,
         orderBy: { fullName: 'asc' },
         include: {
           teamPlayers: {
@@ -162,7 +225,7 @@ export class RegistrationService {
         skip,
         take: limit,
       }),
-      this.prisma.player.count(),
+      this.prisma.player.count({ where }),
     ]);
 
     return {

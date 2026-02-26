@@ -87,7 +87,7 @@ export default function PlayersPage() {
   useEffect(() => {
     fetchPlayers();
     apiGetTeams()
-      .then(setTeams)
+      .then((res) => setTeams(res.data))
       .catch(() => {});
   }, [fetchPlayers]);
 

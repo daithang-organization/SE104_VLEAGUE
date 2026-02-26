@@ -28,6 +28,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   apiAddMatchEvent,
@@ -65,6 +66,7 @@ const CAN_EDIT_ROLES = ['ADMIN', 'REFEREE'];
 
 export default function MatchesPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -370,11 +372,28 @@ export default function MatchesPage() {
     {
       title: '',
       key: 'actions',
-      width: 50,
+      width: 120,
       render: (_, r) => (
-        <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => viewDetail(r.id)}>
-          {canEdit ? 'Sửa' : ''}
-        </Button>
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/matches/${r.id}`)}
+          >
+            Chi tiết
+          </Button>
+          {canEdit && (
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => viewDetail(r.id)}
+            >
+              Sửa
+            </Button>
+          )}
+        </Space>
       ),
     },
   ];
