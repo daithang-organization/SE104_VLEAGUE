@@ -13,7 +13,6 @@ describe('Stadiums API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,20 +27,20 @@ describe('Stadiums API (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /api/stadiums', () => {
+  describe('GET /stadiums', () => {
     it('should return list of stadiums', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/stadiums')
+        .get('/stadiums')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
-  describe('GET /api/stadiums/:id', () => {
+  describe('GET /stadiums/:id', () => {
     it('should return 404 for non-existent stadium', async () => {
       await request(app.getHttpServer())
-        .get('/api/stadiums/00000000-0000-0000-0000-000000000000')
+        .get('/stadiums/00000000-0000-0000-0000-000000000000')
         .expect(404);
     });
   });

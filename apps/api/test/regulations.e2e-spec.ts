@@ -13,7 +13,6 @@ describe('Regulations API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,10 +27,10 @@ describe('Regulations API (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /api/seasons/:seasonId/regulations', () => {
+  describe('GET /seasons/:seasonId/regulations', () => {
     it('should return 404 for non-existent season', async () => {
       await request(app.getHttpServer())
-        .get('/api/seasons/00000000-0000-0000-0000-000000000000/regulations')
+        .get('/seasons/00000000-0000-0000-0000-000000000000/regulations')
         .expect(404);
     });
   });

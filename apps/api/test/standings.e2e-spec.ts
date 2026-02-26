@@ -13,7 +13,6 @@ describe('Standings API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,40 +27,40 @@ describe('Standings API (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /api/standings', () => {
+  describe('GET /standings', () => {
     it('should return standings array', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings')
+        .get('/standings')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
-  describe('GET /api/standings/top-scorers', () => {
+  describe('GET /standings/top-scorers', () => {
     it('should return top scorers array', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/top-scorers')
+        .get('/standings/top-scorers')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
-  describe('GET /api/standings/card-stats', () => {
+  describe('GET /standings/card-stats', () => {
     it('should return card stats array', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/card-stats')
+        .get('/standings/card-stats')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
-  describe('GET /api/standings/team-stats', () => {
+  describe('GET /standings/team-stats', () => {
     it('should return team stats array', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/team-stats')
+        .get('/standings/team-stats')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -69,9 +68,9 @@ describe('Standings API (e2e)', () => {
   });
 
   describe('CSV Export', () => {
-    it('GET /api/standings/export/standings should return CSV', async () => {
+    it('GET /standings/export/standings should return CSV', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/export/standings')
+        .get('/standings/export/standings')
         .expect(200);
 
       expect(response.headers['content-type']).toContain('text/csv');
@@ -80,25 +79,25 @@ describe('Standings API (e2e)', () => {
       );
     });
 
-    it('GET /api/standings/export/top-scorers should return CSV', async () => {
+    it('GET /standings/export/top-scorers should return CSV', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/export/top-scorers')
+        .get('/standings/export/top-scorers')
         .expect(200);
 
       expect(response.headers['content-type']).toContain('text/csv');
     });
 
-    it('GET /api/standings/export/card-stats should return CSV', async () => {
+    it('GET /standings/export/card-stats should return CSV', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/export/card-stats')
+        .get('/standings/export/card-stats')
         .expect(200);
 
       expect(response.headers['content-type']).toContain('text/csv');
     });
 
-    it('GET /api/standings/export/team-stats should return CSV', async () => {
+    it('GET /standings/export/team-stats should return CSV', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/standings/export/team-stats')
+        .get('/standings/export/team-stats')
         .expect(200);
 
       expect(response.headers['content-type']).toContain('text/csv');

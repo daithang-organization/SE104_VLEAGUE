@@ -13,7 +13,6 @@ describe('Seasons API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,20 +27,20 @@ describe('Seasons API (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /api/seasons', () => {
+  describe('GET /seasons', () => {
     it('should return list of seasons', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/seasons')
+        .get('/seasons')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
-  describe('GET /api/seasons/current', () => {
+  describe('GET /seasons/current', () => {
     it('should return current season or null', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/seasons/current')
+        .get('/seasons/current')
         .expect(200);
 
       // Could be null or a season object

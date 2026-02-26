@@ -2,7 +2,6 @@ import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   Controller,
   Get,
-  Header,
   Param,
   Query,
   Res,

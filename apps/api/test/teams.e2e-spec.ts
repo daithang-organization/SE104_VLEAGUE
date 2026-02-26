@@ -13,7 +13,6 @@ describe('Teams API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,21 +27,21 @@ describe('Teams API (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /api/teams', () => {
+  describe('GET /teams', () => {
     it('should return list of teams', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/teams')
+        .get('/teams')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
   });
 
-  describe('POST /api/teams', () => {
+  describe('POST /teams', () => {
     it('should create a new team', async () => {
       const teamName = `Test Team ${Date.now()}`;
       const response = await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({
           name: teamName,
         })
@@ -58,38 +57,35 @@ describe('Teams API (e2e)', () => {
 
       // Create first team
       await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: teamName })
         .expect(201);
 
       // Try to create duplicate
       await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: teamName })
         .expect(409); // Conflict
     });
 
     it('should reject empty team name', async () => {
       await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: '' })
         .expect(400);
     });
 
     it('should reject missing team name', async () => {
-      await request(app.getHttpServer())
-        .post('/api/teams')
-        .send({})
-        .expect(400);
+      await request(app.getHttpServer()).post('/teams').send({}).expect(400);
     });
   });
 
-  describe('GET /api/teams/:id', () => {
+  describe('GET /teams/:id', () => {
     it('should return a team by id', async () => {
       // Create a team first
       const teamName = `Get Team ${Date.now()}`;
       const createResponse = await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: teamName })
         .expect(201);
 
@@ -97,7 +93,7 @@ describe('Teams API (e2e)', () => {
 
       // Get the team
       const response = await request(app.getHttpServer())
-        .get(`/api/teams/${teamId}`)
+        .get(`/teams/${teamId}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('id', teamId);
@@ -106,16 +102,16 @@ describe('Teams API (e2e)', () => {
 
     it('should return 404 for non-existent team', async () => {
       await request(app.getHttpServer())
-        .get('/api/teams/non-existent-uuid')
+        .get('/teams/non-existent-uuid')
         .expect(404);
     });
   });
 
-  describe('PATCH /api/teams/:id', () => {
+  describe('PATCH /teams/:id', () => {
     it('should update a team', async () => {
       // Create a team first
       const createResponse = await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: `Update Team ${Date.now()}` })
         .expect(201);
 
@@ -124,7 +120,7 @@ describe('Teams API (e2e)', () => {
 
       // Update the team
       const response = await request(app.getHttpServer())
-        .patch(`/api/teams/${teamId}`)
+        .patch(`/teams/${teamId}`)
         .send({ name: newName })
         .expect(200);
 
@@ -134,7 +130,7 @@ describe('Teams API (e2e)', () => {
     it('should update team status', async () => {
       // Create a team first
       const createResponse = await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: `Status Team ${Date.now()}` })
         .expect(201);
 
@@ -142,7 +138,7 @@ describe('Teams API (e2e)', () => {
 
       // Update status to INACTIVE
       const response = await request(app.getHttpServer())
-        .patch(`/api/teams/${teamId}`)
+        .patch(`/teams/${teamId}`)
         .send({ status: 'INACTIVE' })
         .expect(200);
 
@@ -150,25 +146,21 @@ describe('Teams API (e2e)', () => {
     });
   });
 
-  describe('DELETE /api/teams/:id', () => {
+  describe('DELETE /teams/:id', () => {
     it('should delete a team', async () => {
       // Create a team first
       const createResponse = await request(app.getHttpServer())
-        .post('/api/teams')
+        .post('/teams')
         .send({ name: `Delete Team ${Date.now()}` })
         .expect(201);
 
       const teamId = (createResponse.body as { id: string }).id;
 
       // Delete the team
-      await request(app.getHttpServer())
-        .delete(`/api/teams/${teamId}`)
-        .expect(200);
+      await request(app.getHttpServer()).delete(`/teams/${teamId}`).expect(200);
 
       // Verify it's deleted
-      await request(app.getHttpServer())
-        .get(`/api/teams/${teamId}`)
-        .expect(404);
+      await request(app.getHttpServer()).get(`/teams/${teamId}`).expect(404);
     });
   });
 });
