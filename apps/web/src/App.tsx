@@ -7,6 +7,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import LoginPage from './pages/LoginPage';
 import MatchesPage from './pages/MatchesPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
+import PlayerDetailPage from './pages/PlayerDetailPage';
 import PlayersPage from './pages/PlayersPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
@@ -18,6 +19,7 @@ import SeasonsPage from './pages/SeasonsPage';
 import SessionsPage from './pages/SessionsPage';
 import StadiumsPage from './pages/StadiumsPage';
 import StandingsPage from './pages/StandingsPage';
+import TeamDetailPage from './pages/TeamDetailPage';
 import TeamsPage from './pages/TeamsPage';
 import UsersPage from './pages/UsersPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -45,7 +47,9 @@ export default function App() {
       >
         <Route path="/" element={<DashboardPage />} />
         <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/teams/:id" element={<TeamDetailPage />} />
         <Route path="/players" element={<PlayersPage />} />
+        <Route path="/players/:id" element={<PlayerDetailPage />} />
         <Route path="/stadiums" element={<StadiumsPage />} />
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/seasons" element={<SeasonsPage />} />

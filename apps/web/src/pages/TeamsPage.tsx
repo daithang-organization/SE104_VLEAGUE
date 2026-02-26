@@ -1,4 +1,10 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -17,6 +23,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   apiCreateTeam,
@@ -33,6 +40,7 @@ const CAN_EDIT_ROLES = ['ADMIN'];
 
 export default function TeamsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [teams, setTeams] = useState<Team[]>([]);
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +156,9 @@ export default function TeamsPage() {
       title: 'Tên đội bóng',
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (name: string, record: Team) => (
+        <a onClick={() => navigate(`/teams/${record.id}`)}>{name}</a>
+      ),
     },
     {
       title: 'Viết tắt',
@@ -189,6 +200,11 @@ export default function TeamsPage() {
             width: 120,
             render: (_: unknown, record: Team) => (
               <Space>
+                <Button
+                  type="text"
+                  icon={<EyeOutlined />}
+                  onClick={() => navigate(`/teams/${record.id}`)}
+                />
                 <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
                 <Popconfirm
                   title="Xóa đội bóng?"

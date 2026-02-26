@@ -1,4 +1,10 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -20,6 +26,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   apiCreatePlayer,
@@ -49,6 +56,7 @@ const CAN_EDIT_ROLES = ['ADMIN', 'TEAM_MANAGER'];
 
 export default function PlayersPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +176,9 @@ export default function PlayersPage() {
       title: 'Họ và tên',
       dataIndex: 'fullName',
       sorter: (a, b) => a.fullName.localeCompare(b.fullName),
+      render: (name: string, record: Player) => (
+        <a onClick={() => navigate(`/players/${record.id}`)}>{name}</a>
+      ),
     },
     {
       title: 'Câu lạc bộ',
@@ -267,6 +278,11 @@ export default function PlayersPage() {
             width: 120,
             render: (_: unknown, record: Player) => (
               <Space>
+                <Button
+                  type="text"
+                  icon={<EyeOutlined />}
+                  onClick={() => navigate(`/players/${record.id}`)}
+                />
                 <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
                 <Popconfirm
                   title="Xóa cầu thủ?"

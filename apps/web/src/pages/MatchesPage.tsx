@@ -70,6 +70,8 @@ export default function MatchesPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
   const [searchText, setSearchText] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterTeam, setFilterTeam] = useState<string | undefined>();
 
   // Detail modal
   const [detailMatch, setDetailMatch] = useState<Match | null>(null);
@@ -117,16 +119,23 @@ export default function MatchesPage() {
     fetchMatches();
   }, [fetchMatches]);
 
-  // ── Group matches by round, filter by search ──
+  // ── Group matches by round, filter by search + status + team ──
   const filteredAndGrouped = useMemo(() => {
     const q = searchText.toLowerCase().trim();
-    const filtered = q
-      ? matches.filter(
-          (m) =>
-            m.homeTeam?.name?.toLowerCase().includes(q) ||
-            m.awayTeam?.name?.toLowerCase().includes(q),
-        )
-      : matches;
+    let filtered = matches;
+    if (q) {
+      filtered = filtered.filter(
+        (m) =>
+          m.homeTeam?.name?.toLowerCase().includes(q) ||
+          m.awayTeam?.name?.toLowerCase().includes(q),
+      );
+    }
+    if (filterStatus) {
+      filtered = filtered.filter((m) => m.status === filterStatus);
+    }
+    if (filterTeam) {
+      filtered = filtered.filter((m) => m.homeTeamId === filterTeam || m.awayTeamId === filterTeam);
+    }
 
     const grouped = new Map<number, Match[]>();
     for (const m of filtered) {
@@ -135,7 +144,7 @@ export default function MatchesPage() {
       grouped.get(round)!.push(m);
     }
     return Array.from(grouped.entries()).sort(([a], [b]) => a - b);
-  }, [matches, searchText]);
+  }, [matches, searchText, filterStatus, filterTeam]);
 
   // Find which rounds contain the search match to auto-open
   const activeKeys = useMemo(() => {
@@ -238,8 +247,14 @@ export default function MatchesPage() {
       const values = await eventForm.validateFields();
       setSavingEvent(true);
       const teamId = values.teamSide === 'home' ? detailMatch.homeTeamId : detailMatch.awayTeamId;
-      const events: { type: string; minute: number; playerId?: string; note?: string }[] =
-        values.events ?? [];
+      const events: {
+        type: string;
+        minute: number;
+        playerId?: string;
+        note?: string;
+        goalType?: string;
+        relatedPlayerId?: string;
+      }[] = values.events ?? [];
       if (events.length === 0) {
         message.warning('Vui lòng thêm ít nhất 1 sự kiện');
         setSavingEvent(false);
@@ -254,6 +269,8 @@ export default function MatchesPage() {
             teamId,
             playerId: evt.playerId || undefined,
             note: evt.note || undefined,
+            goalType: evt.goalType || undefined,
+            relatedPlayerId: evt.relatedPlayerId || undefined,
           };
           await apiAddMatchEvent(detailMatch.id, payload);
           successCount++;
@@ -444,25 +461,53 @@ export default function MatchesPage() {
         <Typography.Title level={4} style={{ margin: 0 }}>
           ⚽ Kết quả trận đấu
         </Typography.Title>
-        <Space>
+        <Space wrap>
           <Input
             prefix={<SearchOutlined />}
             placeholder="Tìm đội bóng..."
             allowClear
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 220 }}
+            style={{ width: 180 }}
           />
           <Select
             value={selectedSeasonId}
             onChange={setSelectedSeasonId}
-            style={{ width: 220 }}
-            placeholder="Chọn mùa giải"
+            style={{ width: 200 }}
+            placeholder="Mùa giải"
             allowClear
             options={seasons.map((s) => ({
               value: s.id,
               label: `${s.name} (${s.year}/${s.year + 1})`,
             }))}
+          />
+          <Select
+            value={filterStatus}
+            onChange={setFilterStatus}
+            style={{ width: 140 }}
+            placeholder="Trạng thái"
+            allowClear
+            options={Object.entries(STATUS_MAP).map(([value, { label }]) => ({
+              value,
+              label,
+            }))}
+          />
+          <Select
+            value={filterTeam}
+            onChange={setFilterTeam}
+            style={{ width: 180 }}
+            placeholder="Lọc theo đội"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={(() => {
+              const teamMap = new Map<string, string>();
+              matches.forEach((m) => {
+                if (m.homeTeam) teamMap.set(m.homeTeamId, m.homeTeam.name);
+                if (m.awayTeam) teamMap.set(m.awayTeamId, m.awayTeam.name);
+              });
+              return [...teamMap.entries()].map(([id, name]) => ({ value: id, label: name }));
+            })()}
           />
         </Space>
       </Flex>
@@ -886,6 +931,62 @@ export default function MatchesPage() {
                         <Input placeholder="Ghi chú" />
                       </Form.Item>
                     </Flex>
+
+                    {/* Goal Type + Related Player (conditional) */}
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prev, cur) => {
+                        const prevType = prev?.events?.[name]?.type;
+                        const curType = cur?.events?.[name]?.type;
+                        return prevType !== curType;
+                      }}
+                    >
+                      {() => {
+                        const evtType = eventForm.getFieldValue(['events', name, 'type']);
+                        const showGoalType = ['GOAL', 'PENALTY'].includes(evtType);
+                        const showRelated = ['GOAL', 'SUBSTITUTION'].includes(evtType);
+                        if (!showGoalType && !showRelated) return null;
+                        return (
+                          <Flex gap={8}>
+                            {showGoalType && (
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'goalType']}
+                                style={{ flex: 1, marginBottom: 8 }}
+                              >
+                                <Select placeholder="Loại bàn thắng" allowClear>
+                                  <Select.Option value="NORMAL">Bình thường</Select.Option>
+                                  <Select.Option value="HEADER">Đánh đầu</Select.Option>
+                                  <Select.Option value="FREE_KICK">Sút phạt</Select.Option>
+                                  <Select.Option value="PENALTY_KICK">Penalty</Select.Option>
+                                  <Select.Option value="LONG_RANGE">Sút xa</Select.Option>
+                                </Select>
+                              </Form.Item>
+                            )}
+                            {showRelated && (
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'relatedPlayerId']}
+                                style={{ flex: 1, marginBottom: 8 }}
+                              >
+                                <Select
+                                  placeholder={evtType === 'GOAL' ? 'Kiến tạo' : 'Cầu thủ bị thay'}
+                                  disabled={!selectedTeamSide || rosterLoading}
+                                  loading={rosterLoading}
+                                  showSearch
+                                  optionFilterProp="label"
+                                  allowClear
+                                  options={currentRoster.map((p) => ({
+                                    value: p.playerId,
+                                    label: `#${p.jerseyNumber ?? '?'} ${p.fullName}`,
+                                  }))}
+                                />
+                              </Form.Item>
+                            )}
+                          </Flex>
+                        );
+                      }}
+                    </Form.Item>
                   </div>
                 ))}
 
