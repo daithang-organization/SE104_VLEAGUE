@@ -48,11 +48,22 @@ export default function TeamDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
+    const fetchTeam = async () => {
+      try {
+        const data = await apiGetTeam(id);
+        if (!cancelled) setTeam(data);
+      } catch {
+        if (!cancelled) message.error('Không thể tải thông tin đội bóng');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     setLoading(true);
-    apiGetTeam(id)
-      .then(setTeam)
-      .catch(() => message.error('Không thể tải thông tin đội bóng'))
-      .finally(() => setLoading(false));
+    fetchTeam();
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (loading) {
