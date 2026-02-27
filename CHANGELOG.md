@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes._
+### Fixed
+
+- **Backend**: Renamed Prisma `include` key from `teamPlayers` to `roster` in `registration.service.ts` to match schema relation name
+- **Backend**: Fixed import paths in `players-import.controller.ts` (`../../auth` → `../auth`, `../registration.service` → `./registration.service`)
+- **Backend**: Fixed Prisma enum type casting in `players-import.controller.ts` — use `as never` for `PlayerPosition` / `PlayerType` assignments
+- **Frontend**: Added missing `useNavigate` import from `react-router-dom` in `StadiumsPage.tsx`
+- **Frontend**: Fixed `useRef` call in `PublicStandingsPage.tsx` — React 19 requires explicit initial value (`useRef<T>(undefined)`)
+- **Tests**: Updated `registration.service.spec.ts` test expectations from `teamPlayers` to `roster`
 
 ---
 

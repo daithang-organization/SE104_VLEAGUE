@@ -45,6 +45,25 @@ apps/web/
 - **Routing**: React Router DOM 7.x
 - **Linting**: ESLint with React plugins
 
+### React 19 + TypeScript Gotchas
+
+> [!WARNING]
+> **`useRef` requires explicit initial value**: React 19 types require an argument to `useRef`. Omitting it causes TS2554.
+>
+> ```tsx
+> // ✅ Correct
+> const ref = useRef<string | undefined>(undefined);
+> // ❌ TS2554: Expected 1 arguments, but got 0
+> const ref = useRef<string | undefined>();
+> ```
+
+> [!WARNING]
+> **Always import `useNavigate`**: If you use `useNavigate()` in a component, you must import it from `react-router-dom`. Missing imports cause TS2552.
+>
+> ```tsx
+> import { useNavigate } from 'react-router-dom';
+> ```
+
 ## Getting Started
 
 ### Development Server

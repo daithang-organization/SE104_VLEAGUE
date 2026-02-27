@@ -288,7 +288,7 @@ describe('RegistrationService', () => {
     it('should delete a player', async () => {
       jest
         .spyOn(prisma.player, 'findUnique')
-        .mockResolvedValue({ ...mockPlayers[0], teamPlayers: [] } as any);
+        .mockResolvedValue({ ...mockPlayers[0], roster: [] } as any);
       jest
         .spyOn(prisma.player, 'delete')
         .mockResolvedValue(mockPlayers[0] as any);

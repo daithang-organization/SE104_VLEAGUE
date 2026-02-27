@@ -560,6 +560,20 @@ Before pushing code, ensure:
 > [!WARNING]
 > **Environment Variables**: Never commit `.env` files or secrets to Git. Use GitHub Secrets for sensitive data in CI.
 
+> [!WARNING]
+> **Prisma relation names in test expectations**: The Prisma relation for team-player roster is `roster` (not `teamPlayers`). Test assertions using `toHaveBeenCalledWith` must match the exact relation name used in `include` queries:
+>
+> ```typescript
+> // ✅ Correct
+> expect(prisma.player.findMany).toHaveBeenCalledWith({
+>   include: { roster: { where: { leftAt: null }, ... } },
+> });
+> // ❌ Wrong — will fail
+> expect(prisma.player.findMany).toHaveBeenCalledWith({
+>   include: { teamPlayers: { ... } },
+> });
+> ```
+
 ## Troubleshooting CI Failures
 
 ### API Build Fails
