@@ -9,11 +9,22 @@ This skill covers testing strategies, CI/CD pipelines, and development workflows
 
 ## Testing Overview
 
-The project uses different testing strategies for API and Web:
+The project has comprehensive test coverage across both API and Web:
 
-- **API (apps/api)**: Jest for unit tests + Supertest for E2E tests
-- **Web (apps/web)**: ESLint for code quality
-- **All workspaces**: Prettier for code formatting
+- **API (apps/api)**: Jest for unit tests + Supertest for E2E tests — **23 suites, 233+ tests**
+- **Web (apps/web)**: Vitest + @testing-library/react for unit/component tests — **24 suites, 143+ tests**
+- **All workspaces**: Prettier for code formatting, ESLint for code quality
+
+### Test Coverage Summary
+
+| Layer   | Test Type            | Suites | Tests | Framework                       |
+| ------- | -------------------- | ------ | ----- | ------------------------------- |
+| **API** | Service specs        | 10     | ~150  | Jest                            |
+| **API** | Controller specs     | 11     | ~64   | Jest                            |
+| **API** | E2E specs            | 8      | ~19   | Jest + Supertest                |
+| **Web** | API service tests    | 12     | 83    | Vitest                          |
+| **Web** | Page component tests | 10     | 60    | Vitest + @testing-library/react |
+| **Web** | Controller/unit      | 2      | ~6    | Vitest                          |
 
 ## API Testing
 
@@ -22,9 +33,50 @@ The project uses different testing strategies for API and Web:
 ```
 apps/api/
 ├── src/
-│   └── **/*.spec.ts         # Unit tests (co-located with source)
+│   ├── auth/
+│   │   ├── auth.service.spec.ts        # Service unit tests
+│   │   └── auth.controller.spec.ts     # Controller unit tests
+│   ├── registration/
+│   │   ├── registration.service.spec.ts
+│   │   ├── teams.controller.spec.ts
+│   │   └── players.controller.spec.ts
+│   ├── match/
+│   │   ├── match.service.spec.ts
+│   │   └── match.controller.spec.ts
+│   ├── scheduling/
+│   │   ├── scheduling.service.spec.ts
+│   │   └── scheduling.controller.spec.ts
+│   ├── season/
+│   │   ├── season.service.spec.ts
+│   │   ├── season.controller.spec.ts
+│   │   └── season-team.controller.spec.ts
+│   ├── stadium/
+│   │   └── stadium.service.spec.ts
+│   ├── standings/
+│   │   └── standings.service.spec.ts
+│   ├── roster/
+│   │   └── roster.service.spec.ts
+│   ├── regulation/
+│   │   ├── regulation.service.spec.ts
+│   │   └── regulation.controller.spec.ts
+│   ├── users/
+│   │   ├── users.service.spec.ts
+│   │   └── users.controller.spec.ts
+│   └── upload/
+│       └── upload.controller.spec.ts
 └── test/
-    └── **/*.e2e-spec.ts     # E2E tests
+    ├── app.e2e-spec.ts
+    ├── auth.e2e-spec.ts
+    ├── matches.e2e-spec.ts
+    ├── regulations.e2e-spec.ts
+    ├── seasons.e2e-spec.ts
+    ├── stadiums.e2e-spec.ts
+    ├── standings.e2e-spec.ts
+    ├── teams.e2e-spec.ts
+    ├── scheduling.e2e-spec.ts
+    ├── roster.e2e-spec.ts
+    ├── users.e2e-spec.ts
+    └── upload.e2e-spec.ts
 ```
 
 ### Running Tests
@@ -286,6 +338,223 @@ Jest configuration is in `apps/api/package.json`:
 }
 ```
 
+## Web (Frontend) Testing
+
+### Test Framework
+
+The frontend uses **Vitest** + **@testing-library/react** for component and service testing:
+
+| Package                     | Purpose                                        |
+| --------------------------- | ---------------------------------------------- |
+| `vitest`                    | Test runner (Vite-native, Jest-compatible API) |
+| `@testing-library/react`    | Component rendering & DOM queries              |
+| `@testing-library/jest-dom` | Custom DOM matchers (`toBeInTheDocument()`)    |
+| `jsdom`                     | DOM environment for tests                      |
+
+### Test Structure
+
+```
+apps/web/src/
+├── services/
+│   └── __tests__/                    # API service unit tests (12 files, 83 tests)
+│       ├── authApi.test.ts
+│       ├── teamApi.test.ts
+│       ├── playerApi.test.ts
+│       ├── stadiumApi.test.ts
+│       ├── seasonApi.test.ts
+│       ├── seasonTeamApi.test.ts
+│       ├── matchApi.test.ts
+│       ├── scheduleApi.test.ts
+│       ├── standingsApi.test.ts
+│       ├── regulationApi.test.ts
+│       ├── userApi.test.ts
+│       └── uploadApi.test.ts
+├── pages/
+│   └── __tests__/                    # Page component tests (10 files, 60 tests)
+│       ├── DashboardPage.test.tsx
+│       ├── StandingsPage.test.tsx
+│       ├── LoginPage.test.tsx
+│       ├── TeamsPage.test.tsx
+│       ├── PlayersPage.test.tsx
+│       ├── MatchesPage.test.tsx
+│       ├── SeasonsPage.test.tsx
+│       ├── SchedulePage.test.tsx
+│       ├── RegulationsPage.test.tsx
+│       └── ProfilePage.test.tsx
+└── vitest.setup.ts                   # Global test setup (polyfills)
+```
+
+### Running Frontend Tests
+
+```bash
+cd apps/web
+
+# Run all tests
+pnpm test
+
+# Run with Vitest directly
+pnpm exec vitest run
+
+# Watch mode
+pnpm exec vitest
+
+# Run specific file
+pnpm exec vitest run src/services/__tests__/teamApi.test.ts
+```
+
+### Test Setup — `vitest.setup.ts`
+
+The setup file provides required polyfills for Ant Design components:
+
+```typescript
+// apps/web/vitest.setup.ts
+import '@testing-library/jest-dom/vitest';
+
+// Polyfill ResizeObserver (needed by Antd Tabs, Collapse, etc.)
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
+// Polyfill window.matchMedia (needed by Antd responsive components)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});
+```
+
+> [!IMPORTANT]
+> Without these polyfills, Ant Design components (Tabs, Collapse, Layout) throw errors in jsdom during tests.
+
+### Frontend Service Test Pattern
+
+Service tests mock the Axios `api` client using `vi.hoisted()` + `vi.mock()`:
+
+```typescript
+// src/services/__tests__/teamApi.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Step 1: Hoist mock variables so they're available inside vi.mock()
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  patch: vi.fn(),
+  delete: vi.fn(),
+}));
+
+// Step 2: Mock the api module
+vi.mock('../../lib/api', () => ({
+  api: mocks,
+}));
+
+// Step 3: Import the service under test (AFTER vi.mock)
+import { apiGetTeams, apiCreateTeam } from '../teamApi';
+
+describe('teamApi', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('apiGetTeams calls GET /teams', async () => {
+    mocks.get.mockResolvedValue({ data: [{ id: '1', name: 'Team A' }] });
+    const result = await apiGetTeams();
+    expect(mocks.get).toHaveBeenCalledWith('/teams');
+    expect(result).toEqual([{ id: '1', name: 'Team A' }]);
+  });
+});
+```
+
+> [!IMPORTANT]
+> The `vi.hoisted()` pattern is essential. Without it, mock variables won't be available inside `vi.mock()` callbacks because Vitest hoists `vi.mock()` to the top of the file.
+
+### Frontend Page Component Test Pattern
+
+Page tests mock both API services and React Router, then verify rendering:
+
+```typescript
+// src/pages/__tests__/TeamsPage.test.tsx
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+
+// Step 1: Hoist mocks
+const apiMock = vi.hoisted(() => ({
+  apiGetTeams: vi.fn(),
+}));
+const navMock = vi.hoisted(() => ({ useNavigate: vi.fn(() => vi.fn()) }));
+
+// Step 2: Mock dependencies
+vi.mock('../../services/teamApi', () => apiMock);
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return { ...actual, ...navMock };
+});
+
+// Step 3: Import component
+import { TeamsPage } from '../TeamsPage';
+
+describe('TeamsPage', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('renders the page title', async () => {
+    apiMock.apiGetTeams.mockResolvedValue([]);
+    render(<TeamsPage />);
+    expect(screen.getByText('Quản lý Đội bóng')).toBeInTheDocument();
+  });
+
+  it('renders teams data in table', async () => {
+    apiMock.apiGetTeams.mockResolvedValue([
+      { id: '1', name: 'Team A', status: 'ACTIVE' },
+    ]);
+    render(<TeamsPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Team A')).toBeInTheDocument();
+    });
+  });
+
+  it('handles API error gracefully', async () => {
+    apiMock.apiGetTeams.mockRejectedValue(new Error('fail'));
+    render(<TeamsPage />);
+    await waitFor(() => {
+      expect(apiMock.apiGetTeams).toHaveBeenCalled();
+    });
+  });
+});
+```
+
+### Frontend Testing Gotchas
+
+> [!WARNING]
+> **Ant Design renders text in multiple DOM locations**: Some components (Card title, Breadcrumb, admin actions) render the same text multiple times. Use `getAllByText()` instead of `getByText()` when this happens:
+>
+> ```typescript
+> // ✅ Correct — Ant Design may render title in Card header + Breadcrumb
+> expect(screen.getAllByText('Thông tin cá nhân').length).toBeGreaterThanOrEqual(1);
+> ```
+
+> [!WARNING]
+> **Import paths in `__tests__/`**: Test files inside `__tests__/` subdirectories must use `../ComponentName` (go up one level), **not** `./ComponentName`:
+>
+> ```typescript
+> // ✅ Correct (from pages/__tests__/)
+> import { TeamsPage } from '../TeamsPage';
+> // ❌ Wrong
+> import { TeamsPage } from './TeamsPage';
+> ```
+
+> [!WARNING]
+> **LoginPage button selector**: The Login page has both "Đăng nhập" as page title and as button text. Use exact text matching or `getByRole('button')` to avoid conflicts.
+
 ## Linting and Formatting
 
 ### Running Linters
@@ -357,8 +626,8 @@ The main CI pipeline (`ci.yml`) includes:
 │  api                │  web                │  security       │
 │  ├─ Lint            │  ├─ Lint            │  └─ pnpm audit  │
 │  ├─ Type Check      │  ├─ Type Check      │                 │
-│  ├─ Test + Coverage │  └─ Build           │                 │
-│  └─ Build           │                     │                 │
+│  ├─ Test + Coverage │  ├─ Test (Vitest)   │                 │
+│  └─ Build           │  └─ Build           │                 │
 ├─────────────────────────────────────────────────────────────┤
 │  pr-title           │  pr-branch          │  pr-size        │
 │  (Conventional)     │  (Naming)           │  (Warnings)     │
@@ -680,9 +949,12 @@ Add to README.md:
 Potential additions:
 
 - [ ] Automated deployment to staging
-- [ ] E2E tests with Playwright/Cypress
+- [ ] E2E tests with Playwright/Cypress (browser-based)
 - [ ] Performance testing
 - [ ] Security scanning
-- [ ] Dependency vulnerability checks
 - [ ] Docker image publishing
 - [ ] Automated releases with semantic versioning
+- [x] Frontend unit/component tests with Vitest
+- [x] Backend service + controller spec coverage
+- [x] Backend E2E test coverage
+- [x] Test step in Web CI job

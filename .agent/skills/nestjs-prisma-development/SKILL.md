@@ -359,6 +359,45 @@ throw new ConflictException('Resource already exists');
 
 ## Testing
 
+The backend has **23 test suites** with **233+ tests** covering services, controllers, and E2E.
+
+### Test File Structure
+
+```
+apps/api/src/
+├── auth/
+│   ├── auth.service.spec.ts           # 30+ tests
+│   └── auth.controller.spec.ts        # 19 tests
+├── registration/
+│   ├── registration.service.spec.ts
+│   ├── teams.controller.spec.ts       # 6 tests
+│   └── players.controller.spec.ts     # 6 tests
+├── match/
+│   ├── match.service.spec.ts
+│   └── match.controller.spec.ts       # 7 tests
+├── scheduling/
+│   ├── scheduling.service.spec.ts
+│   └── scheduling.controller.spec.ts  # 7 tests
+├── season/
+│   ├── season.service.spec.ts
+│   ├── season.controller.spec.ts      # 8 tests
+│   └── season-team.controller.spec.ts # 5 tests
+├── stadium/
+│   └── stadium.service.spec.ts
+├── standings/
+│   └── standings.service.spec.ts
+├── roster/
+│   └── roster.service.spec.ts
+├── regulation/
+│   ├── regulation.service.spec.ts
+│   └── regulation.controller.spec.ts  # 6 tests
+├── users/
+│   ├── users.service.spec.ts          # 15 tests
+│   └── users.controller.spec.ts       # 5 tests
+└── upload/
+    └── upload.controller.spec.ts      # 6 tests
+```
+
 ### Unit Test Example
 
 ```typescript

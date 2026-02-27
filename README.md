@@ -17,6 +17,7 @@
   <a href="#-tổng-quan">Tổng quan</a> •
   <a href="#-tính-năng">Tính năng</a> •
   <a href="#-công-nghệ">Công nghệ</a> •
+  <a href="#-test-coverage">Tests</a> •
   <a href="#-cài-đặt">Cài đặt</a> •
   <a href="#-cấu-trúc-dự-án">Cấu trúc</a> •
   <a href="#-đội-ngũ-phát-triển">Đội ngũ</a>
@@ -160,6 +161,26 @@ Hệ thống cung cấp các công cụ để quản lý:
 │         14 tables · 9 enums · UUID primary keys                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🧪 Test Coverage
+
+| Layer        | Framework                       | Suites | Tests | Chạy lệnh                  |
+| ------------ | ------------------------------- | ------ | ----- | -------------------------- |
+| **Backend**  | Jest + ts-jest                  | 23     | 233+  | `cd apps/api && pnpm test` |
+| **Frontend** | Vitest + @testing-library/react | 24     | 143+  | `cd apps/web && pnpm test` |
+
+### Backend Tests
+
+- **Service specs** (10 files): auth, match, scheduling, season, regulation, standings, roster, registration, stadium, users
+- **Controller specs** (11 files): auth, teams, players, season, season-team, match, scheduling, regulation, users, upload, roster
+- **E2E specs** (8+ files): scheduling, roster, users, upload, teams, matches, seasons, stadiums, standings, regulations
+
+### Frontend Tests
+
+- **API service tests** (12 files, 83 tests): tất cả các service trong `src/services/`
+- **Page component tests** (10 files, 60 tests): Dashboard, Standings, Login, Teams, Players, Matches, Seasons, Schedule, Regulations, Profile
 
 ---
 
@@ -308,7 +329,7 @@ pnpm dev
 | `pnpm build`  | Build production cho tất cả apps        |
 | `pnpm lint`   | Kiểm tra code style                     |
 | `pnpm format` | Format code với Prettier                |
-| `pnpm test`   | Chạy unit tests                         |
+| `pnpm test`   | Chạy tất cả tests (API + Web)           |
 
 ### API Commands (trong `apps/api/`)
 
@@ -316,9 +337,19 @@ pnpm dev
 | --------------- | ----------------------- |
 | `pnpm dev`      | Chạy API với hot-reload |
 | `pnpm build`    | Build production        |
-| `pnpm test`     | Chạy unit tests         |
+| `pnpm test`     | Chạy unit tests (Jest)  |
 | `pnpm test:e2e` | Chạy E2E tests          |
+| `pnpm test:cov` | Chạy tests + coverage   |
 | `pnpm db:seed`  | Seed dữ liệu mẫu        |
+
+### Web Commands (trong `apps/web/`)
+
+| Lệnh               | Mô tả                   |
+| ------------------ | ----------------------- |
+| `pnpm dev`         | Chạy Web với hot-reload |
+| `pnpm build`       | Build production        |
+| `pnpm test`        | Chạy tests (Vitest)     |
+| `pnpm exec vitest` | Watch mode              |
 
 ### Prisma Commands
 
