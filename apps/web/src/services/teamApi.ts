@@ -82,9 +82,20 @@ export type Stadium = {
   capacity?: number | null;
 };
 
+export type PaginatedResponse<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
 // ─────────── API calls ───────────
-export function apiGetTeams() {
-  return api.get<Team[]>('/teams').then((res) => res.data);
+export function apiGetTeams(page = 1, limit = 100, filters?: { search?: string; status?: string }) {
+  const params: Record<string, string | number> = { page, limit };
+  if (filters?.search) params.search = filters.search;
+  if (filters?.status) params.status = filters.status;
+  return api.get<PaginatedResponse<Team>>('/teams', { params }).then((res) => res.data);
 }
 
 export function apiGetTeam(id: string) {

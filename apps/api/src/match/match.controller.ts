@@ -43,14 +43,22 @@ export class MatchController {
   @ApiOperation({
     summary: 'Lấy danh sách trận đấu',
     description:
-      'Trả về danh sách trận đấu có hỗ trợ phân trang, có thể lọc theo mùa giải',
+      'Trả về danh sách trận đấu có hỗ trợ phân trang và lọc theo mùa giải, vòng, trạng thái, đội',
   })
   @ApiOkResponse({ description: 'Danh sách trận đấu (phân trang)' })
   findAll(
     @Query('seasonId') seasonId?: string,
     @Query() pagination?: PaginationQueryDto,
+    @Query('round') round?: string,
+    @Query('status') status?: string,
+    @Query('teamId') teamId?: string,
   ) {
-    return this.match.findAll(seasonId, pagination);
+    return this.match.findAll(seasonId, {
+      ...pagination,
+      round: round ? Number(round) : undefined,
+      status,
+      teamId,
+    });
   }
 
   @Get(':id')

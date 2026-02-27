@@ -33,11 +33,24 @@ export class PlayersController {
   @Get()
   @ApiOperation({
     summary: 'Lấy danh sách cầu thủ',
-    description: 'Trả về danh sách cầu thủ có hỗ trợ phân trang (page, limit)',
+    description:
+      'Trả về danh sách cầu thủ có hỗ trợ phân trang và tìm kiếm (search, position, nationality, teamId)',
   })
   @ApiOkResponse({ description: 'Danh sách cầu thủ (phân trang)' })
-  async getPlayers(@Query() pagination: PaginationQueryDto) {
-    return await this.reg.listPlayers(pagination);
+  async getPlayers(
+    @Query() pagination: PaginationQueryDto,
+    @Query('search') search?: string,
+    @Query('position') position?: string,
+    @Query('nationality') nationality?: string,
+    @Query('teamId') teamId?: string,
+  ) {
+    return await this.reg.listPlayers({
+      ...pagination,
+      search,
+      position,
+      nationality,
+      teamId,
+    });
   }
 
   @Get(':id')

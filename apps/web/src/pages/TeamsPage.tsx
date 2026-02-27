@@ -57,8 +57,8 @@ export default function TeamsPage() {
   const fetchTeams = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiGetTeams();
-      setTeams(data);
+      const res = await apiGetTeams();
+      setTeams(res.data);
     } catch {
       message.error('Không thể tải danh sách đội bóng');
     } finally {

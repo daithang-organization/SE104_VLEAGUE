@@ -83,12 +83,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const fetchTeams = useCallback(async () => {
     setLoading(true);
     try {
-      const [seasonTeams, teamList] = await Promise.all([
+      const [seasonTeams, teamRes] = await Promise.all([
         apiGetSeasonTeams(seasonId),
         apiGetTeams(),
       ]);
       setTeams(seasonTeams);
-      setAllTeams(teamList);
+      setAllTeams(teamRes.data);
     } catch {
       message.error('Không thể tải danh sách đội');
     } finally {

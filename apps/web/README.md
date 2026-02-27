@@ -18,9 +18,20 @@
 **VLeague Web** là ứng dụng frontend được xây dựng bằng React 19 + Vite, cung cấp giao diện người dùng hiện đại cho hệ thống quản lý giải bóng đá VLeague.
 
 ### ✨ Tính năng chính
-- 🔐 **Login Page** - Đăng nhập vào hệ thống
-- 📊 **Standings Page** - Xem bảng xếp hạng
-- 📈 **Reports Page** - Xem báo cáo thống kê
+
+- 🔐 **Authentication** — Đăng nhập, đăng ký, xác thực email, OAuth (Google/Facebook)
+- 🏠 **Dashboard** — Trang chủ với thống kê nhanh và quick actions
+- 👥 **Teams** — Quản lý đội bóng (CRUD)
+- ⚽ **Players** — Quản lý cầu thủ (CRUD)
+- 📆 **Seasons** — Quản lý mùa giải và đăng ký đội
+- 🏟️ **Stadiums** — Quản lý sân vận động
+- 📅 **Schedule** — Lịch thi đấu
+- 🎾 **Matches** — Trận đấu và sự kiện (bàn thắng, thẻ, thay người)
+- 📊 **Standings** — Bảng xếp hạng và export CSV
+- ⚙️ **Regulations** — Quy định giải đấu
+- 📈 **Reports** — Báo cáo thống kê và export CSV
+- 👤 **Users** — Quản lý người dùng (ADMIN)
+- 📝 **Profile** — Cá nhân hóa, đổi mật khẩu, quản lý phiên
 
 ---
 
@@ -32,27 +43,70 @@ apps/web/
 │
 ├── 📂 src/
 │   ├── 📄 main.tsx                # Entry point
-│   ├── 📄 App.tsx                 # Root component & Routes
+│   ├── 📄 App.tsx                 # Root component + Routes (27 pages)
 │   ├── 📄 App.css                 # Global styles
 │   ├── 📄 index.css               # Base CSS
 │   │
 │   ├── 📂 assets/                 # 🖼️ Images, icons, fonts
 │   │
 │   ├── 📂 auth/                   # 🔐 Authentication
-│   │   ├── AuthContext.tsx        # Auth context provider
-│   │   └── auth.types.ts          # Auth type definitions
+│   │   ├── AuthContext.tsx        # Auth state management
+│   │   ├── RequireAuth.tsx        # Protected route guard
+│   │   └── RequireRole.tsx        # Role-based route guard
 │   │
-│   ├── 📂 pages/                  # 📄 Page Components
-│   │   ├── LoginPage.tsx          # Trang đăng nhập
-│   │   ├── StandingsPage.tsx      # Trang bảng xếp hạng
-│   │   └── ReportsPage.tsx        # Trang báo cáo
+│   ├── 📂 shell/                  # 🏠 App Layout
+│   │   ├── AppShell.tsx           # Sidebar + header layout
+│   │   └── menu.ts                # Menu configuration
 │   │
-│   └── 📂 services/               # 🔌 API Services
-│       ├── http.ts                # HTTP client config
-│       └── authApi.ts             # Auth API calls
+│   ├── 📂 components/             # 🧩 Reusable Components
+│   │   ├── LoadingSkeleton.tsx    # Loading states
+│   │   └── ErrorBoundary.tsx      # Error handling
+│   │
+│   ├── 📂 pages/                  # 📄 27 Page Components
+│   │   ├── LoginPage.tsx          # /login
+│   │   ├── RegisterPage.tsx       # /register
+│   │   ├── VerifyEmailPage.tsx    # /verify-email
+│   │   ├── ForgotPasswordPage.tsx # /forgot-password
+│   │   ├── ResetPasswordPage.tsx  # /reset-password
+│   │   ├── DashboardPage.tsx      # /
+│   │   ├── TeamsPage.tsx          # /teams
+│   │   ├── PlayersPage.tsx        # /players
+│   │   ├── SeasonsPage.tsx        # /seasons
+│   │   ├── StadiumsPage.tsx       # /stadiums
+│   │   ├── SchedulePage.tsx       # /schedule
+│   │   ├── MatchesPage.tsx        # /matches
+│   │   ├── StandingsPage.tsx      # /standings
+│   │   ├── RegulationsPage.tsx    # /regulations
+│   │   ├── ReportsPage.tsx        # /reports
+│   │   ├── UsersPage.tsx          # /users (ADMIN)
+│   │   ├── ProfilePage.tsx        # /profile
+│   │   ├── ChangePasswordPage.tsx # /change-password
+│   │   ├── SessionsPage.tsx       # /sessions
+│   │   └── ForbiddenPage.tsx      # /403
+│   │
+│   ├── 📂 services/               # 🔌 14 API Service Files
+│   │   ├── http.ts                # Axios client + interceptors
+│   │   ├── authApi.ts             # Auth endpoints
+│   │   ├── teamApi.ts             # Teams CRUD
+│   │   ├── playerApi.ts           # Players CRUD
+│   │   ├── seasonApi.ts           # Seasons CRUD
+│   │   ├── seasonTeamApi.ts       # Season team registration
+│   │   ├── stadiumApi.ts          # Stadiums CRUD
+│   │   ├── scheduleApi.ts         # Schedule management
+│   │   ├── matchApi.ts            # Matches + events
+│   │   ├── standingsApi.ts        # Standings + stats
+│   │   ├── regulationApi.ts       # Regulations
+│   │   ├── userApi.ts             # Admin user management
+│   │   └── uploadApi.ts           # File upload
+│   │
+│   ├── 📂 lib/                    # 🔧 Utilities
+│   │   └── api.ts                 # API base config
+│   │
+│   └── 📂 utils/                  # 🛠️ Helper Functions
 │
 ├── 📄 index.html                  # HTML template
 ├── 📄 vite.config.ts              # Vite configuration
+├── 📄 vitest.config.ts            # Vitest configuration
 ├── 📄 tsconfig.json               # TypeScript config
 ├── 📄 tsconfig.app.json           # App TypeScript config
 ├── 📄 tsconfig.node.json          # Node TypeScript config
@@ -64,6 +118,7 @@ apps/web/
 ## 🚀 Bắt đầu
 
 ### Yêu cầu
+
 - Node.js >= 20
 - pnpm >= 8
 
@@ -103,12 +158,12 @@ App sẽ chạy tại: **http://localhost:5173**
 
 ## 📝 Các lệnh thường dùng
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm dev` | Chạy development server với HMR |
-| `pnpm build` | Build production |
-| `pnpm preview` | Preview production build |
-| `pnpm lint` | Kiểm tra lỗi ESLint |
+| Lệnh           | Mô tả                           |
+| -------------- | ------------------------------- |
+| `pnpm dev`     | Chạy development server với HMR |
+| `pnpm build`   | Build production                |
+| `pnpm preview` | Preview production build        |
+| `pnpm lint`    | Kiểm tra lỗi ESLint             |
 
 ---
 
@@ -116,12 +171,39 @@ App sẽ chạy tại: **http://localhost:5173**
 
 App sử dụng **React Router v7** để quản lý routes:
 
-| Path | Component | Mô tả |
-|------|-----------|-------|
-| `/` | Redirect | Chuyển hướng đến `/standings` |
-| `/login` | `LoginPage` | Trang đăng nhập |
-| `/standings` | `StandingsPage` | Bảng xếp hạng |
-| `/reports` | `ReportsPage` | Báo cáo thống kê |
+**Public Routes (không cần đăng nhập):**
+
+| Path                   | Component            | Mô tả                  |
+| ---------------------- | -------------------- | ---------------------- |
+| `/login`               | `LoginPage`          | Đăng nhập              |
+| `/register`            | `RegisterPage`       | Đăng ký                |
+| `/verify-email`        | `VerifyEmailPage`    | Xác thực email OTP     |
+| `/forgot-password`     | `ForgotPasswordPage` | Quên mật khẩu          |
+| `/reset-password`      | `ResetPasswordPage`  | Đặt lại mật khẩu       |
+| `/auth/oauth-callback` | `OAuthCallbackPage`  | OAuth callback         |
+| `/public/standings`    | `StandingsPage`      | BXH công khai          |
+| `/public/schedule`     | `SchedulePage`       | Lịch thi đấu công khai |
+| `/public/results`      | `MatchesPage`        | Kết quả công khai      |
+| `/403`                 | `ForbiddenPage`      | Từ chối truy cập       |
+
+**Protected Routes (cần đăng nhập, bên trong `AppShell`):**
+
+| Path               | Component            | Mô tả                     |
+| ------------------ | -------------------- | ------------------------- |
+| `/`                | `DashboardPage`      | Trang chủ + quick actions |
+| `/teams`           | `TeamsPage`          | Quản lý đội bóng          |
+| `/players`         | `PlayersPage`        | Quản lý cầu thủ           |
+| `/seasons`         | `SeasonsPage`        | Quản lý mùa giải          |
+| `/stadiums`        | `StadiumsPage`       | Quản lý sân               |
+| `/schedule`        | `SchedulePage`       | Lịch thi đấu              |
+| `/matches`         | `MatchesPage`        | Trận đấu + sự kiện        |
+| `/standings`       | `StandingsPage`      | Bảng xếp hạng + CSV       |
+| `/regulations`     | `RegulationsPage`    | Quy định giải             |
+| `/reports`         | `ReportsPage`        | Báo cáo + CSV export      |
+| `/users`           | `UsersPage`          | Quản lý user (ADMIN)      |
+| `/profile`         | `ProfilePage`        | Hồ sơ cá nhân             |
+| `/change-password` | `ChangePasswordPage` | Đổi mật khẩu              |
+| `/sessions`        | `SessionsPage`       | Phiên đăng nhập           |
 
 ---
 
@@ -150,7 +232,7 @@ import { ConfigProvider } from 'antd';
   }}
 >
   <App />
-</ConfigProvider>
+</ConfigProvider>;
 ```
 
 ---
@@ -191,7 +273,7 @@ Sử dụng React Context để quản lý authentication state:
 // Wrap app với AuthProvider
 <AuthProvider>
   <App />
-</AuthProvider>
+</AuthProvider>;
 
 // Sử dụng trong component
 const { user, login, logout } = useAuth();
@@ -223,7 +305,7 @@ import NewPage from './pages/NewPage';
 <Routes>
   {/* ... existing routes */}
   <Route path="/new-page" element={<NewPage />} />
-</Routes>
+</Routes>;
 ```
 
 ---
@@ -270,21 +352,25 @@ export function MatchCard({ homeTeam, awayTeam, score }: MatchCardProps) {
 ## 🎯 Best Practices
 
 ### 1. Component Structure
+
 - Một component một file
 - Sử dụng TypeScript interfaces cho props
 - Export default cho page components
 
 ### 2. State Management
+
 - Sử dụng React Context cho global state
 - useState cho local state
 - Tránh prop drilling quá 2 levels
 
 ### 3. Styling
+
 - Sử dụng Ant Design components khi có thể
 - CSS Modules hoặc file CSS riêng cho custom styles
 - Tránh inline styles
 
 ### 4. API Calls
+
 - Tập trung trong thư mục `services/`
 - Handle loading và error states
 - Sử dụng TypeScript types cho responses

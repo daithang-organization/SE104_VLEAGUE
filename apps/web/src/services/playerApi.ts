@@ -50,10 +50,17 @@ export type UpdatePlayerPayload = {
 };
 
 // ─────────── API calls ───────────
-export function apiGetPlayers(page = 1, limit = 20) {
-  return api
-    .get<PaginatedResponse<Player>>('/players', { params: { page, limit } })
-    .then((res) => res.data);
+export function apiGetPlayers(
+  page = 1,
+  limit = 20,
+  filters?: { search?: string; position?: string; nationality?: string; teamId?: string },
+) {
+  const params: Record<string, string | number> = { page, limit };
+  if (filters?.search) params.search = filters.search;
+  if (filters?.position) params.position = filters.position;
+  if (filters?.nationality) params.nationality = filters.nationality;
+  if (filters?.teamId) params.teamId = filters.teamId;
+  return api.get<PaginatedResponse<Player>>('/players', { params }).then((res) => res.data);
 }
 
 export function apiGetPlayer(id: string) {
@@ -70,4 +77,16 @@ export function apiUpdatePlayer(id: string, data: UpdatePlayerPayload) {
 
 export function apiDeletePlayer(id: string) {
   return api.delete<{ success: boolean }>(`/players/${id}`).then((res) => res.data);
+}
+
+export function apiImportPlayersCsv(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api
+    .post<{
+      imported: number;
+      errors: string[];
+      total: number;
+    }>('/players/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((res) => res.data);
 }

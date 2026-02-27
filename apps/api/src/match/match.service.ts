@@ -57,12 +57,28 @@ export class MatchService {
 
   async findAll(
     seasonId?: string,
-    pagination?: { page?: number; limit?: number },
+    pagination?: {
+      page?: number;
+      limit?: number;
+      round?: number;
+      status?: string;
+      teamId?: string;
+    },
   ) {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 20;
     const skip = (page - 1) * limit;
-    const where = seasonId ? { seasonId } : undefined;
+
+    const where: Record<string, unknown> = {};
+    if (seasonId) where.seasonId = seasonId;
+    if (pagination?.round) where.roundNo = pagination.round;
+    if (pagination?.status) where.status = pagination.status;
+    if (pagination?.teamId) {
+      where.OR = [
+        { homeTeamId: pagination.teamId },
+        { awayTeamId: pagination.teamId },
+      ];
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.match.findMany({

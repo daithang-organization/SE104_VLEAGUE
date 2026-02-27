@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
   apiCreateStadium,
@@ -28,6 +29,7 @@ import {
 
 export default function StadiumsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = useMemo(() => user?.role === 'ADMIN', [user]);
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +129,11 @@ export default function StadiumsPage() {
       title: 'Tên sân vận động',
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (name: string) => <strong>{name}</strong>,
+      render: (name: string, record: Stadium) => (
+        <a onClick={() => navigate(`/stadiums/${record.id}`)} style={{ fontWeight: 600 }}>
+          {name}
+        </a>
+      ),
     },
     {
       title: 'Thành phố',

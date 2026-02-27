@@ -13,7 +13,6 @@ describe('Matches API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -28,10 +27,10 @@ describe('Matches API (e2e)', () => {
     await app.close();
   });
 
-  describe('GET /api/matches', () => {
+  describe('GET /matches', () => {
     it('should return list of matches', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/matches')
+        .get('/matches')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -39,7 +38,7 @@ describe('Matches API (e2e)', () => {
 
     it('should filter matches by seasonId', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/matches?seasonId=non-existent-season')
+        .get('/matches?seasonId=non-existent-season')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -47,18 +46,18 @@ describe('Matches API (e2e)', () => {
     });
   });
 
-  describe('GET /api/matches/:id', () => {
+  describe('GET /matches/:id', () => {
     it('should return 404 for non-existent match', async () => {
       await request(app.getHttpServer())
-        .get('/api/matches/00000000-0000-0000-0000-000000000000')
+        .get('/matches/00000000-0000-0000-0000-000000000000')
         .expect(404);
     });
   });
 
-  describe('POST /api/matches/:id/events', () => {
+  describe('POST /matches/:id/events', () => {
     it('should return 401 when adding event without auth', async () => {
       await request(app.getHttpServer())
-        .post('/api/matches/00000000-0000-0000-0000-000000000000/events')
+        .post('/matches/00000000-0000-0000-0000-000000000000/events')
         .send({
           type: 'GOAL',
           playerId: '00000000-0000-0000-0000-000000000001',
@@ -69,10 +68,10 @@ describe('Matches API (e2e)', () => {
     });
   });
 
-  describe('PATCH /api/matches/:id/status', () => {
+  describe('PATCH /matches/:id/status', () => {
     it('should return 401 when updating status without auth', async () => {
       await request(app.getHttpServer())
-        .patch('/api/matches/00000000-0000-0000-0000-000000000000/status')
+        .patch('/matches/00000000-0000-0000-0000-000000000000/status')
         .send({ status: 'PUBLISHED' })
         .expect(401);
     });

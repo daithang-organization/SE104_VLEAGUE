@@ -24,6 +24,21 @@ export class StadiumService {
         teams: {
           select: { id: true, name: true },
         },
+        matches: {
+          select: {
+            id: true,
+            roundNo: true,
+            leg: true,
+            homeScore: true,
+            awayScore: true,
+            kickoffAt: true,
+            status: true,
+            homeTeam: { select: { id: true, name: true } },
+            awayTeam: { select: { id: true, name: true } },
+            season: { select: { id: true, name: true } },
+          },
+          orderBy: { kickoffAt: 'desc' },
+        },
       },
     });
 

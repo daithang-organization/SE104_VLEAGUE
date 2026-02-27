@@ -12,6 +12,24 @@ export type Stadium = {
   updatedAt: string;
 };
 
+export type StadiumMatch = {
+  id: string;
+  roundNo: number;
+  leg: number;
+  homeScore: number | null;
+  awayScore: number | null;
+  kickoffAt: string | null;
+  status: string;
+  homeTeam: { id: string; name: string };
+  awayTeam: { id: string; name: string };
+  season?: { id: string; name: string } | null;
+};
+
+export type StadiumDetail = Stadium & {
+  teams: { id: string; name: string }[];
+  matches: StadiumMatch[];
+};
+
 export type CreateStadiumPayload = {
   name: string;
   city: string;
@@ -28,7 +46,7 @@ export function apiGetStadiums() {
 }
 
 export function apiGetStadium(id: string) {
-  return api.get<Stadium>(`/stadiums/${id}`).then((r) => r.data);
+  return api.get<StadiumDetail>(`/stadiums/${id}`).then((r) => r.data);
 }
 
 export function apiCreateStadium(data: CreateStadiumPayload) {

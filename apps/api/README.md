@@ -18,11 +18,20 @@
 **VLeague API** là backend service được xây dựng bằng NestJS framework, cung cấp REST API cho hệ thống quản lý giải bóng đá VLeague.
 
 ### ✨ Tính năng chính
-- 🔐 **Authentication** - Xác thực và phân quyền người dùng (JWT, OAuth)
-- 📧 **Email Verification** - Xác thực email với OTP (Mailtrap/SMTP)
-- 👥 **Registration** - Quản lý đăng ký đội bóng và cầu thủ
-- 📅 **Scheduling** - Lập lịch thi đấu tự động
-- ⚽ **Match** - Quản lý trận đấu và ghi nhận kết quả
+
+- 🔐 **Authentication** — Xác thực JWT, OAuth (Google/Facebook), OTP email, session management
+- 👥 **Registration** — Quản lý đội bóng và cầu thủ (CRUD + CSV import)
+- 📆 **Season** — Quản lý mùa giải (UPCOMING → IN_PROGRESS → COMPLETED)
+- 📋 **Season Teams** — Đăng ký và duyệt đội tham gia mùa giải
+- 🏟️ **Stadium** — Quản lý sân vận động
+- 📅 **Scheduling** — Lập lịch thi đấu tự động (round-robin 2 lượt)
+- ⚽ **Match** — Quản lý trận đấu, sự kiện, tỉ số tự động
+- 📊 **Standings** — Bảng xếp hạng, vua phá lưới, thống kê thẻ
+- 📋 **Roster** — Quản lý danh sách cầu thủ theo đội
+- ⚙️ **Regulation** — Quy định giải đấu tùy chỉnh theo mùa giải
+- 👤 **Users** — Quản trị người dùng và phân quyền (5 roles)
+- 📤 **Upload** — Upload ảnh (JPEG/PNG/WebP/GIF)
+- 💚 **Health** — Kiểm tra trạng thái hệ thống
 
 ---
 
@@ -31,50 +40,36 @@
 ```
 apps/api/
 ├── 📂 prisma/                     # Database Schema & Migrations
-│   ├── 📄 schema.prisma           # Prisma schema definition
+│   ├── 📄 schema.prisma           # Prisma schema (14 models, 8 enums)
 │   ├── 📄 seed.ts                 # Database seeding script
-│   └── 📂 migrations/             # Migration history
+│   └── 📂 migrations/             # Migration history (13 migrations)
 │
 ├── 📂 src/
 │   ├── 📄 main.ts                 # Entry point
-│   ├── 📄 app.module.ts           # Root module
+│   ├── 📄 app.module.ts           # Root module (14 modules)
 │   │
-│   ├── 📂 auth/                   # 🔐 Authentication Module
-│   │   ├── auth.controller.ts     # Auth endpoints
-│   │   ├── auth.service.ts        # Auth business logic
-│   │   └── auth.module.ts         # Module definition
-│   │
-│   ├── 📂 match/                  # ⚽ Match Module
-│   │   ├── match.controller.ts    # Match endpoints
-│   │   ├── match.service.ts       # Match business logic
-│   │   ├── match.module.ts        # Module definition
-│   │   └── 📂 dto/                # Data Transfer Objects
-│   │
-│   ├── 📂 prisma/                 # 🗄️ Prisma Module
-│   │   ├── prisma.service.ts      # Prisma client wrapper
-│   │   └── prisma.module.ts       # Module definition
-│   │
-│   ├── 📂 registration/           # 👥 Registration Module
-│   │   ├── teams.controller.ts    # Teams endpoints
-│   │   ├── players.controller.ts  # Players endpoints
-│   │   ├── registration.service.ts
-│   │   └── registration.module.ts
-│   │
-│   ├── 📂 mail/                    # 📧 Mail Module
-│   │   ├── mail.service.ts        # Email sending logic
-│   │   ├── mail.module.ts         # Module definition
-│   │   └── 📂 templates/          # Handlebars email templates
-│   │       ├── email-verification.hbs
-│   │       ├── password-reset.hbs
-│   │       └── welcome.hbs
-│   │
-│   └── 📂 scheduling/             # 📅 Scheduling Module
-│       ├── scheduling.controller.ts
-│       ├── scheduling.service.ts
-│       └── scheduling.module.ts
+│   ├── 📂 auth/                   # 🔐 Authentication (19 endpoints)
+│   ├── 📂 registration/           # 👥 Teams & Players (11 endpoints)
+│   ├── 📂 scheduling/             # 📅 Scheduling (3 endpoints)
+│   ├── 📂 match/                  # ⚽ Matches (5 endpoints)
+│   ├── 📂 season/                 # 📆 Seasons + Season Teams (11 endpoints)
+│   ├── 📂 stadium/                # 🏟️ Stadiums (5 endpoints)
+│   ├── 📂 standings/              # 📊 Standings (5 endpoints)
+│   ├── 📂 roster/                 # 📋 Roster (4 endpoints)
+│   ├── 📂 regulation/             # ⚙️ Regulations (5 endpoints)
+│   ├── 📂 users/                  # 👤 User Admin (4 endpoints)
+│   ├── 📂 upload/                 # 📤 File Upload (1 endpoint)
+│   ├── 📂 health/                 # 💚 Health Check (1 endpoint)
+│   ├── 📂 prisma/                 # 🗄️ Prisma ORM Service
+│   ├── 📂 mail/                   # 📧 Email Service (Handlebars templates)
+│   ├── 📂 config/                 # ⚙️ Configuration
+│   └── 📂 common/                 # 🔧 Shared (filters, interceptors, logger)
 │
 └── 📂 test/                       # E2E Tests
     ├── app.e2e-spec.ts
+    ├── auth.e2e-spec.ts
+    ├── matches.e2e-spec.ts
+    ├── teams.e2e-spec.ts
     └── jest-e2e.json
 ```
 
@@ -83,6 +78,7 @@ apps/api/
 ## 🚀 Bắt đầu
 
 ### Yêu cầu
+
 - Node.js >= 20
 - pnpm >= 8
 - PostgreSQL (hoặc Docker)
@@ -143,6 +139,7 @@ Khi user đăng ký hoặc quên mật khẩu, OTP sẽ hiện lên console như
 [Mailtrap](https://mailtrap.io) là service để test email mà không gửi thật.
 
 **Cách setup:**
+
 1. Đăng ký tài khoản tại https://mailtrap.io
 2. Vào **Email Testing** → **Inboxes** → Chọn inbox
 3. Chọn **SMTP Settings** → Copy credentials
@@ -176,11 +173,11 @@ MAIL_FROM=noreply@vleague.com
 
 Các template email nằm trong `src/mail/templates/`:
 
-| Template | Mô tả |
-|----------|-------|
+| Template                 | Mô tả                          |
+| ------------------------ | ------------------------------ |
 | `email-verification.hbs` | OTP xác thực email khi đăng ký |
-| `password-reset.hbs` | OTP đặt lại mật khẩu |
-| `welcome.hbs` | Email chào mừng sau xác thực |
+| `password-reset.hbs`     | OTP đặt lại mật khẩu           |
+| `welcome.hbs`            | Email chào mừng sau xác thực   |
 
 #### Flow xác thực Email
 
@@ -243,41 +240,41 @@ API sẽ chạy tại: **http://localhost:8080**
 
 ### Development
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm dev` | Chạy server với hot-reload |
-| `pnpm start` | Chạy server |
-| `pnpm start:debug` | Chạy với debug mode |
-| `pnpm build` | Build production |
-| `pnpm start:prod` | Chạy production build |
+| Lệnh               | Mô tả                      |
+| ------------------ | -------------------------- |
+| `pnpm dev`         | Chạy server với hot-reload |
+| `pnpm start`       | Chạy server                |
+| `pnpm start:debug` | Chạy với debug mode        |
+| `pnpm build`       | Build production           |
+| `pnpm start:prod`  | Chạy production build      |
 
 ### Testing
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm test` | Chạy unit tests |
+| Lệnh              | Mô tả                     |
+| ----------------- | ------------------------- |
+| `pnpm test`       | Chạy unit tests           |
 | `pnpm test:watch` | Chạy tests với watch mode |
-| `pnpm test:cov` | Chạy tests với coverage |
-| `pnpm test:e2e` | Chạy E2E tests |
+| `pnpm test:cov`   | Chạy tests với coverage   |
+| `pnpm test:e2e`   | Chạy E2E tests            |
 
 ### Database (Prisma)
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm dlx prisma migrate dev` | Tạo & chạy migration |
-| `pnpm dlx prisma migrate dev --name <name>` | Tạo migration với tên |
-| `pnpm dlx prisma migrate deploy` | Deploy migrations (prod) |
-| `pnpm dlx prisma generate` | Generate Prisma Client |
-| `pnpm dlx prisma studio` | Mở Prisma Studio GUI |
-| `pnpm dlx prisma db push` | Push schema (dev only) |
-| `pnpm dlx prisma db seed` | Seed database |
-| `pnpm db:seed` | Seed database (shortcut) |
+| Lệnh                                        | Mô tả                    |
+| ------------------------------------------- | ------------------------ |
+| `pnpm dlx prisma migrate dev`               | Tạo & chạy migration     |
+| `pnpm dlx prisma migrate dev --name <name>` | Tạo migration với tên    |
+| `pnpm dlx prisma migrate deploy`            | Deploy migrations (prod) |
+| `pnpm dlx prisma generate`                  | Generate Prisma Client   |
+| `pnpm dlx prisma studio`                    | Mở Prisma Studio GUI     |
+| `pnpm dlx prisma db push`                   | Push schema (dev only)   |
+| `pnpm dlx prisma db seed`                   | Seed database            |
+| `pnpm db:seed`                              | Seed database (shortcut) |
 
 ### Code Quality
 
-| Lệnh | Mô tả |
-|------|-------|
-| `pnpm lint` | Kiểm tra và fix ESLint |
+| Lệnh          | Mô tả                    |
+| ------------- | ------------------------ |
+| `pnpm lint`   | Kiểm tra và fix ESLint   |
 | `pnpm format` | Format code với Prettier |
 
 ---
@@ -287,79 +284,177 @@ API sẽ chạy tại: **http://localhost:8080**
 ### Các Models chính
 
 #### Team (Đội bóng)
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID | Primary key |
-| `name` | String | Tên đội (unique) |
-| `status` | Enum | ACTIVE / INACTIVE |
-| `createdAt` | DateTime | Ngày tạo |
-| `updatedAt` | DateTime | Ngày cập nhật |
+
+| Field       | Type    | Description       |
+| ----------- | ------- | ----------------- |
+| `id`        | UUID    | Primary key       |
+| `name`      | String  | Tên đội (unique)  |
+| `shortName` | String? | Tên viết tắt      |
+| `city`      | String? | Thành phố         |
+| `logoUrl`   | String? | URL logo          |
+| `status`    | Enum    | ACTIVE / INACTIVE |
+| `stadiumId` | UUID?   | FK đến Stadium    |
 
 #### Player (Cầu thủ)
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID | Primary key |
-| `fullName` | String | Họ tên |
-| `dob` | DateTime | Ngày sinh |
-| `nationality` | String | Quốc tịch |
-| `position` | Enum | GK / DF / MF / FW |
-| `createdAt` | DateTime | Ngày tạo |
-| `updatedAt` | DateTime | Ngày cập nhật |
+
+| Field         | Type     | Description        |
+| ------------- | -------- | ------------------ |
+| `id`          | UUID     | Primary key        |
+| `fullName`    | String   | Họ tên             |
+| `dob`         | DateTime | Ngày sinh          |
+| `nationality` | String   | Quốc tịch          |
+| `position`    | Enum     | GK / DF / MF / FW  |
+| `playerType`  | Enum     | DOMESTIC / FOREIGN |
+| `birthPlace`  | String?  | Nơi sinh           |
+| `heightCm`    | Int?     | Chiều cao (cm)     |
+| `weightKg`    | Int?     | Cân nặng (kg)      |
 
 #### Match (Trận đấu)
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID | Primary key |
-| `roundNo` | Int | Vòng đấu |
-| `homeTeamId` | UUID | Đội nhà |
-| `awayTeamId` | UUID | Đội khách |
-| `stadiumId` | UUID? | Sân vận động |
-| `kickoffAt` | DateTime? | Thời gian thi đấu |
-| `status` | Enum | DRAFT / PUBLISHED / LOCKED |
+
+| Field        | Type      | Description                                       |
+| ------------ | --------- | ------------------------------------------------- |
+| `id`         | UUID      | Primary key                                       |
+| `roundNo`    | Int       | Vòng đấu                                          |
+| `leg`        | Int       | Lượt (1/2)                                        |
+| `seasonId`   | UUID?     | FK đến Season                                     |
+| `homeTeamId` | UUID      | Đội nhà                                           |
+| `awayTeamId` | UUID      | Đội khách                                         |
+| `stadiumId`  | UUID?     | Sân vận động                                      |
+| `kickoffAt`  | DateTime? | Thời gian                                         |
+| `homeScore`  | Int?      | Tỉ số đội nhà                                     |
+| `awayScore`  | Int?      | Tỉ số đội khách                                   |
+| `status`     | Enum      | DRAFT / PUBLISHED / LOCKED / FINISHED / POSTPONED |
+
+#### Season (Mùa giải)
+
+| Field       | Type      | Description                        |
+| ----------- | --------- | ---------------------------------- |
+| `id`        | UUID      | Primary key                        |
+| `name`      | String    | Tên mùa giải (unique)              |
+| `year`      | Int       | Năm                                |
+| `status`    | Enum      | UPCOMING / IN_PROGRESS / COMPLETED |
+| `startDate` | DateTime? | Ngày bắt đầu                       |
+| `endDate`   | DateTime? | Ngày kết thúc                      |
+
+#### Stadium (Sân vận động)
+
+| Field      | Type    | Description      |
+| ---------- | ------- | ---------------- |
+| `id`       | UUID    | Primary key      |
+| `name`     | String  | Tên sân (unique) |
+| `address`  | String? | Địa chỉ          |
+| `city`     | String  | Thành phố        |
+| `capacity` | Int?    | Sức chứa         |
 
 ---
 
 ## 🔗 API Endpoints
 
 ### Health Check
+
 ```
 GET /health → { status: 'ok' }
 ```
 
-### Authentication
+### Authentication (19 endpoints)
+
 ```
-POST /auth/login
-POST /auth/logout
+POST /auth/register              → Đăng ký
+POST /auth/verify-email          → Xác thực email OTP
+POST /auth/login                 → Đăng nhập
+POST /auth/logout                → Đăng xuất
+POST /auth/refresh               → Làm mới token
+GET  /auth/me                    → Thông tin hiện tại
+PATCH /auth/profile              → Cập nhật hồ sơ
+GET  /auth/sessions              → Phiên đăng nhập
+GET  /auth/google                → Google OAuth
+GET  /auth/facebook              → Facebook OAuth
+...và các endpoint khác
 ```
 
-### Teams
+### Teams & Players (11 endpoints)
+
 ```
-GET  /teams          → Danh sách đội bóng
-GET  /teams/:id      → Chi tiết đội bóng
-POST /teams          → Tạo đội bóng mới
+GET  /teams                      → Danh sách đội bóng
+GET  /teams/:id                  → Chi tiết đội
+POST /teams                      → Tạo đội (ADMIN)
+PATCH /teams/:id                 → Sửa đội (ADMIN)
+DELETE /teams/:id                → Xóa đội (ADMIN)
+GET  /players                    → Danh sách cầu thủ
+POST /players                    → Tạo cầu thủ (ADMIN/TM)
+POST /players/import             → Import CSV (ADMIN)
 ```
 
-### Players
+### Seasons & Season Teams (11 endpoints)
+
 ```
-GET  /players        → Danh sách cầu thủ
-GET  /players/:id    → Chi tiết cầu thủ
-POST /players        → Tạo cầu thủ mới
+GET  /seasons                    → Danh sách mùa giải
+GET  /seasons/current            → Mùa giải hiện tại
+POST /seasons                    → Tạo mùa giải (ADMIN)
+PATCH /seasons/:id/status        → Đổi trạng thái
+GET  /seasons/:sId/teams         → Đội trong mùa giải
+POST /seasons/:sId/teams         → Đăng ký đội
+PATCH /seasons/:sId/teams/:tId/status → Duyệt/từ chối
 ```
 
-### Scheduling
+### Stadiums (5 endpoints)
+
 ```
-GET  /schedule       → Lấy lịch thi đấu
-POST /schedule/generate → Tạo lịch thi đấu
-POST /schedule/publish  → Xuất bản lịch
+GET  /stadiums                   → Danh sách sân
+POST /stadiums                   → Tạo sân (ADMIN)
 ```
 
-### Matches
+### Scheduling (3 endpoints)
+
 ```
-GET  /matches/:id         → Chi tiết trận đấu
-POST /matches/:id/events  → Thêm sự kiện trận đấu
+GET  /schedule                   → Lịch thi đấu
+POST /schedule/generate          → Tạo lịch round-robin
+POST /schedule/publish           → Công bố lịch
 ```
 
-> 📖 Chi tiết API xem tại: [docs/api-outline.md](../../docs/api-outline.md)
+### Matches (5 endpoints)
+
+```
+GET  /matches                    → Danh sách trận
+GET  /matches/:id                → Chi tiết trận
+POST /matches/:id/events         → Thêm sự kiện (ADMIN/REF)
+PATCH /matches/:id/status        → Đổi trạng thái
+```
+
+### Standings (5 endpoints)
+
+```
+GET  /standings                  → Bảng xếp hạng
+GET  /standings/top-scorers      → Vua phá lưới
+GET  /standings/card-stats       → Thống kê thẻ
+GET  /standings/team-stats       → Thống kê đội
+```
+
+### Roster (4 endpoints)
+
+```
+GET  /teams/:tId/roster          → Danh sách cầu thủ đội
+POST /teams/:tId/roster          → Thêm vào đội
+```
+
+### Regulations (5 endpoints)
+
+```
+GET  /seasons/:sId/regulations   → Quy định mùa giải
+PUT  /seasons/:sId/regulations   → Tạo/sửa quy định (ADMIN)
+POST /seasons/:sId/regulations/seed-defaults → Seed mặc định
+```
+
+### Users (4 endpoints — ADMIN only)
+
+```
+GET  /users                      → Danh sách người dùng
+POST /users                      → Tạo người dùng
+PATCH /users/:id/role            → Đổi role
+DELETE /users/:id                → Xóa người dùng
+```
+
+> 📖 Chi tiết đầy đủ (58 endpoints) xem tại: [docs/API_DOCS.md](../../docs/API_DOCS.md)
 
 ---
 
@@ -463,19 +558,23 @@ export class AppModule {}
 ## 🔒 Best Practices
 
 ### 1. Validation
+
 - Sử dụng `class-validator` cho DTOs
 - Validate input ở controller level
 
 ### 2. Error Handling
+
 - Sử dụng NestJS Exception Filters
 - Trả về consistent error response
 
 ### 3. Database
+
 - Không truy cập Prisma trực tiếp từ controller
 - Luôn đi qua service layer
 - Sử dụng transactions cho nhiều operations
 
 ### 4. Testing
+
 - Unit test cho services
 - E2E test cho endpoints quan trọng
 

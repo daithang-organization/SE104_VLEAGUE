@@ -5,7 +5,7 @@ import {
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
@@ -15,6 +15,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
+    const response = context.switchToHttp().getResponse<Response>();
     const method = request.method;
     const url = request.url;
     const controllerName = context.getClass().name;
@@ -26,12 +27,6 @@ export class LoggingInterceptor implements NestInterceptor {
       `➡️  [${method}] ${url} → ${controllerName}.${handlerName}()`,
     );
 
-    // Không log request body để giảm noise
-    // Có thể bật lại bằng cách uncomment
-    // if (body && Object.keys(body).length > 0) {
-    //   this.logger.debug(`📦 Body: ${JSON.stringify(body)}`);
-    // }
-
     return next.handle().pipe(
       tap({
         next: (data) => {
@@ -41,6 +36,12 @@ export class LoggingInterceptor implements NestInterceptor {
 
           this.logger.log(
             `⬅️  [${method}] ${url} ${statusColor} ${duration}ms`,
+          );
+
+          // Add Server-Timing header for browser DevTools / monitoring
+          response.setHeader(
+            'Server-Timing',
+            `app;dur=${duration};desc="${controllerName}.${handlerName}"`,
           );
 
           // Log response data size trong dev mode

@@ -16,7 +16,6 @@ describe('Auth API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -31,10 +30,10 @@ describe('Auth API (e2e)', () => {
     await app.close();
   });
 
-  describe('POST /api/auth/register', () => {
+  describe('POST /auth/register', () => {
     it('should register a new user', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/auth/register')
+        .post('/auth/register')
         .send({
           email: testEmail,
           password: testPassword,
@@ -47,7 +46,7 @@ describe('Auth API (e2e)', () => {
 
     it('should reject invalid email', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/register')
+        .post('/auth/register')
         .send({
           email: 'invalid-email',
           password: testPassword,
@@ -57,7 +56,7 @@ describe('Auth API (e2e)', () => {
 
     it('should reject weak password', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/register')
+        .post('/auth/register')
         .send({
           email: 'another@example.com',
           password: 'weak',
@@ -66,18 +65,18 @@ describe('Auth API (e2e)', () => {
     });
   });
 
-  describe('POST /api/auth/login', () => {
+  describe('POST /auth/login', () => {
     it('should reject unverified user', async () => {
       // Register a new user (unverified)
       const email = `unverified-${Date.now()}@example.com`;
-      await request(app.getHttpServer()).post('/api/auth/register').send({
+      await request(app.getHttpServer()).post('/auth/register').send({
         email,
         password: testPassword,
       });
 
       // Try to login without verification
       await request(app.getHttpServer())
-        .post('/api/auth/login')
+        .post('/auth/login')
         .send({
           email,
           password: testPassword,
@@ -87,7 +86,7 @@ describe('Auth API (e2e)', () => {
 
     it('should reject wrong password', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/login')
+        .post('/auth/login')
         .send({
           email: testEmail,
           password: 'WrongPassword@123',
@@ -97,7 +96,7 @@ describe('Auth API (e2e)', () => {
 
     it('should reject non-existent user', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/login')
+        .post('/auth/login')
         .send({
           email: 'nonexistent@example.com',
           password: testPassword,
@@ -106,10 +105,10 @@ describe('Auth API (e2e)', () => {
     });
   });
 
-  describe('POST /api/auth/refresh', () => {
+  describe('POST /auth/refresh', () => {
     it('should reject invalid refresh token', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/refresh')
+        .post('/auth/refresh')
         .send({
           refreshToken: 'invalid-token',
         })
@@ -117,10 +116,10 @@ describe('Auth API (e2e)', () => {
     });
   });
 
-  describe('POST /api/auth/logout', () => {
+  describe('POST /auth/logout', () => {
     it('should logout successfully (even with invalid token)', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/auth/logout')
+        .post('/auth/logout')
         .send({
           refreshToken: 'some-token',
         })
@@ -130,23 +129,23 @@ describe('Auth API (e2e)', () => {
     });
   });
 
-  describe('GET /api/auth/me (Protected)', () => {
+  describe('GET /auth/me (Protected)', () => {
     it('should reject request without token', async () => {
-      await request(app.getHttpServer()).get('/api/auth/me').expect(401);
+      await request(app.getHttpServer()).get('/auth/me').expect(401);
     });
 
     it('should reject request with invalid token', async () => {
       await request(app.getHttpServer())
-        .get('/api/auth/me')
+        .get('/auth/me')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
     });
   });
 
-  describe('POST /api/auth/forgot-password', () => {
+  describe('POST /auth/forgot-password', () => {
     it('should return success even for non-existent email (security)', async () => {
       const response = await request(app.getHttpServer())
-        .post('/api/auth/forgot-password')
+        .post('/auth/forgot-password')
         .send({
           email: 'nonexistent@example.com',
         })
@@ -159,7 +158,7 @@ describe('Auth API (e2e)', () => {
   describe('Input Validation', () => {
     it('should reject missing email in register', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/register')
+        .post('/auth/register')
         .send({
           password: testPassword,
         })
@@ -168,7 +167,7 @@ describe('Auth API (e2e)', () => {
 
     it('should reject missing password in register', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/register')
+        .post('/auth/register')
         .send({
           email: 'test@example.com',
         })
@@ -177,7 +176,7 @@ describe('Auth API (e2e)', () => {
 
     it('should reject extra fields (forbidNonWhitelisted)', async () => {
       await request(app.getHttpServer())
-        .post('/api/auth/register')
+        .post('/auth/register')
         .send({
           email: 'test@example.com',
           password: testPassword,

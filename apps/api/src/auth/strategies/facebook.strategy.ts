@@ -27,12 +27,13 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     }
   }
 
-  validate(
-    _accessToken: string,
-    _refreshToken: string,
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async validate(
+    accessToken: string,
+    refreshToken: string,
     profile: Profile,
     done: (err: Error | null, user?: unknown) => void,
-  ): void {
+  ): Promise<void> {
     const { id, emails, displayName, photos } = profile;
 
     const user = {
