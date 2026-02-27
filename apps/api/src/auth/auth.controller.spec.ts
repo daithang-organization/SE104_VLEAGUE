@@ -34,12 +34,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: {
-            register: jest
-              .fn()
-              .mockResolvedValue({
-                message: 'OK',
-                email: 'test@vleague.local',
-              }),
+            register: jest.fn().mockResolvedValue({
+              message: 'OK',
+              email: 'test@vleague.local',
+            }),
             verifyEmail: jest.fn().mockResolvedValue({ message: 'Verified' }),
             resendVerificationOtp: jest
               .fn()
@@ -53,13 +51,11 @@ describe('AuthController', () => {
             changePassword: jest
               .fn()
               .mockResolvedValue({ success: true, message: 'Changed' }),
-            logoutAll: jest
-              .fn()
-              .mockResolvedValue({
-                success: true,
-                message: 'Done',
-                revokedCount: 3,
-              }),
+            logoutAll: jest.fn().mockResolvedValue({
+              success: true,
+              message: 'Done',
+              revokedCount: 3,
+            }),
             updateProfile: jest
               .fn()
               .mockResolvedValue({ ...mockUser, name: 'Updated' }),
