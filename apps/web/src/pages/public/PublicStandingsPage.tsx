@@ -1,5 +1,5 @@
 import { Card, message, Select, Space, Table, Tag, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiGetSeasons, type Season } from '../../services/seasonApi';
 import { apiGetStandings, type TeamStanding } from '../../services/standingsApi';
 
@@ -10,6 +10,7 @@ export default function PublicStandingsPage() {
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
+  const prevSeasonId = useRef<string | undefined>();
 
   useEffect(() => {
     apiGetSeasons().then((data) => {
@@ -19,12 +20,25 @@ export default function PublicStandingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedSeasonId) return;
-    setLoading(true);
+    if (!selectedSeasonId || selectedSeasonId === prevSeasonId.current) return;
+    prevSeasonId.current = selectedSeasonId;
+
+    let cancelled = false;
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- data fetch pattern
     apiGetStandings(selectedSeasonId)
-      .then((data) => setStandings(data))
-      .catch(() => message.error('Không thể tải bảng xếp hạng'))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setStandings(data);
+      })
+      .catch(() => {
+        if (!cancelled) message.error('Không thể tải bảng xếp hạng');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedSeasonId]);
 
   const columns = [

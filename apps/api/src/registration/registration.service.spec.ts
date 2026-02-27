@@ -79,6 +79,7 @@ describe('RegistrationService', () => {
               create: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+              count: jest.fn(),
             },
             player: {
               findMany: jest.fn(),
@@ -117,16 +118,22 @@ describe('RegistrationService', () => {
   describe('listTeams', () => {
     it('should return all teams', async () => {
       jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams as any);
+      jest.spyOn(prisma.team, 'count').mockResolvedValue(2);
 
       const result = await service.listTeams();
-      expect(result).toHaveLength(2);
-      expect(result[0].name).toBe('Công An Hà Nội');
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].name).toBe('Công An Hà Nội');
+      expect(result.total).toBe(2);
+      expect(result.page).toBe(1);
     });
 
     it('should return empty array when no teams exist', async () => {
       jest.spyOn(prisma.team, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.team, 'count').mockResolvedValue(0);
+
       const result = await service.listTeams();
-      expect(result).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
+      expect(result.total).toBe(0);
     });
   });
 
@@ -216,6 +223,7 @@ describe('RegistrationService', () => {
 
       await service.listPlayers();
       expect(prisma.player.findMany).toHaveBeenCalledWith({
+        where: {},
         orderBy: { fullName: 'asc' },
         include: {
           teamPlayers: {

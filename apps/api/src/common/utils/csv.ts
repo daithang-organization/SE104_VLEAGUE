@@ -15,7 +15,11 @@ export function toCsv<T extends object>(
     columns ?? (Object.keys(rows[0] as object) as (keyof T & string)[]);
 
   const escapeCell = (value: unknown): string => {
-    const str = value === null || value === undefined ? '' : String(value);
+    if (value === null || value === undefined) return '';
+    const str =
+      typeof value === 'object'
+        ? JSON.stringify(value)
+        : String(value as string | number | boolean);
     // Wrap in quotes if the value contains comma, quote, or newline
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
       return `"${str.replace(/"/g, '""')}"`;

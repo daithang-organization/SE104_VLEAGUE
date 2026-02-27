@@ -27,6 +27,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async validate(
     accessToken: string,
     refreshToken: string,
