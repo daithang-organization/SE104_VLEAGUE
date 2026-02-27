@@ -118,11 +118,11 @@ export class PlayersImportController {
           fullName,
           dob,
           nationality,
-          position: position as 'GK' | 'DF' | 'MF' | 'FW',
+          position: position as never,
           playerType:
             playerType === 'FOREIGN'
-              ? 'FOREIGN'
-              : ('DOMESTIC' as 'DOMESTIC' | 'FOREIGN'),
+              ? ('FOREIGN' as never)
+              : ('DOMESTIC' as never),
           birthPlace: birthPlace || undefined,
           heightCm: heightCm ? Number(heightCm) : undefined,
           weightKg: weightKg ? Number(weightKg) : undefined,
