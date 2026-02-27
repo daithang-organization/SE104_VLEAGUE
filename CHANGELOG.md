@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Frontend Tests**: 12 new test files for all API service modules (83 tests total) — authApi, teamApi, playerApi, stadiumApi, seasonApi, seasonTeamApi, matchApi, scheduleApi, standingsApi, regulationApi, userApi, uploadApi
+- **Backend Tests**: `users.service.spec.ts` (15 tests) — listUsers, findOne, updateRole, createUser, deleteUser with full coverage
+- **Backend Tests**: `users.controller.spec.ts` (5 tests) — controller delegation tests for all endpoints
+- **Backend Tests**: `upload.controller.spec.ts` (6 tests) — upload validation, URL format, error handling
+- **CI**: Added `pnpm test` step to Web CI job so frontend tests run on every PR
+
 ### Fixed
 
 - **Backend**: Renamed Prisma `include` key from `teamPlayers` to `roster` in `registration.service.ts` to match schema relation name
