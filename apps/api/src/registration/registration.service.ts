@@ -70,7 +70,7 @@ export class RegistrationService {
       where: { id },
       include: {
         stadium: { select: { id: true, name: true, city: true } },
-        teamPlayers: {
+        roster: {
           where: { leftAt: null },
           include: {
             player: {
@@ -197,7 +197,7 @@ export class RegistrationService {
       };
     }
     if (pagination?.teamId) {
-      where.teamPlayers = {
+      where.roster = {
         some: { teamId: pagination.teamId, leftAt: null },
       };
     }
@@ -207,7 +207,7 @@ export class RegistrationService {
         where,
         orderBy: { fullName: 'asc' },
         include: {
-          teamPlayers: {
+          roster: {
             where: { leftAt: null },
             include: {
               team: {
@@ -241,7 +241,7 @@ export class RegistrationService {
     const player = await this.prisma.player.findUnique({
       where: { id },
       include: {
-        teamPlayers: {
+        roster: {
           include: {
             team: { select: { id: true, name: true, shortName: true } },
           },

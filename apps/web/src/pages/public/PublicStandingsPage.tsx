@@ -10,7 +10,7 @@ export default function PublicStandingsPage() {
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
-  const prevSeasonId = useRef<string | undefined>();
+  const prevSeasonId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     apiGetSeasons().then((data) => {
