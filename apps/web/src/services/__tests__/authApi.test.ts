@@ -10,23 +10,23 @@ const mockApi = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
-  apiLogin,
-  apiRefresh,
-  apiLogout,
-  apiRegister,
-  apiVerifyEmail,
-  apiResendOtp,
-  apiForgotPassword,
-  apiResetPassword,
-  apiGetMe,
   apiChangePassword,
-  apiLogoutAll,
-  apiUpdateProfile,
+  apiForgotPassword,
+  apiGetMe,
   apiGetSessions,
+  apiLogin,
+  apiLogout,
+  apiLogoutAll,
+  apiRefresh,
+  apiRegister,
+  apiResendOtp,
+  apiResetPassword,
   apiRevokeSession,
   apiSetPassword,
-  getGoogleAuthUrl,
+  apiUpdateProfile,
+  apiVerifyEmail,
   getFacebookAuthUrl,
+  getGoogleAuthUrl,
 } from '../authApi';
 
 describe('authApi', () => {

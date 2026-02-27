@@ -9,7 +9,7 @@ const mockApi = vi.hoisted(() => ({
 
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
-import { apiGetUsers, apiCreateUser, apiUpdateUserRole, apiDeleteUser } from '../userApi';
+import { apiCreateUser, apiDeleteUser, apiGetUsers, apiUpdateUserRole } from '../userApi';
 
 describe('userApi', () => {
   beforeEach(() => vi.clearAllMocks());

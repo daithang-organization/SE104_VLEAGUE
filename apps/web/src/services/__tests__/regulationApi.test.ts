@@ -10,11 +10,11 @@ const mockApi = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
-  apiGetRegulations,
-  apiGetRegulation,
-  apiUpsertRegulation,
   apiDeleteRegulation,
+  apiGetRegulation,
+  apiGetRegulations,
   apiSeedDefaultRegulations,
+  apiUpsertRegulation,
 } from '../regulationApi';
 
 describe('regulationApi', () => {

@@ -10,12 +10,12 @@ const mockApi = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
-  apiGetSeasons,
-  apiGetSeason,
-  apiGetCurrentSeason,
   apiCreateSeason,
-  apiUpdateSeason,
   apiDeleteSeason,
+  apiGetCurrentSeason,
+  apiGetSeason,
+  apiGetSeasons,
+  apiUpdateSeason,
   apiUpdateSeasonStatus,
 } from '../seasonApi';
 

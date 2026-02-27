@@ -10,12 +10,12 @@ const mockApi = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
-  apiGetPlayers,
-  apiGetPlayer,
   apiCreatePlayer,
-  apiUpdatePlayer,
   apiDeletePlayer,
+  apiGetPlayer,
+  apiGetPlayers,
   apiImportPlayersCsv,
+  apiUpdatePlayer,
 } from '../playerApi';
 
 describe('playerApi', () => {

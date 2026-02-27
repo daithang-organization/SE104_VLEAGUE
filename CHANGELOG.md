@@ -10,10 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Frontend Tests**: 12 new test files for all API service modules (83 tests total) — authApi, teamApi, playerApi, stadiumApi, seasonApi, seasonTeamApi, matchApi, scheduleApi, standingsApi, regulationApi, userApi, uploadApi
+- **Frontend Page Tests**: 3 new page-level component tests — DashboardPage (6 tests), StandingsPage (6 tests), LoginPage (6 tests) with full mock setup
 - **Backend Tests**: `users.service.spec.ts` (15 tests) — listUsers, findOne, updateRole, createUser, deleteUser with full coverage
 - **Backend Tests**: `users.controller.spec.ts` (5 tests) — controller delegation tests for all endpoints
 - **Backend Tests**: `upload.controller.spec.ts` (6 tests) — upload validation, URL format, error handling
+- **Backend Controller Specs**: 7 new controller spec files — auth (19 tests), teams (6), players (6), season (8), season-team (5), match (7), scheduling (7), regulation (6)
+- **Backend E2E Tests**: 4 new E2E spec files — scheduling, roster, users, upload (auth guard tests)
 - **CI**: Added `pnpm test` step to Web CI job so frontend tests run on every PR
+- **Test Infrastructure**: Added `window.matchMedia` polyfill to `vitest.setup.ts` for Ant Design component testing
 
 ### Fixed
 

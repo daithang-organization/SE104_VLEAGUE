@@ -7,7 +7,7 @@ const mockApi = vi.hoisted(() => ({
 
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
-import { apiGetSchedule, apiGenerateSchedule, apiPublishSchedule } from '../scheduleApi';
+import { apiGenerateSchedule, apiGetSchedule, apiPublishSchedule } from '../scheduleApi';
 
 describe('scheduleApi', () => {
   beforeEach(() => vi.clearAllMocks());

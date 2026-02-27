@@ -10,11 +10,11 @@ const mockApi = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
-  apiGetStadiums,
-  apiGetStadium,
   apiCreateStadium,
-  apiUpdateStadium,
   apiDeleteStadium,
+  apiGetStadium,
+  apiGetStadiums,
+  apiUpdateStadium,
 } from '../stadiumApi';
 
 describe('stadiumApi', () => {

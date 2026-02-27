@@ -12,8 +12,8 @@ vi.mock('../../lib/api', () => ({ api: mockApi }));
 import {
   apiGetSeasonTeams,
   apiRegisterTeam,
-  apiUpdateSeasonTeamStatus,
   apiRemoveSeasonTeam,
+  apiUpdateSeasonTeamStatus,
 } from '../seasonTeamApi';
 
 describe('seasonTeamApi', () => {
