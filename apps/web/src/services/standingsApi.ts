@@ -79,3 +79,7 @@ export function apiGetTeamStats(seasonId?: string) {
   const params = seasonId ? `?seasonId=${seasonId}` : '';
   return api.get<TeamStat[]>(`/standings/team-stats${params}`).then((res) => res.data);
 }
+
+// Re-export from searchApi for convenience
+export { apiGetHeadToHead, apiGetPlayerStats } from './searchApi';
+export type { HeadToHeadResult, PlayerStats } from './searchApi';

@@ -364,4 +364,142 @@ export class StandingsService {
       };
     });
   }
+
+  // ── Head-to-Head ──
+
+  async getHeadToHead(team1Id: string, team2Id: string, seasonId?: string) {
+    const where: Record<string, unknown> = {
+      OR: [
+        { homeTeamId: team1Id, awayTeamId: team2Id },
+        { homeTeamId: team2Id, awayTeamId: team1Id },
+      ],
+      status: 'FINISHED',
+    };
+    if (seasonId) where.seasonId = seasonId;
+
+    const matches = await this.prisma.match.findMany({
+      where,
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+        stadium: { select: { id: true, name: true } },
+      },
+      orderBy: { kickoffAt: 'desc' },
+    });
+
+    let team1Wins = 0;
+    let team2Wins = 0;
+    let draws = 0;
+    let team1Goals = 0;
+    let team2Goals = 0;
+
+    for (const m of matches) {
+      const hs = m.homeScore ?? 0;
+      const as_ = m.awayScore ?? 0;
+
+      if (m.homeTeamId === team1Id) {
+        team1Goals += hs;
+        team2Goals += as_;
+        if (hs > as_) team1Wins++;
+        else if (hs < as_) team2Wins++;
+        else draws++;
+      } else {
+        team2Goals += hs;
+        team1Goals += as_;
+        if (hs > as_) team2Wins++;
+        else if (hs < as_) team1Wins++;
+        else draws++;
+      }
+    }
+
+    return {
+      totalMatches: matches.length,
+      team1: { teamId: team1Id, wins: team1Wins, goals: team1Goals },
+      team2: { teamId: team2Id, wins: team2Wins, goals: team2Goals },
+      draws,
+      matches: matches.map((m) => ({
+        id: m.id,
+        roundNo: m.roundNo,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        homeScore: m.homeScore,
+        awayScore: m.awayScore,
+        kickoffAt: m.kickoffAt,
+        stadium: m.stadium,
+      })),
+    };
+  }
+
+  // ── Player Individual Stats ──
+
+  async getPlayerStats(playerId: string, seasonId?: string) {
+    const player = await this.prisma.player.findUnique({
+      where: { id: playerId },
+      select: { id: true, fullName: true, position: true, nationality: true },
+    });
+    if (!player) return null;
+
+    const matchWhere: Record<string, unknown> = { status: 'FINISHED' };
+    if (seasonId) matchWhere.seasonId = seasonId;
+
+    const events = await this.prisma.matchEvent.findMany({
+      where: {
+        playerId,
+        match: matchWhere,
+      },
+      include: {
+        match: {
+          select: { id: true, roundNo: true, seasonId: true, kickoffAt: true },
+        },
+        team: { select: { id: true, name: true } },
+      },
+      orderBy: { match: { kickoffAt: 'desc' } },
+    });
+
+    const goals = events.filter(
+      (e) => e.type === 'GOAL' || e.type === 'PENALTY',
+    ).length;
+    const ownGoals = events.filter((e) => e.type === 'OWN_GOAL').length;
+    const yellowCards = events.filter((e) => e.type === 'YELLOW_CARD').length;
+    const redCards = events.filter((e) => e.type === 'RED_CARD').length;
+    const assists = await this.prisma.matchEvent.count({
+      where: {
+        relatedPlayerId: playerId,
+        type: 'GOAL',
+        match: matchWhere,
+      },
+    });
+
+    // Matches played (via lineup or events)
+    const matchIds = new Set(events.map((e) => e.match.id));
+    const lineupMatches = await this.prisma.matchLineup.findMany({
+      where: { playerId, match: matchWhere },
+      select: { matchId: true },
+    });
+    for (const lm of lineupMatches) matchIds.add(lm.matchId);
+
+    // Goals per round for chart
+    const goalsByRound = events
+      .filter((e) => e.type === 'GOAL' || e.type === 'PENALTY')
+      .reduce(
+        (acc, e) => {
+          const round = e.match.roundNo;
+          acc[round] = (acc[round] ?? 0) + 1;
+          return acc;
+        },
+        {} as Record<number, number>,
+      );
+
+    return {
+      player,
+      matchesPlayed: matchIds.size,
+      goals,
+      assists,
+      ownGoals,
+      yellowCards,
+      redCards,
+      goalsByRound,
+      recentEvents: events.slice(0, 20),
+    };
+  }
 }

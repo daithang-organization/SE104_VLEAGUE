@@ -56,6 +56,14 @@ api.interceptors.response.use(
     const original = err.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const status = err.response?.status;
 
+    // Handle 429 Too Many Requests — friendly rate limit message
+    if (status === 429) {
+      const retryAfter = err.response?.headers?.['retry-after'];
+      const seconds = retryAfter ? Number(retryAfter) : 60;
+      window.dispatchEvent(new CustomEvent('api:rate-limited', { detail: { seconds } }));
+      return Promise.reject(err);
+    }
+
     // Only handle 401 for non-auth endpoints
     const isAuthCall = original?.url?.includes('/auth/');
     if (status !== 401 || original?._retry || isAuthCall) {

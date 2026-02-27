@@ -95,6 +95,7 @@ model User {
 
   refreshTokens RefreshToken[]
   otpCodes      OtpCode[]
+  notifications Notification[]
 
   @@index([roleId])
   @@map("users")
@@ -165,12 +166,14 @@ model Team {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  roster      TeamPlayer[]
-  seasonTeams SeasonTeam[]
-  homeMatches Match[]      @relation("HomeTeam")
-  awayMatches Match[]      @relation("AwayTeam")
-  matchEvents MatchEvent[]
-  standings   Standing[]
+  roster       TeamPlayer[]
+  seasonTeams  SeasonTeam[]
+  homeMatches  Match[]        @relation("HomeTeam")
+  awayMatches  Match[]        @relation("AwayTeam")
+  matchEvents  MatchEvent[]
+  standings    Standing[]
+  coaches      Coach[]
+  matchLineups MatchLineup[]
 
   @@map("teams")
 }
@@ -193,6 +196,7 @@ model Player {
   roster        TeamPlayer[]
   matchEvents   MatchEvent[] @relation("EventPlayer")
   relatedEvents MatchEvent[] @relation("RelatedPlayer")
+  matchLineups  MatchLineup[]
 
   @@index([fullName], map: "players_full_name_idx")
   @@index([nationality], map: "players_nationality_idx")
@@ -308,7 +312,8 @@ model Match {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  events MatchEvent[]
+  events  MatchEvent[]
+  lineups MatchLineup[]
 
   @@index([roundNo], map: "matches_round_no_idx")
   @@index([status], map: "matches_status_idx")
@@ -387,4 +392,100 @@ model Standing {
   @@unique([seasonId, teamId])
   @@index([seasonId])
   @@map("standings")
+}
+
+// ─── Coach ──────────────────────────────────────────────────
+
+model Coach {
+  id          String  @id @default(uuid()) @db.Uuid
+  fullName    String  @map("full_name")
+  nationality String?
+  dob         DateTime?
+  licenseType String? @map("license_type")
+  avatarUrl   String? @map("avatar_url")
+
+  teamId String? @map("team_id") @db.Uuid
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([teamId])
+  @@map("coaches")
+}
+
+// ─── Match Lineup ───────────────────────────────────────────
+
+enum LineupRole {
+  STARTING
+  SUBSTITUTE
+}
+
+model MatchLineup {
+  id       String     @id @default(uuid()) @db.Uuid
+  matchId  String     @map("match_id") @db.Uuid
+  match    Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  teamId   String     @map("team_id") @db.Uuid
+  team     Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId String     @map("player_id") @db.Uuid
+  player   Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  role     LineupRole @default(STARTING)
+  position String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([matchId, teamId, playerId])
+  @@index([matchId])
+  @@index([teamId])
+  @@index([playerId])
+  @@map("match_lineups")
+}
+
+// ─── Notification ───────────────────────────────────────────
+
+enum NotificationType {
+  MATCH_FINISHED
+  SCHEDULE_PUBLISHED
+  SEASON_STARTED
+  TEAM_REGISTERED
+  GENERAL
+}
+
+model Notification {
+  id      String           @id @default(uuid()) @db.Uuid
+  userId  String           @map("user_id") @db.Uuid
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    NotificationType @default(GENERAL)
+  title   String
+  message String
+  readAt  DateTime?        @map("read_at")
+  link    String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ─── Audit Log ──────────────────────────────────────────────
+
+model AuditLog {
+  id         String  @id @default(uuid()) @db.Uuid
+  userId     String? @map("user_id") @db.Uuid
+  userEmail  String? @map("user_email")
+  action     String
+  entity     String
+  entityId   String? @map("entity_id")
+  oldValue   String? @map("old_value")
+  newValue   String? @map("new_value")
+  ipAddress  String? @map("ip_address")
+  userAgent  String? @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
