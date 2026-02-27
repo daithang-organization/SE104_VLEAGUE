@@ -1,5 +1,12 @@
 import '@testing-library/jest-dom/vitest';
 
+// Ant Design Tabs/Collapse and other components use ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Ant Design and some components use window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

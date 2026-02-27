@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Frontend Page Tests**: 7 new page-level component tests — TeamsPage (6 tests), PlayersPage (6 tests), MatchesPage (6 tests), SeasonsPage (6 tests), SchedulePage (6 tests), RegulationsPage (6 tests), ProfilePage (6 tests) with vi.hoisted mocks and Ant Design rendering
+- **Test Infrastructure**: Added `ResizeObserver` polyfill to `vitest.setup.ts` for Ant Design Tabs/Collapse components
 - **Frontend Tests**: 12 new test files for all API service modules (83 tests total) — authApi, teamApi, playerApi, stadiumApi, seasonApi, seasonTeamApi, matchApi, scheduleApi, standingsApi, regulationApi, userApi, uploadApi
 - **Frontend Page Tests**: 3 new page-level component tests — DashboardPage (6 tests), StandingsPage (6 tests), LoginPage (6 tests) with full mock setup
 - **Backend Tests**: `users.service.spec.ts` (15 tests) — listUsers, findOne, updateRole, createUser, deleteUser with full coverage
