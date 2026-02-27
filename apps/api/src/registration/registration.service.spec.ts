@@ -226,7 +226,7 @@ describe('RegistrationService', () => {
         where: {},
         orderBy: { fullName: 'asc' },
         include: {
-          teamPlayers: {
+          roster: {
             where: { leftAt: null },
             include: {
               team: {
