@@ -15,7 +15,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, type CurrentUserPayload } from '../auth';
+import { CurrentUser, JwtAuthGuard, type CurrentUserPayload } from '../auth';
 import { NotificationService } from './notification.service';
 
 @ApiTags('Notifications')

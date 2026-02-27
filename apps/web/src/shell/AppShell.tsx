@@ -12,20 +12,19 @@ import {
   Badge,
   Button,
   Dropdown,
+  Input,
   Layout,
+  List,
   Menu,
   message,
   Popover,
   Space,
-  Input,
-  List,
-  Typography,
   Spin,
+  Typography,
 } from 'antd';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import {
   apiGetNotifications,
   apiGetUnreadCount,
@@ -33,6 +32,7 @@ import {
   apiMarkAsRead,
   type Notification,
 } from '../services/notificationApi';
+import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import { useTheme } from './ThemeContext';
 import { MENU } from './menu';
 

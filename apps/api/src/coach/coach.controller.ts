@@ -21,8 +21,8 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
-import { CreateCoachDto, UpdateCoachDto } from './dto/coach.dto';
 import { CoachService } from './coach.service';
+import { CreateCoachDto, UpdateCoachDto } from './dto/coach.dto';
 
 @ApiTags('Coaches')
 @Controller('coaches')

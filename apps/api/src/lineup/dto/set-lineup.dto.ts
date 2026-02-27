@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -10,7 +11,6 @@ import {
   IsUUID,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class LineupPlayerDto {
   @ApiProperty({ description: 'ID cầu thủ', format: 'uuid' })
