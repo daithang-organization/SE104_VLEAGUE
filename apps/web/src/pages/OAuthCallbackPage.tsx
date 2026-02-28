@@ -1,5 +1,6 @@
 import { message, Spin, Typography } from 'antd';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
@@ -9,6 +10,7 @@ export default function OAuthCallbackPage() {
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const { applyOAuthTokens } = useAuth();
+  const { t } = useTranslation();
   const processed = useRef(false);
 
   useEffect(() => {
@@ -21,11 +23,11 @@ export default function OAuthCallbackPage() {
     if (accessToken && refreshToken) {
       processed.current = true;
       applyOAuthTokens(accessToken, refreshToken);
-      message.success('Đăng nhập thành công');
+      message.success(t('oauth.success'));
       nav('/', { replace: true });
     } else {
       processed.current = true;
-      message.error('Đăng nhập thất bại');
+      message.error(t('oauth.error'));
       nav('/login', { replace: true });
     }
   }, [searchParams, applyOAuthTokens, nav]);
@@ -34,7 +36,7 @@ export default function OAuthCallbackPage() {
     <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>
       <Spin size="large">
         <div style={{ padding: 50 }}>
-          <Text>Đang xử lý đăng nhập...</Text>
+          <Text>{t('oauth.processing')}</Text>
         </div>
       </Spin>
     </div>

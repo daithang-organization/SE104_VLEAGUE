@@ -1,0 +1,114 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+/* ---------- hoisted mocks ---------- */
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+    loading: false,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+  })),
+);
+
+const mockTeamApi = vi.hoisted(() => ({
+  apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 5 }),
+}));
+const mockPlayerApi = vi.hoisted(() => ({
+  apiGetPlayers: vi.fn().mockResolvedValue({ data: [], total: 12 }),
+}));
+const mockScheduleApi = vi.hoisted(() => ({
+  apiGetSchedule: vi.fn().mockResolvedValue({ matches: [] }),
+}));
+const mockSeasonApi = vi.hoisted(() => ({
+  apiGetSeasons: vi.fn().mockResolvedValue([{ id: 's1', name: 'V.League 2025' }]),
+  apiGetCurrentSeason: vi.fn().mockResolvedValue(null),
+}));
+const mockStandingsApi = vi.hoisted(() => ({
+  apiGetStandings: vi.fn().mockResolvedValue([]),
+}));
+const mockMatchApi = vi.hoisted(() => ({
+  apiGetMatches: vi.fn().mockResolvedValue({ data: [], total: 8 }),
+}));
+
+vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
+vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/playerApi', () => mockPlayerApi);
+vi.mock('../../services/scheduleApi', () => mockScheduleApi);
+vi.mock('../../services/seasonApi', () => mockSeasonApi);
+vi.mock('../../services/standingsApi', () => mockStandingsApi);
+vi.mock('../../services/matchApi', () => mockMatchApi);
+
+import DashboardPage from '../DashboardPage';
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <DashboardPage />
+    </MemoryRouter>,
+  );
+}
+
+describe('DashboardPage', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('renders the Dashboard title', () => {
+    renderPage();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('renders stat cards', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getAllByText('Đội bóng').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Cầu thủ').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Trận đấu').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Mùa giải').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('renders admin quick actions when user is ADMIN', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('⚡ Thao tác nhanh')).toBeInTheDocument();
+    });
+  });
+
+  it('hides quick actions for non-admin users', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u2', email: 'user@vl.local', role: 'USER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.queryByText('⚡ Thao tác nhanh')).not.toBeInTheDocument();
+    });
+  });
+
+  it('calls all data-fetching APIs on mount', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(mockTeamApi.apiGetTeams).toHaveBeenCalled();
+      expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalled();
+      expect(mockScheduleApi.apiGetSchedule).toHaveBeenCalled();
+      expect(mockSeasonApi.apiGetSeasons).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetStandings).toHaveBeenCalled();
+      expect(mockMatchApi.apiGetMatches).toHaveBeenCalled();
+      expect(mockSeasonApi.apiGetCurrentSeason).toHaveBeenCalled();
+    });
+  });
+
+  it('renders standings and upcoming matches sections', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('🏆 Bảng xếp hạng (Top 5)')).toBeInTheDocument();
+      expect(screen.getByText('📅 Trận đấu sắp tới')).toBeInTheDocument();
+      expect(screen.getByText('⚽ Kết quả gần đây')).toBeInTheDocument();
+    });
+  });
+});

@@ -16,8 +16,10 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { TableSkeleton } from '../components';
 import {
   apiCreateStadium,
   apiDeleteStadium,
@@ -28,11 +30,13 @@ import {
 } from '../services/stadiumApi';
 
 export default function StadiumsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = useMemo(() => user?.role === 'ADMIN', [user]);
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Stadium | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,9 +49,10 @@ export default function StadiumsPage() {
       const data = await apiGetStadiums();
       setStadiums(data);
     } catch {
-      message.error('Không thể tải danh sách sân vận động');
+      message.error(t('stadiums.loadError'));
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }, []);
 
@@ -86,17 +91,17 @@ export default function StadiumsPage() {
 
       if (editing) {
         await apiUpdateStadium(editing.id, payload);
-        message.success('Cập nhật sân vận động thành công!');
+        message.success(t('stadiums.updateSuccess'));
       } else {
         await apiCreateStadium(payload);
-        message.success('Tạo sân vận động thành công!');
+        message.success(t('stadiums.createSuccess'));
       }
 
       setModalOpen(false);
       fetchStadiums();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error('Đã xảy ra lỗi. Vui lòng thử lại.');
+      message.error(t('stadiums.saveError'));
     } finally {
       setSaving(false);
     }
@@ -105,10 +110,10 @@ export default function StadiumsPage() {
   const handleDelete = async (id: string) => {
     try {
       await apiDeleteStadium(id);
-      message.success('Xóa sân vận động thành công!');
+      message.success(t('stadiums.deleteSuccess'));
       fetchStadiums();
     } catch {
-      message.error('Không thể xóa sân vận động (có thể đang được sử dụng)');
+      message.error(t('stadiums.deleteError'));
     }
   };
 
@@ -126,7 +131,7 @@ export default function StadiumsPage() {
       render: (_, __, i) => i + 1,
     },
     {
-      title: 'Tên sân vận động',
+      title: t('stadiums.colName'),
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (name: string, record: Stadium) => (
@@ -136,19 +141,19 @@ export default function StadiumsPage() {
       ),
     },
     {
-      title: 'Thành phố',
+      title: t('stadiums.colCity'),
       dataIndex: 'city',
       width: 150,
       sorter: (a, b) => a.city.localeCompare(b.city),
     },
     {
-      title: 'Địa chỉ',
+      title: t('stadiums.colAddress'),
       dataIndex: 'address',
       ellipsis: true,
       render: (v: string | null) => v ?? '—',
     },
     {
-      title: 'Sức chứa',
+      title: t('stadiums.colCapacity'),
       dataIndex: 'capacity',
       width: 120,
       align: 'right',
@@ -158,18 +163,18 @@ export default function StadiumsPage() {
     ...(isAdmin
       ? [
           {
-            title: 'Hành động',
+            title: t('stadiums.colActions'),
             key: 'actions',
             width: 120,
             render: (_: unknown, record: Stadium) => (
               <Space>
                 <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
                 <Popconfirm
-                  title="Xóa sân vận động?"
-                  description={`Bạn có chắc muốn xóa "${record.name}"?`}
+                  title={t('stadiums.deleteConfirmTitle')}
+                  description={t('stadiums.deleteConfirmDesc', { name: record.name })}
                   onConfirm={() => handleDelete(record.id)}
-                  okText="Xóa"
-                  cancelText="Hủy"
+                  okText={t('stadiums.deleteOk')}
+                  cancelText={t('stadiums.deleteCancel')}
                   okButtonProps={{ danger: true }}
                 >
                   <Button type="text" danger icon={<DeleteOutlined />} />
@@ -180,6 +185,14 @@ export default function StadiumsPage() {
         ]
       : []),
   ];
+
+  if (initialLoad) {
+    return (
+      <Card>
+        <TableSkeleton rows={8} />
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -192,11 +205,11 @@ export default function StadiumsPage() {
         }}
       >
         <Typography.Title level={4} style={{ margin: 0 }}>
-          🏟️ Quản lý sân vận động
+          {t('stadiums.title')}
         </Typography.Title>
         <Space>
           <Input
-            placeholder="Tìm kiếm sân..."
+            placeholder={t('stadiums.searchPlaceholder')}
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -205,7 +218,7 @@ export default function StadiumsPage() {
           />
           {isAdmin && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              Thêm sân
+              {t('stadiums.addBtn')}
             </Button>
           )}
         </Space>
@@ -221,40 +234,40 @@ export default function StadiumsPage() {
       />
 
       <Modal
-        title={editing ? 'Chỉnh sửa sân vận động' : 'Thêm sân vận động mới'}
+        title={editing ? t('stadiums.modalEditTitle') : t('stadiums.modalCreateTitle')}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={handleSave}
         confirmLoading={saving}
-        okText={editing ? 'Lưu' : 'Tạo'}
-        cancelText="Hủy"
+        okText={editing ? t('common.save') : t('common.create')}
+        cancelText={t('common.cancel')}
         destroyOnClose
         width={600}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
             name="name"
-            label="Tên sân vận động"
-            rules={[{ required: true, message: 'Vui lòng nhập tên sân' }]}
+            label={t('stadiums.formName')}
+            rules={[{ required: true, message: t('stadiums.formNameRequired') }]}
           >
-            <Input placeholder="VD: Sân Mỹ Đình" />
+            <Input placeholder={t('stadiums.formNamePlaceholder')} />
           </Form.Item>
 
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="city"
-                label="Thành phố"
-                rules={[{ required: true, message: 'Vui lòng nhập thành phố' }]}
+                label={t('stadiums.formCity')}
+                rules={[{ required: true, message: t('stadiums.formCityRequired') }]}
               >
-                <Input placeholder="VD: Hà Nội" />
+                <Input placeholder={t('stadiums.formCityPlaceholder')} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="capacity" label="Sức chứa">
+              <Form.Item name="capacity" label={t('stadiums.formCapacity')}>
                 <InputNumber
                   style={{ width: '100%' }}
-                  placeholder="VD: 40000"
+                  placeholder={t('stadiums.formCapacityPlaceholder')}
                   min={0}
                   formatter={(v) => (v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '')}
                 />
@@ -262,8 +275,8 @@ export default function StadiumsPage() {
             </Col>
           </Row>
 
-          <Form.Item name="address" label="Địa chỉ">
-            <Input placeholder="VD: Đường Lê Đức Thọ, Nam Từ Liêm" />
+          <Form.Item name="address" label={t('stadiums.formAddress')}>
+            <Input placeholder={t('stadiums.formAddressPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>

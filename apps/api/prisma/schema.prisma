@@ -165,12 +165,12 @@ model Team {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  roster      TeamPlayer[]
-  seasonTeams SeasonTeam[]
-  homeMatches Match[]      @relation("HomeTeam")
-  awayMatches Match[]      @relation("AwayTeam")
-  matchEvents MatchEvent[]
-  standings   Standing[]
+  roster       TeamPlayer[]
+  seasonTeams  SeasonTeam[]
+  homeMatches  Match[]        @relation("HomeTeam")
+  awayMatches  Match[]        @relation("AwayTeam")
+  matchEvents  MatchEvent[]
+  standings    Standing[]
 
   @@map("teams")
 }
@@ -308,7 +308,7 @@ model Match {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  events MatchEvent[]
+  events  MatchEvent[]
 
   @@index([roundNo], map: "matches_round_no_idx")
   @@index([status], map: "matches_status_idx")
@@ -388,3 +388,5 @@ model Standing {
   @@index([seasonId])
   @@map("standings")
 }
+
+

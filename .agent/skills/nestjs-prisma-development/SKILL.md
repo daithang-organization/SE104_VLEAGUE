@@ -185,19 +185,40 @@ enum EnumName {
 model Team {
   id      String   @id @default(uuid()) @db.Uuid
   name    String   @unique
-  players Player[]
+  roster  TeamPlayer[]
 
   @@map("teams")
 }
 
 model Player {
-  id     String @id @default(uuid()) @db.Uuid
-  teamId String @map("team_id") @db.Uuid
-  team   Team   @relation(fields: [teamId], references: [id])
+  id     String       @id @default(uuid()) @db.Uuid
+  roster TeamPlayer[]
 
   @@map("players")
 }
+
+model TeamPlayer {
+  id       String @id @default(uuid()) @db.Uuid
+  teamId   String @map("team_id") @db.Uuid
+  playerId String @map("player_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id])
+  player   Player @relation(fields: [playerId], references: [id])
+
+  @@map("team_players")
+}
 ```
+
+> [!WARNING]
+> **Prisma relation name vs table name**: The Prisma relation field on `Team` and `Player` is `roster` (not `teamPlayers`), while the underlying table is `team_players`. Always use `roster` in `include` and `where` clauses:
+>
+> ```typescript
+> // ✅ Correct
+> this.prisma.player.findMany({ include: { roster: { ... } } });
+> // ❌ Wrong — Prisma will reject this
+> this.prisma.player.findMany({ include: { teamPlayers: { ... } } });
+> ```
+
+````
 
 ## DTOs and Validation
 
@@ -234,7 +255,7 @@ export class CreateTeamDto {
   @IsEnum(TeamStatus)
   status?: TeamStatus;
 }
-```
+````
 
 ### Player DTO with Date Validation
 
@@ -337,6 +358,45 @@ throw new ConflictException('Resource already exists');
 ```
 
 ## Testing
+
+The backend has **23 test suites** with **233+ tests** covering services, controllers, and E2E.
+
+### Test File Structure
+
+```
+apps/api/src/
+├── auth/
+│   ├── auth.service.spec.ts           # 30+ tests
+│   └── auth.controller.spec.ts        # 19 tests
+├── registration/
+│   ├── registration.service.spec.ts
+│   ├── teams.controller.spec.ts       # 6 tests
+│   └── players.controller.spec.ts     # 6 tests
+├── match/
+│   ├── match.service.spec.ts
+│   └── match.controller.spec.ts       # 7 tests
+├── scheduling/
+│   ├── scheduling.service.spec.ts
+│   └── scheduling.controller.spec.ts  # 7 tests
+├── season/
+│   ├── season.service.spec.ts
+│   ├── season.controller.spec.ts      # 8 tests
+│   └── season-team.controller.spec.ts # 5 tests
+├── stadium/
+│   └── stadium.service.spec.ts
+├── standings/
+│   └── standings.service.spec.ts
+├── roster/
+│   └── roster.service.spec.ts
+├── regulation/
+│   ├── regulation.service.spec.ts
+│   └── regulation.controller.spec.ts  # 6 tests
+├── users/
+│   ├── users.service.spec.ts          # 15 tests
+│   └── users.controller.spec.ts       # 5 tests
+└── upload/
+    └── upload.controller.spec.ts      # 6 tests
+```
 
 ### Unit Test Example
 
@@ -450,6 +510,17 @@ pnpm format              # Run Prettier
 > [!WARNING]
 > **Don't forget postinstall**: The project has a `postinstall` script that runs `prisma generate`. This ensures Prisma Client is always up-to-date after `npm install`.
 
+> [!WARNING]
+> **Prisma enum casting**: When assigning string literals to Prisma-generated enum fields (e.g. `PlayerPosition`, `PlayerType`), TypeScript may reject the assignment. Use `as never` to bridge the string-literal → Prisma enum gap:
+>
+> ```typescript
+> // ✅ Correct — validated string cast through `as never`
+> position: position as never,
+> playerType: (dto.playerType ?? 'DOMESTIC') as never,
+> // ❌ Wrong — TS2322: Type '"GK"' is not assignable to type 'PlayerPosition'
+> position: position as 'GK' | 'DF' | 'MF' | 'FW',
+> ```
+
 > [!TIP]
 > **Cross-Module Dependency Injection**: When a service needs functionality from another module, import that module and inject its exported service. Example pattern used by `MatchService`:
 >
@@ -496,6 +567,7 @@ pnpm format              # Run Prettier
 - **`roster/`**: Team roster management (player assignments, jersey numbers)
   - Imports: `PrismaModule`, `RegulationModule`
   - Uses `RegulationHelper` for dynamic roster/foreign limits
+  - **Note**: Prisma relation name is `roster` (not `teamPlayers`) on both `Team` and `Player` models
 - **`standings/`**: League standings computation
   - Auto-triggered by `MatchService` when match finishes
 - **`regulation/`**: Season-scoped regulations

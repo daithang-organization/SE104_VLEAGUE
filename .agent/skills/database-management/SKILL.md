@@ -61,8 +61,8 @@ erDiagram
     stadiums ||--o{ teams : "home of"
     stadiums ||--o{ matches : "hosted at"
 
-    teams ||--o{ team_players : "roster"
-    players ||--o{ team_players : "belongs to"
+    teams ||--o{ team_players : "roster"       %% Prisma relation: Team.roster
+    players ||--o{ team_players : "roster"     %% Prisma relation: Player.roster
 
     seasons ||--o{ season_teams : "registration"
     teams ||--o{ season_teams : "registers"

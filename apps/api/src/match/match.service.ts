@@ -34,8 +34,8 @@ export class MatchService {
     const match = await this.prisma.match.findUnique({
       where: { id },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
         stadium: { select: { id: true, name: true } },
         season: { select: { id: true, name: true } },
         events: {
@@ -84,8 +84,8 @@ export class MatchService {
       this.prisma.match.findMany({
         where,
         include: {
-          homeTeam: { select: { id: true, name: true } },
-          awayTeam: { select: { id: true, name: true } },
+          homeTeam: { select: { id: true, name: true, logoUrl: true } },
+          awayTeam: { select: { id: true, name: true, logoUrl: true } },
           stadium: { select: { id: true, name: true } },
         },
         orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
@@ -121,6 +121,13 @@ export class MatchService {
       throw new NotFoundException(`Match with ID ${matchId} not found`);
     }
 
+    // Block edits on FINISHED or LOCKED matches
+    if (match.status === 'FINISHED' || match.status === 'LOCKED') {
+      throw new BadRequestException(
+        `Không thể chỉnh sửa trận đấu ở trạng thái ${match.status}`,
+      );
+    }
+
     const updateData: Record<string, unknown> = {};
     if (data.stadiumId !== undefined) updateData.stadiumId = data.stadiumId;
     if (data.kickoffAt !== undefined)
@@ -132,8 +139,8 @@ export class MatchService {
       where: { id: matchId },
       data: updateData,
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
         stadium: { select: { id: true, name: true } },
       },
     });
@@ -147,6 +154,13 @@ export class MatchService {
 
     if (!match) {
       throw new NotFoundException(`Match with ID ${matchId} not found`);
+    }
+
+    // Block adding events to FINISHED matches
+    if (match.status === 'FINISHED') {
+      throw new BadRequestException(
+        'Không thể thêm sự kiện vào trận đấu đã kết thúc',
+      );
     }
 
     // Validate goal minute against MAX_GOAL_TIME regulation
@@ -183,8 +197,12 @@ export class MatchService {
       },
     });
 
-    // Update score if it's a goal
-    if (dto.type === 'GOAL' || dto.type === 'OWN_GOAL') {
+    // Update score if it's a goal (including penalty)
+    if (
+      dto.type === 'GOAL' ||
+      dto.type === 'OWN_GOAL' ||
+      dto.type === 'PENALTY'
+    ) {
       await this.recalculateScore(matchId);
     }
 
@@ -204,12 +222,27 @@ export class MatchService {
       throw new NotFoundException('Event not found');
     }
 
+    // Block removing events from FINISHED matches
+    const eventMatch = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: { status: true },
+    });
+    if (eventMatch?.status === 'FINISHED') {
+      throw new BadRequestException(
+        'Không thể xóa sự kiện của trận đấu đã kết thúc',
+      );
+    }
+
     await this.prisma.matchEvent.delete({
       where: { id: eventId },
     });
 
-    // Recalculate score if it was a goal
-    if (event.type === 'GOAL' || event.type === 'OWN_GOAL') {
+    // Recalculate score if it was a goal (including penalty)
+    if (
+      event.type === 'GOAL' ||
+      event.type === 'OWN_GOAL' ||
+      event.type === 'PENALTY'
+    ) {
       await this.recalculateScore(matchId);
     }
 
@@ -229,7 +262,7 @@ export class MatchService {
     const goals = await this.prisma.matchEvent.findMany({
       where: {
         matchId,
-        type: { in: ['GOAL', 'OWN_GOAL'] },
+        type: { in: ['GOAL', 'OWN_GOAL', 'PENALTY'] },
       },
     });
 
@@ -237,8 +270,8 @@ export class MatchService {
     let awayScore = 0;
 
     for (const goal of goals) {
-      if (goal.type === 'GOAL') {
-        // Regular goal: team that scored gets the point
+      if (goal.type === 'GOAL' || goal.type === 'PENALTY') {
+        // Regular goal or penalty: team that scored gets the point
         if (goal.teamId === match.homeTeamId) {
           homeScore++;
         } else {
@@ -295,8 +328,8 @@ export class MatchService {
       where: { id: matchId },
       data: { status: newStatus as never },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
       },
     });
 

@@ -45,6 +45,25 @@ apps/web/
 - **Routing**: React Router DOM 7.x
 - **Linting**: ESLint with React plugins
 
+### React 19 + TypeScript Gotchas
+
+> [!WARNING]
+> **`useRef` requires explicit initial value**: React 19 types require an argument to `useRef`. Omitting it causes TS2554.
+>
+> ```tsx
+> // ✅ Correct
+> const ref = useRef<string | undefined>(undefined);
+> // ❌ TS2554: Expected 1 arguments, but got 0
+> const ref = useRef<string | undefined>();
+> ```
+
+> [!WARNING]
+> **Always import `useNavigate`**: If you use `useNavigate()` in a component, you must import it from `react-router-dom`. Missing imports cause TS2552.
+>
+> ```tsx
+> import { useNavigate } from 'react-router-dom';
+> ```
+
 ## Getting Started
 
 ### Development Server
@@ -1142,3 +1161,57 @@ apiDeleteUser(id)                    → { success: boolean }
 
 > [!WARNING]
 > The fetch-based `http.ts` wrapper exists for legacy compatibility. It provides its own error toast notifications and status-specific handling (401→logout, 403→forbidden toast, 429→rate limit toast). **Do not use for new code** — use `lib/api.ts` (Axios) instead.
+
+## Frontend Testing
+
+The frontend has comprehensive test coverage using **Vitest** + **@testing-library/react**.
+
+### Test Framework Stack
+
+| Package                     | Version | Purpose                                    |
+| --------------------------- | ------- | ------------------------------------------ |
+| `vitest`                    | 4.x     | Test runner (Vite-native, Jest-compatible) |
+| `@testing-library/react`    | latest  | Component rendering & DOM queries          |
+| `@testing-library/jest-dom` | latest  | Custom matchers (`toBeInTheDocument()`)    |
+| `jsdom`                     | latest  | DOM environment for tests                  |
+
+### Running Tests
+
+```bash
+cd apps/web
+
+pnpm test                # Alias for vitest run
+pnpm exec vitest         # Watch mode
+pnpm exec vitest run     # Single run (CI)
+```
+
+### Test Coverage
+
+| Category             | Files  | Tests   | Description                      |
+| -------------------- | ------ | ------- | -------------------------------- |
+| API Service tests    | 12     | 83      | All `services/*.ts` files tested |
+| Page component tests | 10     | 60      | All major pages tested           |
+| **Total**            | **24** | **143** |                                  |
+
+### Test File Locations
+
+- **API service tests**: `src/services/__tests__/*.test.ts`
+- **Page component tests**: `src/pages/__tests__/*.test.tsx`
+- **Test setup**: `vitest.setup.ts` (polyfills for Ant Design)
+
+### Key Testing Patterns
+
+1. **`vi.hoisted()` for mock variables** — required so mocks are available inside `vi.mock()`
+2. **Mock `lib/api`** for service tests, mock individual service files for page tests
+3. **Mock `react-router-dom`** for page components that use `useNavigate`
+4. **`waitFor()`** for async operations (data loading)
+5. **`getAllByText()`** instead of `getByText()` when Ant Design renders text in multiple DOM locations
+
+### Ant Design Testing Gotchas
+
+- **`ResizeObserver` polyfill** needed in `vitest.setup.ts` for Tabs, Collapse
+- **`window.matchMedia` polyfill** needed for responsive components
+- Ant Design renders text in Card headers, Breadcrumbs, etc. — same text appears multiple times in DOM
+
+> [!TIP]
+> See the [Testing & CI/CD Skill](../testing-cicd/SKILL.md) for detailed test patterns, examples, and CI pipeline info.

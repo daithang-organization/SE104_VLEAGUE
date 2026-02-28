@@ -23,8 +23,10 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import ImageUpload from '../components/ImageUpload';
 import {
   apiCreateTeam,
   apiDeleteTeam,
@@ -40,6 +42,7 @@ const CAN_EDIT_ROLES = ['ADMIN'];
 
 export default function TeamsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [teams, setTeams] = useState<Team[]>([]);
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
@@ -60,7 +63,7 @@ export default function TeamsPage() {
       const res = await apiGetTeams();
       setTeams(res.data);
     } catch {
-      message.error('Không thể tải danh sách đội bóng');
+      message.error(t('teams.loadError'));
     } finally {
       setLoading(false);
     }
@@ -117,17 +120,17 @@ export default function TeamsPage() {
 
       if (editingTeam) {
         await apiUpdateTeam(editingTeam.id, payload);
-        message.success('Cập nhật đội bóng thành công!');
+        message.success(t('teams.updateSuccess'));
       } else {
         await apiCreateTeam(payload);
-        message.success('Tạo đội bóng thành công!');
+        message.success(t('teams.createSuccess'));
       }
 
       setModalOpen(false);
       fetchTeams();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error('Đã xảy ra lỗi. Vui lòng thử lại.');
+      message.error(t('teams.saveError'));
     } finally {
       setSaving(false);
     }
@@ -136,10 +139,10 @@ export default function TeamsPage() {
   const handleDelete = async (id: string) => {
     try {
       await apiDeleteTeam(id);
-      message.success('Xóa đội bóng thành công!');
+      message.success(t('teams.deleteSuccess'));
       fetchTeams();
     } catch {
-      message.error('Không thể xóa đội bóng');
+      message.error(t('teams.deleteError'));
     }
   };
 
@@ -153,49 +156,61 @@ export default function TeamsPage() {
       render: (_, __, i) => i + 1,
     },
     {
-      title: 'Tên đội bóng',
+      title: t('teams.colName'),
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (name: string, record: Team) => (
-        <a onClick={() => navigate(`/teams/${record.id}`)}>{name}</a>
+        <a
+          onClick={() => navigate(`/teams/${record.id}`)}
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        >
+          {record.logoUrl && (
+            <img
+              src={record.logoUrl}
+              alt={name}
+              style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 4 }}
+            />
+          )}
+          {name}
+        </a>
       ),
     },
     {
-      title: 'Viết tắt',
+      title: t('teams.colShortName'),
       dataIndex: 'shortName',
       width: 100,
       render: (v: string | null) => v ?? '—',
     },
     {
-      title: 'Thành phố',
+      title: t('teams.colCity'),
       dataIndex: 'city',
       width: 130,
       render: (v: string | null) => v ?? '—',
     },
     {
-      title: 'Sân nhà',
+      title: t('teams.colStadium'),
       key: 'stadium',
       render: (_, record) => record.stadium?.name ?? '—',
     },
     {
-      title: 'Trạng thái',
+      title: t('teams.colStatus'),
       dataIndex: 'status',
       width: 120,
       render: (status: string) => (
         <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>
-          {status === 'ACTIVE' ? 'Hoạt động' : 'Ngưng'}
+          {status === 'ACTIVE' ? t('teams.filterActive') : t('teams.filterInactive')}
         </Tag>
       ),
       filters: [
-        { text: 'Hoạt động', value: 'ACTIVE' },
-        { text: 'Ngưng', value: 'INACTIVE' },
+        { text: t('teams.filterActive'), value: 'ACTIVE' },
+        { text: t('teams.filterInactive'), value: 'INACTIVE' },
       ],
       onFilter: (value, record) => record.status === value,
     },
     ...(canEdit
       ? [
           {
-            title: 'Hành động',
+            title: t('teams.colActions'),
             key: 'actions',
             width: 120,
             render: (_: unknown, record: Team) => (
@@ -207,11 +222,11 @@ export default function TeamsPage() {
                 />
                 <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
                 <Popconfirm
-                  title="Xóa đội bóng?"
-                  description={`Bạn có chắc muốn xóa "${record.name}"?`}
+                  title={t('teams.deleteConfirmTitle')}
+                  description={t('teams.deleteConfirmDesc', { name: record.name })}
                   onConfirm={() => handleDelete(record.id)}
-                  okText="Xóa"
-                  cancelText="Hủy"
+                  okText={t('teams.deleteOk')}
+                  cancelText={t('teams.deleteCancel')}
                   okButtonProps={{ danger: true }}
                 >
                   <Button type="text" danger icon={<DeleteOutlined />} />
@@ -234,11 +249,11 @@ export default function TeamsPage() {
         }}
       >
         <Typography.Title level={4} style={{ margin: 0 }}>
-          Quản lý đội bóng
+          {t('teams.title')}
         </Typography.Title>
         <Space>
           <Input
-            placeholder="Tìm kiếm đội bóng..."
+            placeholder={t('teams.searchPlaceholder')}
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -247,7 +262,7 @@ export default function TeamsPage() {
           />
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-              Thêm đội bóng
+              {t('teams.addBtn')}
             </Button>
           )}
         </Space>
@@ -263,13 +278,13 @@ export default function TeamsPage() {
       />
 
       <Modal
-        title={editingTeam ? 'Chỉnh sửa đội bóng' : 'Thêm đội bóng mới'}
+        title={editingTeam ? t('teams.modalEditTitle') : t('teams.modalCreateTitle')}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={handleSave}
         confirmLoading={saving}
-        okText={editingTeam ? 'Lưu' : 'Tạo'}
-        cancelText="Hủy"
+        okText={editingTeam ? t('common.save') : t('common.create')}
+        cancelText={t('common.cancel')}
         destroyOnClose
         width={600}
       >
@@ -278,29 +293,29 @@ export default function TeamsPage() {
             <Col span={16}>
               <Form.Item
                 name="name"
-                label="Tên đội bóng"
-                rules={[{ required: true, message: 'Vui lòng nhập tên đội bóng' }]}
+                label={t('teams.formName')}
+                rules={[{ required: true, message: t('teams.formNameRequired') }]}
               >
-                <Input placeholder="VD: Hoàng Anh Gia Lai" />
+                <Input placeholder={t('teams.formNamePlaceholder')} />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="shortName" label="Tên viết tắt">
-                <Input placeholder="VD: HAGL" maxLength={10} />
+              <Form.Item name="shortName" label={t('teams.formShortName')}>
+                <Input placeholder={t('teams.formShortNamePlaceholder')} maxLength={10} />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="city" label="Thành phố">
-                <Input placeholder="VD: Pleiku" />
+              <Form.Item name="city" label={t('teams.formCity')}>
+                <Input placeholder={t('teams.formCityPlaceholder')} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="stadiumId" label="Sân nhà">
+              <Form.Item name="stadiumId" label={t('teams.formStadium')}>
                 <Select
-                  placeholder="Chọn sân nhà"
+                  placeholder={t('teams.formStadiumPlaceholder')}
                   allowClear
                   showSearch
                   optionFilterProp="label"
@@ -313,14 +328,14 @@ export default function TeamsPage() {
             </Col>
           </Row>
 
-          <Form.Item name="logoUrl" label="URL Logo">
-            <Input placeholder="https://example.com/logo.png" />
+          <Form.Item name="logoUrl" label={t('teams.formLogo')}>
+            <ImageUpload hint={t('teams.formLogoPlaceholder')} />
           </Form.Item>
 
-          <Form.Item name="status" label="Trạng thái">
+          <Form.Item name="status" label={t('teams.formStatus')}>
             <Select>
-              <Select.Option value="ACTIVE">Hoạt động</Select.Option>
-              <Select.Option value="INACTIVE">Ngưng hoạt động</Select.Option>
+              <Select.Option value="ACTIVE">{t('teams.formStatusActive')}</Select.Option>
+              <Select.Option value="INACTIVE">{t('teams.formStatusInactive')}</Select.Option>
             </Select>
           </Form.Item>
         </Form>

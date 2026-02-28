@@ -30,3 +30,18 @@ pnpm dev
 
 - ✅ API responds on http://localhost:8080 (Nest default route OK)
 - ✅ Web runs on http://localhost:5173
+
+## 6) Run tests
+
+```bash
+# Backend tests (23 suites, 233+ tests)
+cd apps/api
+pnpm test
+
+# Frontend tests (24 suites, 143+ tests)
+cd ../web
+pnpm test
+```
+
+- ✅ All backend tests pass
+- ✅ All frontend tests pass

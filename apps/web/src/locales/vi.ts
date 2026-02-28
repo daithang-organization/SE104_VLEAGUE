@@ -1,0 +1,1243 @@
+/**
+ * Vietnamese locale – comprehensive i18n catalog
+ * Generated from hardcoded strings across all React pages & components.
+ *
+ * Namespace convention:
+ *   dashboard.* | matches.* | matchDetail.* | teams.* | players.* | seasons.*
+ *   schedule.* | standings.* | stadiums.* | users.* | profile.* | sessions.*
+ *   regulations.* | reports.* | headToHead.* | login.* | register.*
+ *   forgotPassword.* | resetPassword.* | changePassword.* | verifyEmail.*
+ *   teamDetail.* | playerDetail.* | stadiumDetail.* | forbidden.* | oauth.*
+ *   export.* | publicSchedule.* | publicResults.* | publicStandings.*
+ *   status.* | position.* | eventType.* | role.* | playerType.*
+ *   goalType.* | seasonStatus.* | teamStatus.* | common.*
+ */
+
+const vi = {
+  // ─────────────────────────────────────────────
+  // SHARED / CROSS-CUTTING
+  // ─────────────────────────────────────────────
+
+  common: {
+    save: 'Lưu',
+    create: 'Tạo',
+    cancel: 'Hủy',
+    delete: 'Xóa',
+    edit: 'Sửa',
+    back: 'Quay lại',
+    loading: 'Đang tải...',
+    actions: 'Hành động',
+    operations: 'Thao tác',
+    search: 'Tìm kiếm',
+    add: 'Thêm',
+    update: 'Cập nhật',
+    confirm: 'Xác nhận',
+    error: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+    total: 'Tổng',
+    round: 'Vòng',
+    leg1: 'Lượt đi',
+    leg2: 'Lượt về',
+    noData: '—',
+    yes: 'Có',
+    no: 'Không',
+    all: 'Tất cả',
+    detail: 'Chi tiết',
+    selectDate: 'Chọn ngày',
+  },
+
+  // ─── Match Status (admin-facing) ───
+  status: {
+    DRAFT: 'Nháp',
+    PUBLISHED: 'Đã công bố',
+    LOCKED: 'Đã khóa',
+    FINISHED: 'Kết thúc',
+    POSTPONED: 'Hoãn',
+  },
+
+  // ─── Public-facing status labels ───
+  publicStatus: {
+    DRAFT: 'Nháp',
+    PUBLISHED: 'Sắp diễn ra',
+    LOCKED: 'Đang diễn ra',
+    FINISHED: 'Kết thúc',
+    POSTPONED: 'Hoãn',
+  },
+
+  // ─── Player Positions ───
+  position: {
+    GK: 'Thủ môn',
+    DF: 'Hậu vệ',
+    MF: 'Tiền vệ',
+    FW: 'Tiền đạo',
+  },
+
+  // ─── Match Event Types ───
+  eventType: {
+    GOAL: 'Bàn thắng',
+    OWN_GOAL: 'Phản lưới',
+    PENALTY: 'Phạt đền (ghi bàn)',
+    PENALTY_MISS: 'Phạt đền (hỏng)',
+    YELLOW_CARD: 'Thẻ vàng',
+    RED_CARD: 'Thẻ đỏ',
+    SUBSTITUTION: 'Thay người',
+  },
+
+  // ─── Goal Types ───
+  goalType: {
+    NORMAL: 'Bình thường',
+    HEADER: 'Đánh đầu',
+    FREE_KICK: 'Sút phạt',
+    PENALTY_KICK: 'Penalty',
+    LONG_RANGE: 'Sút xa',
+  },
+
+  // ─── User Roles ───
+  role: {
+    ADMIN: 'Admin',
+    TEAM_MANAGER: 'Quản lý đội',
+    REFEREE: 'Trọng tài',
+    SUPERVISOR: 'Giám sát',
+    PUBLIC: 'Công khai',
+  },
+
+  // ─── Profile-specific role labels ───
+  roleLabel: {
+    ADMIN: 'Quản trị viên',
+    TEAM_MANAGER: 'Quản lý đội bóng',
+    REFEREE: 'Trọng tài',
+    SUPERVISOR: 'Giám sát',
+    PUBLIC: 'Người dùng',
+  },
+
+  // ─── Player Type ───
+  playerType: {
+    DOMESTIC: 'Nội binh',
+    FOREIGN: 'Ngoại binh',
+  },
+
+  // ─── Season Status ───
+  seasonStatus: {
+    UPCOMING: 'Sắp diễn ra',
+    IN_PROGRESS: 'Đang diễn ra',
+    COMPLETED: 'Đã kết thúc',
+  },
+
+  // ─── Team Status ───
+  teamStatus: {
+    ACTIVE: 'Hoạt động',
+    INACTIVE: 'Ngưng',
+    INACTIVE_FULL: 'Ngưng hoạt động',
+  },
+
+  // ─── Season Team Registration Status ───
+  seasonTeamStatus: {
+    REGISTERED: 'Đã đăng ký',
+    APPROVED: 'Đã duyệt',
+    REJECTED: 'Từ chối',
+    WITHDRAWN: 'Rút lui',
+  },
+
+  // ─── Regulation Labels ───
+  regulationLabel: {
+    MIN_AGE: 'Tuổi tối thiểu',
+    MAX_AGE: 'Tuổi tối đa',
+    MIN_ROSTER: 'Số cầu thủ tối thiểu',
+    MAX_ROSTER: 'Số cầu thủ tối đa',
+    MAX_FOREIGN_PLAYERS: 'Số ngoại binh tối đa',
+    WIN_POINTS: 'Điểm thắng',
+    DRAW_POINTS: 'Điểm hòa',
+    LOSS_POINTS: 'Điểm thua',
+    MAX_GOAL_TIME: 'Thời điểm ghi bàn tối đa (phút)',
+  },
+
+  // ─── Value Type Options ───
+  valueType: {
+    number: 'Số',
+    string: 'Chuỗi',
+    boolean: 'Boolean',
+  },
+
+  // ─────────────────────────────────────────────
+  // DASHBOARD
+  // ─────────────────────────────────────────────
+
+  dashboard: {
+    title: 'Dashboard',
+    welcome: 'Chào mừng đến với VLeague Admin! Tổng quan hệ thống:',
+    errorLoad: 'Không thể tải dữ liệu dashboard',
+    statTeams: 'Đội bóng',
+    statPlayers: 'Cầu thủ',
+    statMatches: 'Trận đấu',
+    statSeasons: 'Mùa giải',
+    inProgress: 'Đang diễn ra',
+    seasonProgress: '{percent}% mùa giải',
+    quickActions: '⚡ Thao tác nhanh',
+    btnSeason: 'Mùa giải',
+    btnTeam: 'Đội bóng',
+    btnSchedule: 'Lịch thi đấu',
+    btnRegulation: 'Quy định',
+    standingsTitle: '🏆 Bảng xếp hạng (Top 5)',
+    standingsColRank: '#',
+    standingsColTeam: 'Đội',
+    standingsColPlayed: 'Trận',
+    standingsColPoints: 'Điểm',
+    standingsEmpty: 'Chưa có dữ liệu BXH',
+    upcomingTitle: '📅 Trận đấu sắp tới',
+    upcomingColRound: 'Vòng',
+    upcomingColMatch: 'Trận đấu',
+    upcomingColTime: 'Thời gian',
+    upcomingColStatus: 'Trạng thái',
+    upcomingEmpty: 'Chưa có trận đấu sắp tới',
+    recentTitle: '⚽ Kết quả gần đây',
+    recentColRound: 'V',
+    recentColMatch: 'Trận đấu',
+    recentColDate: 'Ngày',
+    recentEmpty: 'Chưa có kết quả trận đấu',
+  },
+
+  // ─────────────────────────────────────────────
+  // MATCHES PAGE
+  // ─────────────────────────────────────────────
+
+  matches: {
+    title: '⚽ Kết quả trận đấu',
+    searchPlaceholder: 'Tìm đội bóng...',
+    seasonPlaceholder: 'Mùa giải',
+    statusPlaceholder: 'Trạng thái',
+    teamFilterPlaceholder: 'Lọc theo đội',
+    loadError: 'Không thể tải danh sách trận đấu',
+    detailError: 'Không thể tải chi tiết trận đấu',
+    scoreUpdated: 'Đã cập nhật tỉ số!',
+    scoreUpdateError: 'Không thể cập nhật tỉ số',
+    statusChanged: 'Đã chuyển trạng thái sang {status}',
+    statusChangeError: 'Không thể cập nhật trạng thái',
+    eventWarning: 'Vui lòng thêm ít nhất 1 sự kiện',
+    eventError: 'Lỗi thêm sự kiện phút {minute}',
+    eventSuccess: 'Đã thêm {count} sự kiện!',
+    eventAddError: 'Không thể thêm sự kiện',
+    colHome: 'Đội nhà',
+    colScore: 'Tỉ số',
+    colAway: 'Đội khách',
+    colStadium: 'Sân',
+    colTime: 'Giờ',
+    colStatus: 'Trạng thái',
+    btnDetail: 'Chi tiết',
+    btnEdit: 'Sửa',
+    roundLabel: 'Vòng {round}',
+    legLabel: '{leg}', // 'Lượt đi' | 'Lượt về'
+    matchCount: '{count} trận · {finished}/{total} kết thúc',
+    noEvents: 'Chưa có sự kiện nào',
+    detailModalTitle: 'Chi tiết trận đấu',
+    homeTeamLabel: 'Đội nhà',
+    awayTeamLabel: 'Đội khách',
+    roundDescLabel: 'Vòng',
+    legDescLabel: 'Lượt',
+    stadiumDescLabel: 'Sân',
+    timeDescLabel: 'Giờ',
+    scoreUpdateBtn: 'Cập nhật tỉ số',
+    transitionBtn: 'Chuyển → {status}',
+    eventTitle: 'Sự kiện trận đấu',
+    addEventBtn: 'Thêm sự kiện',
+    noSearchResult: 'Không tìm thấy trận đấu cho "{query}"',
+    noMatches: 'Chưa có trận đấu nào',
+  },
+
+  // ─────────────────────────────────────────────
+  // MATCH DETAIL PAGE
+  // ─────────────────────────────────────────────
+
+  matchDetail: {
+    title: 'Chi tiết trận đấu — Vòng {round}',
+    loadError: 'Không thể tải chi tiết trận đấu',
+    notFound: 'Không tìm thấy trận đấu',
+    back: 'Quay lại',
+    homeLabel: '🏠 Đội nhà',
+    awayLabel: '✈️ Đội khách',
+    actionsLabel: 'Thao tác:',
+    updateScoreBtn: 'Cập nhật tỉ số',
+    addEventBtn: 'Thêm sự kiện',
+    transitionBtn: 'Chuyển → {status}',
+    statusChanged: 'Đã chuyển trạng thái sang {status}',
+    statusChangeError: 'Không thể cập nhật trạng thái',
+    tabOverview: '📋 Tổng quan',
+    tabEvents: '⚽ Sự kiện ({count})',
+    tabLineups: '👥 Đội hình',
+    matchInfoTitle: 'Thông tin trận đấu',
+    matchStatsTitle: 'Thống kê trận đấu',
+    descRound: 'Vòng',
+    descLeg: 'Lượt',
+    descSeason: 'Mùa giải',
+    descStadium: 'Sân vận động',
+    descKickoff: 'Giờ thi đấu',
+    descStatus: 'Trạng thái',
+    statGoals: '⚽ Bàn thắng',
+    statYellows: '🟨 Thẻ vàng',
+    statReds: '🟥 Thẻ đỏ',
+    statSubs: '🔄 Thay người',
+    colHome: 'Nhà',
+    colAway: 'Khách',
+    colStat: 'Chỉ số',
+    noEvents: 'Chưa có sự kiện nào',
+    relatedSub: 'thay {name}',
+    relatedAssist: 'kiến tạo: {name}',
+    homeRosterTitle: '🏠 {team} — Danh sách',
+    awayRosterTitle: '✈️ {team} — Danh sách',
+    rosterEmpty: 'Chưa có dữ liệu đội hình',
+    rosterTotal: 'Tổng: {count} cầu thủ',
+    colJersey: 'Số áo',
+    colPlayer: 'Cầu thủ',
+    colPosition: 'Vị trí',
+    statTotalEvents: 'Tổng sự kiện',
+    statTotalGoals: 'Tổng bàn thắng',
+    statTotalCards: 'Tổng thẻ',
+    statSubstitutions: 'Thay người',
+    // OWN_GOAL suffix in scorer display
+    ownGoalSuffix: '(PL)',
+    penaltySuffix: '(P)',
+  },
+
+  // ─────────────────────────────────────────────
+  // SCORE MODAL
+  // ─────────────────────────────────────────────
+
+  scoreModal: {
+    title: 'Cập nhật tỉ số',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    homeDefault: 'Đội nhà',
+    awayDefault: 'Đội khách',
+    required: 'Nhập số bàn',
+    success: 'Đã cập nhật tỉ số!',
+    error: 'Không thể cập nhật tỉ số',
+  },
+
+  // ─────────────────────────────────────────────
+  // EVENT FORM MODAL
+  // ─────────────────────────────────────────────
+
+  eventFormModal: {
+    title: 'Thêm sự kiện trận đấu',
+    okText: 'Thêm tất cả',
+    cancel: 'Hủy',
+    teamLabel: 'Đội',
+    teamRequired: 'Vui lòng chọn đội',
+    homeBtn: '🏠 {team}',
+    awayBtn: '✈️ {team}',
+    homeDefault: 'Đội nhà',
+    awayDefault: 'Đội khách',
+    eventLabel: 'Sự kiện {index}',
+    typePlaceholder: 'Loại sự kiện',
+    typeRequired: 'Chọn loại',
+    minutePlaceholder: 'Phút',
+    minuteRequired: 'Phút',
+    playerPlaceholder: 'Chọn cầu thủ',
+    playerDisabledHint: 'Chọn đội trước',
+    notePlaceholder: 'Ghi chú',
+    goalTypePlaceholder: 'Loại bàn thắng',
+    assistPlaceholder: 'Kiến tạo',
+    subPlayerPlaceholder: 'Cầu thủ bị thay',
+    addEventBtn: 'Thêm sự kiện',
+    warningEmpty: 'Vui lòng thêm ít nhất 1 sự kiện',
+    eventError: 'Lỗi thêm sự kiện phút {minute}',
+    success: 'Đã thêm {count} sự kiện!',
+    genericError: 'Không thể thêm sự kiện',
+  },
+
+  // ─────────────────────────────────────────────
+  // TEAMS PAGE
+  // ─────────────────────────────────────────────
+
+  teams: {
+    title: 'Quản lý đội bóng',
+    searchPlaceholder: 'Tìm kiếm đội bóng...',
+    addBtn: 'Thêm đội bóng',
+    loadError: 'Không thể tải danh sách đội bóng',
+    createSuccess: 'Tạo đội bóng thành công!',
+    updateSuccess: 'Cập nhật đội bóng thành công!',
+    deleteSuccess: 'Xóa đội bóng thành công!',
+    deleteError: 'Không thể xóa đội bóng',
+    saveError: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+    colIndex: '#',
+    colName: 'Tên đội bóng',
+    colShortName: 'Viết tắt',
+    colCity: 'Thành phố',
+    colStadium: 'Sân nhà',
+    colStatus: 'Trạng thái',
+    colActions: 'Hành động',
+    filterActive: 'Hoạt động',
+    filterInactive: 'Ngưng',
+    deleteConfirmTitle: 'Xóa đội bóng?',
+    deleteConfirmDesc: 'Bạn có chắc muốn xóa "{name}"?',
+    deleteOk: 'Xóa',
+    deleteCancel: 'Hủy',
+    modalCreateTitle: 'Thêm đội bóng mới',
+    modalEditTitle: 'Chỉnh sửa đội bóng',
+    formName: 'Tên đội bóng',
+    formNameRequired: 'Vui lòng nhập tên đội bóng',
+    formNamePlaceholder: 'VD: Hoàng Anh Gia Lai',
+    formShortName: 'Tên viết tắt',
+    formShortNamePlaceholder: 'VD: HAGL',
+    formCity: 'Thành phố',
+    formCityPlaceholder: 'VD: Pleiku',
+    formStadium: 'Sân nhà',
+    formStadiumPlaceholder: 'Chọn sân nhà',
+    formLogo: 'URL Logo',
+    formLogoPlaceholder: 'https://example.com/logo.png',
+    formStatus: 'Trạng thái',
+    formStatusActive: 'Hoạt động',
+    formStatusInactive: 'Ngưng hoạt động',
+  },
+
+  // ─────────────────────────────────────────────
+  // PLAYERS PAGE
+  // ─────────────────────────────────────────────
+
+  players: {
+    title: 'Quản lý cầu thủ',
+    searchPlaceholder: 'Tìm kiếm theo tên hoặc quốc tịch...',
+    addBtn: 'Thêm cầu thủ',
+    loadError: 'Không thể tải danh sách cầu thủ',
+    createSuccess: 'Tạo cầu thủ thành công!',
+    updateSuccess: 'Cập nhật cầu thủ thành công!',
+    deleteSuccess: 'Xóa cầu thủ thành công!',
+    deleteError: 'Không thể xóa cầu thủ',
+    saveError: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+    colIndex: '#',
+    colFullName: 'Họ và tên',
+    colClub: 'Câu lạc bộ',
+    colNoClub: 'Chưa có CLB',
+    colDob: 'Ngày sinh',
+    colNationality: 'Quốc tịch',
+    colPosition: 'Vị trí',
+    colType: 'Loại',
+    colHeight: 'Chiều cao',
+    colWeight: 'Cân nặng',
+    colActions: 'Hành động',
+    totalCount: 'Tổng {total} cầu thủ',
+    deleteConfirmTitle: 'Xóa cầu thủ?',
+    deleteConfirmDesc: 'Bạn có chắc muốn xóa "{name}"?',
+    deleteOk: 'Xóa',
+    deleteCancel: 'Hủy',
+    modalCreateTitle: 'Thêm cầu thủ mới',
+    modalEditTitle: 'Chỉnh sửa cầu thủ',
+    formFullName: 'Họ và tên',
+    formFullNameRequired: 'Vui lòng nhập họ và tên',
+    formFullNamePlaceholder: 'VD: Nguyễn Quang Hải',
+    formClub: 'Câu lạc bộ',
+    formClubPlaceholder: 'Chọn câu lạc bộ',
+    formDob: 'Ngày sinh',
+    formDobRequired: 'Vui lòng chọn ngày sinh',
+    formDobPlaceholder: 'Chọn ngày sinh',
+    formBirthPlace: 'Nơi sinh',
+    formBirthPlacePlaceholder: 'VD: Hà Nội',
+    formNationality: 'Quốc tịch',
+    formNationalityRequired: 'Vui lòng nhập quốc tịch',
+    formNationalityPlaceholder: 'VD: Vietnam',
+    formType: 'Loại cầu thủ',
+    formTypeDomestic: '🇻🇳 Nội binh',
+    formTypeForeign: '🌍 Ngoại binh',
+    formPosition: 'Vị trí',
+    formPositionRequired: 'Vui lòng chọn vị trí',
+    formPositionPlaceholder: 'Chọn vị trí',
+    formPositionGK: '🧤 Thủ môn (GK)',
+    formPositionDF: '🛡️ Hậu vệ (DF)',
+    formPositionMF: '⚙️ Tiền vệ (MF)',
+    formPositionFW: '⚽ Tiền đạo (FW)',
+    formHeight: 'Chiều cao (cm)',
+    formHeightPlaceholder: 'VD: 168',
+    formWeight: 'Cân nặng (kg)',
+    formWeightPlaceholder: 'VD: 65',
+  },
+
+  // ─────────────────────────────────────────────
+  // SEASONS PAGE
+  // ─────────────────────────────────────────────
+
+  seasons: {
+    title: '📅 Quản lý mùa giải',
+    createBtn: 'Tạo mùa giải',
+    loadError: 'Không thể tải danh sách mùa giải',
+    createSuccess: 'Đã tạo mùa giải mới',
+    updateSuccess: 'Đã cập nhật mùa giải',
+    deleteSuccess: 'Đã xóa mùa giải',
+    deleteError: 'Không thể xóa mùa giải (có thể đang có lịch thi đấu)',
+    saveError: 'Lỗi khi lưu mùa giải',
+    statusUpdateSuccess: 'Đã cập nhật trạng thái',
+    statusUpdateError: 'Không thể cập nhật trạng thái',
+    colName: 'Mùa giải',
+    colYear: 'Năm',
+    colStatus: 'Trạng thái',
+    colStartDate: 'Ngày bắt đầu',
+    colEndDate: 'Ngày kết thúc',
+    notSet: 'Chưa đặt',
+    deleteConfirmTitle: 'Xóa mùa giải này?',
+    deleteConfirmDesc: 'Tất cả lịch thi đấu liên quan sẽ bị xóa.',
+    deleteOk: 'Xóa',
+    deleteCancel: 'Hủy',
+    modalCreateTitle: 'Tạo mùa giải mới',
+    modalEditTitle: 'Sửa mùa giải',
+    formYear: 'Chọn mùa giải',
+    formYearRequired: 'Vui lòng chọn năm',
+    formYearPlaceholder: 'Chọn mùa giải',
+    yearOptionLabel: 'Mùa giải {year}/{nextYear}',
+    formName: 'Tên mùa giải',
+    formNameRequired: 'Vui lòng nhập tên',
+    formNamePlaceholder: 'VLeague 2025/2026',
+    formStatus: 'Trạng thái',
+    formStartDate: 'Ngày bắt đầu',
+    formStartDatePlaceholder: 'Chọn ngày',
+    formEndDate: 'Ngày kết thúc',
+    formEndDatePlaceholder: 'Chọn ngày',
+    // Season Team Panel
+    teamPanelTitle: 'Đội tham gia ({approved} duyệt / {total} ĐK)',
+    teamPanelLoadError: 'Không thể tải danh sách đội',
+    teamPanelAddPlaceholder: 'Chọn đội để thêm',
+    teamPanelAddBtn: 'Thêm',
+    teamPanelRegSuccess: 'Đã đăng ký đội',
+    teamPanelRegError: 'Không thể đăng ký đội',
+    teamPanelStatusSuccess: 'Đã cập nhật trạng thái',
+    teamPanelStatusError: 'Không thể cập nhật',
+    teamPanelRemoveSuccess: 'Đã xóa đội',
+    teamPanelRemoveError: 'Không thể xóa đội',
+    teamPanelColTeam: 'Đội',
+    teamPanelColCity: 'Thành phố',
+    teamPanelColStatus: 'Trạng thái',
+    teamPanelColRegDate: 'Ngày ĐK',
+    teamPanelApproveTooltip: 'Duyệt',
+    teamPanelRejectTooltip: 'Từ chối',
+    teamPanelRemoveConfirm: 'Xóa đội khỏi mùa giải?',
+    teamPanelEmpty: 'Chưa có đội nào đăng ký',
+  },
+
+  // ─────────────────────────────────────────────
+  // SCHEDULE PAGE
+  // ─────────────────────────────────────────────
+
+  schedule: {
+    title: 'Lịch thi đấu',
+    seasonPlaceholder: 'Chọn mùa giải',
+    matchCount: '{total} trận',
+    draftCount: '{count} nháp',
+    reloadBtn: 'Tải lại',
+    generateBtn: 'Tạo lịch tự động',
+    publishBtn: 'Công bố lịch',
+    loadError: 'Không thể tải lịch thi đấu',
+    generateSuccess: 'Tạo lịch thi đấu thành công!',
+    generateError: 'Không thể tạo lịch thi đấu',
+    publishSuccess: 'Công bố lịch thi đấu thành công!',
+    publishError: 'Không thể công bố lịch thi đấu',
+    matchUpdateSuccess: 'Đã cập nhật trận đấu',
+    matchUpdateError: 'Không thể cập nhật trận đấu',
+    tabAll: 'Tất cả ({count})',
+    tabLeg1: 'Lượt đi ({count})',
+    tabLeg2: 'Lượt về ({count})',
+    colLeg: 'Lượt',
+    colHome: 'Đội nhà',
+    colScore: 'Tỉ số',
+    colAway: 'Đội khách',
+    colStadium: 'Sân vận động',
+    colKickoff: 'Giờ thi đấu',
+    colStatus: 'TT',
+    stadiumNotSet: 'Chưa chọn',
+    kickoffNotSet: 'Chưa đặt',
+    editTooltip: 'Sửa sân & giờ',
+    roundLabel: 'Vòng {round}',
+    roundMatches: '{count} trận',
+    roundFinished: 'Đã kết thúc',
+    roundProgress: '{finished}/{total} xong',
+    emptySchedule: 'Chưa có lịch thi đấu. Nhấn "Tạo lịch tự động" để bắt đầu.',
+    editModalTitle: 'Sửa trận đấu',
+    editModalTitleSpecific: 'Sửa: {home} vs {away} (V{round})',
+    formStadium: 'Sân vận động',
+    formStadiumPlaceholder: 'Chọn sân',
+    formKickoff: 'Giờ thi đấu',
+    formKickoffPlaceholder: 'Chọn ngày giờ',
+    generateModalTitle: 'Tạo lịch thi đấu tự động',
+    generateModalDesc: 'Chọn mùa giải để tạo lịch thi đấu round-robin:',
+    generateModalSeasonPlaceholder: 'Chọn mùa giải',
+    generateModalOk: 'Tạo lịch',
+    generateModalWarning: 'Lịch thi đấu nháp hiện tại (nếu có) sẽ bị xóa và tạo lại.',
+  },
+
+  // ─────────────────────────────────────────────
+  // STANDINGS PAGE
+  // ─────────────────────────────────────────────
+
+  standings: {
+    title: '🏆 Bảng xếp hạng',
+    seasonPlaceholder: 'Chọn mùa giải',
+    loadError: 'Không thể tải bảng xếp hạng',
+    colRank: '#',
+    colTeam: 'Đội bóng',
+    colPlayed: 'Trận',
+    colWon: 'Thắng',
+    colDrawn: 'Hòa',
+    colLost: 'Thua',
+    colGoalsFor: 'BT',
+    colGoalsAgainst: 'BN',
+    colGoalDiff: 'HS',
+    colPoints: 'Điểm',
+    emptyStandings: 'Chưa có dữ liệu bảng xếp hạng',
+    loading: 'Đang tải...',
+    afcLegend: 'AFC Champions League ({count} đội đầu)',
+    relegationLegend: 'Xuống hạng ({count} đội cuối)',
+    topScorersTitle: '⚽ Vua phá lưới (Top 10)',
+    scorerColRank: '#',
+    scorerColPlayer: 'Cầu thủ',
+    scorerColTeam: 'Đội bóng',
+    scorerColGoals: 'Bàn thắng',
+    emptyScorers: 'Chưa có dữ liệu vua phá lưới',
+  },
+
+  // ─────────────────────────────────────────────
+  // STADIUMS PAGE
+  // ─────────────────────────────────────────────
+
+  stadiums: {
+    title: '🏟️ Quản lý sân vận động',
+    searchPlaceholder: 'Tìm kiếm sân...',
+    addBtn: 'Thêm sân',
+    loadError: 'Không thể tải danh sách sân vận động',
+    createSuccess: 'Tạo sân vận động thành công!',
+    updateSuccess: 'Cập nhật sân vận động thành công!',
+    deleteSuccess: 'Xóa sân vận động thành công!',
+    deleteError: 'Không thể xóa sân vận động (có thể đang được sử dụng)',
+    saveError: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+    colIndex: '#',
+    colName: 'Tên sân vận động',
+    colCity: 'Thành phố',
+    colAddress: 'Địa chỉ',
+    colCapacity: 'Sức chứa',
+    colActions: 'Hành động',
+    deleteConfirmTitle: 'Xóa sân vận động?',
+    deleteConfirmDesc: 'Bạn có chắc muốn xóa "{name}"?',
+    deleteOk: 'Xóa',
+    deleteCancel: 'Hủy',
+    modalCreateTitle: 'Thêm sân vận động mới',
+    modalEditTitle: 'Chỉnh sửa sân vận động',
+    formName: 'Tên sân vận động',
+    formNameRequired: 'Vui lòng nhập tên sân',
+    formNamePlaceholder: 'VD: Sân Mỹ Đình',
+    formCity: 'Thành phố',
+    formCityRequired: 'Vui lòng nhập thành phố',
+    formCityPlaceholder: 'VD: Hà Nội',
+    formCapacity: 'Sức chứa',
+    formCapacityPlaceholder: 'VD: 40000',
+    formAddress: 'Địa chỉ',
+    formAddressPlaceholder: 'VD: Đường Lê Đức Thọ, Nam Từ Liêm',
+  },
+
+  // ─────────────────────────────────────────────
+  // USERS PAGE
+  // ─────────────────────────────────────────────
+
+  users: {
+    title: 'Quản lý người dùng',
+    searchPlaceholder: 'Tìm kiếm email, tên...',
+    createBtn: 'Tạo người dùng',
+    loadError: 'Không thể tải danh sách người dùng',
+    createSuccess: 'Tạo người dùng thành công',
+    createError: 'Tạo người dùng thất bại',
+    roleUpdateSuccess: 'Cập nhật vai trò thành công',
+    roleUpdateError: 'Cập nhật vai trò thất bại',
+    deleteSuccess: 'Xóa người dùng thành công',
+    deleteError: 'Xóa người dùng thất bại',
+    colEmail: 'Email',
+    colName: 'Tên',
+    colRole: 'Vai trò',
+    colEmailVerified: 'Email xác thực',
+    colOAuth: 'OAuth',
+    colCreatedAt: 'Ngày tạo',
+    colActions: 'Hành động',
+    totalCount: 'Tổng: {total}',
+    deleteConfirmTitle: 'Xóa người dùng?',
+    deleteConfirmDesc: 'Bạn có chắc muốn xóa "{email}"?',
+    deleteOk: 'Xóa',
+    deleteCancel: 'Hủy',
+    createModalTitle: 'Tạo người dùng mới',
+    formEmail: 'Email',
+    formEmailRequired: 'Vui lòng nhập email',
+    formEmailInvalid: 'Email không hợp lệ',
+    formEmailPlaceholder: 'user@vleague.local',
+    formPassword: 'Mật khẩu',
+    formPasswordRequired: 'Vui lòng nhập mật khẩu',
+    formPasswordMin: 'Mật khẩu tối thiểu 6 ký tự',
+    formPasswordPlaceholder: 'Nhập mật khẩu',
+    formRole: 'Vai trò',
+    formRoleRequired: 'Vui lòng chọn vai trò',
+    formRolePlaceholder: 'Chọn vai trò',
+    formName: 'Tên (tùy chọn)',
+    formNamePlaceholder: 'Nguyễn Văn A',
+    editRoleModalTitle: 'Đổi vai trò — {email}',
+    formNewRole: 'Vai trò mới',
+    formNewRoleRequired: 'Vui lòng chọn vai trò',
+  },
+
+  // ─────────────────────────────────────────────
+  // PROFILE PAGE
+  // ─────────────────────────────────────────────
+
+  profile: {
+    title: 'Thông tin tài khoản',
+    loadError: 'Không thể tải thông tin',
+    errorGeneric: 'Có lỗi xảy ra',
+    loadFailed: 'Không thể tải thông tin người dùng',
+    editBtn: 'Chỉnh sửa',
+    descId: 'ID',
+    descName: 'Tên hiển thị',
+    descNameEmpty: 'Chưa cập nhật',
+    descEmail: 'Email',
+    descRole: 'Vai trò',
+    descEmailStatus: 'Trạng thái email',
+    emailVerified: 'Đã xác thực',
+    emailNotVerified: 'Chưa xác thực',
+    descCreatedAt: 'Ngày tạo',
+    descUpdatedAt: 'Cập nhật lần cuối',
+    changePasswordBtn: 'Đổi mật khẩu',
+    manageSessionsBtn: 'Quản lý phiên đăng nhập',
+    logoutAllBtn: 'Đăng xuất tất cả thiết bị',
+    logoutAllConfirmTitle: 'Đăng xuất tất cả thiết bị',
+    logoutAllConfirmContent:
+      'Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, bao gồm cả thiết bị hiện tại. Tiếp tục?',
+    logoutAllOk: 'Đăng xuất',
+    logoutAllCancel: 'Hủy',
+    editModalTitle: 'Chỉnh sửa hồ sơ',
+    formDisplayName: 'Tên hiển thị',
+    formDisplayNameMin: 'Tên phải có ít nhất 2 ký tự',
+    formDisplayNameMax: 'Tên không được quá 100 ký tự',
+    formDisplayNamePlaceholder: 'Nhập tên của bạn',
+    formAvatarUrl: 'URL ảnh đại diện',
+    formAvatarUrlInvalid: 'Vui lòng nhập URL hợp lệ',
+    formAvatarUrlPlaceholder: 'https://example.com/avatar.jpg',
+    saveBtn: 'Lưu thay đổi',
+    cancelBtn: 'Hủy',
+    updateSuccess: 'Cập nhật thành công',
+  },
+
+  // ─────────────────────────────────────────────
+  // SESSIONS PAGE
+  // ─────────────────────────────────────────────
+
+  sessions: {
+    backToProfile: '← Quay lại hồ sơ',
+    title: 'Quản lý phiên đăng nhập',
+    loadError: 'Không thể tải danh sách phiên đăng nhập',
+    revokeSuccess: 'Đã thu hồi phiên đăng nhập',
+    revokeError: 'Không thể thu hồi phiên đăng nhập',
+    logoutAllError: 'Không thể đăng xuất khỏi tất cả thiết bị',
+    logoutAllConfirmTitle: 'Đăng xuất tất cả?',
+    logoutAllConfirmDesc: 'Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, bao gồm thiết bị này.',
+    logoutAllOk: 'Đăng xuất',
+    logoutAllCancel: 'Hủy',
+    logoutAllBtn: 'Đăng xuất tất cả',
+    alertTitle: 'Phiên đăng nhập',
+    alertDesc:
+      'Danh sách các thiết bị đang đăng nhập vào tài khoản của bạn. Bạn có thể thu hồi quyền truy cập của bất kỳ thiết bị nào.',
+    empty: 'Không có phiên đăng nhập nào',
+    currentDevice: 'Thiết bị này',
+    currentTag: 'Hiện tại',
+    revokeConfirmTitle: 'Thu hồi phiên này?',
+    revokeConfirmDesc: 'Thiết bị này sẽ bị đăng xuất.',
+    revokeOk: 'Thu hồi',
+    revokeCancel: 'Hủy',
+    revokeBtn: 'Thu hồi',
+    ipLabel: 'IP: {ip}',
+    lastUsedLabel: 'Hoạt động lần cuối: {time}',
+    createdLabel: 'Đăng nhập: {time}',
+    expiresLabel: 'Hết hạn: {time}',
+  },
+
+  // ─────────────────────────────────────────────
+  // REGULATIONS PAGE
+  // ─────────────────────────────────────────────
+
+  regulations: {
+    title: 'Quy định giải đấu',
+    subtitle: 'Quản lý các quy định của từng mùa giải VLeague.',
+    loadError: 'Không thể tải danh sách mùa giải',
+    loadRegError: 'Không thể tải quy định',
+    seasonLabel: 'Mùa giải:',
+    seasonPlaceholder: 'Chọn mùa giải',
+    seedDefaultsBtn: 'Khởi tạo mặc định',
+    addBtn: 'Thêm quy định',
+    colKey: 'Khóa',
+    colValue: 'Giá trị',
+    colType: 'Kiểu',
+    colActions: 'Thao tác',
+    empty: 'Chưa có quy định. Nhấn "Khởi tạo mặc định" để bắt đầu.',
+    deleteConfirmTitle: 'Xác nhận xóa?',
+    deleteOk: 'Xóa',
+    deleteCancel: 'Hủy',
+    createSuccess: 'Đã thêm quy định',
+    updateSuccess: 'Đã cập nhật quy định',
+    deleteSuccess: 'Đã xóa quy định',
+    deleteError: 'Không thể xóa quy định',
+    seedSuccess: 'Đã khởi tạo quy định mặc định',
+    seedError: 'Không thể khởi tạo quy định mặc định',
+    modalCreateTitle: 'Thêm quy định',
+    modalEditTitle: 'Sửa quy định',
+    formKey: 'Khóa quy định',
+    formKeyRequired: 'Vui lòng nhập khóa',
+    formKeyPlaceholder: 'VD: MAX_FOREIGN_PLAYERS',
+    formValue: 'Giá trị',
+    formValueRequired: 'Vui lòng nhập giá trị',
+    formValuePlaceholder: 'VD: 3',
+    formValueType: 'Kiểu dữ liệu',
+    okCreate: 'Thêm',
+    okUpdate: 'Cập nhật',
+  },
+
+  // ─────────────────────────────────────────────
+  // REPORTS PAGE
+  // ─────────────────────────────────────────────
+
+  reports: {
+    title: 'Báo cáo & Thống kê',
+    loadError: 'Không thể tải dữ liệu báo cáo',
+    exportScorersPdf: 'PDF Vua phá lưới',
+    exportTeamStatsPdf: 'PDF Thống kê đội',
+    exportError: 'Lỗi xuất PDF',
+    pdfExportDate: 'Ngày xuất: {date}',
+    tabScorers: '🏆 Vua phá lưới',
+    tabCards: '🟨 Thẻ phạt',
+    tabTeamStats: '📊 Thống kê đội',
+    tabCharts: '📈 Biểu đồ',
+  },
+
+  // ─── Top Scorers Tab ───
+  topScorersTab: {
+    colRank: '#',
+    colPlayer: 'Cầu thủ',
+    colTeam: 'Đội',
+    colGoals: 'Bàn thắng',
+    empty: 'Chưa có dữ liệu bàn thắng',
+  },
+
+  // ─── Card Stats Tab ───
+  cardStatsTab: {
+    colRank: '#',
+    colPlayer: 'Cầu thủ',
+    colTeam: 'Đội',
+    colYellowCards: 'Thẻ vàng',
+    colRedCards: 'Thẻ đỏ',
+    colTotal: 'Tổng',
+    empty: 'Chưa có dữ liệu thẻ phạt',
+  },
+
+  // ─── Team Stats Tab ───
+  teamStatsTab: {
+    colTeam: 'Đội',
+    colPlayed: 'Trận',
+    colWon: 'T',
+    colDrawn: 'H',
+    colLost: 'B',
+    colGoalsFor: 'BT',
+    colGoalsAgainst: 'BB',
+    colGoalDiff: '+/–',
+    colPoints: 'Điểm',
+    colCleanSheets: 'Sạch lưới',
+    empty: 'Chưa có dữ liệu thống kê đội',
+  },
+
+  // ─── Charts Tab ───
+  chartsTab: {
+    loading: 'Đang tải...',
+    topScorersChart: 'Top 10 Vua phá lưới',
+    goalRatioChart: 'Tỉ lệ bàn thắng theo đội',
+    pointsChart: 'Điểm số & Thành tích các đội',
+    goalLabel: 'Bàn thắng',
+    wonLabel: 'Thắng',
+    drawnLabel: 'Hòa',
+    lostLabel: 'Thua',
+  },
+
+  // ─────────────────────────────────────────────
+  // HEAD TO HEAD PAGE
+  // ─────────────────────────────────────────────
+
+  headToHead: {
+    title: 'Đối đầu (Head-to-Head)',
+    team1Placeholder: 'Chọn đội 1',
+    team2Placeholder: 'Chọn đội 2',
+    seasonPlaceholder: 'Mùa giải (tất cả)',
+    compareBtn: 'So sánh',
+    emptyHint: 'Chọn 2 đội và nhấn So sánh để xem thống kê đối đầu',
+    team1Default: 'Đội 1',
+    team2Default: 'Đội 2',
+    winsSuffix: 'thắng',
+    goalsSuffix: 'bàn',
+    totalMatches: 'Tổng trận',
+    drawsSuffix: 'hòa',
+    historyTitle: 'Lịch sử đối đầu',
+    colRound: 'Vòng',
+    colSeason: 'Mùa giải',
+    colHome: 'Đội nhà',
+    colScore: 'Tỉ số',
+    colAway: 'Đội khách',
+    colDate: 'Ngày',
+  },
+
+  // ─────────────────────────────────────────────
+  // LOGIN PAGE
+  // ─────────────────────────────────────────────
+
+  login: {
+    title: 'VLeague Admin',
+    emailLabel: 'Email',
+    emailRequired: 'Vui lòng nhập email',
+    emailInvalid: 'Email không hợp lệ',
+    emailPlaceholder: 'admin@vleague.local',
+    passwordLabel: 'Mật khẩu',
+    passwordRequired: 'Vui lòng nhập mật khẩu',
+    rememberMe: 'Ghi nhớ đăng nhập',
+    forgotPassword: 'Quên mật khẩu?',
+    submitBtn: 'Đăng nhập',
+    success: 'Đăng nhập thành công',
+    error: 'Đăng nhập thất bại',
+    divider: 'hoặc',
+    googleBtn: 'Đăng nhập với Google',
+    facebookBtn: 'Đăng nhập với Facebook',
+    noAccount: 'Chưa có tài khoản?',
+    registerLink: 'Đăng ký',
+    verifyEmailLink: 'Xác thực email',
+  },
+
+  // ─────────────────────────────────────────────
+  // REGISTER PAGE
+  // ─────────────────────────────────────────────
+
+  register: {
+    title: 'Đăng ký tài khoản',
+    emailLabel: 'Email',
+    emailRequired: 'Vui lòng nhập email',
+    emailInvalid: 'Email không hợp lệ',
+    emailPlaceholder: 'email@example.com',
+    passwordLabel: 'Mật khẩu',
+    passwordRequired: 'Vui lòng nhập mật khẩu',
+    passwordMin: 'Mật khẩu phải có ít nhất 8 ký tự',
+    passwordPattern: 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt',
+    passwordExtra: 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)',
+    confirmPasswordLabel: 'Xác nhận mật khẩu',
+    confirmPasswordRequired: 'Vui lòng xác nhận mật khẩu',
+    confirmPasswordMismatch: 'Mật khẩu xác nhận không khớp',
+    submitBtn: 'Đăng ký',
+    success: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực.',
+    error: 'Đăng ký thất bại',
+    hasAccount: 'Đã có tài khoản?',
+    loginLink: 'Đăng nhập',
+  },
+
+  // ─────────────────────────────────────────────
+  // FORGOT PASSWORD PAGE
+  // ─────────────────────────────────────────────
+
+  forgotPassword: {
+    title: 'Quên mật khẩu',
+    subtitle: 'Nhập email để nhận mã OTP đặt lại mật khẩu',
+    emailLabel: 'Email',
+    emailRequired: 'Vui lòng nhập email',
+    emailInvalid: 'Email không hợp lệ',
+    emailPlaceholder: 'email@example.com',
+    submitBtn: 'Gửi mã OTP',
+    success: 'Nếu email tồn tại, bạn sẽ nhận được mã OTP.',
+    error: 'Có lỗi xảy ra',
+    backToLogin: 'Quay lại đăng nhập',
+  },
+
+  // ─────────────────────────────────────────────
+  // RESET PASSWORD PAGE
+  // ─────────────────────────────────────────────
+
+  resetPassword: {
+    title: 'Đặt lại mật khẩu',
+    subtitle: 'Nhập mã OTP và mật khẩu mới',
+    emailLabel: 'Email',
+    emailRequired: 'Vui lòng nhập email',
+    emailInvalid: 'Email không hợp lệ',
+    emailPlaceholder: 'email@example.com',
+    otpLabel: 'Mã OTP',
+    otpRequired: 'Vui lòng nhập mã OTP',
+    otpLength: 'Mã OTP phải có 6 số',
+    otpDigitsOnly: 'Mã OTP chỉ chứa số',
+    otpPlaceholder: '000000',
+    newPasswordLabel: 'Mật khẩu mới',
+    newPasswordRequired: 'Vui lòng nhập mật khẩu mới',
+    newPasswordMin: 'Mật khẩu phải có ít nhất 8 ký tự',
+    newPasswordPattern: 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt',
+    newPasswordExtra: 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt',
+    confirmPasswordLabel: 'Xác nhận mật khẩu',
+    confirmPasswordRequired: 'Vui lòng xác nhận mật khẩu',
+    confirmPasswordMismatch: 'Mật khẩu xác nhận không khớp',
+    submitBtn: 'Đặt lại mật khẩu',
+    resendOtpBtn: 'Gửi lại OTP',
+    resendOtpCountdown: 'Gửi lại OTP ({seconds}s)',
+    success: 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập.',
+    error: 'Đặt lại mật khẩu thất bại',
+    resendSuccess: 'Đã gửi lại mã OTP. Vui lòng kiểm tra email.',
+    resendError: 'Gửi lại OTP thất bại',
+    resendEmailWarning: 'Vui lòng nhập email trước',
+    backToLogin: 'Quay lại đăng nhập',
+  },
+
+  // ─────────────────────────────────────────────
+  // CHANGE PASSWORD PAGE
+  // ─────────────────────────────────────────────
+
+  changePassword: {
+    title: 'Đổi mật khẩu',
+    currentPasswordLabel: 'Mật khẩu hiện tại',
+    currentPasswordRequired: 'Vui lòng nhập mật khẩu hiện tại',
+    newPasswordLabel: 'Mật khẩu mới',
+    newPasswordRequired: 'Vui lòng nhập mật khẩu mới',
+    newPasswordMin: 'Mật khẩu phải có ít nhất 8 ký tự',
+    newPasswordPattern: 'Mật khẩu phải có ít nhất 1 chữ cái và 1 số',
+    newPasswordExtra: 'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ và số',
+    confirmPasswordLabel: 'Xác nhận mật khẩu mới',
+    confirmPasswordRequired: 'Vui lòng xác nhận mật khẩu',
+    confirmPasswordMismatch: 'Mật khẩu xác nhận không khớp',
+    submitBtn: 'Đổi mật khẩu',
+    cancelBtn: 'Hủy',
+    success: 'Đổi mật khẩu thành công!',
+    error: 'Đổi mật khẩu thất bại',
+  },
+
+  // ─────────────────────────────────────────────
+  // VERIFY EMAIL PAGE
+  // ─────────────────────────────────────────────
+
+  verifyEmail: {
+    title: 'Xác thực Email',
+    subtitle: 'Nhập mã OTP 6 số đã được gửi đến email của bạn',
+    emailLabel: 'Email',
+    emailRequired: 'Vui lòng nhập email',
+    emailInvalid: 'Email không hợp lệ',
+    emailPlaceholder: 'email@example.com',
+    otpLabel: 'Mã OTP',
+    otpRequired: 'Vui lòng nhập mã OTP',
+    otpLength: 'Mã OTP phải có 6 số',
+    otpDigitsOnly: 'Mã OTP chỉ chứa số',
+    otpPlaceholder: '000000',
+    submitBtn: 'Xác thực',
+    resendOtpBtn: 'Gửi lại OTP',
+    resendOtpCountdown: 'Gửi lại OTP ({seconds}s)',
+    success: 'Xác thực email thành công! Bạn có thể đăng nhập ngay.',
+    error: 'Xác thực thất bại',
+    resendSuccess: 'Đã gửi lại mã OTP. Vui lòng kiểm tra email.',
+    resendError: 'Gửi lại OTP thất bại',
+    resendEmailWarning: 'Vui lòng nhập email trước',
+    backToLogin: 'Quay lại đăng nhập',
+  },
+
+  // ─────────────────────────────────────────────
+  // TEAM DETAIL PAGE
+  // ─────────────────────────────────────────────
+
+  teamDetail: {
+    back: 'Quay lại',
+    notFound: 'Không tìm thấy đội bóng',
+    loadError: 'Không thể tải thông tin đội bóng',
+    statusActive: 'Đang hoạt động',
+    statusInactive: 'Ngừng hoạt động',
+    statusInactiveShort: 'Ngừng',
+    statPlayers: 'Cầu thủ',
+    statMatches: 'Trận đấu',
+    statStadium: 'Sân nhà',
+    stadiumEmpty: 'Chưa có',
+    tabInfo: 'Tổng quan',
+    tabRoster: 'Đội hình ({count})',
+    tabMatches: 'Trận đấu ({count})',
+    descName: 'Tên đội',
+    descShortName: 'Tên viết tắt',
+    descCity: 'Thành phố',
+    descStadium: 'Sân nhà',
+    descStatus: 'Trạng thái',
+    standingsTitle: 'Thống kê — {season}',
+    standingRank: 'Hạng',
+    standingPoints: 'Điểm',
+    standingPlayed: 'Trận',
+    standingWon: 'Thắng',
+    standingDrawn: 'Hòa',
+    standingLost: 'Thua',
+    standingGF: 'BT',
+    standingGA: 'BN',
+    standingGD: 'HS',
+    rosterColJersey: 'Số áo',
+    rosterColName: 'Tên cầu thủ',
+    rosterColPosition: 'Vị trí',
+    rosterColNationality: 'Quốc tịch',
+    rosterColType: 'Loại',
+    matchColRound: 'Vòng',
+    matchColOpponent: 'Đối thủ',
+    matchColScore: 'Tỷ số',
+    matchColResult: 'Kết quả',
+    matchColStatus: 'Trạng thái',
+    matchColDate: 'Ngày',
+    matchResultWin: 'T',
+    matchResultLoss: 'B',
+    matchResultDraw: 'H',
+    matchSideHome: '(S)',
+    matchSideAway: '(K)',
+  },
+
+  // ─────────────────────────────────────────────
+  // PLAYER DETAIL PAGE
+  // ─────────────────────────────────────────────
+
+  playerDetail: {
+    back: 'Quay lại',
+    notFound: 'Không tìm thấy cầu thủ',
+    loadError: 'Không thể tải thông tin cầu thủ',
+    statGoals: 'Bàn thắng',
+    statYellowCards: 'Thẻ vàng',
+    statRedCards: 'Thẻ đỏ',
+    statOwnGoals: 'Phản lưới',
+    infoTitle: 'Thông tin cá nhân',
+    descFullName: 'Họ tên',
+    descDob: 'Ngày sinh',
+    descAge: '{age} tuổi',
+    descNationality: 'Quốc tịch',
+    descBirthPlace: 'Nơi sinh',
+    descPosition: 'Vị trí',
+    descHeight: 'Chiều cao',
+    descWeight: 'Cân nặng',
+    descCurrentTeam: 'Đội hiện tại',
+    descJerseyNumber: 'số {number}',
+    noTeam: 'Chưa thuộc đội nào',
+    teamHistoryTitle: 'Lịch sử đội bóng',
+    teamHistoryColTeam: 'Đội',
+    teamHistoryColJersey: 'Số áo',
+    teamHistoryColFrom: 'Từ',
+    teamHistoryColTo: 'Đến',
+    teamHistoryPresent: 'Hiện tại',
+    eventsTitle: 'Sự kiện thi đấu',
+    eventMinute: "Phút {minute}'",
+    eventMoreCount: '... và {count} sự kiện khác',
+    advancedStatsTitle: 'Thống kê nâng cao',
+    seasonPlaceholder: 'Mùa giải',
+    statsTabOverview: 'Tổng quan',
+    statsTabChart: 'Biểu đồ bàn thắng',
+    statsMatchesPlayed: 'Trận',
+    statsGoals: 'Bàn thắng',
+    statsAssists: 'Kiến tạo',
+    statsOwnGoals: 'Phản lưới',
+    statsYellowCards: 'Thẻ vàng',
+    statsRedCards: 'Thẻ đỏ',
+    chartEmpty: 'Chưa có dữ liệu bàn thắng theo vòng đấu',
+    statsLoadError: 'Không thể tải thống kê nâng cao',
+    chartBarLabel: 'Bàn thắng',
+  },
+
+  // ─────────────────────────────────────────────
+  // STADIUM DETAIL PAGE
+  // ─────────────────────────────────────────────
+
+  stadiumDetail: {
+    back: 'Quay lại',
+    notFound: 'Không tìm thấy sân vận động',
+    loadError: 'Không thể tải thông tin sân vận động',
+    statCapacity: 'Sức chứa',
+    statCapacityEmpty: 'Chưa cập nhật',
+    statHomeTeams: 'Đội sân nhà',
+    statTotalMatches: 'Tổng trận đấu',
+    tabInfo: '📋 Thông tin',
+    tabMatches: '⚽ Trận đấu ({count})',
+    descName: 'Tên sân',
+    descCity: 'Thành phố',
+    descAddress: 'Địa chỉ',
+    descCapacity: 'Sức chứa',
+    homeTeamsTitle: 'Đội sân nhà',
+    matchColRound: 'Vòng',
+    matchColHome: 'Đội nhà',
+    matchColScore: 'Tỷ số',
+    matchColAway: 'Đội khách',
+    matchColDate: 'Ngày',
+    matchColStatus: 'Trạng thái',
+    matchColAction: '',
+    matchDetailBtn: 'Chi tiết',
+    upcomingTitle: 'Sắp diễn ra',
+    finishedTitle: 'Đã hoàn thành ({count})',
+    matchesEmpty: 'Chưa có trận đấu nào',
+  },
+
+  // ─────────────────────────────────────────────
+  // FORBIDDEN PAGE
+  // ─────────────────────────────────────────────
+
+  forbidden: {
+    title: '403',
+    subtitle: 'Xin lỗi, bạn không có quyền truy cập trang này.',
+    backBtn: 'Về trang chủ',
+  },
+
+  // ─────────────────────────────────────────────
+  // OAUTH CALLBACK PAGE
+  // ─────────────────────────────────────────────
+
+  oauth: {
+    processing: 'Đang xử lý đăng nhập...',
+    success: 'Đăng nhập thành công',
+    error: 'Đăng nhập thất bại',
+  },
+
+  // ─────────────────────────────────────────────
+  // EXPORT BUTTON
+  // ─────────────────────────────────────────────
+
+  export: {
+    csvBtn: 'Xuất CSV',
+  },
+
+  // ─────────────────────────────────────────────
+  // PUBLIC SCHEDULE PAGE
+  // ─────────────────────────────────────────────
+
+  publicSchedule: {
+    title: '📅 Lịch thi đấu V-League',
+    seasonPlaceholder: 'Chọn mùa giải',
+    loadError: 'Không thể tải lịch thi đấu',
+    loading: 'Đang tải...',
+    empty: 'Chưa có lịch thi đấu',
+    roundLabel: 'Vòng {round}',
+    matchCount: '{count} trận',
+  },
+
+  // ─────────────────────────────────────────────
+  // PUBLIC RESULTS PAGE
+  // ─────────────────────────────────────────────
+
+  publicResults: {
+    title: '⚽ Kết quả trận đấu',
+    seasonPlaceholder: 'Chọn mùa giải',
+    loadError: 'Không thể tải kết quả',
+    colRound: 'Vòng',
+    colHome: 'Đội nhà',
+    colScore: 'Tỷ số',
+    colAway: 'Đội khách',
+    colStadium: 'Sân',
+    colDate: 'Ngày',
+    colStatus: 'Trạng thái',
+    empty: 'Chưa có kết quả',
+  },
+
+  // ─────────────────────────────────────────────
+  // PUBLIC STANDINGS PAGE
+  // ─────────────────────────────────────────────
+
+  publicStandings: {
+    title: '🏆 Bảng xếp hạng V-League',
+    seasonPlaceholder: 'Chọn mùa giải',
+    loadError: 'Không thể tải bảng xếp hạng',
+    colRank: '#',
+    colTeam: 'Đội',
+    colPlayed: 'Trận',
+    colWon: 'T',
+    colDrawn: 'H',
+    colLost: 'B',
+    colGoalsFor: 'BT',
+    colGoalsAgainst: 'BN',
+    colGoalDiff: 'HS',
+    colPoints: 'Điểm',
+  },
+};
+
+export default vi;

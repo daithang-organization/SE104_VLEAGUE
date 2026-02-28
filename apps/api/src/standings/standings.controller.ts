@@ -246,6 +246,46 @@ export class StandingsController {
       .send(csv);
   }
 
+  // ── Head-to-Head ──────────────────────────────────────────
+
+  @Get('head-to-head')
+  @ApiOperation({ summary: 'Thống kê đối đầu giữa 2 đội' })
+  @ApiQuery({
+    name: 'team1',
+    required: true,
+    type: 'string',
+    description: 'ID đội 1',
+  })
+  @ApiQuery({
+    name: 'team2',
+    required: true,
+    type: 'string',
+    description: 'ID đội 2',
+  })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiOkResponse({ description: 'Kết quả đối đầu' })
+  getHeadToHead(
+    @Query('team1') team1: string,
+    @Query('team2') team2: string,
+    @Query('seasonId') seasonId?: string,
+  ) {
+    return this.standingsService.getHeadToHead(team1, team2, seasonId);
+  }
+
+  // ── Player Individual Stats ─────────────────────────────────
+
+  @Get('player-stats/:playerId')
+  @ApiOperation({ summary: 'Thống kê cá nhân cầu thủ' })
+  @ApiParam({ name: 'playerId', type: 'string', format: 'uuid' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiOkResponse({ description: 'Thống kê cá nhân chi tiết' })
+  getPlayerStats(
+    @Param('playerId') playerId: string,
+    @Query('seasonId') seasonId?: string,
+  ) {
+    return this.standingsService.getPlayerStats(playerId, seasonId);
+  }
+
   // ── Season-specific Standings ─────────────────────────────────
 
   @Get(':seasonId')

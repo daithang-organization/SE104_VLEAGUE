@@ -4,11 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiGetMatches, type Match } from '../../services/matchApi';
 import { apiGetSeasons, type Season } from '../../services/seasonApi';
 
-const { Title } = Typography;
+import { STATUS_MAP } from '../../utils/constants';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-};
+const { Title } = Typography;
 
 export default function PublicResultsPage() {
   const [matches, setMatches] = useState<Match[]>([]);

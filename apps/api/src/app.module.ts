@@ -12,6 +12,7 @@ import { RegistrationModule } from './registration/registration.module';
 import { RegulationModule } from './regulation/regulation.module';
 import { RosterModule } from './roster/roster.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
+import { SearchModule } from './search/search.module';
 import { SeasonModule } from './season/season.module';
 import { StadiumModule } from './stadium/stadium.module';
 import { StandingsModule } from './standings/standings.module';
@@ -67,6 +68,8 @@ import { UsersModule } from './users/users.module';
     RegulationModule,
     UsersModule,
     UploadModule,
+    // v1.2.0 modules
+    SearchModule,
   ],
   providers: [
     // Apply throttler globally

@@ -1,10 +1,4 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -12,12 +6,9 @@ import {
   Collapse,
   Descriptions,
   Flex,
-  Form,
   Input,
-  InputNumber,
   message,
   Modal,
-  Radio,
   Select,
   Space,
   Table,
@@ -28,8 +19,11 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import type { EventFormRow } from '../components';
+import { EventModal, ScoreEditModal } from '../components';
 import {
   apiAddMatchEvent,
   apiGetMatch,
@@ -43,29 +37,11 @@ import {
   type RosterPlayer,
 } from '../services/matchApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
-
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Nháp', color: 'default' },
-  PUBLISHED: { label: 'Đã công bố', color: 'blue' },
-  LOCKED: { label: 'Đã khóa', color: 'orange' },
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-  POSTPONED: { label: 'Hoãn', color: 'red' },
-};
-
-const EVENT_TYPE_MAP: Record<string, { label: string; color: string; icon: string }> = {
-  GOAL: { label: 'Bàn thắng', color: 'green', icon: '⚽' },
-  OWN_GOAL: { label: 'Phản lưới', color: 'red', icon: '⚽🔴' },
-  PENALTY: { label: 'Phạt đền (ghi bàn)', color: 'green', icon: '⚽🎯' },
-  PENALTY_MISS: { label: 'Phạt đền (hỏng)', color: 'orange', icon: '❌🎯' },
-  YELLOW_CARD: { label: 'Thẻ vàng', color: 'gold', icon: '🟨' },
-  RED_CARD: { label: 'Thẻ đỏ', color: 'red', icon: '🟥' },
-  SUBSTITUTION: { label: 'Thay người', color: 'blue', icon: '🔄' },
-};
-
-const CAN_EDIT_ROLES = ['ADMIN', 'REFEREE'];
+import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 
 export default function MatchesPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,16 +57,11 @@ export default function MatchesPage() {
 
   // Score edit
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
-  const [scoreForm] = Form.useForm();
   const [savingScore, setSavingScore] = useState(false);
 
   // Event modal
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
-  const [eventForm] = Form.useForm();
-
-  // Roster state
-  const [selectedTeamSide, setSelectedTeamSide] = useState<'home' | 'away' | null>(null);
   const [homeRoster, setHomeRoster] = useState<RosterPlayer[]>([]);
   const [awayRoster, setAwayRoster] = useState<RosterPlayer[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -111,7 +82,7 @@ export default function MatchesPage() {
       const res = await apiGetMatches(selectedSeasonId, 1, 200);
       setMatches(res.data);
     } catch {
-      message.error('Không thể tải danh sách trận đấu');
+      message.error(t('matches.loadError'));
     } finally {
       setLoading(false);
     }
@@ -188,37 +159,24 @@ export default function MatchesPage() {
       setDetailMatch(data);
       loadRosters(data);
     } catch {
-      message.error('Không thể tải chi tiết trận đấu');
+      message.error(t('matches.detailError'));
     } finally {
       setDetailLoading(false);
     }
   };
 
   // ── Score update ──
-  const openScoreModal = () => {
-    if (!detailMatch) return;
-    scoreForm.setFieldsValue({
-      homeScore: detailMatch.homeScore ?? 0,
-      awayScore: detailMatch.awayScore ?? 0,
-    });
-    setScoreModalOpen(true);
-  };
-
-  const handleSaveScore = async () => {
+  const handleSaveScore = async (homeScore: number, awayScore: number) => {
     if (!detailMatch) return;
     try {
-      const values = await scoreForm.validateFields();
       setSavingScore(true);
-      await apiUpdateMatch(detailMatch.id, {
-        homeScore: values.homeScore,
-        awayScore: values.awayScore,
-      });
-      message.success('Đã cập nhật tỉ số!');
+      await apiUpdateMatch(detailMatch.id, { homeScore, awayScore });
+      message.success(t('matches.scoreUpdated'));
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
       fetchMatches();
     } catch {
-      message.error('Không thể cập nhật tỉ số');
+      message.error(t('matches.scoreUpdateError'));
     } finally {
       setSavingScore(false);
     }
@@ -229,7 +187,9 @@ export default function MatchesPage() {
     if (!detailMatch) return;
     try {
       await apiUpdateMatchStatus(detailMatch.id, newStatus);
-      message.success(`Đã chuyển trạng thái sang ${STATUS_MAP[newStatus]?.label ?? newStatus}`);
+      message.success(
+        t('matches.statusChanged', { status: STATUS_MAP[newStatus]?.label ?? newStatus }),
+      );
       viewDetail(detailMatch.id);
       fetchMatches();
     } catch (err: unknown) {
@@ -238,28 +198,18 @@ export default function MatchesPage() {
         typeof err === 'object' &&
         'response' in err &&
         (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      message.error((msg as string) || 'Không thể cập nhật trạng thái');
+      message.error((msg as string) || t('matches.statusChangeError'));
     }
   };
 
   // ── Add events (batch) ──
-  const handleAddEvent = async () => {
+  const handleAddEvent = async (teamSide: 'home' | 'away', events: EventFormRow[]) => {
     if (!detailMatch) return;
     try {
-      const values = await eventForm.validateFields();
       setSavingEvent(true);
-      const teamId = values.teamSide === 'home' ? detailMatch.homeTeamId : detailMatch.awayTeamId;
-      const events: {
-        type: string;
-        minute: number;
-        playerId?: string;
-        note?: string;
-        goalType?: string;
-        relatedPlayerId?: string;
-      }[] = values.events ?? [];
+      const teamId = teamSide === 'home' ? detailMatch.homeTeamId : detailMatch.awayTeamId;
       if (events.length === 0) {
-        message.warning('Vui lòng thêm ít nhất 1 sự kiện');
-        setSavingEvent(false);
+        message.warning(t('matches.eventWarning'));
         return;
       }
       let successCount = 0;
@@ -277,30 +227,21 @@ export default function MatchesPage() {
           await apiAddMatchEvent(detailMatch.id, payload);
           successCount++;
         } catch {
-          message.error(`Lỗi thêm sự kiện phút ${evt.minute}`);
+          message.error(t('matches.eventError', { minute: evt.minute }));
         }
       }
       if (successCount > 0) {
-        message.success(`Đã thêm ${successCount} sự kiện!`);
+        message.success(t('matches.eventSuccess', { count: successCount }));
         setEventModalOpen(false);
-        eventForm.resetFields();
-        setSelectedTeamSide(null);
         viewDetail(detailMatch.id);
         fetchMatches();
       }
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error('Không thể thêm sự kiện');
+    } catch {
+      message.error(t('matches.eventAddError'));
     } finally {
       setSavingEvent(false);
     }
   };
-
-  const currentRoster = useMemo(() => {
-    if (selectedTeamSide === 'home') return homeRoster;
-    if (selectedTeamSide === 'away') return awayRoster;
-    return [];
-  }, [selectedTeamSide, homeRoster, awayRoster]);
 
   const getStatusActions = (match: Match) => {
     const transitions: Record<string, string[]> = {
@@ -316,13 +257,26 @@ export default function MatchesPage() {
   // ── Per-round table columns ──
   const roundColumns: ColumnsType<Match> = [
     {
-      title: 'Đội nhà',
+      title: t('matches.colHome'),
       key: 'home',
       width: '22%',
-      render: (_, r) => <strong>{r.homeTeam?.name ?? '—'}</strong>,
+      render: (_, r) => (
+        <strong
+          style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
+        >
+          {r.homeTeam?.name ?? '—'}
+          {r.homeTeam?.logoUrl && (
+            <img
+              src={r.homeTeam.logoUrl}
+              alt=""
+              style={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
+          )}
+        </strong>
+      ),
     },
     {
-      title: 'Tỉ số',
+      title: t('matches.colScore'),
       key: 'score',
       width: 100,
       align: 'center',
@@ -336,19 +290,30 @@ export default function MatchesPage() {
         ),
     },
     {
-      title: 'Đội khách',
+      title: t('matches.colAway'),
       key: 'away',
       width: '22%',
-      render: (_, r) => <span>{r.awayTeam?.name ?? '—'}</span>,
+      render: (_, r) => (
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {r.awayTeam?.logoUrl && (
+            <img
+              src={r.awayTeam.logoUrl}
+              alt=""
+              style={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
+          )}
+          {r.awayTeam?.name ?? '—'}
+        </span>
+      ),
     },
     {
-      title: 'Sân',
+      title: t('matches.colStadium'),
       key: 'stadium',
       width: '20%',
       render: (_, r) => <span style={{ color: '#666' }}>{r.stadium?.name ?? '—'}</span>,
     },
     {
-      title: 'Giờ',
+      title: t('matches.colTime'),
       dataIndex: 'kickoffAt',
       width: 130,
       render: (v: string | null) =>
@@ -361,7 +326,7 @@ export default function MatchesPage() {
         ),
     },
     {
-      title: 'Trạng thái',
+      title: t('matches.colStatus'),
       dataIndex: 'status',
       width: 100,
       render: (status: string) => {
@@ -381,7 +346,7 @@ export default function MatchesPage() {
             icon={<EyeOutlined />}
             onClick={() => navigate(`/matches/${r.id}`)}
           >
-            Chi tiết
+            {t('matches.btnDetail')}
           </Button>
           {canEdit && (
             <Button
@@ -390,7 +355,7 @@ export default function MatchesPage() {
               icon={<EditOutlined />}
               onClick={() => viewDetail(r.id)}
             >
-              Sửa
+              {t('matches.btnEdit')}
             </Button>
           )}
         </Space>
@@ -418,13 +383,17 @@ export default function MatchesPage() {
             }}
           />
           <span style={{ fontWeight: 500 }}>
-            Vòng {roundNo}{' '}
+            {t('matches.roundLabel', { round: roundNo })}{' '}
             <Tag color={isLeg2 ? 'volcano' : 'blue'} style={{ marginLeft: 4 }}>
-              {isLeg2 ? 'Lượt về' : 'Lượt đi'}
+              {isLeg2 ? t('common.leg2') : t('common.leg1')}
             </Tag>
           </span>
           <span style={{ color: '#888', fontSize: 13 }}>
-            {roundMatches.length} trận · {finishedCount}/{roundMatches.length} kết thúc
+            {t('matches.matchCount', {
+              count: roundMatches.length,
+              finished: finishedCount,
+              total: roundMatches.length,
+            })}
           </span>
         </Flex>
       ),
@@ -443,7 +412,7 @@ export default function MatchesPage() {
 
   const renderEventTimeline = (events: MatchEvent[]) => {
     if (!events || events.length === 0) {
-      return <Typography.Text type="secondary">Chưa có sự kiện nào</Typography.Text>;
+      return <Typography.Text type="secondary">{t('matches.noEvents')}</Typography.Text>;
     }
     return (
       <Timeline
@@ -478,12 +447,12 @@ export default function MatchesPage() {
         gap={12}
       >
         <Typography.Title level={4} style={{ margin: 0 }}>
-          ⚽ Kết quả trận đấu
+          {t('matches.title')}
         </Typography.Title>
         <Space wrap>
           <Input
             prefix={<SearchOutlined />}
-            placeholder="Tìm đội bóng..."
+            placeholder={t('matches.searchPlaceholder')}
             allowClear
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -493,7 +462,7 @@ export default function MatchesPage() {
             value={selectedSeasonId}
             onChange={setSelectedSeasonId}
             style={{ width: 200 }}
-            placeholder="Mùa giải"
+            placeholder={t('matches.seasonPlaceholder')}
             allowClear
             options={seasons.map((s) => ({
               value: s.id,
@@ -504,7 +473,7 @@ export default function MatchesPage() {
             value={filterStatus}
             onChange={setFilterStatus}
             style={{ width: 140 }}
-            placeholder="Trạng thái"
+            placeholder={t('matches.statusPlaceholder')}
             allowClear
             options={Object.entries(STATUS_MAP).map(([value, { label }]) => ({
               value,
@@ -515,7 +484,7 @@ export default function MatchesPage() {
             value={filterTeam}
             onChange={setFilterTeam}
             style={{ width: 180 }}
-            placeholder="Lọc theo đội"
+            placeholder={t('matches.teamFilterPlaceholder')}
             allowClear
             showSearch
             optionFilterProp="label"
@@ -532,10 +501,10 @@ export default function MatchesPage() {
       </Flex>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Đang tải...</div>
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>{t('common.loading')}</div>
       ) : filteredAndGrouped.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-          {searchText ? `Không tìm thấy trận đấu cho "${searchText}"` : 'Chưa có trận đấu nào'}
+          {searchText ? t('matches.noSearchResult', { query: searchText }) : t('matches.noMatches')}
         </div>
       ) : (
         <Collapse
@@ -547,7 +516,7 @@ export default function MatchesPage() {
 
       {/* ── Match Detail Modal ── */}
       <Modal
-        title="Chi tiết trận đấu"
+        title={t('matches.detailModalTitle')}
         open={!!detailMatch}
         onCancel={() => {
           setDetailMatch(null);
@@ -689,10 +658,21 @@ export default function MatchesPage() {
                 >
                   <Flex justify="center" align="flex-start" gap={24}>
                     <div style={{ textAlign: 'center', minWidth: 150, flex: 1 }}>
+                      {detailMatch.homeTeam?.logoUrl && (
+                        <div style={{ marginBottom: 4 }}>
+                          <img
+                            src={detailMatch.homeTeam.logoUrl}
+                            alt=""
+                            style={{ width: 40, height: 40, objectFit: 'contain' }}
+                          />
+                        </div>
+                      )}
                       <Typography.Text strong style={{ fontSize: 16 }}>
                         {detailMatch.homeTeam?.name ?? '—'}
                       </Typography.Text>
-                      <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>Đội nhà</div>
+                      <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>
+                        {t('matches.homeTeamLabel')}
+                      </div>
                       {renderScorers(homeGoals, 'center')}
                       {renderCards(homeCards, 'center')}
                     </div>
@@ -708,10 +688,21 @@ export default function MatchesPage() {
                       </Tag>
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 150, flex: 1 }}>
+                      {detailMatch.awayTeam?.logoUrl && (
+                        <div style={{ marginBottom: 4 }}>
+                          <img
+                            src={detailMatch.awayTeam.logoUrl}
+                            alt=""
+                            style={{ width: 40, height: 40, objectFit: 'contain' }}
+                          />
+                        </div>
+                      )}
                       <Typography.Text strong style={{ fontSize: 16 }}>
                         {detailMatch.awayTeam?.name ?? '—'}
                       </Typography.Text>
-                      <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>Đội khách</div>
+                      <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>
+                        {t('matches.awayTeamLabel')}
+                      </div>
                       {renderScorers(awayGoals, 'center')}
                       {renderCards(awayCards, 'center')}
                     </div>
@@ -721,12 +712,16 @@ export default function MatchesPage() {
             })()}
 
             <Descriptions bordered column={2} size="small" style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="Vòng">V{detailMatch.roundNo}</Descriptions.Item>
-              <Descriptions.Item label="Lượt">
-                {detailMatch.leg === 1 ? 'Lượt đi' : 'Lượt về'}
+              <Descriptions.Item label={t('matches.roundDescLabel')}>
+                V{detailMatch.roundNo}
               </Descriptions.Item>
-              <Descriptions.Item label="Sân">{detailMatch.stadium?.name ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Giờ">
+              <Descriptions.Item label={t('matches.legDescLabel')}>
+                {detailMatch.leg === 1 ? t('common.leg1') : t('common.leg2')}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('matches.stadiumDescLabel')}>
+                {detailMatch.stadium?.name ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('matches.timeDescLabel')}>
                 {detailMatch.kickoffAt
                   ? dayjs(detailMatch.kickoffAt).format('DD/MM/YYYY HH:mm')
                   : '—'}
@@ -736,14 +731,18 @@ export default function MatchesPage() {
             {/* Admin Actions */}
             {canEdit && (
               <Flex gap={8} style={{ marginBottom: 16 }} wrap="wrap">
-                <Button type="primary" icon={<EditOutlined />} onClick={openScoreModal}>
-                  Cập nhật tỉ số
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => setScoreModalOpen(true)}
+                >
+                  {t('matches.scoreUpdateBtn')}
                 </Button>
                 {getStatusActions(detailMatch).map((nextStatus) => {
                   const s = STATUS_MAP[nextStatus];
                   return (
                     <Button key={nextStatus} onClick={() => handleStatusChange(nextStatus)}>
-                      Chuyển → {s?.label ?? nextStatus}
+                      {t('matches.transitionBtn', { status: s?.label ?? nextStatus })}
                     </Button>
                   );
                 })}
@@ -754,19 +753,15 @@ export default function MatchesPage() {
             <div style={{ marginTop: 8 }}>
               <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
                 <Typography.Title level={5} style={{ margin: 0 }}>
-                  Sự kiện trận đấu
+                  {t('matches.eventTitle')}
                 </Typography.Title>
                 {canEdit && (
                   <Button
                     size="small"
                     icon={<PlusOutlined />}
-                    onClick={() => {
-                      eventForm.resetFields();
-                      setSelectedTeamSide(null);
-                      setEventModalOpen(true);
-                    }}
+                    onClick={() => setEventModalOpen(true)}
                   >
-                    Thêm sự kiện
+                    {t('matches.addEventBtn')}
                   </Button>
                 )}
               </Flex>
@@ -777,253 +772,33 @@ export default function MatchesPage() {
       </Modal>
 
       {/* ── Score Edit Modal ── */}
-      <Modal
-        title="Cập nhật tỉ số"
-        open={scoreModalOpen}
-        onCancel={() => setScoreModalOpen(false)}
-        onOk={handleSaveScore}
-        confirmLoading={savingScore}
-        okText="Lưu"
-        cancelText="Hủy"
-      >
-        {detailMatch && (
-          <Form form={scoreForm} layout="vertical" style={{ marginTop: 16 }}>
-            <Flex gap={16} align="flex-end">
-              <Form.Item
-                name="homeScore"
-                label={detailMatch.homeTeam?.name ?? 'Đội nhà'}
-                rules={[{ required: true, message: 'Nhập số bàn' }]}
-                style={{ flex: 1 }}
-              >
-                <InputNumber min={0} max={99} style={{ width: '100%' }} size="large" />
-              </Form.Item>
-              <Typography.Title level={3} style={{ margin: '0 0 24px 0' }}>
-                :
-              </Typography.Title>
-              <Form.Item
-                name="awayScore"
-                label={detailMatch.awayTeam?.name ?? 'Đội khách'}
-                rules={[{ required: true, message: 'Nhập số bàn' }]}
-                style={{ flex: 1 }}
-              >
-                <InputNumber min={0} max={99} style={{ width: '100%' }} size="large" />
-              </Form.Item>
-            </Flex>
-          </Form>
-        )}
-      </Modal>
+      {detailMatch && (
+        <ScoreEditModal
+          open={scoreModalOpen}
+          onCancel={() => setScoreModalOpen(false)}
+          onOk={handleSaveScore}
+          loading={savingScore}
+          homeTeamName={detailMatch.homeTeam?.name ?? t('matches.homeTeamLabel')}
+          awayTeamName={detailMatch.awayTeam?.name ?? t('matches.awayTeamLabel')}
+          initialHomeScore={detailMatch.homeScore}
+          initialAwayScore={detailMatch.awayScore}
+        />
+      )}
 
       {/* ── Add Event Modal (Batch) ── */}
-      <Modal
-        title="Thêm sự kiện trận đấu"
-        open={eventModalOpen}
-        onCancel={() => {
-          setEventModalOpen(false);
-          setSelectedTeamSide(null);
-        }}
-        onOk={handleAddEvent}
-        confirmLoading={savingEvent}
-        okText={`Thêm tất cả`}
-        cancelText="Hủy"
-        destroyOnClose
-        width={680}
-      >
-        <Form form={eventForm} layout="vertical" style={{ marginTop: 16 }}>
-          {/* Team selector — applies to all events */}
-          <Form.Item
-            name="teamSide"
-            label="Đội"
-            rules={[{ required: true, message: 'Vui lòng chọn đội' }]}
-          >
-            <Radio.Group
-              onChange={(e) => {
-                setSelectedTeamSide(e.target.value);
-                // Clear all player selections when team changes
-                const events = eventForm.getFieldValue('events') ?? [];
-                eventForm.setFieldsValue({
-                  events: events.map((evt: Record<string, unknown>) => ({
-                    ...evt,
-                    playerId: undefined,
-                  })),
-                });
-              }}
-              optionType="button"
-              buttonStyle="solid"
-              style={{ width: '100%' }}
-            >
-              <Radio.Button value="home" style={{ width: '50%', textAlign: 'center' }}>
-                🏠 {detailMatch?.homeTeam?.name ?? 'Đội nhà'}
-              </Radio.Button>
-              <Radio.Button value="away" style={{ width: '50%', textAlign: 'center' }}>
-                ✈️ {detailMatch?.awayTeam?.name ?? 'Đội khách'}
-              </Radio.Button>
-            </Radio.Group>
-          </Form.Item>
-
-          {/* Dynamic event rows */}
-          <Form.List name="events" initialValue={[{}]}>
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }, idx) => (
-                  <div
-                    key={key}
-                    style={{
-                      background: idx % 2 === 0 ? '#fafafa' : '#f0f0f0',
-                      padding: '12px 12px 4px',
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      position: 'relative',
-                    }}
-                  >
-                    {/* Row header */}
-                    <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-                      <Typography.Text strong style={{ fontSize: 13, color: '#666' }}>
-                        Sự kiện {idx + 1}
-                      </Typography.Text>
-                      {fields.length > 1 && (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                          onClick={() => remove(name)}
-                        />
-                      )}
-                    </Flex>
-
-                    {/* Row fields: Type + Minute on same line */}
-                    <Flex gap={8}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'type']}
-                        rules={[{ required: true, message: 'Chọn loại' }]}
-                        style={{ flex: 2, marginBottom: 8 }}
-                      >
-                        <Select placeholder="Loại sự kiện" size="middle">
-                          {Object.entries(EVENT_TYPE_MAP).map(([value, { label, icon }]) => (
-                            <Select.Option key={value} value={value}>
-                              {icon} {label}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'minute']}
-                        rules={[{ required: true, message: 'Phút' }]}
-                        style={{ flex: 1, marginBottom: 8 }}
-                      >
-                        <InputNumber
-                          min={0}
-                          max={150}
-                          style={{ width: '100%' }}
-                          placeholder="Phút"
-                        />
-                      </Form.Item>
-                    </Flex>
-
-                    {/* Player + Note on same line */}
-                    <Flex gap={8}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'playerId']}
-                        style={{ flex: 2, marginBottom: 8 }}
-                      >
-                        <Select
-                          placeholder={selectedTeamSide ? 'Chọn cầu thủ' : 'Chọn đội trước'}
-                          disabled={!selectedTeamSide || rosterLoading}
-                          loading={rosterLoading}
-                          showSearch
-                          optionFilterProp="label"
-                          allowClear
-                          options={currentRoster.map((p) => ({
-                            value: p.playerId,
-                            label: `#${p.jerseyNumber ?? '?'} ${p.fullName} (${p.position})`,
-                          }))}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'note']}
-                        style={{ flex: 1, marginBottom: 8 }}
-                      >
-                        <Input placeholder="Ghi chú" />
-                      </Form.Item>
-                    </Flex>
-
-                    {/* Goal Type + Related Player (conditional) */}
-                    <Form.Item
-                      noStyle
-                      shouldUpdate={(prev, cur) => {
-                        const prevType = prev?.events?.[name]?.type;
-                        const curType = cur?.events?.[name]?.type;
-                        return prevType !== curType;
-                      }}
-                    >
-                      {() => {
-                        const evtType = eventForm.getFieldValue(['events', name, 'type']);
-                        const showGoalType = ['GOAL', 'PENALTY'].includes(evtType);
-                        const showRelated = ['GOAL', 'SUBSTITUTION'].includes(evtType);
-                        if (!showGoalType && !showRelated) return null;
-                        return (
-                          <Flex gap={8}>
-                            {showGoalType && (
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'goalType']}
-                                style={{ flex: 1, marginBottom: 8 }}
-                              >
-                                <Select placeholder="Loại bàn thắng" allowClear>
-                                  <Select.Option value="NORMAL">Bình thường</Select.Option>
-                                  <Select.Option value="HEADER">Đánh đầu</Select.Option>
-                                  <Select.Option value="FREE_KICK">Sút phạt</Select.Option>
-                                  <Select.Option value="PENALTY_KICK">Penalty</Select.Option>
-                                  <Select.Option value="LONG_RANGE">Sút xa</Select.Option>
-                                </Select>
-                              </Form.Item>
-                            )}
-                            {showRelated && (
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'relatedPlayerId']}
-                                style={{ flex: 1, marginBottom: 8 }}
-                              >
-                                <Select
-                                  placeholder={evtType === 'GOAL' ? 'Kiến tạo' : 'Cầu thủ bị thay'}
-                                  disabled={!selectedTeamSide || rosterLoading}
-                                  loading={rosterLoading}
-                                  showSearch
-                                  optionFilterProp="label"
-                                  allowClear
-                                  options={currentRoster.map((p) => ({
-                                    value: p.playerId,
-                                    label: `#${p.jerseyNumber ?? '?'} ${p.fullName}`,
-                                  }))}
-                                />
-                              </Form.Item>
-                            )}
-                          </Flex>
-                        );
-                      }}
-                    </Form.Item>
-                  </div>
-                ))}
-
-                {/* Add row button */}
-                <Button
-                  type="dashed"
-                  onClick={() => add({})}
-                  block
-                  icon={<PlusOutlined />}
-                  style={{ marginTop: 4 }}
-                >
-                  Thêm sự kiện
-                </Button>
-              </>
-            )}
-          </Form.List>
-        </Form>
-      </Modal>
+      {detailMatch && (
+        <EventModal
+          open={eventModalOpen}
+          onCancel={() => setEventModalOpen(false)}
+          onSubmit={handleAddEvent}
+          loading={savingEvent}
+          homeTeamName={detailMatch.homeTeam?.name ?? t('matches.homeTeamLabel')}
+          awayTeamName={detailMatch.awayTeam?.name ?? t('matches.awayTeamLabel')}
+          homeRoster={homeRoster}
+          awayRoster={awayRoster}
+          rosterLoading={rosterLoading}
+        />
+      )}
     </Card>
   );
 }

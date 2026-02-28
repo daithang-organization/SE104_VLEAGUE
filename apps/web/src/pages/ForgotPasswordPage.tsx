@@ -1,9 +1,11 @@
 import { Button, Card, Form, Input, Typography, message } from 'antd';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiForgotPassword } from '../services/authApi';
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -11,12 +13,12 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       await apiForgotPassword(values.email);
-      message.success('Nếu email tồn tại, bạn sẽ nhận được mã OTP.');
+      message.success(t('forgotPassword.success'));
       nav('/reset-password', { state: { email: values.email } });
     } catch (err: unknown) {
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Có lỗi xảy ra';
+        t('forgotPassword.error');
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -27,28 +29,28 @@ export default function ForgotPasswordPage() {
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
       <Card style={{ width: 400 }}>
         <Typography.Title level={4} style={{ marginTop: 0, textAlign: 'center' }}>
-          Quên mật khẩu
+          {t('forgotPassword.title')}
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ textAlign: 'center' }}>
-          Nhập email để nhận mã OTP đặt lại mật khẩu
+          {t('forgotPassword.subtitle')}
         </Typography.Paragraph>
         <Form layout="vertical" onFinish={onFinish}>
           <Form.Item
             name="email"
-            label="Email"
+            label={t('forgotPassword.emailLabel')}
             rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
+              { required: true, message: t('forgotPassword.emailRequired') },
+              { type: 'email', message: t('forgotPassword.emailInvalid') },
             ]}
           >
-            <Input placeholder="email@example.com" />
+            <Input placeholder={t('forgotPassword.emailPlaceholder')} />
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>
-            Gửi mã OTP
+            {t('forgotPassword.submitBtn')}
           </Button>
         </Form>
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <Link to="/login">Quay lại đăng nhập</Link>
+          <Link to="/login">{t('forgotPassword.backToLogin')}</Link>
         </div>
       </Card>
     </div>

@@ -15,6 +15,7 @@
 - [🗄️ Database Design](#️-database-design)
 - [🔄 Data Flow](#-data-flow)
 - [🔐 Security](#-security)
+- [🧪 Testing Architecture](#-testing-architecture)
 - [📦 Deployment](#-deployment)
 
 ---
@@ -624,6 +625,58 @@ apps/web/src/
 | **XSS**              | React auto-escaping                |
 | **CORS**             | NestJS CORS middleware             |
 | **Environment**      | .env files, không commit secrets   |
+
+---
+
+## 🧪 Testing Architecture
+
+### Test Stack
+
+| Layer        | Framework                       | Type                      | Location                      |
+| ------------ | ------------------------------- | ------------------------- | ----------------------------- |
+| **Backend**  | Jest + ts-jest                  | Unit/Service specs        | `apps/api/src/**/*.spec.ts`   |
+| **Backend**  | Jest + Supertest                | E2E specs                 | `apps/api/test/*.e2e-spec.ts` |
+| **Frontend** | Vitest + @testing-library/react | Service + Component tests | `apps/web/src/**/__tests__/`  |
+
+### Test Coverage
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      TEST ARCHITECTURE                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  BACKEND (Jest) — 23 suites, 233+ tests                        │
+│  ┌────────────────┐ ┌──────────────────┐ ┌────────────────┐    │
+│  │ Service Specs  │ │ Controller Specs │ │   E2E Specs    │    │
+│  │  10 files      │ │   11 files       │ │   8+ files     │    │
+│  │  ~150 tests    │ │   ~64 tests      │ │   ~19 tests    │    │
+│  └────────────────┘ └──────────────────┘ └────────────────┘    │
+│                                                                  │
+│  FRONTEND (Vitest) — 24 suites, 143+ tests                     │
+│  ┌────────────────────────┐ ┌──────────────────────────────┐   │
+│  │  API Service Tests     │ │  Page Component Tests        │   │
+│  │  12 files, 83 tests    │ │  10 files, 60 tests          │   │
+│  └────────────────────────┘ └──────────────────────────────┘   │
+│                                                                  │
+│  Test Setup:                                                     │
+│  • vitest.setup.ts — ResizeObserver + matchMedia polyfills      │
+│  • vi.hoisted() pattern for mock hoisting                       │
+│  • Ant Design component compatibility                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Running Tests
+
+```bash
+# All tests
+cd apps/api && pnpm test          # Backend unit tests
+cd apps/api && pnpm test:e2e      # Backend E2E tests
+cd apps/web && pnpm test          # Frontend tests (Vitest)
+
+# CI runs both automatically
+pnpm test                          # Root-level (all workspaces)
+```
 
 ---
 

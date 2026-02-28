@@ -1,11 +1,13 @@
 import { FacebookOutlined, GoogleOutlined } from '@ant-design/icons';
 import { Button, Card, Checkbox, Divider, Form, Input, message, Space, Typography } from 'antd';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getFacebookAuthUrl, getGoogleAuthUrl } from '../services/authApi';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const location = useLocation();
   const { login, isAuthed } = useAuth();
@@ -22,12 +24,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(values.email, values.password, values.rememberMe);
-      message.success('Đăng nhập thành công');
+      message.success(t('login.success'));
       nav(from, { replace: true });
     } catch (err: unknown) {
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Đăng nhập thất bại';
+        t('login.error');
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -46,48 +48,44 @@ export default function LoginPage() {
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
       <Card style={{ width: 380 }}>
         <Typography.Title level={4} style={{ marginTop: 0, textAlign: 'center' }}>
-          VLeague Admin
+          {t('login.title')}
         </Typography.Title>
         <Form layout="vertical" onFinish={onFinish} initialValues={{ rememberMe: false }}>
           <Form.Item
             name="email"
-            label="Email"
+            label={t('login.emailLabel')}
             rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
+              { required: true, message: t('login.emailRequired') },
+              { type: 'email', message: t('login.emailInvalid') },
             ]}
           >
-            <Input placeholder="admin@vleague.local" />
+            <Input placeholder={t('login.emailPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="password"
-            label="Mật khẩu"
-            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
+            label={t('login.passwordLabel')}
+            rules={[{ required: true, message: t('login.passwordRequired') }]}
           >
             <Input.Password placeholder="••••••••" />
           </Form.Item>
           <Form.Item style={{ marginBottom: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Form.Item name="rememberMe" valuePropName="checked" noStyle>
-                <Checkbox>Ghi nhớ đăng nhập</Checkbox>
+                <Checkbox>{t('login.rememberMe')}</Checkbox>
               </Form.Item>
-              <Link to="/forgot-password">Quên mật khẩu?</Link>
+              <Link to="/forgot-password">{t('login.forgotPassword')}</Link>
             </div>
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>
-            Đăng nhập
+            {t('login.submitBtn')}
           </Button>
         </Form>
 
-        <Divider plain>hoặc</Divider>
+        <Divider plain>{t('login.divider')}</Divider>
 
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Button
-            icon={<GoogleOutlined />}
-            block
-            onClick={handleGoogleLogin}
-          >
-            Đăng nhập với Google
+          <Button icon={<GoogleOutlined />} block onClick={handleGoogleLogin}>
+            {t('login.googleBtn')}
           </Button>
           <Button
             icon={<FacebookOutlined />}
@@ -95,16 +93,16 @@ export default function LoginPage() {
             onClick={handleFacebookLogin}
             style={{ backgroundColor: '#1877f2', borderColor: '#1877f2', color: 'white' }}
           >
-            Đăng nhập với Facebook
+            {t('login.facebookBtn')}
           </Button>
         </Space>
 
         <div style={{ marginTop: 16, textAlign: 'center' }}>
           <Space direction="vertical">
             <span>
-              Chưa có tài khoản? <Link to="/register">Đăng ký</Link>
+              {t('login.noAccount')} <Link to="/register">{t('login.registerLink')}</Link>
             </span>
-            <Link to="/verify-email">Xác thực email</Link>
+            <Link to="/verify-email">{t('login.verifyEmailLink')}</Link>
           </Space>
         </div>
       </Card>

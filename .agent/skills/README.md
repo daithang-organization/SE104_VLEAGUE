@@ -5,28 +5,33 @@ This directory contains specialized agent skills for working with the SE104_VLEA
 ## Available Skills
 
 ### 🔧 [NestJS + Prisma Development](./nestjs-prisma-development/SKILL.md)
+
 Guide for developing backend features using NestJS framework with Prisma ORM.
 
 **Use this skill when**:
+
 - Creating new API modules, controllers, or services
 - Working with Prisma schema and database models
 - Writing DTOs and implementing validation
 - Implementing business logic in services
-- Understanding NestJS patterns and best practices
+- Writing backend unit tests (service/controller specs)
 
 **Key topics**:
+
 - Module structure and organization
 - Controller and service patterns
 - Prisma schema conventions
 - Error handling
-- Unit testing with Jest
+- Unit testing with Jest (23 suites, 233+ tests)
 
 ---
 
 ### 🗄️ [Database Management](./database-management/SKILL.md)
+
 Guide for managing PostgreSQL database using Prisma migrations and seeding.
 
 **Use this skill when**:
+
 - Creating or modifying database schema
 - Running migrations
 - Seeding data
@@ -34,6 +39,7 @@ Guide for managing PostgreSQL database using Prisma migrations and seeding.
 - Managing schema evolution
 
 **Key topics**:
+
 - Prisma migration workflow
 - Schema development patterns
 - Database seeding
@@ -43,28 +49,35 @@ Guide for managing PostgreSQL database using Prisma migrations and seeding.
 ---
 
 ### ⚛️ [React + Ant Design Frontend](./react-antd-frontend/SKILL.md)
+
 Guide for developing frontend features using React, TypeScript, Vite, and Ant Design.
 
 **Use this skill when**:
+
 - Creating new pages or components
 - Integrating with backend APIs
 - Using Ant Design components
 - Implementing forms and tables
 - Managing component state
+- Writing frontend tests with Vitest
 
 **Key topics**:
+
 - Component patterns and structure
 - API service layer
 - TypeScript types and interfaces
 - Ant Design component usage
 - Routing with React Router
+- Frontend testing with Vitest + @testing-library/react
 
 ---
 
 ### 🐳 [Docker & Environment Setup](./docker-environment-setup/SKILL.md)
+
 Guide for Docker infrastructure, environment configuration, and local development setup.
 
 **Use this skill when**:
+
 - Setting up local development environment
 - Working with Docker Compose
 - Configuring environment variables
@@ -72,6 +85,7 @@ Guide for Docker infrastructure, environment configuration, and local developmen
 - Understanding port configurations
 
 **Key topics**:
+
 - Docker Compose workflows
 - Environment variable management
 - Local development setup
@@ -81,17 +95,22 @@ Guide for Docker infrastructure, environment configuration, and local developmen
 ---
 
 ### ✅ [Testing & CI/CD](./testing-cicd/SKILL.md)
+
 Guide for running tests, understanding CI pipelines, and following development workflows.
 
 **Use this skill when**:
-- Writing or running tests
+
+- Writing or running tests (backend Jest or frontend Vitest)
 - Understanding CI/CD pipeline
 - Following Conventional Commits
 - Troubleshooting CI failures
 - Understanding branch protection rules
 
 **Key topics**:
-- Jest unit and E2E testing
+
+- Jest unit and E2E testing (API — 23 suites, 233+ tests)
+- Vitest + @testing-library/react (Web — 24 suites, 143+ tests)
+- Frontend test patterns (`vi.hoisted()`, mocking, Ant Design polyfills)
 - ESLint and Prettier
 - GitHub Actions workflow
 - Conventional Commits format
@@ -109,6 +128,7 @@ Guide for running tests, understanding CI pipelines, and following development w
 ## Project Quick Reference
 
 ### Key Technologies
+
 - **Backend**: NestJS 11, Prisma 7, PostgreSQL, TypeScript
 - **Frontend**: React 19, Vite 7, Ant Design 6, TypeScript
 - **Infrastructure**: Docker, pnpm workspaces
@@ -157,11 +177,11 @@ SE104_VLEAGUE/
 
 ### Ports
 
-| Service    | Port | URL                     |
-|------------|------|-------------------------|
-| PostgreSQL | 5432 | localhost:5432          |
-| API        | 8080 | http://localhost:8080   |
-| Web        | 5173 | http://localhost:5173   |
+| Service    | Port | URL                   |
+| ---------- | ---- | --------------------- |
+| PostgreSQL | 5432 | localhost:5432        |
+| API        | 8080 | http://localhost:8080 |
+| Web        | 5173 | http://localhost:5173 |
 
 ## Need Help?
 

@@ -6,9 +6,19 @@ describe('StandingsService', () => {
   let service: StandingsService;
   let prisma: PrismaService;
 
-  const mockTeams = [
-    { id: 'team-1', name: 'Hà Nội FC', status: 'ACTIVE' },
-    { id: 'team-2', name: 'Viettel FC', status: 'ACTIVE' },
+  const mockSeasonTeams = [
+    {
+      seasonId: 'season-1',
+      teamId: 'team-1',
+      status: 'APPROVED',
+      team: { id: 'team-1', name: 'Hà Nội FC' },
+    },
+    {
+      seasonId: 'season-1',
+      teamId: 'team-2',
+      status: 'APPROVED',
+      team: { id: 'team-2', name: 'Viettel FC' },
+    },
   ];
 
   const mockMatches = [
@@ -29,6 +39,9 @@ describe('StandingsService', () => {
           useValue: {
             season: {
               findFirst: jest.fn(),
+            },
+            seasonTeam: {
+              findMany: jest.fn(),
             },
             team: {
               findMany: jest.fn(),
@@ -60,7 +73,9 @@ describe('StandingsService', () => {
         year: 2024,
         status: 'IN_PROGRESS',
       } as any);
-      jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(mockSeasonTeams as any);
       jest
         .spyOn(prisma.match, 'findMany')
         .mockResolvedValue(mockMatches as any);
@@ -94,7 +109,9 @@ describe('StandingsService', () => {
         id: 'season-1',
         status: 'IN_PROGRESS',
       } as any);
-      jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(mockSeasonTeams as any);
       jest.spyOn(prisma.match, 'findMany').mockResolvedValue(drawMatch as any);
 
       const result = await service.getStandings();
@@ -118,7 +135,9 @@ describe('StandingsService', () => {
       jest
         .spyOn(prisma.season, 'findFirst')
         .mockResolvedValue({ id: 's1' } as any);
-      jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(mockSeasonTeams as any);
       jest
         .spyOn(prisma.match, 'findMany')
         .mockResolvedValue(multiMatches as any);

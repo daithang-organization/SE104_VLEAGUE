@@ -4,15 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiGetSchedule, type ScheduleMatch } from '../../services/scheduleApi';
 import { apiGetSeasons, type Season } from '../../services/seasonApi';
 
-const { Title, Text } = Typography;
+import { PUBLIC_STATUS_MAP as STATUS_MAP } from '../../utils/constants';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Nháp', color: 'default' },
-  PUBLISHED: { label: 'Sắp diễn ra', color: 'blue' },
-  LOCKED: { label: 'Đang diễn ra', color: 'orange' },
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-  POSTPONED: { label: 'Hoãn', color: 'red' },
-};
+const { Title, Text } = Typography;
 
 export default function PublicSchedulePage() {
   const [matches, setMatches] = useState<ScheduleMatch[]>([]);

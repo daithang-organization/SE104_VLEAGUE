@@ -15,7 +15,8 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   apiCreateUser,
   apiDeleteUser,
@@ -25,20 +26,22 @@ import {
   type User,
 } from '../services/userApi';
 
-const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
-  ADMIN: { label: 'Admin', color: 'red' },
-  TEAM_MANAGER: { label: 'Quản lý đội', color: 'blue' },
-  REFEREE: { label: 'Trọng tài', color: 'green' },
-  SUPERVISOR: { label: 'Giám sát', color: 'orange' },
-  PUBLIC: { label: 'Công khai', color: 'default' },
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN: 'red',
+  TEAM_MANAGER: 'blue',
+  REFEREE: 'green',
+  SUPERVISOR: 'orange',
+  PUBLIC: 'default',
 };
 
-const ROLE_OPTIONS = Object.entries(ROLE_CONFIG).map(([value, { label }]) => ({
-  value,
-  label,
-}));
+const ROLE_KEYS = ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'] as const;
 
 export default function UsersPage() {
+  const { t } = useTranslation();
+  const roleOptions = useMemo(
+    () => ROLE_KEYS.map((k) => ({ value: k, label: t(`role.${k}`) })),
+    [t],
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -60,7 +63,7 @@ export default function UsersPage() {
       const data = await apiGetUsers();
       setUsers(data);
     } catch {
-      message.error('Không thể tải danh sách người dùng');
+      message.error(t('users.loadError'));
     } finally {
       setLoading(false);
     }
@@ -75,14 +78,14 @@ export default function UsersPage() {
     setCreating(true);
     try {
       await apiCreateUser(values);
-      message.success('Tạo người dùng thành công');
+      message.success(t('users.createSuccess'));
       setCreateOpen(false);
       createForm.resetFields();
       fetchUsers();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Tạo người dùng thất bại';
+        t('users.createError');
       message.error(msg);
     } finally {
       setCreating(false);
@@ -101,11 +104,11 @@ export default function UsersPage() {
     setUpdating(true);
     try {
       await apiUpdateUserRole(editingUser.id, values.role);
-      message.success('Cập nhật vai trò thành công');
+      message.success(t('users.roleUpdateSuccess'));
       setEditOpen(false);
       fetchUsers();
     } catch {
-      message.error('Cập nhật vai trò thất bại');
+      message.error(t('users.roleUpdateError'));
     } finally {
       setUpdating(false);
     }
@@ -115,10 +118,10 @@ export default function UsersPage() {
   const handleDelete = async (id: string) => {
     try {
       await apiDeleteUser(id);
-      message.success('Xóa người dùng thành công');
+      message.success(t('users.deleteSuccess'));
       fetchUsers();
     } catch {
-      message.error('Xóa người dùng thất bại');
+      message.error(t('users.deleteError'));
     }
   };
 
@@ -130,35 +133,35 @@ export default function UsersPage() {
 
   const columns: ColumnsType<User> = [
     {
-      title: 'Email',
+      title: t('users.colEmail'),
       dataIndex: 'email',
       sorter: (a, b) => a.email.localeCompare(b.email),
     },
     {
-      title: 'Tên',
+      title: t('users.colName'),
       dataIndex: 'name',
       render: (v: string | null) => v || '—',
     },
     {
-      title: 'Vai trò',
+      title: t('users.colRole'),
       dataIndex: 'role',
       width: 140,
-      filters: ROLE_OPTIONS.map((r) => ({ text: r.label, value: r.value })),
+      filters: roleOptions.map((r) => ({ text: r.label, value: r.value })),
       onFilter: (value, record) => record.role === value,
       render: (role: string) => {
-        const cfg = ROLE_CONFIG[role] || { label: role, color: 'default' };
-        return <Tag color={cfg.color}>{cfg.label}</Tag>;
+        const color = ROLE_COLORS[role] || 'default';
+        return <Tag color={color}>{t(`role.${role}`)}</Tag>;
       },
     },
     {
-      title: 'Email xác thực',
+      title: t('users.colEmailVerified'),
       dataIndex: 'emailVerified',
       width: 130,
       align: 'center',
       render: (v: boolean) => (v ? <Tag color="success">✓</Tag> : <Tag color="error">✗</Tag>),
     },
     {
-      title: 'OAuth',
+      title: t('users.colOAuth'),
       key: 'oauth',
       width: 100,
       align: 'center',
@@ -171,25 +174,25 @@ export default function UsersPage() {
       ),
     },
     {
-      title: 'Ngày tạo',
+      title: t('users.colCreatedAt'),
       dataIndex: 'createdAt',
       width: 130,
       render: (v: string) => dayjs(v).format('DD/MM/YYYY'),
       sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     {
-      title: 'Hành động',
+      title: t('users.colActions'),
       key: 'actions',
       width: 120,
       render: (_, record) => (
         <Space>
           <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
           <Popconfirm
-            title="Xóa người dùng?"
-            description={`Bạn có chắc muốn xóa "${record.email}"?`}
+            title={t('users.deleteConfirmTitle')}
+            description={t('users.deleteConfirmDesc', { email: record.email })}
             onConfirm={() => handleDelete(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
+            okText={t('users.deleteOk')}
+            cancelText={t('users.deleteCancel')}
           >
             <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -203,11 +206,11 @@ export default function UsersPage() {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
           <Typography.Title level={4} style={{ margin: 0 }}>
-            Quản lý người dùng
+            {t('users.title')}
           </Typography.Title>
           <Space>
             <Input
-              placeholder="Tìm kiếm email, tên..."
+              placeholder={t('users.searchPlaceholder')}
               prefix={<SearchOutlined />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -215,7 +218,7 @@ export default function UsersPage() {
               style={{ width: 260 }}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-              Tạo người dùng
+              {t('users.createBtn')}
             </Button>
           </Space>
         </div>
@@ -225,14 +228,18 @@ export default function UsersPage() {
           dataSource={filteredUsers}
           rowKey="id"
           loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (t) => `Tổng: ${t}` }}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => t('users.totalCount', { total }),
+          }}
           size="middle"
         />
       </Card>
 
       {/* Create User Modal */}
       <Modal
-        title="Tạo người dùng mới"
+        title={t('users.createModalTitle')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
@@ -240,39 +247,39 @@ export default function UsersPage() {
         <Form form={createForm} layout="vertical" onFinish={handleCreate}>
           <Form.Item
             name="email"
-            label="Email"
+            label={t('users.formEmail')}
             rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
+              { required: true, message: t('users.formEmailRequired') },
+              { type: 'email', message: t('users.formEmailInvalid') },
             ]}
           >
-            <Input placeholder="user@vleague.local" />
+            <Input placeholder={t('users.formEmailPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="password"
-            label="Mật khẩu"
+            label={t('users.formPassword')}
             rules={[
-              { required: true, message: 'Vui lòng nhập mật khẩu' },
-              { min: 6, message: 'Mật khẩu tối thiểu 6 ký tự' },
+              { required: true, message: t('users.formPasswordRequired') },
+              { min: 6, message: t('users.formPasswordMin') },
             ]}
           >
-            <Input.Password placeholder="Nhập mật khẩu" />
+            <Input.Password placeholder={t('users.formPasswordPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="role"
-            label="Vai trò"
-            rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
+            label={t('users.formRole')}
+            rules={[{ required: true, message: t('users.formRoleRequired') }]}
           >
-            <Select options={ROLE_OPTIONS} placeholder="Chọn vai trò" />
+            <Select options={roleOptions} placeholder={t('users.formRolePlaceholder')} />
           </Form.Item>
-          <Form.Item name="name" label="Tên (tùy chọn)">
-            <Input placeholder="Nguyễn Văn A" />
+          <Form.Item name="name" label={t('users.formName')}>
+            <Input placeholder={t('users.formNamePlaceholder')} />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setCreateOpen(false)}>Hủy</Button>
+              <Button onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
               <Button type="primary" htmlType="submit" loading={creating}>
-                Tạo
+                {t('common.create')}
               </Button>
             </Space>
           </Form.Item>
@@ -281,7 +288,7 @@ export default function UsersPage() {
 
       {/* Edit Role Modal */}
       <Modal
-        title={`Đổi vai trò — ${editingUser?.email ?? ''}`}
+        title={t('users.editRoleModalTitle', { email: editingUser?.email ?? '' })}
         open={editOpen}
         onCancel={() => setEditOpen(false)}
         footer={null}
@@ -289,16 +296,16 @@ export default function UsersPage() {
         <Form form={editForm} layout="vertical" onFinish={handleUpdateRole}>
           <Form.Item
             name="role"
-            label="Vai trò mới"
-            rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
+            label={t('users.formNewRole')}
+            rules={[{ required: true, message: t('users.formNewRoleRequired') }]}
           >
-            <Select options={ROLE_OPTIONS} placeholder="Chọn vai trò" />
+            <Select options={roleOptions} placeholder={t('users.formRolePlaceholder')} />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setEditOpen(false)}>Hủy</Button>
+              <Button onClick={() => setEditOpen(false)}>{t('common.cancel')}</Button>
               <Button type="primary" htmlType="submit" loading={updating}>
-                Cập nhật
+                {t('common.save')}
               </Button>
             </Space>
           </Form.Item>

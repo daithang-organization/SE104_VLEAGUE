@@ -21,22 +21,18 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGetStadium, type StadiumDetail, type StadiumMatch } from '../services/stadiumApi';
 
-const { Title } = Typography;
+import { STATUS_MAP } from '../utils/constants';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Nháp', color: 'default' },
-  PUBLISHED: { label: 'Đã công bố', color: 'blue' },
-  LOCKED: { label: 'Đã khóa', color: 'orange' },
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-  POSTPONED: { label: 'Hoãn', color: 'red' },
-};
+const { Title } = Typography;
 
 export default function StadiumDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [stadium, setStadium] = useState<StadiumDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +44,7 @@ export default function StadiumDetailPage() {
         const data = await apiGetStadium(id);
         if (!cancelled) setStadium(data);
       } catch {
-        if (!cancelled) message.error('Không thể tải thông tin sân vận động');
+        if (!cancelled) message.error(t('stadiumDetail.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -71,8 +67,8 @@ export default function StadiumDetailPage() {
   if (!stadium) {
     return (
       <div style={{ textAlign: 'center', padding: 80 }}>
-        <Title level={4}>Không tìm thấy sân vận động</Title>
-        <Button onClick={() => navigate('/stadiums')}>Quay lại</Button>
+        <Title level={4}>{t('stadiumDetail.notFound')}</Title>
+        <Button onClick={() => navigate('/stadiums')}>{t('stadiumDetail.back')}</Button>
       </div>
     );
   }
@@ -82,20 +78,20 @@ export default function StadiumDetailPage() {
 
   const matchColumns = [
     {
-      title: 'Vòng',
+      title: t('stadiumDetail.matchColRound'),
       key: 'round',
       width: 80,
       render: (_: unknown, r: StadiumMatch) => `V${r.roundNo}`,
     },
     {
-      title: 'Đội nhà',
+      title: t('stadiumDetail.matchColHome'),
       key: 'home',
       render: (_: unknown, r: StadiumMatch) => (
         <a onClick={() => navigate(`/teams/${r.homeTeam.id}`)}>{r.homeTeam.name}</a>
       ),
     },
     {
-      title: 'Tỷ số',
+      title: t('stadiumDetail.matchColScore'),
       key: 'score',
       width: 100,
       align: 'center' as const,
@@ -109,21 +105,21 @@ export default function StadiumDetailPage() {
         ),
     },
     {
-      title: 'Đội khách',
+      title: t('stadiumDetail.matchColAway'),
       key: 'away',
       render: (_: unknown, r: StadiumMatch) => (
         <a onClick={() => navigate(`/teams/${r.awayTeam.id}`)}>{r.awayTeam.name}</a>
       ),
     },
     {
-      title: 'Ngày',
+      title: t('stadiumDetail.matchColDate'),
       key: 'date',
       width: 130,
       render: (_: unknown, r: StadiumMatch) =>
         r.kickoffAt ? dayjs(r.kickoffAt).format('DD/MM/YYYY HH:mm') : '—',
     },
     {
-      title: 'Trạng thái',
+      title: t('stadiumDetail.matchColStatus'),
       key: 'status',
       width: 110,
       render: (_: unknown, r: StadiumMatch) => {
@@ -132,12 +128,12 @@ export default function StadiumDetailPage() {
       },
     },
     {
-      title: '',
+      title: t('stadiumDetail.matchColAction'),
       key: 'action',
       width: 80,
       render: (_: unknown, r: StadiumMatch) => (
         <Button type="link" size="small" onClick={() => navigate(`/matches/${r.id}`)}>
-          Chi tiết
+          {t('stadiumDetail.matchDetailBtn')}
         </Button>
       ),
     },
@@ -147,7 +143,7 @@ export default function StadiumDetailPage() {
     <div>
       <Space style={{ marginBottom: 16 }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/stadiums')}>
-          Quay lại
+          {t('stadiumDetail.back')}
         </Button>
         <Title level={3} style={{ margin: 0 }}>
           🏟️ {stadium.name}
@@ -158,8 +154,12 @@ export default function StadiumDetailPage() {
         <Col xs={24} sm={8}>
           <Card size="small">
             <Statistic
-              title="Sức chứa"
-              value={stadium.capacity ? stadium.capacity.toLocaleString('vi-VN') : 'Chưa cập nhật'}
+              title={t('stadiumDetail.statCapacity')}
+              value={
+                stadium.capacity
+                  ? stadium.capacity.toLocaleString('vi-VN')
+                  : t('stadiumDetail.statCapacityEmpty')
+              }
               prefix={<TeamOutlined />}
               valueStyle={{ fontSize: stadium.capacity ? 24 : 16 }}
             />
@@ -168,7 +168,7 @@ export default function StadiumDetailPage() {
         <Col xs={24} sm={8}>
           <Card size="small">
             <Statistic
-              title="Đội sân nhà"
+              title={t('stadiumDetail.statHomeTeams')}
               value={stadium.teams.length}
               prefix={<TrophyOutlined />}
             />
@@ -177,7 +177,7 @@ export default function StadiumDetailPage() {
         <Col xs={24} sm={8}>
           <Card size="small">
             <Statistic
-              title="Tổng trận đấu"
+              title={t('stadiumDetail.statTotalMatches')}
               value={stadium.matches.length}
               prefix={<EnvironmentOutlined />}
             />
@@ -190,20 +190,30 @@ export default function StadiumDetailPage() {
         items={[
           {
             key: 'info',
-            label: '📋 Thông tin',
+            label: t('stadiumDetail.tabInfo'),
             children: (
               <Card>
                 <Descriptions bordered column={{ xs: 1, sm: 2 }}>
-                  <Descriptions.Item label="Tên sân">{stadium.name}</Descriptions.Item>
-                  <Descriptions.Item label="Thành phố">{stadium.city}</Descriptions.Item>
-                  <Descriptions.Item label="Địa chỉ">{stadium.address ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Sức chứa">
+                  <Descriptions.Item label={t('stadiumDetail.descName')}>
+                    {stadium.name}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('stadiumDetail.descCity')}>
+                    {stadium.city}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('stadiumDetail.descAddress')}>
+                    {stadium.address ?? '—'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('stadiumDetail.descCapacity')}>
                     {stadium.capacity ? stadium.capacity.toLocaleString('vi-VN') : '—'}
                   </Descriptions.Item>
                 </Descriptions>
 
                 {stadium.teams.length > 0 && (
-                  <Card size="small" title="Đội sân nhà" style={{ marginTop: 16 }}>
+                  <Card
+                    size="small"
+                    title={t('stadiumDetail.homeTeamsTitle')}
+                    style={{ marginTop: 16 }}
+                  >
                     <Space wrap>
                       {stadium.teams.map((t) => (
                         <Tag
@@ -223,11 +233,15 @@ export default function StadiumDetailPage() {
           },
           {
             key: 'matches',
-            label: `⚽ Trận đấu (${stadium.matches.length})`,
+            label: t('stadiumDetail.tabMatches', { count: stadium.matches.length }),
             children: (
               <div>
                 {upcomingMatches.length > 0 && (
-                  <Card size="small" title="Sắp diễn ra" style={{ marginBottom: 16 }}>
+                  <Card
+                    size="small"
+                    title={t('stadiumDetail.upcomingTitle')}
+                    style={{ marginBottom: 16 }}
+                  >
                     <Table
                       dataSource={upcomingMatches}
                       columns={matchColumns}
@@ -237,14 +251,17 @@ export default function StadiumDetailPage() {
                     />
                   </Card>
                 )}
-                <Card size="small" title={`Đã hoàn thành (${finishedMatches.length})`}>
+                <Card
+                  size="small"
+                  title={t('stadiumDetail.finishedTitle', { count: finishedMatches.length })}
+                >
                   <Table
                     dataSource={finishedMatches}
                     columns={matchColumns}
                     rowKey="id"
                     pagination={{ pageSize: 10 }}
                     size="small"
-                    locale={{ emptyText: 'Chưa có trận đấu nào' }}
+                    locale={{ emptyText: t('stadiumDetail.matchesEmpty') }}
                   />
                 </Card>
               </div>

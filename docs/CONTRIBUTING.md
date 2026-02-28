@@ -86,13 +86,13 @@ SE104_VLEAGUE/
 
 ### Khi nào code ở đâu?
 
-| Loại công việc | Thư mục | Mô tả |
-|---------------|---------|-------|
-| API Endpoint mới | `apps/api/src/` | Tạo module/controller/service |
-| UI Component mới | `apps/web/src/` | Tạo component/page |
-| Database Schema | `apps/api/prisma/` | Sửa schema.prisma |
-| Docker Config | `infra/` | Sửa docker-compose files |
-| Documentation | `docs/` | Thêm/sửa tài liệu |
+| Loại công việc   | Thư mục            | Mô tả                         |
+| ---------------- | ------------------ | ----------------------------- |
+| API Endpoint mới | `apps/api/src/`    | Tạo module/controller/service |
+| UI Component mới | `apps/web/src/`    | Tạo component/page            |
+| Database Schema  | `apps/api/prisma/` | Sửa schema.prisma             |
+| Docker Config    | `infra/`           | Sửa docker-compose files      |
+| Documentation    | `docs/`            | Thêm/sửa tài liệu             |
 
 ---
 
@@ -126,14 +126,14 @@ git checkout -b <type>/<short-description>
 
 **Branch naming convention:**
 
-| Type | Mô tả | Ví dụ |
-|------|-------|-------|
-| `feat` | Tính năng mới | `feat/standings-table` |
-| `fix` | Sửa lỗi | `fix/login-redirect` |
-| `chore` | Maintenance | `chore/update-deps` |
-| `docs` | Documentation | `docs/api-docs` |
-| `refactor` | Refactoring | `refactor/auth-service` |
-| `test` | Testing | `test/match-service` |
+| Type       | Mô tả         | Ví dụ                   |
+| ---------- | ------------- | ----------------------- |
+| `feat`     | Tính năng mới | `feat/standings-table`  |
+| `fix`      | Sửa lỗi       | `fix/login-redirect`    |
+| `chore`    | Maintenance   | `chore/update-deps`     |
+| `docs`     | Documentation | `docs/api-docs`         |
+| `refactor` | Refactoring   | `refactor/auth-service` |
+| `test`     | Testing       | `test/match-service`    |
 
 ### Bước 2: Develop & Commit
 
@@ -156,6 +156,7 @@ git commit -m "<type>: <description>"
 ```
 
 **Ví dụ:**
+
 ```bash
 git commit -m "feat: add standings table component"
 git commit -m "fix: resolve login redirect issue"
@@ -212,14 +213,14 @@ async function getUserById(id) {
 
 ### Naming Conventions
 
-| Loại | Convention | Ví dụ |
-|------|------------|-------|
-| Variables | camelCase | `userName`, `matchCount` |
-| Functions | camelCase | `getMatchById`, `calculateScore` |
-| Classes | PascalCase | `MatchService`, `UserController` |
-| Constants | UPPER_SNAKE | `MAX_TEAMS`, `API_BASE_URL` |
-| Files (components) | PascalCase | `MatchCard.tsx`, `LoginPage.tsx` |
-| Files (services) | kebab-case | `match.service.ts`, `auth.controller.ts` |
+| Loại               | Convention  | Ví dụ                                    |
+| ------------------ | ----------- | ---------------------------------------- |
+| Variables          | camelCase   | `userName`, `matchCount`                 |
+| Functions          | camelCase   | `getMatchById`, `calculateScore`         |
+| Classes            | PascalCase  | `MatchService`, `UserController`         |
+| Constants          | UPPER_SNAKE | `MAX_TEAMS`, `API_BASE_URL`              |
+| Files (components) | PascalCase  | `MatchCard.tsx`, `LoginPage.tsx`         |
+| Files (services)   | kebab-case  | `match.service.ts`, `auth.controller.ts` |
 
 ### React Components
 
@@ -270,6 +271,41 @@ pnpm format
 pnpm lint
 ```
 
+### 🧪 Testing
+
+#### Backend (Jest)
+
+```bash
+cd apps/api
+pnpm test          # Run all unit/service/controller specs
+pnpm test:e2e      # Run E2E tests
+pnpm test:cov      # Coverage report
+```
+
+- **Service specs**: `src/<module>/*.service.spec.ts` — test business logic with mocked Prisma
+- **Controller specs**: `src/<module>/*.controller.spec.ts` — test request delegation
+- **E2E specs**: `test/*.e2e-spec.ts` — test HTTP endpoints end-to-end
+
+#### Frontend (Vitest)
+
+```bash
+cd apps/web
+pnpm test          # Run all tests (vitest run)
+pnpm exec vitest   # Watch mode
+```
+
+- **Service tests**: `src/services/__tests__/*.test.ts` — mock Axios, verify API calls
+- **Page tests**: `src/pages/__tests__/*.test.tsx` — render components, verify UI
+
+#### Test counts
+
+| Layer    | Suites | Tests |
+| -------- | ------ | ----- |
+| Backend  | 23     | 233+  |
+| Frontend | 24     | 143+  |
+
+> 📖 Chi tiết xem tại [.agent/skills/testing-cicd/SKILL.md](../.agent/skills/testing-cicd/SKILL.md)
+
 ---
 
 ## ✅ Checklist trước khi tạo PR
@@ -282,7 +318,10 @@ pnpm lint
 
 ### Testing
 
-- [ ] Unit tests pass (`pnpm test`)
+- [ ] Backend unit tests pass (`cd apps/api && pnpm test`)
+- [ ] Frontend tests pass (`cd apps/web && pnpm test`)
+- [ ] New backend features have service/controller specs
+- [ ] New frontend pages have page component tests
 - [ ] Đã test manual trên local
 
 ### Documentation

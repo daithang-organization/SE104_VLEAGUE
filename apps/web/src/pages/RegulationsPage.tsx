@@ -14,7 +14,9 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { TableSkeleton } from '../components';
 import {
   apiDeleteRegulation,
   apiGetRegulations,
@@ -24,29 +26,36 @@ import {
 } from '../services/regulationApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 
-const VALUE_TYPE_OPTIONS = [
-  { label: 'Số', value: 'number' },
-  { label: 'Chuỗi', value: 'string' },
-  { label: 'Boolean', value: 'boolean' },
+const REGULATION_KEYS = [
+  'MIN_AGE',
+  'MAX_AGE',
+  'MIN_ROSTER',
+  'MAX_ROSTER',
+  'MAX_FOREIGN_PLAYERS',
+  'WIN_POINTS',
+  'DRAW_POINTS',
+  'LOSS_POINTS',
+  'MAX_GOAL_TIME',
 ];
-
-const REGULATION_LABELS: Record<string, string> = {
-  MIN_AGE: 'Tuổi tối thiểu',
-  MAX_AGE: 'Tuổi tối đa',
-  MIN_ROSTER: 'Số cầu thủ tối thiểu',
-  MAX_ROSTER: 'Số cầu thủ tối đa',
-  MAX_FOREIGN_PLAYERS: 'Số ngoại binh tối đa',
-  WIN_POINTS: 'Điểm thắng',
-  DRAW_POINTS: 'Điểm hòa',
-  LOSS_POINTS: 'Điểm thua',
-  MAX_GOAL_TIME: 'Thời điểm ghi bàn tối đa (phút)',
-};
+const VALUE_TYPE_KEYS = ['number', 'string', 'boolean'] as const;
 
 export default function RegulationsPage() {
+  const { t } = useTranslation();
+
+  const valueTypeOptions = useMemo(
+    () => VALUE_TYPE_KEYS.map((k) => ({ label: t(`valueType.${k}`), value: k })),
+    [t],
+  );
+
+  const regulationLabels = useMemo(
+    () => Object.fromEntries(REGULATION_KEYS.map((k) => [k, t(`regulationLabel.${k}`)])),
+    [t],
+  );
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string>('');
   const [regulations, setRegulations] = useState<Regulation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingReg, setEditingReg] = useState<Regulation | null>(null);
   const [form] = Form.useForm();
@@ -61,7 +70,8 @@ export default function RegulationsPage() {
         if (current) setSelectedSeason(current.id);
         else if (data.length > 0) setSelectedSeason(data[0].id);
       })
-      .catch(() => message.error('Không thể tải danh sách mùa giải'));
+      .catch(() => message.error(t('regulations.loadError')))
+      .finally(() => setInitialLoad(false));
   }, []);
 
   // Load regulations when season changes
@@ -76,7 +86,7 @@ export default function RegulationsPage() {
       const data = await apiGetRegulations(selectedSeason);
       setRegulations(data);
     } catch {
-      message.error('Không thể tải quy định');
+      message.error(t('regulations.loadRegError'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +117,7 @@ export default function RegulationsPage() {
         value: values.value,
         valueType: values.valueType,
       });
-      message.success(editingReg ? 'Đã cập nhật quy định' : 'Đã thêm quy định');
+      message.success(editingReg ? t('regulations.updateSuccess') : t('regulations.createSuccess'));
       setModalOpen(false);
       loadRegulations();
     } catch {
@@ -118,53 +128,53 @@ export default function RegulationsPage() {
   async function handleDelete(key: string) {
     try {
       await apiDeleteRegulation(selectedSeason, key);
-      message.success('Đã xóa quy định');
+      message.success(t('regulations.deleteSuccess'));
       loadRegulations();
     } catch {
-      message.error('Không thể xóa quy định');
+      message.error(t('regulations.deleteError'));
     }
   }
 
   async function handleSeedDefaults() {
     try {
       await apiSeedDefaultRegulations(selectedSeason);
-      message.success('Đã khởi tạo quy định mặc định');
+      message.success(t('regulations.seedSuccess'));
       loadRegulations();
     } catch {
-      message.error('Không thể khởi tạo quy định mặc định');
+      message.error(t('regulations.seedError'));
     }
   }
 
   const columns: ColumnsType<Regulation> = [
     {
-      title: 'Khóa',
+      title: t('regulations.colKey'),
       dataIndex: 'key',
       width: 220,
       render: (key: string) => (
         <span>
           <Tag color="blue">{key}</Tag>
-          {REGULATION_LABELS[key] && (
+          {regulationLabels[key] && (
             <Typography.Text type="secondary" style={{ marginLeft: 4, fontSize: 12 }}>
-              {REGULATION_LABELS[key]}
+              {regulationLabels[key]}
             </Typography.Text>
           )}
         </span>
       ),
     },
     {
-      title: 'Giá trị',
+      title: t('regulations.colValue'),
       dataIndex: 'value',
       width: 150,
       render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
     },
     {
-      title: 'Kiểu',
+      title: t('regulations.colType'),
       dataIndex: 'valueType',
       width: 100,
       render: (vt: string) => <Tag>{vt}</Tag>,
     },
     {
-      title: 'Thao tác',
+      title: t('regulations.colActions'),
       key: 'actions',
       width: 120,
       render: (_, record) => (
@@ -176,10 +186,10 @@ export default function RegulationsPage() {
             size="small"
           />
           <Popconfirm
-            title="Xác nhận xóa?"
+            title={t('regulations.deleteConfirmTitle')}
             onConfirm={() => handleDelete(record.key)}
-            okText="Xóa"
-            cancelText="Hủy"
+            okText={t('regulations.deleteOk')}
+            cancelText={t('regulations.deleteCancel')}
           >
             <Button type="text" danger icon={<DeleteOutlined />} size="small" />
           </Popconfirm>
@@ -188,22 +198,31 @@ export default function RegulationsPage() {
     },
   ];
 
+  if (initialLoad) {
+    return (
+      <div>
+        <Typography.Title level={3}>{t('regulations.title')}</Typography.Title>
+        <Card>
+          <TableSkeleton rows={6} />
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <Typography.Title level={3}>Quy định giải đấu</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        Quản lý các quy định của từng mùa giải VLeague.
-      </Typography.Paragraph>
+      <Typography.Title level={3}>{t('regulations.title')}</Typography.Title>
+      <Typography.Paragraph type="secondary">{t('regulations.subtitle')}</Typography.Paragraph>
 
       <Card
         title={
           <Space>
-            <span>Mùa giải:</span>
+            <span>{t('regulations.seasonLabel')}</span>
             <Select
               style={{ width: 240 }}
               value={selectedSeason || undefined}
               onChange={setSelectedSeason}
-              placeholder="Chọn mùa giải"
+              placeholder={t('regulations.seasonPlaceholder')}
               options={seasons.map((s) => ({
                 label: `${s.name} (${s.year})`,
                 value: s.id,
@@ -218,7 +237,7 @@ export default function RegulationsPage() {
               onClick={handleSeedDefaults}
               disabled={!selectedSeason}
             >
-              Khởi tạo mặc định
+              {t('regulations.seedDefaultsBtn')}
             </Button>
             <Button
               type="primary"
@@ -226,7 +245,7 @@ export default function RegulationsPage() {
               onClick={openCreateModal}
               disabled={!selectedSeason}
             >
-              Thêm quy định
+              {t('regulations.addBtn')}
             </Button>
           </Space>
         }
@@ -238,35 +257,35 @@ export default function RegulationsPage() {
           loading={loading}
           pagination={false}
           size="middle"
-          locale={{ emptyText: 'Chưa có quy định. Nhấn "Khởi tạo mặc định" để bắt đầu.' }}
+          locale={{ emptyText: t('regulations.empty') }}
         />
       </Card>
 
       <Modal
-        title={editingReg ? 'Sửa quy định' : 'Thêm quy định'}
+        title={editingReg ? t('regulations.modalEditTitle') : t('regulations.modalCreateTitle')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
-        okText={editingReg ? 'Cập nhật' : 'Thêm'}
-        cancelText="Hủy"
+        okText={editingReg ? t('regulations.okUpdate') : t('regulations.okCreate')}
+        cancelText={t('common.cancel')}
       >
         <Form form={form} layout="vertical">
           <Form.Item
             name="key"
-            label="Khóa quy định"
-            rules={[{ required: true, message: 'Vui lòng nhập khóa' }]}
+            label={t('regulations.formKey')}
+            rules={[{ required: true, message: t('regulations.formKeyRequired') }]}
           >
-            <Input placeholder="VD: MAX_FOREIGN_PLAYERS" disabled={!!editingReg} />
+            <Input placeholder={t('regulations.formKeyPlaceholder')} disabled={!!editingReg} />
           </Form.Item>
           <Form.Item
             name="value"
-            label="Giá trị"
-            rules={[{ required: true, message: 'Vui lòng nhập giá trị' }]}
+            label={t('regulations.formValue')}
+            rules={[{ required: true, message: t('regulations.formValueRequired') }]}
           >
-            <Input placeholder="VD: 3" />
+            <Input placeholder={t('regulations.formValuePlaceholder')} />
           </Form.Item>
-          <Form.Item name="valueType" label="Kiểu dữ liệu">
-            <Select options={VALUE_TYPE_OPTIONS} />
+          <Form.Item name="valueType" label={t('regulations.formValueType')}>
+            <Select options={valueTypeOptions} />
           </Form.Item>
         </Form>
       </Modal>
