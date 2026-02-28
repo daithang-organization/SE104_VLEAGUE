@@ -12,6 +12,7 @@ import {
   Typography,
 } from 'antd';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   apiAddMatchEvent,
   type AddMatchEventPayload,
@@ -41,6 +42,7 @@ export default function EventFormModal({
   onCancel,
   onSuccess,
 }: Props) {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [selectedTeamSide, setSelectedTeamSide] = useState<'home' | 'away' | null>(null);
@@ -67,7 +69,7 @@ export default function EventFormModal({
         relatedPlayerId?: string;
       }[] = values.events ?? [];
       if (events.length === 0) {
-        message.warning('Vui lòng thêm ít nhất 1 sự kiện');
+        message.warning(t('eventFormModal.warningEmpty'));
         setSaving(false);
         return;
       }
@@ -86,11 +88,11 @@ export default function EventFormModal({
           await apiAddMatchEvent(match.id, payload);
           successCount++;
         } catch {
-          message.error(`Lỗi thêm sự kiện phút ${evt.minute}`);
+          message.error(t('eventFormModal.eventError', { minute: evt.minute }));
         }
       }
       if (successCount > 0) {
-        message.success(`Đã thêm ${successCount} sự kiện!`);
+        message.success(t('eventFormModal.success', { count: successCount }));
         form.resetFields();
         setSelectedTeamSide(null);
         onCancel();
@@ -98,7 +100,7 @@ export default function EventFormModal({
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error('Không thể thêm sự kiện');
+      message.error(t('eventFormModal.genericError'));
     } finally {
       setSaving(false);
     }
@@ -106,21 +108,21 @@ export default function EventFormModal({
 
   return (
     <Modal
-      title="Thêm sự kiện trận đấu"
+      title={t('eventFormModal.title')}
       open={open}
       onCancel={handleCancel}
       onOk={handleSave}
       confirmLoading={saving}
-      okText="Thêm tất cả"
-      cancelText="Hủy"
+      okText={t('eventFormModal.okText')}
+      cancelText={t('eventFormModal.cancel')}
       destroyOnClose
       width={680}
     >
       <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
         <Form.Item
           name="teamSide"
-          label="Đội"
-          rules={[{ required: true, message: 'Vui lòng chọn đội' }]}
+          label={t('eventFormModal.teamLabel')}
+          rules={[{ required: true, message: t('eventFormModal.teamRequired') }]}
         >
           <Radio.Group
             onChange={(e) => {
@@ -138,10 +140,14 @@ export default function EventFormModal({
             style={{ width: '100%' }}
           >
             <Radio.Button value="home" style={{ width: '50%', textAlign: 'center' }}>
-              🏠 {match.homeTeam?.name ?? 'Đội nhà'}
+              {t('eventFormModal.homeBtn', {
+                team: match.homeTeam?.name ?? t('eventFormModal.homeDefault'),
+              })}
             </Radio.Button>
             <Radio.Button value="away" style={{ width: '50%', textAlign: 'center' }}>
-              ✈️ {match.awayTeam?.name ?? 'Đội khách'}
+              {t('eventFormModal.awayBtn', {
+                team: match.awayTeam?.name ?? t('eventFormModal.awayDefault'),
+              })}
             </Radio.Button>
           </Radio.Group>
         </Form.Item>
@@ -162,7 +168,7 @@ export default function EventFormModal({
                 >
                   <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
                     <Text strong style={{ fontSize: 13, color: '#666' }}>
-                      Sự kiện {idx + 1}
+                      {t('eventFormModal.eventLabel', { index: idx + 1 })}
                     </Text>
                     {fields.length > 1 && (
                       <Button
@@ -178,10 +184,10 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'type']}
-                      rules={[{ required: true, message: 'Chọn loại' }]}
+                      rules={[{ required: true, message: t('eventFormModal.typeRequired') }]}
                       style={{ flex: 2, marginBottom: 8 }}
                     >
-                      <Select placeholder="Loại sự kiện" size="middle">
+                      <Select placeholder={t('eventFormModal.typePlaceholder')} size="middle">
                         {Object.entries(EVENT_TYPE_MAP).map(([value, { label, icon }]) => (
                           <Select.Option key={value} value={value}>
                             {icon} {label}
@@ -192,10 +198,15 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'minute']}
-                      rules={[{ required: true, message: 'Phút' }]}
+                      rules={[{ required: true, message: t('eventFormModal.minuteRequired') }]}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
-                      <InputNumber min={0} max={150} style={{ width: '100%' }} placeholder="Phút" />
+                      <InputNumber
+                        min={0}
+                        max={150}
+                        style={{ width: '100%' }}
+                        placeholder={t('eventFormModal.minutePlaceholder')}
+                      />
                     </Form.Item>
                   </Flex>
                   <Flex gap={8}>
@@ -205,7 +216,11 @@ export default function EventFormModal({
                       style={{ flex: 2, marginBottom: 8 }}
                     >
                       <Select
-                        placeholder={selectedTeamSide ? 'Chọn cầu thủ' : 'Chọn đội trước'}
+                        placeholder={
+                          selectedTeamSide
+                            ? t('eventFormModal.playerPlaceholder')
+                            : t('eventFormModal.playerDisabledHint')
+                        }
                         disabled={!selectedTeamSide || rosterLoading}
                         loading={rosterLoading}
                         showSearch
@@ -222,7 +237,7 @@ export default function EventFormModal({
                       name={[name, 'note']}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
-                      <Input placeholder="Ghi chú" />
+                      <Input placeholder={t('eventFormModal.notePlaceholder')} />
                     </Form.Item>
                   </Flex>
                   <Form.Item
@@ -246,12 +261,21 @@ export default function EventFormModal({
                               name={[name, 'goalType']}
                               style={{ flex: 1, marginBottom: 8 }}
                             >
-                              <Select placeholder="Loại bàn thắng" allowClear>
-                                <Select.Option value="NORMAL">Bình thường</Select.Option>
-                                <Select.Option value="HEADER">Đánh đầu</Select.Option>
-                                <Select.Option value="FREE_KICK">Sút phạt</Select.Option>
-                                <Select.Option value="PENALTY_KICK">Penalty</Select.Option>
-                                <Select.Option value="LONG_RANGE">Sút xa</Select.Option>
+                              <Select
+                                placeholder={t('eventFormModal.goalTypePlaceholder')}
+                                allowClear
+                              >
+                                <Select.Option value="NORMAL">{t('goalType.NORMAL')}</Select.Option>
+                                <Select.Option value="HEADER">{t('goalType.HEADER')}</Select.Option>
+                                <Select.Option value="FREE_KICK">
+                                  {t('goalType.FREE_KICK')}
+                                </Select.Option>
+                                <Select.Option value="PENALTY_KICK">
+                                  {t('goalType.PENALTY_KICK')}
+                                </Select.Option>
+                                <Select.Option value="LONG_RANGE">
+                                  {t('goalType.LONG_RANGE')}
+                                </Select.Option>
                               </Select>
                             </Form.Item>
                           )}
@@ -262,7 +286,11 @@ export default function EventFormModal({
                               style={{ flex: 1, marginBottom: 8 }}
                             >
                               <Select
-                                placeholder={evtType === 'GOAL' ? 'Kiến tạo' : 'Cầu thủ bị thay'}
+                                placeholder={
+                                  evtType === 'GOAL'
+                                    ? t('eventFormModal.assistPlaceholder')
+                                    : t('eventFormModal.subPlayerPlaceholder')
+                                }
                                 disabled={!selectedTeamSide || rosterLoading}
                                 loading={rosterLoading}
                                 showSearch
@@ -288,7 +316,7 @@ export default function EventFormModal({
                 icon={<PlusOutlined />}
                 style={{ marginTop: 4 }}
               >
-                Thêm sự kiện
+                {t('eventFormModal.addEventBtn')}
               </Button>
             </>
           )}

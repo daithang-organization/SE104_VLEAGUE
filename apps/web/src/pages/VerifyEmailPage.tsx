@@ -1,9 +1,11 @@
 import { Button, Card, Form, Input, message, Space, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { apiResendOtp, apiVerifyEmail } from '../services/authApi';
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
@@ -25,12 +27,12 @@ export default function VerifyEmailPage() {
     setLoading(true);
     try {
       await apiVerifyEmail(values.email, values.otp);
-      message.success('Xác thực email thành công! Bạn có thể đăng nhập ngay.');
+      message.success(t('verifyEmail.success'));
       nav('/login');
     } catch (err: unknown) {
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Xác thực thất bại';
+        t('verifyEmail.error');
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -39,18 +41,18 @@ export default function VerifyEmailPage() {
 
   const handleResendOtp = async (email: string) => {
     if (!email) {
-      message.warning('Vui lòng nhập email trước');
+      message.warning(t('verifyEmail.resendEmailWarning'));
       return;
     }
     setResendLoading(true);
     try {
       await apiResendOtp(email);
-      message.success('Đã gửi lại mã OTP. Vui lòng kiểm tra email.');
+      message.success(t('verifyEmail.resendSuccess'));
       setCountdown(60); // 60 seconds cooldown
     } catch (err: unknown) {
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Gửi lại OTP thất bại';
+        t('verifyEmail.resendError');
       message.error(errorMessage);
     } finally {
       setResendLoading(false);
@@ -61,29 +63,29 @@ export default function VerifyEmailPage() {
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
       <Card style={{ width: 400 }}>
         <Typography.Title level={4} style={{ marginTop: 0, textAlign: 'center' }}>
-          Xác thực Email
+          {t('verifyEmail.title')}
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ textAlign: 'center' }}>
-          Nhập mã OTP 6 số đã được gửi đến email của bạn
+          {t('verifyEmail.subtitle')}
         </Typography.Paragraph>
         <Form layout="vertical" onFinish={onFinish} initialValues={{ email: initialEmail }}>
           <Form.Item
             name="email"
-            label="Email"
+            label={t('verifyEmail.emailLabel')}
             rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
+              { required: true, message: t('verifyEmail.emailRequired') },
+              { type: 'email', message: t('verifyEmail.emailInvalid') },
             ]}
           >
-            <Input placeholder="email@example.com" />
+            <Input placeholder={t('verifyEmail.emailPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="otp"
-            label="Mã OTP"
+            label={t('verifyEmail.otpLabel')}
             rules={[
-              { required: true, message: 'Vui lòng nhập mã OTP' },
-              { len: 6, message: 'Mã OTP phải có 6 số' },
-              { pattern: /^\d+$/, message: 'Mã OTP chỉ chứa số' },
+              { required: true, message: t('verifyEmail.otpRequired') },
+              { len: 6, message: t('verifyEmail.otpLength') },
+              { pattern: /^\d+$/, message: t('verifyEmail.otpDigitsOnly') },
             ]}
           >
             <Input
@@ -94,7 +96,7 @@ export default function VerifyEmailPage() {
           </Form.Item>
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Button type="primary" htmlType="submit" block loading={loading}>
-              Xác thực
+              {t('verifyEmail.submitBtn')}
             </Button>
             <Form.Item noStyle shouldUpdate>
               {({ getFieldValue }) => (
@@ -104,14 +106,16 @@ export default function VerifyEmailPage() {
                   loading={resendLoading}
                   disabled={countdown > 0}
                 >
-                  {countdown > 0 ? `Gửi lại OTP (${countdown}s)` : 'Gửi lại OTP'}
+                  {countdown > 0
+                    ? t('verifyEmail.resendOtpCountdown', { seconds: countdown })
+                    : t('verifyEmail.resendOtpBtn')}
                 </Button>
               )}
             </Form.Item>
           </Space>
         </Form>
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <Link to="/login">Quay lại đăng nhập</Link>
+          <Link to="/login">{t('verifyEmail.backToLogin')}</Link>
         </div>
       </Card>
     </div>

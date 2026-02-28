@@ -34,8 +34,8 @@ export class MatchService {
     const match = await this.prisma.match.findUnique({
       where: { id },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
         stadium: { select: { id: true, name: true } },
         season: { select: { id: true, name: true } },
         events: {
@@ -84,8 +84,8 @@ export class MatchService {
       this.prisma.match.findMany({
         where,
         include: {
-          homeTeam: { select: { id: true, name: true } },
-          awayTeam: { select: { id: true, name: true } },
+          homeTeam: { select: { id: true, name: true, logoUrl: true } },
+          awayTeam: { select: { id: true, name: true, logoUrl: true } },
           stadium: { select: { id: true, name: true } },
         },
         orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
@@ -139,8 +139,8 @@ export class MatchService {
       where: { id: matchId },
       data: updateData,
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
         stadium: { select: { id: true, name: true } },
       },
     });
@@ -328,8 +328,8 @@ export class MatchService {
       where: { id: matchId },
       data: { status: newStatus as never },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam: { select: { id: true, name: true, logoUrl: true } },
+        awayTeam: { select: { id: true, name: true, logoUrl: true } },
       },
     });
 

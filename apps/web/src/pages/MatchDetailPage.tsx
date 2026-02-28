@@ -18,6 +18,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -37,6 +38,7 @@ const { Title, Text } = Typography;
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [match, setMatch] = useState<Match | null>(null);
@@ -78,7 +80,7 @@ export default function MatchDetailPage() {
       setMatch(data);
       loadRosters(data);
     } catch {
-      message.error('Không thể tải chi tiết trận đấu');
+      message.error(t('matchDetail.loadError'));
     } finally {
       setLoading(false);
     }
@@ -93,7 +95,9 @@ export default function MatchDetailPage() {
     if (!match) return;
     try {
       await apiUpdateMatchStatus(match.id, newStatus);
-      message.success(`Đã chuyển trạng thái sang ${STATUS_MAP[newStatus]?.label ?? newStatus}`);
+      message.success(
+        t('matchDetail.statusChanged', { status: STATUS_MAP[newStatus]?.label ?? newStatus }),
+      );
       fetchMatch();
     } catch (err: unknown) {
       const msg =
@@ -101,7 +105,7 @@ export default function MatchDetailPage() {
         typeof err === 'object' &&
         'response' in err &&
         (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      message.error((msg as string) || 'Không thể cập nhật trạng thái');
+      message.error((msg as string) || t('matchDetail.statusChangeError'));
     }
   };
 
@@ -149,8 +153,8 @@ export default function MatchDetailPage() {
   if (!match) {
     return (
       <div style={{ textAlign: 'center', padding: 80 }}>
-        <Title level={4}>Không tìm thấy trận đấu</Title>
-        <Button onClick={() => navigate('/matches')}>Quay lại</Button>
+        <Title level={4}>{t('matchDetail.notFound')}</Title>
+        <Button onClick={() => navigate('/matches')}>{t('matchDetail.back')}</Button>
       </div>
     );
   }
@@ -246,7 +250,7 @@ export default function MatchDetailPage() {
 
   const rosterColumns = [
     {
-      title: 'Số áo',
+      title: t('matchDetail.colJersey'),
       dataIndex: 'jerseyNumber',
       key: 'jerseyNumber',
       width: 80,
@@ -254,7 +258,7 @@ export default function MatchDetailPage() {
       render: (v: number | null) => v ?? '—',
     },
     {
-      title: 'Cầu thủ',
+      title: t('matchDetail.colPlayer'),
       dataIndex: 'fullName',
       key: 'fullName',
       render: (name: string, r: RosterPlayer) => (
@@ -262,7 +266,7 @@ export default function MatchDetailPage() {
       ),
     },
     {
-      title: 'Vị trí',
+      title: t('matchDetail.colPosition'),
       dataIndex: 'position',
       key: 'position',
       width: 120,
@@ -277,25 +281,25 @@ export default function MatchDetailPage() {
   const statsData = [
     {
       key: 'goals',
-      stat: '⚽ Bàn thắng',
+      stat: t('matchDetail.statGoals'),
       home: homeGoals.length,
       away: awayGoals.length,
     },
     {
       key: 'yellows',
-      stat: '🟨 Thẻ vàng',
+      stat: t('matchDetail.statYellows'),
       home: homeYellows,
       away: awayYellows,
     },
     {
       key: 'reds',
-      stat: '🟥 Thẻ đỏ',
+      stat: t('matchDetail.statReds'),
       home: homeReds,
       away: awayReds,
     },
     {
       key: 'subs',
-      stat: '🔄 Thay người',
+      stat: t('matchDetail.statSubs'),
       home: homeSubs,
       away: awaySubs,
     },
@@ -306,10 +310,10 @@ export default function MatchDetailPage() {
       {/* Header */}
       <Space style={{ marginBottom: 16 }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/matches')}>
-          Quay lại
+          {t('matchDetail.back')}
         </Button>
         <Title level={4} style={{ margin: 0 }}>
-          Chi tiết trận đấu — Vòng {match.roundNo}
+          {t('matchDetail.title', { round: match.roundNo })}
         </Title>
       </Space>
 
@@ -327,7 +331,7 @@ export default function MatchDetailPage() {
               {match.homeTeam?.name ?? '—'}
             </Title>
             <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 4 }}>
-              🏠 Đội nhà
+              {t('matchDetail.homeLabel')}
             </div>
             <div style={{ filter: 'brightness(2)' }}>
               {renderScorers(homeGoals, 'center')}
@@ -355,7 +359,7 @@ export default function MatchDetailPage() {
               {match.awayTeam?.name ?? '—'}
             </Title>
             <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 4 }}>
-              ✈️ Đội khách
+              {t('matchDetail.awayLabel')}
             </div>
             <div style={{ filter: 'brightness(2)' }}>
               {renderScorers(awayGoals, 'center')}
@@ -370,19 +374,19 @@ export default function MatchDetailPage() {
         <Card size="small" style={{ marginBottom: 16 }}>
           <Flex gap={8} wrap="wrap" align="center">
             <Text strong style={{ marginRight: 8 }}>
-              Thao tác:
+              {t('matchDetail.actionsLabel')}
             </Text>
             <Button type="primary" icon={<EditOutlined />} onClick={() => setScoreModalOpen(true)}>
-              Cập nhật tỉ số
+              {t('matchDetail.updateScoreBtn')}
             </Button>
             <Button icon={<PlusOutlined />} onClick={() => setEventModalOpen(true)}>
-              Thêm sự kiện
+              {t('matchDetail.addEventBtn')}
             </Button>
             {getStatusActions(match).map((nextStatus) => {
               const s = STATUS_MAP[nextStatus];
               return (
                 <Button key={nextStatus} onClick={() => handleStatusChange(nextStatus)}>
-                  Chuyển → {s?.label ?? nextStatus}
+                  {t('matchDetail.transitionBtn', { status: s?.label ?? nextStatus })}
                 </Button>
               );
             })}
@@ -396,20 +400,22 @@ export default function MatchDetailPage() {
         items={[
           {
             key: 'overview',
-            label: '📋 Tổng quan',
+            label: t('matchDetail.tabOverview'),
             children: (
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
-                  <Card title="Thông tin trận đấu" size="small">
+                  <Card title={t('matchDetail.matchInfoTitle')} size="small">
                     <Descriptions bordered column={1} size="small">
-                      <Descriptions.Item label="Vòng">V{match.roundNo}</Descriptions.Item>
-                      <Descriptions.Item label="Lượt">
-                        {match.leg === 1 ? 'Lượt đi' : 'Lượt về'}
+                      <Descriptions.Item label={t('matchDetail.descRound')}>
+                        V{match.roundNo}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Mùa giải">
+                      <Descriptions.Item label={t('matchDetail.descLeg')}>
+                        {match.leg === 1 ? t('common.leg1') : t('common.leg2')}
+                      </Descriptions.Item>
+                      <Descriptions.Item label={t('matchDetail.descSeason')}>
                         {match.season?.name ?? '—'}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Sân vận động">
+                      <Descriptions.Item label={t('matchDetail.descStadium')}>
                         {match.stadium?.name ? (
                           <a onClick={() => navigate(`/stadiums/${match.stadiumId}`)}>
                             {match.stadium.name}
@@ -418,10 +424,10 @@ export default function MatchDetailPage() {
                           '—'
                         )}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Giờ thi đấu">
+                      <Descriptions.Item label={t('matchDetail.descKickoff')}>
                         {match.kickoffAt ? dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm') : '—'}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Trạng thái">
+                      <Descriptions.Item label={t('matchDetail.descStatus')}>
                         <Tag color={STATUS_MAP[match.status]?.color}>
                           {STATUS_MAP[match.status]?.label ?? match.status}
                         </Tag>
@@ -430,7 +436,7 @@ export default function MatchDetailPage() {
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title="Thống kê trận đấu" size="small">
+                  <Card title={t('matchDetail.matchStatsTitle')} size="small">
                     <Table
                       dataSource={statsData}
                       rowKey="key"
@@ -438,19 +444,19 @@ export default function MatchDetailPage() {
                       size="small"
                       columns={[
                         {
-                          title: match.homeTeam?.name ?? 'Nhà',
+                          title: match.homeTeam?.name ?? t('matchDetail.colHome'),
                           dataIndex: 'home',
                           align: 'center',
                           width: 80,
                           render: (v: number) => <strong>{v}</strong>,
                         },
                         {
-                          title: 'Chỉ số',
+                          title: t('matchDetail.colStat'),
                           dataIndex: 'stat',
                           align: 'center',
                         },
                         {
-                          title: match.awayTeam?.name ?? 'Khách',
+                          title: match.awayTeam?.name ?? t('matchDetail.colAway'),
                           dataIndex: 'away',
                           align: 'center',
                           width: 80,
@@ -465,11 +471,11 @@ export default function MatchDetailPage() {
           },
           {
             key: 'events',
-            label: `⚽ Sự kiện (${events.length})`,
+            label: t('matchDetail.tabEvents', { count: events.length }),
             children: (
               <Card size="small">
                 {events.length === 0 ? (
-                  <Text type="secondary">Chưa có sự kiện nào</Text>
+                  <Text type="secondary">{t('matchDetail.noEvents')}</Text>
                 ) : (
                   <Timeline
                     items={[...events]
@@ -497,8 +503,12 @@ export default function MatchDetailPage() {
                                 <span style={{ color: '#888', marginLeft: 4 }}>
                                   (
                                   {e.type === 'SUBSTITUTION'
-                                    ? `thay ${e.relatedPlayer.fullName}`
-                                    : `kiến tạo: ${e.relatedPlayer.fullName}`}
+                                    ? t('matchDetail.relatedSub', {
+                                        name: e.relatedPlayer.fullName,
+                                      })
+                                    : t('matchDetail.relatedAssist', {
+                                        name: e.relatedPlayer.fullName,
+                                      })}
                                   )
                                 </span>
                               )}
@@ -518,12 +528,14 @@ export default function MatchDetailPage() {
           },
           {
             key: 'lineups',
-            label: '👥 Đội hình',
+            label: t('matchDetail.tabLineups'),
             children: (
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
                   <Card
-                    title={`🏠 ${match.homeTeam?.name ?? 'Đội nhà'} — Danh sách`}
+                    title={t('matchDetail.homeRosterTitle', {
+                      team: match.homeTeam?.name ?? t('matchDetail.homeLabel'),
+                    })}
                     size="small"
                     loading={rosterLoading}
                   >
@@ -533,16 +545,18 @@ export default function MatchDetailPage() {
                       rowKey="id"
                       pagination={false}
                       size="small"
-                      locale={{ emptyText: 'Chưa có dữ liệu đội hình' }}
+                      locale={{ emptyText: t('matchDetail.rosterEmpty') }}
                     />
                     <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-                      Tổng: {homeRoster.length} cầu thủ
+                      {t('matchDetail.rosterTotal', { count: homeRoster.length })}
                     </div>
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
                   <Card
-                    title={`✈️ ${match.awayTeam?.name ?? 'Đội khách'} — Danh sách`}
+                    title={t('matchDetail.awayRosterTitle', {
+                      team: match.awayTeam?.name ?? t('matchDetail.awayLabel'),
+                    })}
                     size="small"
                     loading={rosterLoading}
                   >
@@ -552,10 +566,10 @@ export default function MatchDetailPage() {
                       rowKey="id"
                       pagination={false}
                       size="small"
-                      locale={{ emptyText: 'Chưa có dữ liệu đội hình' }}
+                      locale={{ emptyText: t('matchDetail.rosterEmpty') }}
                     />
                     <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-                      Tổng: {awayRoster.length} cầu thủ
+                      {t('matchDetail.rosterTotal', { count: awayRoster.length })}
                     </div>
                   </Card>
                 </Col>
@@ -586,13 +600,13 @@ export default function MatchDetailPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={12} sm={6}>
           <Card size="small">
-            <Statistic title="Tổng sự kiện" value={events.length} />
+            <Statistic title={t('matchDetail.statTotalEvents')} value={events.length} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card size="small">
             <Statistic
-              title="Tổng bàn thắng"
+              title={t('matchDetail.statTotalGoals')}
               value={homeGoals.length + awayGoals.length}
               prefix="⚽"
             />
@@ -601,7 +615,7 @@ export default function MatchDetailPage() {
         <Col xs={12} sm={6}>
           <Card size="small">
             <Statistic
-              title="Tổng thẻ"
+              title={t('matchDetail.statTotalCards')}
               value={homeYellows + awayYellows + homeReds + awayReds}
               prefix="🃏"
             />
@@ -609,7 +623,11 @@ export default function MatchDetailPage() {
         </Col>
         <Col xs={12} sm={6}>
           <Card size="small">
-            <Statistic title="Thay người" value={homeSubs + awaySubs} prefix="🔄" />
+            <Statistic
+              title={t('matchDetail.statSubstitutions')}
+              value={homeSubs + awaySubs}
+              prefix="🔄"
+            />
           </Card>
         </Col>
       </Row>

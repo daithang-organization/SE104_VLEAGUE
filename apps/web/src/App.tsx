@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
 import { ErrorBoundary, TableSkeleton } from './components';
 
@@ -39,6 +39,7 @@ const UsersPage = lazy(() => import('./pages/UsersPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
 const SessionsPage = lazy(() => import('./pages/SessionsPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 const AppShell = lazy(() => import('./shell/AppShell'));
 const PublicLayout = lazy(() => import('./shell/PublicLayout'));
@@ -102,7 +103,7 @@ export default function App() {
           </Route>
 
           {/* Fallback redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>

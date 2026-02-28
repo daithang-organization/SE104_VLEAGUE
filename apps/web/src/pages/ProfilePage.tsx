@@ -1,19 +1,20 @@
 import { EditOutlined, UserOutlined } from '@ant-design/icons';
 import {
-    Avatar,
-    Button,
-    Card,
-    Descriptions,
-    Form,
-    Input,
-    message,
-    Modal,
-    Space,
-    Spin,
-    Tag,
-    Typography,
+  Avatar,
+  Button,
+  Card,
+  Descriptions,
+  Form,
+  Input,
+  message,
+  Modal,
+  Space,
+  Spin,
+  Tag,
+  Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { UserProfile } from '../services/authApi';
@@ -22,6 +23,7 @@ import { apiGetMe, apiLogoutAll, apiUpdateProfile } from '../services/authApi';
 export default function ProfilePage() {
   const nav = useNavigate();
   const { logout } = useAuth();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [logoutAllLoading, setLogoutAllLoading] = useState(false);
@@ -49,12 +51,11 @@ export default function ProfilePage() {
 
   const handleLogoutAll = () => {
     Modal.confirm({
-      title: 'Đăng xuất tất cả thiết bị',
-      content:
-        'Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, bao gồm cả thiết bị hiện tại. Tiếp tục?',
-      okText: 'Đăng xuất',
+      title: t('profile.logoutAllConfirmTitle'),
+      content: t('profile.logoutAllConfirmContent'),
+      okText: t('profile.logoutAllOk'),
       okType: 'danger',
-      cancelText: 'Hủy',
+      cancelText: t('profile.logoutAllCancel'),
       onOk: async () => {
         setLogoutAllLoading(true);
         try {
@@ -88,7 +89,7 @@ export default function ProfilePage() {
     try {
       const updated = await apiUpdateProfile(values);
       setProfile(updated);
-      message.success('Cập nhật thành công');
+      message.success(t('profile.updateSuccess'));
       setEditModalVisible(false);
     } catch (err: unknown) {
       const errorMessage =
@@ -115,23 +116,6 @@ export default function ProfilePage() {
     }
   };
 
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'Quản trị viên';
-      case 'TEAM_MANAGER':
-        return 'Quản lý đội bóng';
-      case 'REFEREE':
-        return 'Trọng tài';
-      case 'SUPERVISOR':
-        return 'Giám sát';
-      case 'PUBLIC':
-        return 'Người dùng';
-      default:
-        return role;
-    }
-  };
-
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
@@ -143,14 +127,14 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <Card>
-        <Typography.Text type="danger">Không thể tải thông tin người dùng</Typography.Text>
+        <Typography.Text type="danger">{t('profile.loadFailed')}</Typography.Text>
       </Card>
     );
   }
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <Typography.Title level={3}>Thông tin tài khoản</Typography.Title>
+      <Typography.Title level={3}>{t('profile.title')}</Typography.Title>
 
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
@@ -171,47 +155,49 @@ export default function ProfilePage() {
             style={{ marginLeft: 'auto' }}
             onClick={handleEditProfile}
           >
-            Chỉnh sửa
+            {t('profile.editBtn')}
           </Button>
         </div>
 
         <Descriptions column={1} bordered>
-          <Descriptions.Item label="ID">{profile.id}</Descriptions.Item>
-          <Descriptions.Item label="Tên hiển thị">
-            {profile.name || <Typography.Text type="secondary">Chưa cập nhật</Typography.Text>}
-          </Descriptions.Item>
-          <Descriptions.Item label="Email">{profile.email}</Descriptions.Item>
-          <Descriptions.Item label="Vai trò">
-            <Tag color={getRoleColor(profile.role)}>{getRoleLabel(profile.role)}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Trạng thái email">
-            {profile.emailVerified ? (
-              <Tag color="success">Đã xác thực</Tag>
-            ) : (
-              <Tag color="warning">Chưa xác thực</Tag>
+          <Descriptions.Item label={t('profile.descId')}>{profile.id}</Descriptions.Item>
+          <Descriptions.Item label={t('profile.descName')}>
+            {profile.name || (
+              <Typography.Text type="secondary">{t('profile.descNameEmpty')}</Typography.Text>
             )}
           </Descriptions.Item>
-          <Descriptions.Item label="Ngày tạo">
+          <Descriptions.Item label={t('profile.descEmail')}>{profile.email}</Descriptions.Item>
+          <Descriptions.Item label={t('profile.descRole')}>
+            <Tag color={getRoleColor(profile.role)}>{t(`roleLabel.${profile.role}`)}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label={t('profile.descEmailStatus')}>
+            {profile.emailVerified ? (
+              <Tag color="success">{t('profile.emailVerified')}</Tag>
+            ) : (
+              <Tag color="warning">{t('profile.emailNotVerified')}</Tag>
+            )}
+          </Descriptions.Item>
+          <Descriptions.Item label={t('profile.descCreatedAt')}>
             {new Date(profile.createdAt).toLocaleString('vi-VN')}
           </Descriptions.Item>
-          <Descriptions.Item label="Cập nhật lần cuối">
+          <Descriptions.Item label={t('profile.descUpdatedAt')}>
             {new Date(profile.updatedAt).toLocaleString('vi-VN')}
           </Descriptions.Item>
         </Descriptions>
 
         <Space style={{ marginTop: 24 }}>
           <Button type="primary" onClick={() => nav('/change-password')}>
-            Đổi mật khẩu
+            {t('profile.changePasswordBtn')}
           </Button>
-          <Button onClick={() => nav('/sessions')}>Quản lý phiên đăng nhập</Button>
+          <Button onClick={() => nav('/sessions')}>{t('profile.manageSessionsBtn')}</Button>
           <Button danger onClick={handleLogoutAll} loading={logoutAllLoading}>
-            Đăng xuất tất cả thiết bị
+            {t('profile.logoutAllBtn')}
           </Button>
         </Space>
       </Card>
 
       <Modal
-        title="Chỉnh sửa hồ sơ"
+        title={t('profile.editModalTitle')}
         open={editModalVisible}
         onCancel={() => setEditModalVisible(false)}
         footer={null}
@@ -219,27 +205,27 @@ export default function ProfilePage() {
         <Form form={form} layout="vertical" onFinish={handleUpdateProfile}>
           <Form.Item
             name="name"
-            label="Tên hiển thị"
+            label={t('profile.formDisplayName')}
             rules={[
-              { min: 2, message: 'Tên phải có ít nhất 2 ký tự' },
-              { max: 100, message: 'Tên không được quá 100 ký tự' },
+              { min: 2, message: t('profile.formDisplayNameMin') },
+              { max: 100, message: t('profile.formDisplayNameMax') },
             ]}
           >
-            <Input placeholder="Nhập tên của bạn" />
+            <Input placeholder={t('profile.formDisplayNamePlaceholder')} />
           </Form.Item>
           <Form.Item
             name="avatarUrl"
-            label="URL ảnh đại diện"
-            rules={[{ type: 'url', message: 'Vui lòng nhập URL hợp lệ' }]}
+            label={t('profile.formAvatarUrl')}
+            rules={[{ type: 'url', message: t('profile.formAvatarUrlInvalid') }]}
           >
-            <Input placeholder="https://example.com/avatar.jpg" />
+            <Input placeholder={t('profile.formAvatarUrlPlaceholder')} />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Space>
               <Button type="primary" htmlType="submit" loading={editLoading}>
-                Lưu thay đổi
+                {t('profile.saveBtn')}
               </Button>
-              <Button onClick={() => setEditModalVisible(false)}>Hủy</Button>
+              <Button onClick={() => setEditModalVisible(false)}>{t('profile.cancelBtn')}</Button>
             </Space>
           </Form.Item>
         </Form>

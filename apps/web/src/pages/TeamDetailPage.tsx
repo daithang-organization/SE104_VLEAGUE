@@ -12,7 +12,6 @@ import {
   message,
   Row,
   Space,
-  Spin,
   Statistic,
   Table,
   Tabs,
@@ -20,7 +19,9 @@ import {
   Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
 import { POSITION_MAP, STATUS_MAP } from '../utils/constants';
@@ -30,6 +31,7 @@ const { Title } = Typography;
 export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +43,7 @@ export default function TeamDetailPage() {
         const data = await apiGetTeam(id);
         if (!cancelled) setTeam(data);
       } catch {
-        if (!cancelled) message.error('Không thể tải thông tin đội bóng');
+        if (!cancelled) message.error(t('teamDetail.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -54,18 +56,14 @@ export default function TeamDetailPage() {
   }, [id]);
 
   if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: 80 }}>
-        <Spin size="large" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!team) {
     return (
       <div style={{ textAlign: 'center', padding: 80 }}>
-        <Title level={4}>Không tìm thấy đội bóng</Title>
-        <Button onClick={() => navigate('/teams')}>Quay lại</Button>
+        <Title level={4}>{t('teamDetail.notFound')}</Title>
+        <Button onClick={() => navigate('/teams')}>{t('teamDetail.back')}</Button>
       </div>
     );
   }
@@ -84,14 +82,14 @@ export default function TeamDetailPage() {
     const isHome = m.side === 'home';
     const ours = isHome ? m.homeScore : m.awayScore;
     const theirs = isHome ? m.awayScore : m.homeScore;
-    if (ours > theirs) return { label: 'T', color: 'green' };
-    if (ours < theirs) return { label: 'B', color: 'red' };
-    return { label: 'H', color: 'orange' };
+    if (ours > theirs) return { label: t('teamDetail.matchResultWin'), color: 'green' };
+    if (ours < theirs) return { label: t('teamDetail.matchResultLoss'), color: 'red' };
+    return { label: t('teamDetail.matchResultDraw'), color: 'orange' };
   };
 
   const rosterColumns = [
     {
-      title: 'Số áo',
+      title: t('teamDetail.rosterColJersey'),
       dataIndex: 'jerseyNumber',
       key: 'jerseyNumber',
       width: 80,
@@ -100,14 +98,14 @@ export default function TeamDetailPage() {
       render: (v: number | null) => v ?? '—',
     },
     {
-      title: 'Tên cầu thủ',
+      title: t('teamDetail.rosterColName'),
       key: 'fullName',
       render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => (
         <a onClick={() => navigate(`/players/${r.player.id}`)}>{r.player.fullName}</a>
       ),
     },
     {
-      title: 'Vị trí',
+      title: t('teamDetail.rosterColPosition'),
       key: 'position',
       render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => {
         const p = POSITION_MAP[r.player.position];
@@ -115,16 +113,16 @@ export default function TeamDetailPage() {
       },
     },
     {
-      title: 'Quốc tịch',
+      title: t('teamDetail.rosterColNationality'),
       key: 'nationality',
       render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => r.player.nationality,
     },
     {
-      title: 'Loại',
+      title: t('teamDetail.rosterColType'),
       key: 'playerType',
       render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => (
         <Tag color={r.player.playerType === 'FOREIGN' ? 'purple' : 'cyan'}>
-          {r.player.playerType === 'FOREIGN' ? 'Ngoại binh' : 'Nội binh'}
+          {t(`playerType.${r.player.playerType}`)}
         </Tag>
       ),
     },
@@ -132,29 +130,30 @@ export default function TeamDetailPage() {
 
   const matchColumns = [
     {
-      title: 'Vòng',
+      title: t('teamDetail.matchColRound'),
       key: 'round',
       width: 80,
       render: (_: unknown, r: (typeof allMatches)[0]) => `V${r.roundNo}`,
     },
     {
-      title: 'Đối thủ',
+      title: t('teamDetail.matchColOpponent'),
       key: 'opponent',
       render: (_: unknown, r: (typeof allMatches)[0]) => {
         const opponent = r.side === 'home' ? (r.awayTeam?.name ?? '—') : (r.homeTeam?.name ?? '—');
-        const prefix = r.side === 'home' ? '(S)' : '(K)';
+        const prefix =
+          r.side === 'home' ? t('teamDetail.matchSideHome') : t('teamDetail.matchSideAway');
         return `${prefix} ${opponent}`;
       },
     },
     {
-      title: 'Tỷ số',
+      title: t('teamDetail.matchColScore'),
       key: 'score',
       width: 100,
       render: (_: unknown, r: (typeof allMatches)[0]) =>
         r.homeScore != null ? `${r.homeScore} - ${r.awayScore}` : '— : —',
     },
     {
-      title: 'Kết quả',
+      title: t('teamDetail.matchColResult'),
       key: 'result',
       width: 80,
       render: (_: unknown, r: (typeof allMatches)[0]) => {
@@ -163,7 +162,7 @@ export default function TeamDetailPage() {
       },
     },
     {
-      title: 'Trạng thái',
+      title: t('teamDetail.matchColStatus'),
       dataIndex: 'status',
       key: 'status',
       width: 120,
@@ -173,7 +172,7 @@ export default function TeamDetailPage() {
       },
     },
     {
-      title: 'Ngày',
+      title: t('teamDetail.matchColDate'),
       key: 'date',
       width: 120,
       render: (_: unknown, r: (typeof allMatches)[0]) =>
@@ -185,34 +184,49 @@ export default function TeamDetailPage() {
 
   return (
     <div>
-      <Space style={{ marginBottom: 16 }}>
+      <Space style={{ marginBottom: 16 }} align="center">
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teams')}>
-          Quay lại
+          {t('teamDetail.back')}
         </Button>
+        {team.logoUrl && (
+          <img
+            src={team.logoUrl}
+            alt={team.name}
+            style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8 }}
+          />
+        )}
         <Title level={3} style={{ margin: 0 }}>
           {team.name}
         </Title>
         <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
-          {team.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+          {team.status === 'ACTIVE' ? t('teamDetail.statusActive') : t('teamDetail.statusInactive')}
         </Tag>
       </Space>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={8}>
           <Card size="small">
-            <Statistic title="Cầu thủ" value={team.teamPlayers.length} prefix={<TeamOutlined />} />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card size="small">
-            <Statistic title="Trận đấu" value={allMatches.length} prefix={<TrophyOutlined />} />
+            <Statistic
+              title={t('teamDetail.statPlayers')}
+              value={team.teamPlayers.length}
+              prefix={<TeamOutlined />}
+            />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card size="small">
             <Statistic
-              title="Sân nhà"
-              value={team.stadium?.name ?? 'Chưa có'}
+              title={t('teamDetail.statMatches')}
+              value={allMatches.length}
+              prefix={<TrophyOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card size="small">
+            <Statistic
+              title={t('teamDetail.statStadium')}
+              value={team.stadium?.name ?? t('teamDetail.stadiumEmpty')}
               prefix={<EnvironmentOutlined />}
               valueStyle={{ fontSize: 16 }}
             />
@@ -225,19 +239,27 @@ export default function TeamDetailPage() {
         items={[
           {
             key: 'info',
-            label: 'Tổng quan',
+            label: t('teamDetail.tabInfo'),
             children: (
               <Card>
                 <Descriptions bordered column={{ xs: 1, sm: 2 }}>
-                  <Descriptions.Item label="Tên đội">{team.name}</Descriptions.Item>
-                  <Descriptions.Item label="Tên viết tắt">
+                  <Descriptions.Item label={t('teamDetail.descName')}>
+                    {team.name}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('teamDetail.descShortName')}>
                     {team.shortName ?? '—'}
                   </Descriptions.Item>
-                  <Descriptions.Item label="Thành phố">{team.city ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Sân nhà">{team.stadium?.name ?? '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Trạng thái">
+                  <Descriptions.Item label={t('teamDetail.descCity')}>
+                    {team.city ?? '—'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('teamDetail.descStadium')}>
+                    {team.stadium?.name ?? '—'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('teamDetail.descStatus')}>
                     <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
-                      {team.status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng'}
+                      {team.status === 'ACTIVE'
+                        ? t('teamDetail.statusActive')
+                        : t('teamDetail.statusInactiveShort')}
                     </Tag>
                   </Descriptions.Item>
                 </Descriptions>
@@ -245,20 +267,20 @@ export default function TeamDetailPage() {
                 {currentStanding && (
                   <Card
                     size="small"
-                    title={`Thống kê — ${currentStanding.season.name}`}
+                    title={t('teamDetail.standingsTitle', { season: currentStanding.season.name })}
                     style={{ marginTop: 16 }}
                   >
                     <Row gutter={16}>
                       {[
-                        { label: 'Hạng', value: currentStanding.rank ?? '—' },
-                        { label: 'Điểm', value: currentStanding.points },
-                        { label: 'Trận', value: currentStanding.played },
-                        { label: 'Thắng', value: currentStanding.win },
-                        { label: 'Hòa', value: currentStanding.draw },
-                        { label: 'Thua', value: currentStanding.loss },
-                        { label: 'BT', value: currentStanding.goalsFor },
-                        { label: 'BN', value: currentStanding.goalsAgainst },
-                        { label: 'HS', value: currentStanding.goalDiff },
+                        { label: t('teamDetail.standingRank'), value: currentStanding.rank ?? '—' },
+                        { label: t('teamDetail.standingPoints'), value: currentStanding.points },
+                        { label: t('teamDetail.standingPlayed'), value: currentStanding.played },
+                        { label: t('teamDetail.standingWon'), value: currentStanding.win },
+                        { label: t('teamDetail.standingDrawn'), value: currentStanding.draw },
+                        { label: t('teamDetail.standingLost'), value: currentStanding.loss },
+                        { label: t('teamDetail.standingGF'), value: currentStanding.goalsFor },
+                        { label: t('teamDetail.standingGA'), value: currentStanding.goalsAgainst },
+                        { label: t('teamDetail.standingGD'), value: currentStanding.goalDiff },
                       ].map((s) => (
                         <Col key={s.label} span={4} xs={8} sm={4}>
                           <Statistic title={s.label} value={s.value} />
@@ -272,7 +294,7 @@ export default function TeamDetailPage() {
           },
           {
             key: 'roster',
-            label: `Đội hình (${team.teamPlayers.length})`,
+            label: t('teamDetail.tabRoster', { count: team.teamPlayers.length }),
             children: (
               <Table
                 dataSource={team.teamPlayers}
@@ -285,7 +307,7 @@ export default function TeamDetailPage() {
           },
           {
             key: 'matches',
-            label: `Trận đấu (${allMatches.length})`,
+            label: t('teamDetail.tabMatches', { count: allMatches.length }),
             children: (
               <Table
                 dataSource={allMatches}

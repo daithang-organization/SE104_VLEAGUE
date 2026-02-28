@@ -1,26 +1,13 @@
-import {
-    DeleteOutlined,
-    DesktopOutlined,
-    MobileOutlined,
-    TabletOutlined,
-} from '@ant-design/icons';
-import {
-    Alert,
-    Button,
-    Card,
-    List,
-    message,
-    Popconfirm,
-    Space,
-    Tag,
-    Typography,
-} from 'antd';
+import { DeleteOutlined, DesktopOutlined, MobileOutlined, TabletOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, List, message, Popconfirm, Space, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { Session } from '../services/authApi';
 import { apiGetSessions, apiLogoutAll, apiRevokeSession } from '../services/authApi';
 
 export default function SessionsPage() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -48,7 +35,7 @@ export default function SessionsPage() {
     setRevoking(sessionId);
     try {
       await apiRevokeSession(sessionId);
-      message.success('Đã thu hồi phiên đăng nhập');
+      message.success(t('sessions.revokeSuccess'));
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
     } catch (err: unknown) {
       const errorMessage =
@@ -96,31 +83,31 @@ export default function SessionsPage() {
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
       <div style={{ marginBottom: 24 }}>
-        <Link to="/profile">← Quay lại hồ sơ</Link>
+        <Link to="/profile">{t('sessions.backToProfile')}</Link>
       </div>
 
       <Card
-        title="Quản lý phiên đăng nhập"
+        title={t('sessions.title')}
         extra={
           sessions.length > 1 && (
             <Popconfirm
-              title="Đăng xuất tất cả?"
-              description="Bạn sẽ bị đăng xuất khỏi tất cả thiết bị, bao gồm thiết bị này."
+              title={t('sessions.logoutAllConfirmTitle')}
+              description={t('sessions.logoutAllConfirmDesc')}
               onConfirm={handleLogoutAll}
-              okText="Đăng xuất"
+              okText={t('sessions.logoutAllOk')}
               okButtonProps={{ danger: true }}
-              cancelText="Hủy"
+              cancelText={t('sessions.logoutAllCancel')}
             >
               <Button danger loading={logoutAllLoading}>
-                Đăng xuất tất cả
+                {t('sessions.logoutAllBtn')}
               </Button>
             </Popconfirm>
           )
         }
       >
         <Alert
-          message="Phiên đăng nhập"
-          description="Danh sách các thiết bị đang đăng nhập vào tài khoản của bạn. Bạn có thể thu hồi quyền truy cập của bất kỳ thiết bị nào."
+          message={t('sessions.alertTitle')}
+          description={t('sessions.alertDesc')}
           type="info"
           showIcon
           style={{ marginBottom: 24 }}
@@ -129,30 +116,26 @@ export default function SessionsPage() {
         <List
           loading={loading}
           dataSource={sessions}
-          locale={{ emptyText: 'Không có phiên đăng nhập nào' }}
+          locale={{ emptyText: t('sessions.empty') }}
           renderItem={(session, index) => (
             <List.Item
               actions={[
                 index === 0 ? (
                   <Tag color="green" key="current">
-                    Thiết bị này
+                    {t('sessions.currentDevice')}
                   </Tag>
                 ) : (
                   <Popconfirm
                     key="revoke"
-                    title="Thu hồi phiên này?"
-                    description="Thiết bị này sẽ bị đăng xuất."
+                    title={t('sessions.revokeConfirmTitle')}
+                    description={t('sessions.revokeConfirmDesc')}
                     onConfirm={() => handleRevoke(session.id)}
-                    okText="Thu hồi"
+                    okText={t('sessions.revokeOk')}
                     okButtonProps={{ danger: true }}
-                    cancelText="Hủy"
+                    cancelText={t('sessions.revokeCancel')}
                   >
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      loading={revoking === session.id}
-                    >
-                      Thu hồi
+                    <Button danger icon={<DeleteOutlined />} loading={revoking === session.id}>
+                      {t('sessions.revokeBtn')}
                     </Button>
                   </Popconfirm>
                 ),
@@ -167,22 +150,22 @@ export default function SessionsPage() {
                 title={
                   <Space>
                     {session.deviceName || 'Unknown Device'}
-                    {index === 0 && <Tag color="blue">Hiện tại</Tag>}
+                    {index === 0 && <Tag color="blue">{t('sessions.currentTag')}</Tag>}
                   </Space>
                 }
                 description={
                   <Space direction="vertical" size={0}>
                     <Typography.Text type="secondary">
-                      IP: {session.ipAddress || 'N/A'}
+                      {t('sessions.ipLabel', { ip: session.ipAddress || 'N/A' })}
                     </Typography.Text>
                     <Typography.Text type="secondary">
-                      Hoạt động lần cuối: {formatDate(session.lastUsedAt)}
+                      {t('sessions.lastUsedLabel', { time: formatDate(session.lastUsedAt) })}
                     </Typography.Text>
                     <Typography.Text type="secondary">
-                      Đăng nhập: {formatDate(session.createdAt)}
+                      {t('sessions.createdLabel', { time: formatDate(session.createdAt) })}
                     </Typography.Text>
                     <Typography.Text type="secondary">
-                      Hết hạn: {formatDate(session.expiresAt)}
+                      {t('sessions.expiresLabel', { time: formatDate(session.expiresAt) })}
                     </Typography.Text>
                   </Space>
                 }

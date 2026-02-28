@@ -23,6 +23,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { CardSkeleton } from '../components';
@@ -46,6 +47,7 @@ type RecentResult = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const isAdmin = user?.role === 'ADMIN';
   const [stats, setStats] = useState({
     teams: 0,
@@ -110,7 +112,7 @@ export default function DashboardPage() {
           setCurrentSeason(curSeason.value);
         }
       } catch {
-        message.error('Không thể tải dữ liệu dashboard');
+        message.error(t('dashboard.errorLoad'));
       } finally {
         setLoading(false);
       }
@@ -120,32 +122,32 @@ export default function DashboardPage() {
   }, []);
 
   const standingsCols: ColumnsType<TeamStanding> = [
-    { title: '#', dataIndex: 'position', width: 50 },
-    { title: 'Đội', dataIndex: 'teamName' },
-    { title: 'Trận', dataIndex: 'played', width: 60 },
-    { title: 'Điểm', dataIndex: 'points', width: 60 },
+    { title: t('dashboard.standingsColRank'), dataIndex: 'position', width: 50 },
+    { title: t('dashboard.standingsColTeam'), dataIndex: 'teamName' },
+    { title: t('dashboard.standingsColPlayed'), dataIndex: 'played', width: 60 },
+    { title: t('dashboard.standingsColPoints'), dataIndex: 'points', width: 60 },
   ];
 
   const upcomingCols: ColumnsType<ScheduleMatch> = [
     {
-      title: 'Vòng',
+      title: t('dashboard.upcomingColRound'),
       dataIndex: 'roundNo',
       width: 70,
       render: (v: number) => `V${v}`,
     },
     {
-      title: 'Trận đấu',
+      title: t('dashboard.upcomingColMatch'),
       key: 'match',
       render: (_, r) => `${r.homeTeam?.name ?? '—'} vs ${r.awayTeam?.name ?? '—'}`,
     },
     {
-      title: 'Thời gian',
+      title: t('dashboard.upcomingColTime'),
       dataIndex: 'kickoffAt',
       width: 150,
       render: (v: string) => dayjs(v).format('DD/MM HH:mm'),
     },
     {
-      title: 'Trạng thái',
+      title: t('dashboard.upcomingColStatus'),
       dataIndex: 'status',
       width: 110,
       render: (s: string) => <Tag color={s === 'PUBLISHED' ? 'blue' : 'default'}>{s}</Tag>,
@@ -154,13 +156,13 @@ export default function DashboardPage() {
 
   const recentCols: ColumnsType<RecentResult> = [
     {
-      title: 'V',
+      title: t('dashboard.recentColRound'),
       dataIndex: 'roundNo',
       width: 50,
       render: (v: number) => `V${v}`,
     },
     {
-      title: 'Trận đấu',
+      title: t('dashboard.recentColMatch'),
       key: 'match',
       render: (_, r) => (
         <span>
@@ -173,7 +175,7 @@ export default function DashboardPage() {
       ),
     },
     {
-      title: 'Ngày',
+      title: t('dashboard.recentColDate'),
       dataIndex: 'kickoffAt',
       width: 100,
       render: (v: string | null) => (v ? dayjs(v).format('DD/MM') : '—'),
@@ -193,10 +195,8 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Typography.Title level={3}>Dashboard</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        Chào mừng đến với VLeague Admin! Tổng quan hệ thống:
-      </Typography.Paragraph>
+      <Typography.Title level={3}>{t('dashboard.title')}</Typography.Title>
+      <Typography.Paragraph type="secondary">{t('dashboard.welcome')}</Typography.Paragraph>
 
       {loading ? (
         <Row gutter={[16, 16]}>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
             <Col xs={12} sm={6}>
               <Card loading={loading}>
                 <Statistic
-                  title="Đội bóng"
+                  title={t('dashboard.statTeams')}
                   value={stats.teams}
                   prefix={<TeamOutlined />}
                   valueStyle={{ color: '#1890ff' }}
@@ -228,7 +228,7 @@ export default function DashboardPage() {
             <Col xs={12} sm={6}>
               <Card loading={loading}>
                 <Statistic
-                  title="Cầu thủ"
+                  title={t('dashboard.statPlayers')}
                   value={stats.players}
                   prefix={<UserOutlined />}
                   valueStyle={{ color: '#52c41a' }}
@@ -238,7 +238,7 @@ export default function DashboardPage() {
             <Col xs={12} sm={6}>
               <Card loading={loading}>
                 <Statistic
-                  title="Trận đấu"
+                  title={t('dashboard.statMatches')}
                   value={stats.matches}
                   prefix={<CalendarOutlined />}
                   valueStyle={{ color: '#faad14' }}
@@ -248,7 +248,7 @@ export default function DashboardPage() {
             <Col xs={12} sm={6}>
               <Card loading={loading}>
                 <Statistic
-                  title="Mùa giải"
+                  title={t('dashboard.statSeasons')}
                   value={stats.seasons}
                   prefix={<TrophyOutlined />}
                   valueStyle={{ color: '#eb2f96' }}
@@ -266,13 +266,13 @@ export default function DashboardPage() {
                     <Space>
                       <Badge status="processing" />
                       <Typography.Text strong>{currentSeason.name}</Typography.Text>
-                      <Tag color="green">Đang diễn ra</Tag>
+                      <Tag color="green">{t('dashboard.inProgress')}</Tag>
                     </Space>
                     {seasonProgress !== null && (
                       <Progress
                         percent={seasonProgress}
                         size="small"
-                        format={(p) => `${p}% mùa giải`}
+                        format={(p) => t('dashboard.seasonProgress', { percent: p })}
                       />
                     )}
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -290,31 +290,31 @@ export default function DashboardPage() {
             )}
             {isAdmin && (
               <Col xs={24} md={currentSeason ? 8 : 24}>
-                <Card title="⚡ Thao tác nhanh" size="small" loading={loading}>
+                <Card title={t('dashboard.quickActions')} size="small" loading={loading}>
                   <Space wrap>
                     <Button
                       icon={<PlusOutlined />}
                       size="small"
                       onClick={() => navigate('/seasons')}
                     >
-                      Mùa giải
+                      {t('dashboard.btnSeason')}
                     </Button>
                     <Button icon={<TeamOutlined />} size="small" onClick={() => navigate('/teams')}>
-                      Đội bóng
+                      {t('dashboard.btnTeam')}
                     </Button>
                     <Button
                       icon={<CalendarOutlined />}
                       size="small"
                       onClick={() => navigate('/schedule')}
                     >
-                      Lịch thi đấu
+                      {t('dashboard.btnSchedule')}
                     </Button>
                     <Button
                       icon={<SettingOutlined />}
                       size="small"
                       onClick={() => navigate('/regulations')}
                     >
-                      Quy định
+                      {t('dashboard.btnRegulation')}
                     </Button>
                   </Space>
                 </Card>
@@ -324,7 +324,7 @@ export default function DashboardPage() {
 
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={24} md={12}>
-              <Card title="🏆 Bảng xếp hạng (Top 5)" size="small">
+              <Card title={t('dashboard.standingsTitle')} size="small">
                 <Table
                   columns={standingsCols}
                   dataSource={standings}
@@ -332,12 +332,12 @@ export default function DashboardPage() {
                   loading={loading}
                   pagination={false}
                   size="small"
-                  locale={{ emptyText: 'Chưa có dữ liệu BXH' }}
+                  locale={{ emptyText: t('dashboard.standingsEmpty') }}
                 />
               </Card>
             </Col>
             <Col xs={24} md={12}>
-              <Card title="📅 Trận đấu sắp tới" size="small">
+              <Card title={t('dashboard.upcomingTitle')} size="small">
                 <Table
                   columns={upcomingCols}
                   dataSource={upcoming}
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                   loading={loading}
                   pagination={false}
                   size="small"
-                  locale={{ emptyText: 'Chưa có trận đấu sắp tới' }}
+                  locale={{ emptyText: t('dashboard.upcomingEmpty') }}
                 />
               </Card>
             </Col>
@@ -354,7 +354,7 @@ export default function DashboardPage() {
           {/* Recent results */}
           <Row gutter={[16, 16]}>
             <Col xs={24}>
-              <Card title="⚽ Kết quả gần đây" size="small">
+              <Card title={t('dashboard.recentTitle')} size="small">
                 <Table
                   columns={recentCols}
                   dataSource={recentResults}
@@ -362,7 +362,7 @@ export default function DashboardPage() {
                   loading={loading}
                   pagination={false}
                   size="small"
-                  locale={{ emptyText: 'Chưa có kết quả trận đấu' }}
+                  locale={{ emptyText: t('dashboard.recentEmpty') }}
                 />
               </Card>
             </Col>

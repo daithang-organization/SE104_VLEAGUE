@@ -1,6 +1,7 @@
 import { DownloadOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Flex, message, Space, Tabs, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TableSkeleton } from '../components';
 import {
   apiGetCardStats,
@@ -26,7 +27,7 @@ async function exportPdf(title: string, headers: string[], rows: string[][]) {
   doc.setFontSize(16);
   doc.text(title, 14, 20);
   doc.setFontSize(10);
-  doc.text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, 14, 28);
+  doc.text(`${new Date().toLocaleDateString('vi-VN')}`, 14, 28);
   autoTable(doc, {
     startY: 34,
     head: [headers],
@@ -40,6 +41,7 @@ async function exportPdf(title: string, headers: string[], rows: string[][]) {
 /* ────────── Main Page ────────── */
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [scorers, setScorers] = useState<TopScorer[]>([]);
   const [cardStats, setCardStats] = useState<CardStat[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStat[]>([]);
@@ -57,7 +59,7 @@ export default function ReportsPage() {
         if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
         if (teamRes.status === 'fulfilled') setTeamStats(teamRes.value);
         const failed = [scorerRes, cardRes, teamRes].filter((r) => r.status === 'rejected');
-        if (failed.length === 3) setError('Không thể tải dữ liệu báo cáo');
+        if (failed.length === 3) setError(t('reports.loadError'));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -70,29 +72,7 @@ export default function ReportsPage() {
         scorers.map((s) => [String(s.position), s.playerName, s.teamName, String(s.goals)]),
       );
     } catch {
-      message.error('Lỗi xuất PDF');
-    }
-  };
-
-  const handleExportTeamStatsPdf = async () => {
-    try {
-      await exportPdf(
-        'VLeague - Thong ke doi',
-        ['Doi', 'Tran', 'Thang', 'Hoa', 'Thua', 'BT', 'BB', '+/-', 'Diem'],
-        teamStats.map((t) => [
-          t.teamName,
-          String(t.played),
-          String(t.won),
-          String(t.drawn),
-          String(t.lost),
-          String(t.goalsFor),
-          String(t.goalsAgainst),
-          String(t.goalDifference),
-          String(t.points),
-        ]),
-      );
-    } catch {
-      message.error('Lỗi xuất PDF');
+      message.error(t('reports.exportError'));
     }
   };
 
@@ -102,7 +82,7 @@ export default function ReportsPage() {
     <Card>
       <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
         <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
-          Báo cáo &amp; Thống kê
+          {t('reports.title')}
         </Typography.Title>
         <Space>
           <Button
@@ -110,14 +90,14 @@ export default function ReportsPage() {
             onClick={handleExportScorersPdf}
             disabled={scorers.length === 0}
           >
-            PDF Vua phá lưới
+            {t('reports.exportScorersPdf')}
           </Button>
           <Button
             icon={<DownloadOutlined />}
             onClick={handleExportTeamStatsPdf}
             disabled={teamStats.length === 0}
           >
-            PDF Thống kê đội
+            {t('reports.exportTeamStatsPdf')}
           </Button>
         </Space>
       </Flex>
@@ -130,22 +110,22 @@ export default function ReportsPage() {
           items={[
             {
               key: 'scorers',
-              label: '🏆 Vua phá lưới',
+              label: t('reports.tabScorers'),
               children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
             },
             {
               key: 'cards',
-              label: '🟨 Thẻ phạt',
+              label: t('reports.tabCards'),
               children: <CardStatsTab data={cardStats} loading={loading} />,
             },
             {
               key: 'team-stats',
-              label: '📊 Thống kê đội',
+              label: t('reports.tabTeamStats'),
               children: <TeamStatsTab data={teamStats} loading={loading} />,
             },
             {
               key: 'charts',
-              label: '📈 Biểu đồ',
+              label: t('reports.tabCharts'),
               children: (
                 <ChartsTab scorers={scorers.slice(0, 10)} teamStats={teamStats} loading={loading} />
               ),

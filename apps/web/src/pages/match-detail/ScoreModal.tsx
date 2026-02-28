@@ -1,5 +1,6 @@
 import { Flex, Form, InputNumber, message, Modal, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiUpdateMatch, type Match } from '../../services/matchApi';
 
 const { Title } = Typography;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ScoreModal({ match, open, onCancel, onSuccess }: Props) {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
@@ -32,11 +34,11 @@ export default function ScoreModal({ match, open, onCancel, onSuccess }: Props) 
         homeScore: values.homeScore,
         awayScore: values.awayScore,
       });
-      message.success('Đã cập nhật tỉ số!');
+      message.success(t('scoreModal.success'));
       onCancel();
       onSuccess();
     } catch {
-      message.error('Không thể cập nhật tỉ số');
+      message.error(t('scoreModal.error'));
     } finally {
       setSaving(false);
     }
@@ -44,20 +46,20 @@ export default function ScoreModal({ match, open, onCancel, onSuccess }: Props) 
 
   return (
     <Modal
-      title="Cập nhật tỉ số"
+      title={t('scoreModal.title')}
       open={open}
       onCancel={onCancel}
       onOk={handleSave}
       confirmLoading={saving}
-      okText="Lưu"
-      cancelText="Hủy"
+      okText={t('scoreModal.save')}
+      cancelText={t('scoreModal.cancel')}
     >
       <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
         <Flex gap={16} align="flex-end">
           <Form.Item
             name="homeScore"
-            label={match.homeTeam?.name ?? 'Đội nhà'}
-            rules={[{ required: true, message: 'Nhập số bàn' }]}
+            label={match.homeTeam?.name ?? t('scoreModal.homeDefault')}
+            rules={[{ required: true, message: t('scoreModal.required') }]}
             style={{ flex: 1 }}
           >
             <InputNumber min={0} max={99} style={{ width: '100%' }} size="large" />
@@ -67,8 +69,8 @@ export default function ScoreModal({ match, open, onCancel, onSuccess }: Props) 
           </Title>
           <Form.Item
             name="awayScore"
-            label={match.awayTeam?.name ?? 'Đội khách'}
-            rules={[{ required: true, message: 'Nhập số bàn' }]}
+            label={match.awayTeam?.name ?? t('scoreModal.awayDefault')}
+            rules={[{ required: true, message: t('scoreModal.required') }]}
             style={{ flex: 1 }}
           >
             <InputNumber min={0} max={99} style={{ width: '100%' }} size="large" />

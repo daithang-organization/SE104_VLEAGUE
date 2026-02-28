@@ -1,4 +1,5 @@
 import { Card, Col, Row } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
@@ -32,7 +33,9 @@ interface Props {
 }
 
 export default function ChartsTab({ scorers, teamStats, loading }: Props) {
-  if (loading) return <div style={{ textAlign: 'center', padding: 40 }}>Đang tải...</div>;
+  const { t } = useTranslation();
+  if (loading)
+    return <div style={{ textAlign: 'center', padding: 40 }}>{t('chartsTab.loading')}</div>;
 
   const scorerBarData = scorers.slice(0, 10).map((s) => ({
     name: s.playerName.length > 12 ? s.playerName.slice(0, 12) + '…' : s.playerName,
@@ -55,21 +58,26 @@ export default function ChartsTab({ scorers, teamStats, loading }: Props) {
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={12}>
-        <Card title="Top 10 Vua phá lưới" size="small">
+        <Card title={t('chartsTab.topScorersChart')} size="small">
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={scorerBarData} layout="vertical" margin={{ left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" allowDecimals={false} />
               <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Bar dataKey="goals" fill="#1890ff" name="Bàn thắng" radius={[0, 4, 4, 0]} />
+              <Bar
+                dataKey="goals"
+                fill="#1890ff"
+                name={t('chartsTab.goalLabel')}
+                radius={[0, 4, 4, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </Card>
       </Col>
 
       <Col xs={24} lg={12}>
-        <Card title="Tỉ lệ bàn thắng theo đội" size="small">
+        <Card title={t('chartsTab.goalRatioChart')} size="small">
           <ResponsiveContainer width="100%" height={320}>
             <PieChart>
               <Pie
@@ -93,7 +101,7 @@ export default function ChartsTab({ scorers, teamStats, loading }: Props) {
       </Col>
 
       <Col xs={24}>
-        <Card title="Điểm số & Thành tích các đội" size="small">
+        <Card title={t('chartsTab.pointsChart')} size="small">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={pointsBarData} margin={{ left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -101,9 +109,9 @@ export default function ChartsTab({ scorers, teamStats, loading }: Props) {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="won" stackId="a" fill="#52c41a" name="Thắng" />
-              <Bar dataKey="drawn" stackId="a" fill="#faad14" name="Hòa" />
-              <Bar dataKey="lost" stackId="a" fill="#f5222d" name="Thua" />
+              <Bar dataKey="won" stackId="a" fill="#52c41a" name={t('chartsTab.wonLabel')} />
+              <Bar dataKey="drawn" stackId="a" fill="#faad14" name={t('chartsTab.drawnLabel')} />
+              <Bar dataKey="lost" stackId="a" fill="#f5222d" name={t('chartsTab.lostLabel')} />
             </BarChart>
           </ResponsiveContainer>
         </Card>

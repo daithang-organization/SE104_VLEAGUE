@@ -14,6 +14,7 @@ import {
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { apiGetHeadToHead, type HeadToHeadResult } from '../services/searchApi';
 
@@ -23,6 +24,7 @@ type Team = { id: string; name: string; shortName?: string | null };
 type Season = { id: string; name: string };
 
 export default function HeadToHeadPage() {
+  const { t } = useTranslation();
   const [teams, setTeams] = useState<Team[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [team1Id, setTeam1Id] = useState<string>();
@@ -60,18 +62,18 @@ export default function HeadToHeadPage() {
     setTeam2Id(tmp);
   };
 
-  const team1 = teams.find((t) => t.id === team1Id);
-  const team2 = teams.find((t) => t.id === team2Id);
+  const team1 = teams.find((tm) => tm.id === team1Id);
+  const team2 = teams.find((tm) => tm.id === team2Id);
 
   return (
     <Card>
       <Title level={4} style={{ marginTop: 0 }}>
-        Đối đầu (Head-to-Head)
+        {t('headToHead.title')}
       </Title>
 
       <Space wrap style={{ marginBottom: 24 }}>
         <Select
-          placeholder="Chọn đội 1"
+          placeholder={t('headToHead.team1Placeholder')}
           value={team1Id}
           onChange={setTeam1Id}
           showSearch
@@ -80,10 +82,10 @@ export default function HeadToHeadPage() {
           allowClear
         >
           {teams
-            .filter((t) => t.id !== team2Id)
-            .map((t) => (
-              <Select.Option key={t.id} value={t.id}>
-                {t.name}
+            .filter((tm) => tm.id !== team2Id)
+            .map((tm) => (
+              <Select.Option key={tm.id} value={tm.id}>
+                {tm.name}
               </Select.Option>
             ))}
         </Select>
@@ -91,7 +93,7 @@ export default function HeadToHeadPage() {
         <Button icon={<SwapOutlined />} onClick={swapTeams} />
 
         <Select
-          placeholder="Chọn đội 2"
+          placeholder={t('headToHead.team2Placeholder')}
           value={team2Id}
           onChange={setTeam2Id}
           showSearch
@@ -100,16 +102,16 @@ export default function HeadToHeadPage() {
           allowClear
         >
           {teams
-            .filter((t) => t.id !== team1Id)
-            .map((t) => (
-              <Select.Option key={t.id} value={t.id}>
-                {t.name}
+            .filter((tm) => tm.id !== team1Id)
+            .map((tm) => (
+              <Select.Option key={tm.id} value={tm.id}>
+                {tm.name}
               </Select.Option>
             ))}
         </Select>
 
         <Select
-          placeholder="Mùa giải (tất cả)"
+          placeholder={t('headToHead.seasonPlaceholder')}
           value={seasonId}
           onChange={setSeasonId}
           allowClear
@@ -123,7 +125,7 @@ export default function HeadToHeadPage() {
         </Select>
 
         <Button type="primary" onClick={fetchH2H} disabled={!team1Id || !team2Id} loading={loading}>
-          So sánh
+          {t('headToHead.compareBtn')}
         </Button>
       </Space>
 
@@ -133,9 +135,7 @@ export default function HeadToHeadPage() {
         </div>
       )}
 
-      {!loading && !result && (
-        <Empty description="Chọn 2 đội và nhấn So sánh để xem thống kê đối đầu" />
-      )}
+      {!loading && !result && <Empty description={t('headToHead.emptyHint')} />}
 
       {!loading && result && (
         <>
@@ -144,36 +144,42 @@ export default function HeadToHeadPage() {
             <Col xs={24} sm={8}>
               <Card size="small" style={{ textAlign: 'center' }}>
                 <Statistic
-                  title={team1?.name ?? 'Đội 1'}
+                  title={team1?.name ?? t('headToHead.team1Default')}
                   value={result.team1Wins}
-                  suffix="thắng"
+                  suffix={t('headToHead.winsSuffix')}
                   valueStyle={{ color: '#1890ff' }}
                 />
-                <div style={{ fontSize: 12, color: '#888' }}>{result.team1Goals} bàn</div>
+                <div style={{ fontSize: 12, color: '#888' }}>
+                  {result.team1Goals} {t('headToHead.goalsSuffix')}
+                </div>
               </Card>
             </Col>
             <Col xs={24} sm={8}>
               <Card size="small" style={{ textAlign: 'center' }}>
-                <Statistic title="Tổng trận" value={result.totalMatches} />
-                <div style={{ fontSize: 12, color: '#888' }}>{result.draws} hòa</div>
+                <Statistic title={t('headToHead.totalMatches')} value={result.totalMatches} />
+                <div style={{ fontSize: 12, color: '#888' }}>
+                  {result.draws} {t('headToHead.drawsSuffix')}
+                </div>
               </Card>
             </Col>
             <Col xs={24} sm={8}>
               <Card size="small" style={{ textAlign: 'center' }}>
                 <Statistic
-                  title={team2?.name ?? 'Đội 2'}
+                  title={team2?.name ?? t('headToHead.team2Default')}
                   value={result.team2Wins}
-                  suffix="thắng"
+                  suffix={t('headToHead.winsSuffix')}
                   valueStyle={{ color: '#f5222d' }}
                 />
-                <div style={{ fontSize: 12, color: '#888' }}>{result.team2Goals} bàn</div>
+                <div style={{ fontSize: 12, color: '#888' }}>
+                  {result.team2Goals} {t('headToHead.goalsSuffix')}
+                </div>
               </Card>
             </Col>
           </Row>
 
           {/* Match History */}
           {result.matches && result.matches.length > 0 && (
-            <Card title="Lịch sử đối đầu" size="small">
+            <Card title={t('headToHead.historyTitle')} size="small">
               <Table
                 rowKey="id"
                 dataSource={result.matches}
@@ -181,24 +187,24 @@ export default function HeadToHeadPage() {
                 size="small"
                 columns={[
                   {
-                    title: 'Vòng',
+                    title: t('headToHead.colRound'),
                     dataIndex: 'roundNo',
                     width: 70,
                     render: (v: number) => `V${v}`,
                   },
                   {
-                    title: 'Mùa giải',
+                    title: t('headToHead.colSeason'),
                     key: 'season',
                     width: 140,
                     render: (_: unknown, r: { season?: { name: string } }) => r.season?.name ?? '—',
                   },
                   {
-                    title: 'Đội nhà',
+                    title: t('headToHead.colHome'),
                     key: 'home',
                     render: (_: unknown, r: { homeTeam?: { name: string } }) => r.homeTeam?.name,
                   },
                   {
-                    title: 'Tỉ số',
+                    title: t('headToHead.colScore'),
                     key: 'score',
                     width: 80,
                     align: 'center',
@@ -206,12 +212,12 @@ export default function HeadToHeadPage() {
                       r.homeScore != null ? `${r.homeScore} – ${r.awayScore}` : '—',
                   },
                   {
-                    title: 'Đội khách',
+                    title: t('headToHead.colAway'),
                     key: 'away',
                     render: (_: unknown, r: { awayTeam?: { name: string } }) => r.awayTeam?.name,
                   },
                   {
-                    title: 'Ngày',
+                    title: t('headToHead.colDate'),
                     key: 'date',
                     width: 120,
                     render: (_: unknown, r: { kickoffAt?: string }) =>

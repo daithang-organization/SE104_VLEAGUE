@@ -68,9 +68,11 @@ describe('RegulationsPage', () => {
     });
   });
 
-  it('renders action buttons', () => {
+  it('renders action buttons', async () => {
     renderPage();
-    expect(screen.getByText('Khởi tạo mặc định')).toBeInTheDocument();
-    expect(screen.getByText('Thêm quy định')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Khởi tạo mặc định')).toBeInTheDocument();
+      expect(screen.getByText('Thêm quy định')).toBeInTheDocument();
+    });
   });
 });

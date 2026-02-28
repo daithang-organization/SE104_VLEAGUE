@@ -27,6 +27,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import {
   apiCreateSeason,
@@ -74,6 +75,7 @@ const TEAM_STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 // ─── Season Team Panel (expandable row) ───
 function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
+  const { t } = useTranslation();
   const [teams, setTeams] = useState<SeasonTeam[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       setTeams(seasonTeams);
       setAllTeams(teamRes.data);
     } catch {
-      message.error('Không thể tải danh sách đội');
+      message.error(t('seasons.teamPanelLoadError'));
     } finally {
       setLoading(false);
     }
@@ -110,11 +112,11 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     setAdding(true);
     try {
       await apiRegisterTeam(seasonId, selectedTeamId);
-      message.success('Đã đăng ký đội');
+      message.success(t('seasons.teamPanelRegSuccess'));
       setSelectedTeamId(undefined);
       fetchTeams();
     } catch {
-      message.error('Không thể đăng ký đội');
+      message.error(t('seasons.teamPanelRegError'));
     } finally {
       setAdding(false);
     }
@@ -123,26 +125,26 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const handleStatus = async (teamId: string, status: string) => {
     try {
       await apiUpdateSeasonTeamStatus(seasonId, teamId, status);
-      message.success('Đã cập nhật trạng thái');
+      message.success(t('seasons.teamPanelStatusSuccess'));
       fetchTeams();
     } catch {
-      message.error('Không thể cập nhật');
+      message.error(t('seasons.teamPanelStatusError'));
     }
   };
 
   const handleRemove = async (teamId: string) => {
     try {
       await apiRemoveSeasonTeam(seasonId, teamId);
-      message.success('Đã xóa đội');
+      message.success(t('seasons.teamPanelRemoveSuccess'));
       fetchTeams();
     } catch {
-      message.error('Không thể xóa đội');
+      message.error(t('seasons.teamPanelRemoveError'));
     }
   };
 
   const cols: ColumnsType<SeasonTeam> = [
     {
-      title: 'Đội',
+      title: t('seasons.teamPanelColTeam'),
       key: 'team',
       render: (_, r) => (
         <Space size={6}>
@@ -159,13 +161,13 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       ),
     },
     {
-      title: 'Thành phố',
+      title: t('seasons.teamPanelColCity'),
       key: 'city',
       width: 140,
       render: (_, r) => r.team.city ?? '—',
     },
     {
-      title: 'Trạng thái',
+      title: t('seasons.teamPanelColStatus'),
       dataIndex: 'status',
       width: 120,
       align: 'center',
@@ -175,7 +177,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       },
     },
     {
-      title: 'Ngày ĐK',
+      title: t('seasons.teamPanelColRegDate'),
       dataIndex: 'registeredAt',
       width: 120,
       render: (d: string) => dayjs(d).format('DD/MM/YYYY'),
@@ -188,7 +190,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         <Space size={4}>
           {r.status === 'REGISTERED' && (
             <>
-              <Tooltip title="Duyệt">
+              <Tooltip title={t('seasons.teamPanelApproveTooltip')}>
                 <Button
                   type="text"
                   size="small"
@@ -197,7 +199,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
                   onClick={() => handleStatus(r.teamId, 'APPROVED')}
                 />
               </Tooltip>
-              <Tooltip title="Từ chối">
+              <Tooltip title={t('seasons.teamPanelRejectTooltip')}>
                 <Button
                   type="text"
                   size="small"
@@ -209,10 +211,10 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             </>
           )}
           <Popconfirm
-            title="Xóa đội khỏi mùa giải?"
+            title={t('seasons.teamPanelRemoveConfirm')}
             onConfirm={() => handleRemove(r.teamId)}
-            okText="Xóa"
-            cancelText="Hủy"
+            okText={t('seasons.deleteOk')}
+            cancelText={t('seasons.deleteCancel')}
           >
             <Button type="text" size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -225,14 +227,17 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     <div style={{ padding: '8px 0' }}>
       <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
         <Typography.Text strong>
-          <TeamOutlined /> Đội tham gia ({teams.filter((t) => t.status === 'APPROVED').length} duyệt
-          / {teams.length} ĐK)
+          <TeamOutlined />{' '}
+          {t('seasons.teamPanelTitle', {
+            approved: teams.filter((t) => t.status === 'APPROVED').length,
+            total: teams.length,
+          })}
         </Typography.Text>
         <Space>
           <Select
             value={selectedTeamId}
             onChange={setSelectedTeamId}
-            placeholder="Chọn đội để thêm"
+            placeholder={t('seasons.teamPanelAddPlaceholder')}
             style={{ width: 250 }}
             allowClear
             showSearch
@@ -250,7 +255,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             loading={adding}
             onClick={handleAdd}
           >
-            Thêm
+            {t('seasons.teamPanelAddBtn')}
           </Button>
         </Space>
       </Flex>
@@ -261,7 +266,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         loading={loading}
         pagination={false}
         size="small"
-        locale={{ emptyText: 'Chưa có đội nào đăng ký' }}
+        locale={{ emptyText: t('seasons.teamPanelEmpty') }}
       />
     </div>
   );
@@ -269,6 +274,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
 
 export default function SeasonsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isAdmin = user?.role === 'ADMIN';
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -285,7 +291,7 @@ export default function SeasonsPage() {
       const data = await apiGetSeasons();
       setSeasons(data);
     } catch {
-      message.error('Không thể tải danh sách mùa giải');
+      message.error(t('seasons.loadError'));
     } finally {
       setLoading(false);
     }
@@ -340,16 +346,16 @@ export default function SeasonsPage() {
 
       if (editing) {
         await apiUpdateSeason(editing.id, payload);
-        message.success('Đã cập nhật mùa giải');
+        message.success(t('seasons.updateSuccess'));
       } else {
         await apiCreateSeason(payload);
-        message.success('Đã tạo mùa giải mới');
+        message.success(t('seasons.createSuccess'));
       }
 
       setModalOpen(false);
       fetchSeasons();
     } catch {
-      message.error('Lỗi khi lưu mùa giải');
+      message.error(t('seasons.saveError'));
     } finally {
       setSaving(false);
     }
@@ -358,38 +364,38 @@ export default function SeasonsPage() {
   const handleDelete = async (id: string) => {
     try {
       await apiDeleteSeason(id);
-      message.success('Đã xóa mùa giải');
+      message.success(t('seasons.deleteSuccess'));
       fetchSeasons();
     } catch {
-      message.error('Không thể xóa mùa giải (có thể đang có lịch thi đấu)');
+      message.error(t('seasons.deleteError'));
     }
   };
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
       await apiUpdateSeasonStatus(id, status);
-      message.success('Đã cập nhật trạng thái');
+      message.success(t('seasons.statusUpdateSuccess'));
       fetchSeasons();
     } catch {
-      message.error('Không thể cập nhật trạng thái');
+      message.error(t('seasons.statusUpdateError'));
     }
   };
 
   const columns: ColumnsType<Season> = [
     {
-      title: 'Mùa giải',
+      title: t('seasons.colName'),
       dataIndex: 'name',
       render: (name: string) => <strong>{name}</strong>,
     },
     {
-      title: 'Năm',
+      title: t('seasons.colYear'),
       dataIndex: 'year',
       width: 120,
       align: 'center',
       render: (year: number) => `${year}/${year + 1}`,
     },
     {
-      title: 'Trạng thái',
+      title: t('seasons.colStatus'),
       dataIndex: 'status',
       width: 150,
       align: 'center',
@@ -413,7 +419,7 @@ export default function SeasonsPage() {
       },
     },
     {
-      title: 'Ngày bắt đầu',
+      title: t('seasons.colStartDate'),
       dataIndex: 'startDate',
       width: 140,
       render: (d: string | null) =>
@@ -423,15 +429,19 @@ export default function SeasonsPage() {
             {dayjs(d).format('DD/MM/YYYY')}
           </Flex>
         ) : (
-          <span style={{ color: '#ccc' }}>Chưa đặt</span>
+          <span style={{ color: '#ccc' }}>{t('seasons.notSet')}</span>
         ),
     },
     {
-      title: 'Ngày kết thúc',
+      title: t('seasons.colEndDate'),
       dataIndex: 'endDate',
       width: 140,
       render: (d: string | null) =>
-        d ? dayjs(d).format('DD/MM/YYYY') : <span style={{ color: '#ccc' }}>Chưa đặt</span>,
+        d ? (
+          dayjs(d).format('DD/MM/YYYY')
+        ) : (
+          <span style={{ color: '#ccc' }}>{t('seasons.notSet')}</span>
+        ),
     },
     ...(isAdmin
       ? [
@@ -448,11 +458,11 @@ export default function SeasonsPage() {
                   onClick={() => openEdit(record)}
                 />
                 <Popconfirm
-                  title="Xóa mùa giải này?"
-                  description="Tất cả lịch thi đấu liên quan sẽ bị xóa."
+                  title={t('seasons.deleteConfirmTitle')}
+                  description={t('seasons.deleteConfirmDesc')}
                   onConfirm={() => handleDelete(record.id)}
-                  okText="Xóa"
-                  cancelText="Hủy"
+                  okText={t('seasons.deleteOk')}
+                  cancelText={t('seasons.deleteCancel')}
                 >
                   <Button type="text" danger icon={<DeleteOutlined />} size="small" />
                 </Popconfirm>
@@ -467,11 +477,11 @@ export default function SeasonsPage() {
     <Card>
       <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>
-          📅 Quản lý mùa giải
+          {t('seasons.title')}
         </Typography.Title>
         {isAdmin && (
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Tạo mùa giải
+            {t('seasons.createBtn')}
           </Button>
         )}
       </Flex>
@@ -495,46 +505,54 @@ export default function SeasonsPage() {
 
       {/* Create/Edit Modal */}
       <Modal
-        title={editing ? 'Sửa mùa giải' : 'Tạo mùa giải mới'}
+        title={editing ? t('seasons.modalEditTitle') : t('seasons.modalCreateTitle')}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={handleSave}
         confirmLoading={saving}
-        okText={editing ? 'Lưu' : 'Tạo'}
-        cancelText="Hủy"
+        okText={editing ? t('common.save') : t('common.create')}
+        cancelText={t('common.cancel')}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
             name="year"
-            label="Chọn mùa giải"
-            rules={[{ required: true, message: 'Vui lòng chọn năm' }]}
+            label={t('seasons.formYear')}
+            rules={[{ required: true, message: t('seasons.formYearRequired') }]}
           >
             <Select
               options={yearOptions}
               size="large"
               onChange={handleYearChange}
-              placeholder="Chọn mùa giải"
+              placeholder={t('seasons.formYearPlaceholder')}
             />
           </Form.Item>
 
           <Form.Item
             name="name"
-            label="Tên mùa giải"
-            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
+            label={t('seasons.formName')}
+            rules={[{ required: true, message: t('seasons.formNameRequired') }]}
           >
-            <Input placeholder="VLeague 2025/2026" />
+            <Input placeholder={t('seasons.formNamePlaceholder')} />
           </Form.Item>
 
-          <Form.Item name="status" label="Trạng thái" initialValue="UPCOMING">
+          <Form.Item name="status" label={t('seasons.formStatus')} initialValue="UPCOMING">
             <Select options={STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
           </Form.Item>
 
           <Flex gap={16}>
-            <Form.Item name="startDate" label="Ngày bắt đầu" style={{ flex: 1 }}>
-              <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
+            <Form.Item name="startDate" label={t('seasons.formStartDate')} style={{ flex: 1 }}>
+              <DatePicker
+                format="DD/MM/YYYY"
+                style={{ width: '100%' }}
+                placeholder={t('seasons.formStartDatePlaceholder')}
+              />
             </Form.Item>
-            <Form.Item name="endDate" label="Ngày kết thúc" style={{ flex: 1 }}>
-              <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
+            <Form.Item name="endDate" label={t('seasons.formEndDate')} style={{ flex: 1 }}>
+              <DatePicker
+                format="DD/MM/YYYY"
+                style={{ width: '100%' }}
+                placeholder={t('seasons.formEndDatePlaceholder')}
+              />
             </Form.Item>
           </Flex>
         </Form>
