@@ -2,16 +2,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Flex, Form, Input, InputNumber, Modal, Radio, Select, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import type { RosterPlayer } from '../services/matchApi';
-
-const EVENT_TYPE_MAP: Record<string, { label: string; icon: string }> = {
-  GOAL: { label: 'Bàn thắng', icon: '⚽' },
-  OWN_GOAL: { label: 'Phản lưới', icon: '⚽🔴' },
-  PENALTY: { label: 'Phạt đền (ghi bàn)', icon: '⚽🎯' },
-  PENALTY_MISS: { label: 'Phạt đền (hỏng)', icon: '❌🎯' },
-  YELLOW_CARD: { label: 'Thẻ vàng', icon: '🟨' },
-  RED_CARD: { label: 'Thẻ đỏ', icon: '🟥' },
-  SUBSTITUTION: { label: 'Thay người', icon: '🔄' },
-};
+import { EVENT_TYPE_MAP } from '../utils/constants';
 
 export interface EventFormRow {
   type: string;

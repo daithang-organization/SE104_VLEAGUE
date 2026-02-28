@@ -22,14 +22,9 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { api } from '../lib/api';
 import { apiGetPlayerStats, type PlayerStats } from '../services/searchApi';
 
-const { Title } = Typography;
+import { POSITION_MAP } from '../utils/constants';
 
-const POSITION_MAP: Record<string, { label: string; color: string }> = {
-  GK: { label: 'Thủ môn', color: 'gold' },
-  DF: { label: 'Hậu vệ', color: 'blue' },
-  MF: { label: 'Tiền vệ', color: 'green' },
-  FW: { label: 'Tiền đạo', color: 'red' },
-};
+const { Title } = Typography;
 
 const EVENT_ICONS: Record<string, string> = {
   GOAL: '⚽',

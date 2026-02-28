@@ -38,14 +38,7 @@ import {
 } from '../services/scheduleApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
-
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Nháp', color: 'default' },
-  PUBLISHED: { label: 'Đã công bố', color: 'blue' },
-  LOCKED: { label: 'Đã khóa', color: 'orange' },
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-  POSTPONED: { label: 'Hoãn', color: 'red' },
-};
+import { STATUS_MAP } from '../utils/constants';
 
 export default function SchedulePage() {
   const { user } = useAuth();

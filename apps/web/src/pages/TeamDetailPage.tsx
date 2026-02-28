@@ -23,22 +23,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
+import { POSITION_MAP, STATUS_MAP } from '../utils/constants';
+
 const { Title } = Typography;
-
-const POSITION_MAP: Record<string, { label: string; color: string }> = {
-  GK: { label: 'Thủ môn', color: 'gold' },
-  DF: { label: 'Hậu vệ', color: 'blue' },
-  MF: { label: 'Tiền vệ', color: 'green' },
-  FW: { label: 'Tiền đạo', color: 'red' },
-};
-
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Bản nháp', color: 'default' },
-  PUBLISHED: { label: 'Đã công bố', color: 'blue' },
-  LOCKED: { label: 'Đã khóa', color: 'orange' },
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-  POSTPONED: { label: 'Hoãn', color: 'red' },
-};
 
 export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();

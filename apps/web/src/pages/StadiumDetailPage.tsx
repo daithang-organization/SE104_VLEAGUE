@@ -24,15 +24,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGetStadium, type StadiumDetail, type StadiumMatch } from '../services/stadiumApi';
 
-const { Title } = Typography;
+import { STATUS_MAP } from '../utils/constants';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Nháp', color: 'default' },
-  PUBLISHED: { label: 'Đã công bố', color: 'blue' },
-  LOCKED: { label: 'Đã khóa', color: 'orange' },
-  FINISHED: { label: 'Kết thúc', color: 'green' },
-  POSTPONED: { label: 'Hoãn', color: 'red' },
-};
+const { Title } = Typography;
 
 export default function StadiumDetailPage() {
   const { id } = useParams<{ id: string }>();
