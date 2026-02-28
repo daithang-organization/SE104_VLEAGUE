@@ -2,8 +2,8 @@ import { CrownOutlined } from '@ant-design/icons';
 import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
-import ExportButton from '../components/ExportButton';
 import { TableSkeleton } from '../components';
+import ExportButton from '../components/ExportButton';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetStandings,

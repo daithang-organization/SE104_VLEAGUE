@@ -1,14 +1,13 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
-import { ErrorBoundary } from './components';
-import { TableSkeleton } from './components';
+import { ErrorBoundary, TableSkeleton } from './components';
 
 // ── Auth pages (small, loaded eagerly for fast first paint) ──
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import ForbiddenPage from './pages/ForbiddenPage';
+import LoginPage from './pages/LoginPage';
+import OAuthCallbackPage from './pages/OAuthCallbackPage';
+import RegisterPage from './pages/RegisterPage';
 
 // ── All other pages are lazy-loaded ──
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
