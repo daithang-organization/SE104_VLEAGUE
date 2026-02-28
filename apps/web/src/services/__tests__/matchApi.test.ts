@@ -4,6 +4,7 @@ const mockApi = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
   patch: vi.fn(),
+  delete: vi.fn(),
 }));
 
 vi.mock('../../lib/api', () => ({ api: mockApi }));
@@ -13,6 +14,7 @@ import {
   apiGetMatch,
   apiGetMatches,
   apiGetTeamRoster,
+  apiRemoveMatchEvent,
   apiUpdateMatch,
   apiUpdateMatchStatus,
 } from '../matchApi';
@@ -79,5 +81,12 @@ describe('matchApi', () => {
     const result = await apiUpdateMatchStatus('m1', 'FINISHED');
     expect(mockApi.patch).toHaveBeenCalledWith('/matches/m1/status', { status: 'FINISHED' });
     expect(result).toEqual(match);
+  });
+
+  it('apiRemoveMatchEvent calls DELETE /matches/:id/events/:eventId', async () => {
+    mockApi.delete.mockResolvedValue({ data: { success: true } });
+    const result = await apiRemoveMatchEvent('m1', 'e1');
+    expect(mockApi.delete).toHaveBeenCalledWith('/matches/m1/events/e1');
+    expect(result).toEqual({ success: true });
   });
 });

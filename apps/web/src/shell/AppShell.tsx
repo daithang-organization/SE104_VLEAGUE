@@ -34,7 +34,7 @@ export default function AppShell() {
   const nav = useNavigate();
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const toggleLang = () => {
     const next = i18n.language === 'vi' ? 'en' : 'vi';
@@ -89,9 +89,9 @@ export default function AppShell() {
     const role = user?.role;
     return MENU.filter((m) => !m.roles || (role && m.roles.includes(role))).map((m) => ({
       key: m.key,
-      label: m.label,
+      label: t(m.labelKey),
     }));
-  }, [user]);
+  }, [user, t]);
 
   // Find current selected key based on path
   const selectedKey = useMemo(() => {
@@ -111,7 +111,7 @@ export default function AppShell() {
 
   const onLogout = async () => {
     await logout();
-    message.info('Đã đăng xuất');
+    message.info(t('auth.loggedOut'));
     nav('/login');
   };
 
@@ -119,20 +119,20 @@ export default function AppShell() {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: 'Thông tin tài khoản',
+      label: t('auth.profile'),
       onClick: () => nav('/profile'),
     },
     {
       key: 'change-password',
       icon: <KeyOutlined />,
-      label: 'Đổi mật khẩu',
+      label: t('auth.changePassword'),
       onClick: () => nav('/change-password'),
     },
     { type: 'divider' as const },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: 'Đăng xuất',
+      label: t('auth.logout'),
       onClick: onLogout,
       danger: true,
     },
@@ -182,7 +182,7 @@ export default function AppShell() {
           >
             <Input
               prefix={searchLoading ? <Spin size="small" /> : <SearchOutlined />}
-              placeholder="Tìm kiếm..."
+              placeholder={t('common.search')}
               style={{ borderRadius: 20 }}
             />
           </AutoComplete>
@@ -198,7 +198,7 @@ export default function AppShell() {
               )
             }
             onClick={toggleTheme}
-            title={isDark ? 'Chế độ sáng' : 'Chế độ tối'}
+            title={isDark ? t('theme.light') : t('theme.dark')}
           />
 
           {/* Language Toggle */}

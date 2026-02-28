@@ -42,6 +42,7 @@ describe('MatchController', () => {
             findAll: jest.fn().mockResolvedValue(mockPaginated),
             getMatchById: jest.fn().mockResolvedValue(mockMatch),
             addEvent: jest.fn().mockResolvedValue(mockEventResult),
+            removeEvent: jest.fn().mockResolvedValue({ success: true }),
             updateMatch: jest
               .fn()
               .mockResolvedValue({ ...mockMatch, homeScore: 2 }),
@@ -140,6 +141,15 @@ describe('MatchController', () => {
 
       expect(result.status).toBe('PUBLISHED');
       expect(service.updateStatus).toHaveBeenCalledWith('match-1', 'PUBLISHED');
+    });
+  });
+
+  describe('removeEvent', () => {
+    it('should delete an event from a match', async () => {
+      const result = await controller.removeEvent('match-1', 'evt-1');
+
+      expect(result).toEqual({ success: true });
+      expect(service.removeEvent).toHaveBeenCalledWith('match-1', 'evt-1');
     });
   });
 });

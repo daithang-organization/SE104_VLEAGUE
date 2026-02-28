@@ -103,6 +103,10 @@ export function apiAddMatchEvent(matchId: string, data: AddMatchEventPayload) {
     .then((res) => res.data);
 }
 
+export function apiRemoveMatchEvent(matchId: string, eventId: string) {
+  return api.delete(`/matches/${matchId}/events/${eventId}`).then((res) => res.data);
+}
+
 export function apiGetTeamRoster(teamId: string) {
   return api.get<TeamRoster>(`/teams/${teamId}/roster`).then((res) => res.data);
 }

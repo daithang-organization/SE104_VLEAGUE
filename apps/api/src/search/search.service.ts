@@ -16,20 +16,67 @@ export class SearchService {
   async globalSearch(query: string, limit = 10): Promise<SearchResult[]> {
     if (!query || query.length < 2) return [];
 
+    // Run all searches in parallel for better performance
+    const [teams, players, stadiums, seasons, matches] = await Promise.all([
+      this.prisma.team.findMany({
+        where: {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { shortName: { contains: query, mode: 'insensitive' } },
+            { city: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true, name: true, city: true },
+        take: limit,
+      }),
+      this.prisma.player.findMany({
+        where: {
+          OR: [
+            { fullName: { contains: query, mode: 'insensitive' } },
+            { nationality: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true, fullName: true, position: true, nationality: true },
+        take: limit,
+      }),
+      this.prisma.stadium.findMany({
+        where: {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { city: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true, name: true, city: true },
+        take: limit,
+      }),
+      this.prisma.season.findMany({
+        where: { name: { contains: query, mode: 'insensitive' } },
+        select: { id: true, name: true, year: true, status: true },
+        take: limit,
+      }),
+      this.prisma.match.findMany({
+        where: {
+          OR: [
+            { homeTeam: { name: { contains: query, mode: 'insensitive' } } },
+            { awayTeam: { name: { contains: query, mode: 'insensitive' } } },
+          ],
+        },
+        select: {
+          id: true,
+          roundNo: true,
+          homeTeam: { select: { name: true } },
+          awayTeam: { select: { name: true } },
+          homeScore: true,
+          awayScore: true,
+          status: true,
+        },
+        take: limit,
+        orderBy: { kickoffAt: 'desc' },
+      }),
+    ]);
+
     const results: SearchResult[] = [];
 
-    // Search teams
-    const teams = await this.prisma.team.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { shortName: { contains: query, mode: 'insensitive' } },
-          { city: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      select: { id: true, name: true, city: true },
-      take: limit,
-    });
     for (const t of teams) {
       results.push({
         type: 'team',
@@ -40,17 +87,6 @@ export class SearchService {
       });
     }
 
-    // Search players
-    const players = await this.prisma.player.findMany({
-      where: {
-        OR: [
-          { fullName: { contains: query, mode: 'insensitive' } },
-          { nationality: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      select: { id: true, fullName: true, position: true, nationality: true },
-      take: limit,
-    });
     for (const p of players) {
       results.push({
         type: 'player',
@@ -61,17 +97,6 @@ export class SearchService {
       });
     }
 
-    // Search stadiums
-    const stadiums = await this.prisma.stadium.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { city: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      select: { id: true, name: true, city: true },
-      take: limit,
-    });
     for (const s of stadiums) {
       results.push({
         type: 'stadium',
@@ -82,12 +107,6 @@ export class SearchService {
       });
     }
 
-    // Search seasons
-    const seasons = await this.prisma.season.findMany({
-      where: { name: { contains: query, mode: 'insensitive' } },
-      select: { id: true, name: true, year: true, status: true },
-      take: limit,
-    });
     for (const s of seasons) {
       results.push({
         type: 'season',
@@ -95,6 +114,18 @@ export class SearchService {
         title: s.name,
         subtitle: `${s.year} · ${s.status}`,
         url: `/seasons`,
+      });
+    }
+
+    for (const m of matches) {
+      const score =
+        m.homeScore !== null ? `${m.homeScore}-${m.awayScore}` : m.status;
+      results.push({
+        type: 'match',
+        id: m.id,
+        title: `${m.homeTeam.name} vs ${m.awayTeam.name}`,
+        subtitle: `V${m.roundNo} · ${score}`,
+        url: `/matches/${m.id}`,
       });
     }
 

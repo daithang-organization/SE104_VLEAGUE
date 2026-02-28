@@ -1,10 +1,4 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -12,12 +6,9 @@ import {
   Collapse,
   Descriptions,
   Flex,
-  Form,
   Input,
-  InputNumber,
   message,
   Modal,
-  Radio,
   Select,
   Space,
   Table,
@@ -30,6 +21,8 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { EventModal, ScoreEditModal } from '../components';
+import type { EventFormRow } from '../components';
 import {
   apiAddMatchEvent,
   apiGetMatch,
@@ -81,16 +74,11 @@ export default function MatchesPage() {
 
   // Score edit
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
-  const [scoreForm] = Form.useForm();
   const [savingScore, setSavingScore] = useState(false);
 
   // Event modal
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
-  const [eventForm] = Form.useForm();
-
-  // Roster state
-  const [selectedTeamSide, setSelectedTeamSide] = useState<'home' | 'away' | null>(null);
   const [homeRoster, setHomeRoster] = useState<RosterPlayer[]>([]);
   const [awayRoster, setAwayRoster] = useState<RosterPlayer[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -195,24 +183,11 @@ export default function MatchesPage() {
   };
 
   // ── Score update ──
-  const openScoreModal = () => {
-    if (!detailMatch) return;
-    scoreForm.setFieldsValue({
-      homeScore: detailMatch.homeScore ?? 0,
-      awayScore: detailMatch.awayScore ?? 0,
-    });
-    setScoreModalOpen(true);
-  };
-
-  const handleSaveScore = async () => {
+  const handleSaveScore = async (homeScore: number, awayScore: number) => {
     if (!detailMatch) return;
     try {
-      const values = await scoreForm.validateFields();
       setSavingScore(true);
-      await apiUpdateMatch(detailMatch.id, {
-        homeScore: values.homeScore,
-        awayScore: values.awayScore,
-      });
+      await apiUpdateMatch(detailMatch.id, { homeScore, awayScore });
       message.success('Đã cập nhật tỉ số!');
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
@@ -243,23 +218,13 @@ export default function MatchesPage() {
   };
 
   // ── Add events (batch) ──
-  const handleAddEvent = async () => {
+  const handleAddEvent = async (teamSide: 'home' | 'away', events: EventFormRow[]) => {
     if (!detailMatch) return;
     try {
-      const values = await eventForm.validateFields();
       setSavingEvent(true);
-      const teamId = values.teamSide === 'home' ? detailMatch.homeTeamId : detailMatch.awayTeamId;
-      const events: {
-        type: string;
-        minute: number;
-        playerId?: string;
-        note?: string;
-        goalType?: string;
-        relatedPlayerId?: string;
-      }[] = values.events ?? [];
+      const teamId = teamSide === 'home' ? detailMatch.homeTeamId : detailMatch.awayTeamId;
       if (events.length === 0) {
         message.warning('Vui lòng thêm ít nhất 1 sự kiện');
-        setSavingEvent(false);
         return;
       }
       let successCount = 0;
@@ -283,24 +248,15 @@ export default function MatchesPage() {
       if (successCount > 0) {
         message.success(`Đã thêm ${successCount} sự kiện!`);
         setEventModalOpen(false);
-        eventForm.resetFields();
-        setSelectedTeamSide(null);
         viewDetail(detailMatch.id);
         fetchMatches();
       }
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'errorFields' in err) return;
+    } catch {
       message.error('Không thể thêm sự kiện');
     } finally {
       setSavingEvent(false);
     }
   };
-
-  const currentRoster = useMemo(() => {
-    if (selectedTeamSide === 'home') return homeRoster;
-    if (selectedTeamSide === 'away') return awayRoster;
-    return [];
-  }, [selectedTeamSide, homeRoster, awayRoster]);
 
   const getStatusActions = (match: Match) => {
     const transitions: Record<string, string[]> = {
@@ -736,7 +692,11 @@ export default function MatchesPage() {
             {/* Admin Actions */}
             {canEdit && (
               <Flex gap={8} style={{ marginBottom: 16 }} wrap="wrap">
-                <Button type="primary" icon={<EditOutlined />} onClick={openScoreModal}>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => setScoreModalOpen(true)}
+                >
                   Cập nhật tỉ số
                 </Button>
                 {getStatusActions(detailMatch).map((nextStatus) => {
@@ -760,11 +720,7 @@ export default function MatchesPage() {
                   <Button
                     size="small"
                     icon={<PlusOutlined />}
-                    onClick={() => {
-                      eventForm.resetFields();
-                      setSelectedTeamSide(null);
-                      setEventModalOpen(true);
-                    }}
+                    onClick={() => setEventModalOpen(true)}
                   >
                     Thêm sự kiện
                   </Button>
@@ -777,253 +733,33 @@ export default function MatchesPage() {
       </Modal>
 
       {/* ── Score Edit Modal ── */}
-      <Modal
-        title="Cập nhật tỉ số"
-        open={scoreModalOpen}
-        onCancel={() => setScoreModalOpen(false)}
-        onOk={handleSaveScore}
-        confirmLoading={savingScore}
-        okText="Lưu"
-        cancelText="Hủy"
-      >
-        {detailMatch && (
-          <Form form={scoreForm} layout="vertical" style={{ marginTop: 16 }}>
-            <Flex gap={16} align="flex-end">
-              <Form.Item
-                name="homeScore"
-                label={detailMatch.homeTeam?.name ?? 'Đội nhà'}
-                rules={[{ required: true, message: 'Nhập số bàn' }]}
-                style={{ flex: 1 }}
-              >
-                <InputNumber min={0} max={99} style={{ width: '100%' }} size="large" />
-              </Form.Item>
-              <Typography.Title level={3} style={{ margin: '0 0 24px 0' }}>
-                :
-              </Typography.Title>
-              <Form.Item
-                name="awayScore"
-                label={detailMatch.awayTeam?.name ?? 'Đội khách'}
-                rules={[{ required: true, message: 'Nhập số bàn' }]}
-                style={{ flex: 1 }}
-              >
-                <InputNumber min={0} max={99} style={{ width: '100%' }} size="large" />
-              </Form.Item>
-            </Flex>
-          </Form>
-        )}
-      </Modal>
+      {detailMatch && (
+        <ScoreEditModal
+          open={scoreModalOpen}
+          onCancel={() => setScoreModalOpen(false)}
+          onOk={handleSaveScore}
+          loading={savingScore}
+          homeTeamName={detailMatch.homeTeam?.name ?? 'Đội nhà'}
+          awayTeamName={detailMatch.awayTeam?.name ?? 'Đội khách'}
+          initialHomeScore={detailMatch.homeScore}
+          initialAwayScore={detailMatch.awayScore}
+        />
+      )}
 
       {/* ── Add Event Modal (Batch) ── */}
-      <Modal
-        title="Thêm sự kiện trận đấu"
-        open={eventModalOpen}
-        onCancel={() => {
-          setEventModalOpen(false);
-          setSelectedTeamSide(null);
-        }}
-        onOk={handleAddEvent}
-        confirmLoading={savingEvent}
-        okText={`Thêm tất cả`}
-        cancelText="Hủy"
-        destroyOnClose
-        width={680}
-      >
-        <Form form={eventForm} layout="vertical" style={{ marginTop: 16 }}>
-          {/* Team selector — applies to all events */}
-          <Form.Item
-            name="teamSide"
-            label="Đội"
-            rules={[{ required: true, message: 'Vui lòng chọn đội' }]}
-          >
-            <Radio.Group
-              onChange={(e) => {
-                setSelectedTeamSide(e.target.value);
-                // Clear all player selections when team changes
-                const events = eventForm.getFieldValue('events') ?? [];
-                eventForm.setFieldsValue({
-                  events: events.map((evt: Record<string, unknown>) => ({
-                    ...evt,
-                    playerId: undefined,
-                  })),
-                });
-              }}
-              optionType="button"
-              buttonStyle="solid"
-              style={{ width: '100%' }}
-            >
-              <Radio.Button value="home" style={{ width: '50%', textAlign: 'center' }}>
-                🏠 {detailMatch?.homeTeam?.name ?? 'Đội nhà'}
-              </Radio.Button>
-              <Radio.Button value="away" style={{ width: '50%', textAlign: 'center' }}>
-                ✈️ {detailMatch?.awayTeam?.name ?? 'Đội khách'}
-              </Radio.Button>
-            </Radio.Group>
-          </Form.Item>
-
-          {/* Dynamic event rows */}
-          <Form.List name="events" initialValue={[{}]}>
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }, idx) => (
-                  <div
-                    key={key}
-                    style={{
-                      background: idx % 2 === 0 ? '#fafafa' : '#f0f0f0',
-                      padding: '12px 12px 4px',
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      position: 'relative',
-                    }}
-                  >
-                    {/* Row header */}
-                    <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-                      <Typography.Text strong style={{ fontSize: 13, color: '#666' }}>
-                        Sự kiện {idx + 1}
-                      </Typography.Text>
-                      {fields.length > 1 && (
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                          onClick={() => remove(name)}
-                        />
-                      )}
-                    </Flex>
-
-                    {/* Row fields: Type + Minute on same line */}
-                    <Flex gap={8}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'type']}
-                        rules={[{ required: true, message: 'Chọn loại' }]}
-                        style={{ flex: 2, marginBottom: 8 }}
-                      >
-                        <Select placeholder="Loại sự kiện" size="middle">
-                          {Object.entries(EVENT_TYPE_MAP).map(([value, { label, icon }]) => (
-                            <Select.Option key={value} value={value}>
-                              {icon} {label}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'minute']}
-                        rules={[{ required: true, message: 'Phút' }]}
-                        style={{ flex: 1, marginBottom: 8 }}
-                      >
-                        <InputNumber
-                          min={0}
-                          max={150}
-                          style={{ width: '100%' }}
-                          placeholder="Phút"
-                        />
-                      </Form.Item>
-                    </Flex>
-
-                    {/* Player + Note on same line */}
-                    <Flex gap={8}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'playerId']}
-                        style={{ flex: 2, marginBottom: 8 }}
-                      >
-                        <Select
-                          placeholder={selectedTeamSide ? 'Chọn cầu thủ' : 'Chọn đội trước'}
-                          disabled={!selectedTeamSide || rosterLoading}
-                          loading={rosterLoading}
-                          showSearch
-                          optionFilterProp="label"
-                          allowClear
-                          options={currentRoster.map((p) => ({
-                            value: p.playerId,
-                            label: `#${p.jerseyNumber ?? '?'} ${p.fullName} (${p.position})`,
-                          }))}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'note']}
-                        style={{ flex: 1, marginBottom: 8 }}
-                      >
-                        <Input placeholder="Ghi chú" />
-                      </Form.Item>
-                    </Flex>
-
-                    {/* Goal Type + Related Player (conditional) */}
-                    <Form.Item
-                      noStyle
-                      shouldUpdate={(prev, cur) => {
-                        const prevType = prev?.events?.[name]?.type;
-                        const curType = cur?.events?.[name]?.type;
-                        return prevType !== curType;
-                      }}
-                    >
-                      {() => {
-                        const evtType = eventForm.getFieldValue(['events', name, 'type']);
-                        const showGoalType = ['GOAL', 'PENALTY'].includes(evtType);
-                        const showRelated = ['GOAL', 'SUBSTITUTION'].includes(evtType);
-                        if (!showGoalType && !showRelated) return null;
-                        return (
-                          <Flex gap={8}>
-                            {showGoalType && (
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'goalType']}
-                                style={{ flex: 1, marginBottom: 8 }}
-                              >
-                                <Select placeholder="Loại bàn thắng" allowClear>
-                                  <Select.Option value="NORMAL">Bình thường</Select.Option>
-                                  <Select.Option value="HEADER">Đánh đầu</Select.Option>
-                                  <Select.Option value="FREE_KICK">Sút phạt</Select.Option>
-                                  <Select.Option value="PENALTY_KICK">Penalty</Select.Option>
-                                  <Select.Option value="LONG_RANGE">Sút xa</Select.Option>
-                                </Select>
-                              </Form.Item>
-                            )}
-                            {showRelated && (
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'relatedPlayerId']}
-                                style={{ flex: 1, marginBottom: 8 }}
-                              >
-                                <Select
-                                  placeholder={evtType === 'GOAL' ? 'Kiến tạo' : 'Cầu thủ bị thay'}
-                                  disabled={!selectedTeamSide || rosterLoading}
-                                  loading={rosterLoading}
-                                  showSearch
-                                  optionFilterProp="label"
-                                  allowClear
-                                  options={currentRoster.map((p) => ({
-                                    value: p.playerId,
-                                    label: `#${p.jerseyNumber ?? '?'} ${p.fullName}`,
-                                  }))}
-                                />
-                              </Form.Item>
-                            )}
-                          </Flex>
-                        );
-                      }}
-                    </Form.Item>
-                  </div>
-                ))}
-
-                {/* Add row button */}
-                <Button
-                  type="dashed"
-                  onClick={() => add({})}
-                  block
-                  icon={<PlusOutlined />}
-                  style={{ marginTop: 4 }}
-                >
-                  Thêm sự kiện
-                </Button>
-              </>
-            )}
-          </Form.List>
-        </Form>
-      </Modal>
+      {detailMatch && (
+        <EventModal
+          open={eventModalOpen}
+          onCancel={() => setEventModalOpen(false)}
+          onSubmit={handleAddEvent}
+          loading={savingEvent}
+          homeTeamName={detailMatch.homeTeam?.name ?? 'Đội nhà'}
+          awayTeamName={detailMatch.awayTeam?.name ?? 'Đội khách'}
+          homeRoster={homeRoster}
+          awayRoster={awayRoster}
+          rosterLoading={rosterLoading}
+        />
+      )}
     </Card>
   );
 }

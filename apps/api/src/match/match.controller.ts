@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -205,6 +206,34 @@ export class MatchController {
   @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
   addEvent(@Param('id') id: string, @Body() dto: AddMatchEventDto) {
     return this.match.addEvent(id, dto);
+  }
+
+  @Delete(':id/events/:eventId')
+  @Roles(Role.ADMIN, Role.REFEREE)
+  @ApiOperation({
+    summary: 'Xóa sự kiện trận đấu',
+    description:
+      'Xóa một sự kiện khỏi trận đấu. Không thể xóa sự kiện của trận đã kết thúc. Chỉ ADMIN và REFEREE có quyền.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của trận đấu',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiParam({
+    name: 'eventId',
+    description: 'ID của sự kiện',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiOkResponse({ description: 'Sự kiện đã được xóa thành công' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy sự kiện' })
+  @ApiBadRequestResponse({
+    description: 'Không thể xóa sự kiện của trận đấu đã kết thúc',
+  })
+  removeEvent(@Param('id') id: string, @Param('eventId') eventId: string) {
+    return this.match.removeEvent(id, eventId);
   }
 
   @Patch(':id')

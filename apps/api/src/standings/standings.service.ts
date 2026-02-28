@@ -33,11 +33,26 @@ export class StandingsService {
       targetSeasonId = currentSeason?.id;
     }
 
-    // Get all teams
-    const teams = await this.prisma.team.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true, name: true },
-    });
+    // Get only teams registered (APPROVED) for this season via SeasonTeam
+    let teams: { id: string; name: string }[];
+    if (targetSeasonId) {
+      const seasonTeams = await this.prisma.seasonTeam.findMany({
+        where: {
+          seasonId: targetSeasonId,
+          status: 'APPROVED',
+        },
+        include: {
+          team: { select: { id: true, name: true } },
+        },
+      });
+      teams = seasonTeams.map((st) => st.team);
+    } else {
+      // Fallback: no season → show all active teams
+      teams = await this.prisma.team.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true },
+      });
+    }
 
     // Get all completed matches for the season
     const matches = await this.prisma.match.findMany({
@@ -154,7 +169,7 @@ export class StandingsService {
 
     const goalEvents = await this.prisma.matchEvent.findMany({
       where: {
-        type: 'GOAL',
+        type: { in: ['GOAL', 'PENALTY'] },
         match: {
           seasonId: targetSeasonId,
           status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },

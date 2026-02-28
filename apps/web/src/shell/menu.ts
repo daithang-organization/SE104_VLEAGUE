@@ -1,6 +1,7 @@
 export type MenuItem = {
   key: string;
-  label: string;
+  /** Translation key for the label (e.g. 'menu.dashboard') */
+  labelKey: string;
   path: string;
   /** Roles that can see this menu item. If undefined, all authenticated users can see it. */
   roles?: string[];
@@ -9,69 +10,69 @@ export type MenuItem = {
 export const MENU: MenuItem[] = [
   {
     key: 'dashboard',
-    label: 'Dashboard',
+    labelKey: 'menu.dashboard',
     path: '/',
   },
   {
     key: 'seasons',
-    label: 'Mùa giải',
+    labelKey: 'menu.seasons',
     path: '/seasons',
     roles: ['ADMIN'],
   },
   {
     key: 'teams',
-    label: 'Đội bóng',
+    labelKey: 'menu.teams',
     path: '/teams',
     roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
   },
   {
     key: 'stadiums',
-    label: 'Sân vận động',
+    labelKey: 'menu.stadiums',
     path: '/stadiums',
     roles: ['ADMIN'],
   },
   {
     key: 'players',
-    label: 'Cầu thủ',
+    labelKey: 'menu.players',
     path: '/players',
     roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
   },
   {
     key: 'schedule',
-    label: 'Lịch thi đấu',
+    labelKey: 'menu.schedule',
     path: '/schedule',
     roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
   },
   {
     key: 'matches',
-    label: 'Kết quả trận đấu',
+    labelKey: 'menu.matches',
     path: '/matches',
     roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
   },
   {
     key: 'standings',
-    label: 'Bảng xếp hạng',
+    labelKey: 'menu.standings',
     path: '/standings',
   },
   {
     key: 'head-to-head',
-    label: 'Đối đầu',
+    labelKey: 'menu.headToHead',
     path: '/head-to-head',
   },
   {
     key: 'reports',
-    label: 'Báo cáo',
+    labelKey: 'menu.reports',
     path: '/reports',
   },
   {
     key: 'regulations',
-    label: 'Quy định',
+    labelKey: 'menu.regulations',
     path: '/regulations',
     roles: ['ADMIN'],
   },
   {
     key: 'users',
-    label: 'Quản lý người dùng',
+    labelKey: 'menu.users',
     path: '/users',
     roles: ['ADMIN'],
   },

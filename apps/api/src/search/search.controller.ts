@@ -14,7 +14,7 @@ export class SearchController {
 
   @Get()
   @ApiOperation({
-    summary: 'Tìm kiếm toàn cục (đội, cầu thủ, sân, mùa giải, HLV)',
+    summary: 'Tìm kiếm toàn cục (đội, cầu thủ, trận đấu, sân, mùa giải)',
   })
   @ApiQuery({
     name: 'q',

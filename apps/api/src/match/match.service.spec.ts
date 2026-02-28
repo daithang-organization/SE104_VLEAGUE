@@ -165,6 +165,21 @@ describe('MatchService', () => {
         }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('should reject adding event to FINISHED match', async () => {
+      const finishedMatch = { ...mockMatch, status: 'FINISHED' };
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(finishedMatch as any);
+
+      await expect(
+        service.addEvent('match-1', {
+          minute: 45,
+          type: 'GOAL' as any,
+          teamId: 'team-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('removeEvent', () => {
@@ -185,6 +200,22 @@ describe('MatchService', () => {
 
       await expect(service.removeEvent('match-1', 'event-1')).rejects.toThrow(
         NotFoundException,
+      );
+    });
+
+    it('should reject removing event from FINISHED match', async () => {
+      jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue({
+        id: 'event-1',
+        type: 'GOAL',
+        matchId: 'match-1',
+      } as any);
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+        id: 'match-1',
+        status: 'FINISHED',
+      } as any);
+
+      await expect(service.removeEvent('match-1', 'event-1')).rejects.toThrow(
+        BadRequestException,
       );
     });
   });
