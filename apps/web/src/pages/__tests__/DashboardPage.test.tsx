@@ -103,10 +103,12 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('renders standings and upcoming matches sections', () => {
+  it('renders standings and upcoming matches sections', async () => {
     renderPage();
-    expect(screen.getByText('🏆 Bảng xếp hạng (Top 5)')).toBeInTheDocument();
-    expect(screen.getByText('📅 Trận đấu sắp tới')).toBeInTheDocument();
-    expect(screen.getByText('⚽ Kết quả gần đây')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('🏆 Bảng xếp hạng (Top 5)')).toBeInTheDocument();
+      expect(screen.getByText('📅 Trận đấu sắp tới')).toBeInTheDocument();
+      expect(screen.getByText('⚽ Kết quả gần đây')).toBeInTheDocument();
+    });
   });
 });

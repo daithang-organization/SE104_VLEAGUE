@@ -21,8 +21,8 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { EventModal, ScoreEditModal } from '../components';
 import type { EventFormRow } from '../components';
+import { EventModal, ScoreEditModal } from '../components';
 import {
   apiAddMatchEvent,
   apiGetMatch,

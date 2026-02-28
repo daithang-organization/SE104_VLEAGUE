@@ -3,6 +3,7 @@ import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'an
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import ExportButton from '../components/ExportButton';
+import { TableSkeleton } from '../components';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetStandings,
@@ -134,102 +135,111 @@ export default function StandingsPage() {
         }
       `}</style>
 
-      <Card>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-        >
-          <Typography.Title level={4} style={{ margin: 0 }}>
+      {loading && standings.length === 0 ? (
+        <Card>
+          <Typography.Title level={4} style={{ margin: '0 0 16px' }}>
             🏆 Bảng xếp hạng
           </Typography.Title>
-          <Space>
-            <ExportButton
-              columns={[
-                { title: '#', key: 'position' },
-                { title: 'Đội bóng', key: 'teamName' },
-                { title: 'Trận', key: 'played' },
-                { title: 'Thắng', key: 'won' },
-                { title: 'Hòa', key: 'drawn' },
-                { title: 'Thua', key: 'lost' },
-                { title: 'BT', key: 'goalsFor' },
-                { title: 'BN', key: 'goalsAgainst' },
-                { title: 'HS', key: 'goalDifference' },
-                { title: 'Điểm', key: 'points' },
-              ]}
-              dataSource={standings as unknown as Record<string, unknown>[]}
-              filename="bang-xep-hang"
-            />
-            <Select
-              placeholder="Chọn mùa giải"
-              value={selectedSeason}
-              onChange={handleSeasonChange}
-              style={{ width: 200 }}
-              allowClear
-            >
-              {seasons.map((s) => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Space>
-        </div>
-
-        <Table
-          columns={standingsColumns}
-          dataSource={standings}
-          rowKey="teamId"
-          loading={loading}
-          pagination={false}
-          size="middle"
-          rowClassName={getRowClassName}
-          locale={{
-            emptyText: loading ? (
-              'Đang tải...'
-            ) : (
-              <Empty description="Chưa có dữ liệu bảng xếp hạng" />
-            ),
-          }}
-        />
-
-        {/* Legend */}
-        {totalTeams > 0 && (
-          <Flex gap={16} style={{ marginTop: 12, paddingLeft: 4 }} wrap="wrap">
-            <Flex align="center" gap={6}>
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 3,
-                  background: '#f6ffed',
-                  border: '2px solid #52c41a',
-                }}
+          <TableSkeleton />
+        </Card>
+      ) : (
+        <Card>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}
+          >
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              🏆 Bảng xếp hạng
+            </Typography.Title>
+            <Space>
+              <ExportButton
+                columns={[
+                  { title: '#', key: 'position' },
+                  { title: 'Đội bóng', key: 'teamName' },
+                  { title: 'Trận', key: 'played' },
+                  { title: 'Thắng', key: 'won' },
+                  { title: 'Hòa', key: 'drawn' },
+                  { title: 'Thua', key: 'lost' },
+                  { title: 'BT', key: 'goalsFor' },
+                  { title: 'BN', key: 'goalsAgainst' },
+                  { title: 'HS', key: 'goalDifference' },
+                  { title: 'Điểm', key: 'points' },
+                ]}
+                dataSource={standings as unknown as Record<string, unknown>[]}
+                filename="bang-xep-hang"
               />
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                AFC Champions League ({AFC_CL_COUNT} đội đầu)
-              </Typography.Text>
+              <Select
+                placeholder="Chọn mùa giải"
+                value={selectedSeason}
+                onChange={handleSeasonChange}
+                style={{ width: 200 }}
+                allowClear
+              >
+                {seasons.map((s) => (
+                  <Select.Option key={s.id} value={s.id}>
+                    {s.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Space>
+          </div>
+
+          <Table
+            columns={standingsColumns}
+            dataSource={standings}
+            rowKey="teamId"
+            loading={loading}
+            pagination={false}
+            size="middle"
+            rowClassName={getRowClassName}
+            locale={{
+              emptyText: loading ? (
+                'Đang tải...'
+              ) : (
+                <Empty description="Chưa có dữ liệu bảng xếp hạng" />
+              ),
+            }}
+          />
+
+          {/* Legend */}
+          {totalTeams > 0 && (
+            <Flex gap={16} style={{ marginTop: 12, paddingLeft: 4 }} wrap="wrap">
+              <Flex align="center" gap={6}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 3,
+                    background: '#f6ffed',
+                    border: '2px solid #52c41a',
+                  }}
+                />
+                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                  AFC Champions League ({AFC_CL_COUNT} đội đầu)
+                </Typography.Text>
+              </Flex>
+              <Flex align="center" gap={6}>
+                <div
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 3,
+                    background: '#fff1f0',
+                    border: '2px solid #ff4d4f',
+                  }}
+                />
+                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                  Xuống hạng ({RELEGATION_COUNT} đội cuối)
+                </Typography.Text>
+              </Flex>
             </Flex>
-            <Flex align="center" gap={6}>
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 3,
-                  background: '#fff1f0',
-                  border: '2px solid #ff4d4f',
-                }}
-              />
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                Xuống hạng ({RELEGATION_COUNT} đội cuối)
-              </Typography.Text>
-            </Flex>
-          </Flex>
-        )}
-      </Card>
+          )}
+        </Card>
+      )}
 
       <Card>
         <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>

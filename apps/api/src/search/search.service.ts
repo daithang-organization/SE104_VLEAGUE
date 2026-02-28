@@ -14,51 +14,53 @@ export class SearchService {
   constructor(private prisma: PrismaService) {}
 
   async globalSearch(query: string, limit = 10): Promise<SearchResult[]> {
-    if (!query || query.length < 2) return [];
+    const q = query?.trim();
+    if (!q || q.length < 2) return [];
+    const perEntity = Math.max(3, Math.ceil(limit / 3));
 
     // Run all searches in parallel for better performance
     const [teams, players, stadiums, seasons, matches] = await Promise.all([
       this.prisma.team.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { shortName: { contains: query, mode: 'insensitive' } },
-            { city: { contains: query, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { shortName: { contains: q, mode: 'insensitive' } },
+            { city: { contains: q, mode: 'insensitive' } },
           ],
         },
         select: { id: true, name: true, city: true },
-        take: limit,
+        take: perEntity,
       }),
       this.prisma.player.findMany({
         where: {
           OR: [
-            { fullName: { contains: query, mode: 'insensitive' } },
-            { nationality: { contains: query, mode: 'insensitive' } },
+            { fullName: { contains: q, mode: 'insensitive' } },
+            { nationality: { contains: q, mode: 'insensitive' } },
           ],
         },
         select: { id: true, fullName: true, position: true, nationality: true },
-        take: limit,
+        take: perEntity,
       }),
       this.prisma.stadium.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { city: { contains: query, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+            { city: { contains: q, mode: 'insensitive' } },
           ],
         },
         select: { id: true, name: true, city: true },
-        take: limit,
+        take: perEntity,
       }),
       this.prisma.season.findMany({
-        where: { name: { contains: query, mode: 'insensitive' } },
+        where: { name: { contains: q, mode: 'insensitive' } },
         select: { id: true, name: true, year: true, status: true },
-        take: limit,
+        take: perEntity,
       }),
       this.prisma.match.findMany({
         where: {
           OR: [
-            { homeTeam: { name: { contains: query, mode: 'insensitive' } } },
-            { awayTeam: { name: { contains: query, mode: 'insensitive' } } },
+            { homeTeam: { name: { contains: q, mode: 'insensitive' } } },
+            { awayTeam: { name: { contains: q, mode: 'insensitive' } } },
           ],
         },
         select: {
@@ -70,7 +72,7 @@ export class SearchService {
           awayScore: true,
           status: true,
         },
-        take: limit,
+        take: perEntity,
         orderBy: { kickoffAt: 'desc' },
       }),
     ]);
@@ -129,6 +131,6 @@ export class SearchService {
       });
     }
 
-    return results.slice(0, limit * 2);
+    return results.slice(0, limit);
   }
 }

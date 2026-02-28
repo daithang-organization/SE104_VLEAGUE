@@ -6,7 +6,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 /** Methods that should be audited */
 const AUDIT_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);

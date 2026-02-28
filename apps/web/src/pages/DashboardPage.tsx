@@ -25,6 +25,7 @@ import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { CardSkeleton } from '../components';
 import { apiGetMatches } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule, type ScheduleMatch } from '../services/scheduleApi';
@@ -197,153 +198,177 @@ export default function DashboardPage() {
         Chào mừng đến với VLeague Admin! Tổng quan hệ thống:
       </Typography.Paragraph>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="Đội bóng"
-              value={stats.teams}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="Cầu thủ"
-              value={stats.players}
-              prefix={<UserOutlined />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="Trận đấu"
-              value={stats.matches}
-              prefix={<CalendarOutlined />}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="Mùa giải"
-              value={stats.seasons}
-              prefix={<TrophyOutlined />}
-              valueStyle={{ color: '#eb2f96' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Current season + Quick actions row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        {currentSeason && (
-          <Col xs={24} md={isAdmin ? 16 : 24}>
-            <Card size="small" loading={loading}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Space>
-                  <Badge status="processing" />
-                  <Typography.Text strong>{currentSeason.name}</Typography.Text>
-                  <Tag color="green">Đang diễn ra</Tag>
-                </Space>
-                {seasonProgress !== null && (
-                  <Progress
-                    percent={seasonProgress}
-                    size="small"
-                    format={(p) => `${p}% mùa giải`}
-                  />
-                )}
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {currentSeason.startDate
-                    ? dayjs(currentSeason.startDate).format('DD/MM/YYYY')
-                    : '?'}{' '}
-                  →{' '}
-                  {currentSeason.endDate ? dayjs(currentSeason.endDate).format('DD/MM/YYYY') : '?'}
-                </Typography.Text>
-              </Space>
-            </Card>
+      {loading ? (
+        <Row gutter={[16, 16]}>
+          {[1, 2, 3, 4].map((i) => (
+            <Col xs={12} sm={6} key={i}>
+              <CardSkeleton />
+            </Col>
+          ))}
+          <Col xs={24} md={12}>
+            <CardSkeleton />
           </Col>
-        )}
-        {isAdmin && (
-          <Col xs={24} md={currentSeason ? 8 : 24}>
-            <Card title="⚡ Thao tác nhanh" size="small" loading={loading}>
-              <Space wrap>
-                <Button icon={<PlusOutlined />} size="small" onClick={() => navigate('/seasons')}>
-                  Mùa giải
-                </Button>
-                <Button icon={<TeamOutlined />} size="small" onClick={() => navigate('/teams')}>
-                  Đội bóng
-                </Button>
-                <Button
-                  icon={<CalendarOutlined />}
-                  size="small"
-                  onClick={() => navigate('/schedule')}
-                >
-                  Lịch thi đấu
-                </Button>
-                <Button
-                  icon={<SettingOutlined />}
-                  size="small"
-                  onClick={() => navigate('/regulations')}
-                >
-                  Quy định
-                </Button>
-              </Space>
-            </Card>
+          <Col xs={24} md={12}>
+            <CardSkeleton />
           </Col>
-        )}
-      </Row>
+        </Row>
+      ) : (
+        <>
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={12} sm={6}>
+              <Card loading={loading}>
+                <Statistic
+                  title="Đội bóng"
+                  value={stats.teams}
+                  prefix={<TeamOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card loading={loading}>
+                <Statistic
+                  title="Cầu thủ"
+                  value={stats.players}
+                  prefix={<UserOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card loading={loading}>
+                <Statistic
+                  title="Trận đấu"
+                  value={stats.matches}
+                  prefix={<CalendarOutlined />}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card loading={loading}>
+                <Statistic
+                  title="Mùa giải"
+                  value={stats.seasons}
+                  prefix={<TrophyOutlined />}
+                  valueStyle={{ color: '#eb2f96' }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={12}>
-          <Card title="🏆 Bảng xếp hạng (Top 5)" size="small">
-            <Table
-              columns={standingsCols}
-              dataSource={standings}
-              rowKey="teamId"
-              loading={loading}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'Chưa có dữ liệu BXH' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card title="📅 Trận đấu sắp tới" size="small">
-            <Table
-              columns={upcomingCols}
-              dataSource={upcoming}
-              rowKey="id"
-              loading={loading}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'Chưa có trận đấu sắp tới' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+          {/* Current season + Quick actions row */}
+          <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+            {currentSeason && (
+              <Col xs={24} md={isAdmin ? 16 : 24}>
+                <Card size="small" loading={loading}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space>
+                      <Badge status="processing" />
+                      <Typography.Text strong>{currentSeason.name}</Typography.Text>
+                      <Tag color="green">Đang diễn ra</Tag>
+                    </Space>
+                    {seasonProgress !== null && (
+                      <Progress
+                        percent={seasonProgress}
+                        size="small"
+                        format={(p) => `${p}% mùa giải`}
+                      />
+                    )}
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {currentSeason.startDate
+                        ? dayjs(currentSeason.startDate).format('DD/MM/YYYY')
+                        : '?'}{' '}
+                      →{' '}
+                      {currentSeason.endDate
+                        ? dayjs(currentSeason.endDate).format('DD/MM/YYYY')
+                        : '?'}
+                    </Typography.Text>
+                  </Space>
+                </Card>
+              </Col>
+            )}
+            {isAdmin && (
+              <Col xs={24} md={currentSeason ? 8 : 24}>
+                <Card title="⚡ Thao tác nhanh" size="small" loading={loading}>
+                  <Space wrap>
+                    <Button
+                      icon={<PlusOutlined />}
+                      size="small"
+                      onClick={() => navigate('/seasons')}
+                    >
+                      Mùa giải
+                    </Button>
+                    <Button icon={<TeamOutlined />} size="small" onClick={() => navigate('/teams')}>
+                      Đội bóng
+                    </Button>
+                    <Button
+                      icon={<CalendarOutlined />}
+                      size="small"
+                      onClick={() => navigate('/schedule')}
+                    >
+                      Lịch thi đấu
+                    </Button>
+                    <Button
+                      icon={<SettingOutlined />}
+                      size="small"
+                      onClick={() => navigate('/regulations')}
+                    >
+                      Quy định
+                    </Button>
+                  </Space>
+                </Card>
+              </Col>
+            )}
+          </Row>
 
-      {/* Recent results */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24}>
-          <Card title="⚽ Kết quả gần đây" size="small">
-            <Table
-              columns={recentCols}
-              dataSource={recentResults}
-              rowKey="id"
-              loading={loading}
-              pagination={false}
-              size="small"
-              locale={{ emptyText: 'Chưa có kết quả trận đấu' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+          <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+            <Col xs={24} md={12}>
+              <Card title="🏆 Bảng xếp hạng (Top 5)" size="small">
+                <Table
+                  columns={standingsCols}
+                  dataSource={standings}
+                  rowKey="teamId"
+                  loading={loading}
+                  pagination={false}
+                  size="small"
+                  locale={{ emptyText: 'Chưa có dữ liệu BXH' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} md={12}>
+              <Card title="📅 Trận đấu sắp tới" size="small">
+                <Table
+                  columns={upcomingCols}
+                  dataSource={upcoming}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={false}
+                  size="small"
+                  locale={{ emptyText: 'Chưa có trận đấu sắp tới' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Recent results */}
+          <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              <Card title="⚽ Kết quả gần đây" size="small">
+                <Table
+                  columns={recentCols}
+                  dataSource={recentResults}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={false}
+                  size="small"
+                  locale={{ emptyText: 'Chưa có kết quả trận đấu' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
     </div>
   );
 }
