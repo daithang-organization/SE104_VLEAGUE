@@ -1,18 +1,12 @@
 import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AuditLogModule } from './audit-log/audit-log.module';
 import { AuthModule } from './auth/auth.module';
-import { CoachModule } from './coach/coach.module';
-import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { LoggerModule } from './common/logger';
 import { HealthModule } from './health/health.module';
-import { LineupModule } from './lineup/lineup.module';
-import { LiveModule } from './live/live.module';
 import { MatchModule } from './match/match.module';
-import { NotificationModule } from './notification/notification.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationModule } from './registration/registration.module';
 import { RegulationModule } from './regulation/regulation.module';
@@ -75,23 +69,13 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     UploadModule,
     // v1.2.0 modules
-    LineupModule,
-    CoachModule,
-    NotificationModule,
-    AuditLogModule,
     SearchModule,
-    LiveModule,
   ],
   providers: [
     // Apply throttler globally
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    // Audit log interceptor
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditLogInterceptor,
     },
   ],
 })

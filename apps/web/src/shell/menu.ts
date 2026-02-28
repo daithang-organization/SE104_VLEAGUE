@@ -54,6 +54,11 @@ export const MENU: MenuItem[] = [
     path: '/standings',
   },
   {
+    key: 'head-to-head',
+    label: 'Đối đầu',
+    path: '/head-to-head',
+  },
+  {
     key: 'reports',
     label: 'Báo cáo',
     path: '/reports',

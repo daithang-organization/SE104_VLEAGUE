@@ -658,7 +658,7 @@ export default function MatchDetailPage() {
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
                   <Card
-                    title={`🏠 ${match.homeTeam?.name ?? 'Đội nhà'}`}
+                    title={`🏠 ${match.homeTeam?.name ?? 'Đội nhà'} — Danh sách`}
                     size="small"
                     loading={rosterLoading}
                   >
@@ -677,7 +677,7 @@ export default function MatchDetailPage() {
                 </Col>
                 <Col xs={24} md={12}>
                   <Card
-                    title={`✈️ ${match.awayTeam?.name ?? 'Đội khách'}`}
+                    title={`✈️ ${match.awayTeam?.name ?? 'Đội khách'} — Danh sách`}
                     size="small"
                     loading={rosterLoading}
                   >

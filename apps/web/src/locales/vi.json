@@ -1,0 +1,83 @@
+{
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "add": "Thêm",
+    "search": "Tìm kiếm...",
+    "loading": "Đang tải...",
+    "noData": "Chưa có dữ liệu",
+    "total": "Tổng",
+    "back": "Quay lại",
+    "confirm": "Xác nhận",
+    "actions": "Thao tác",
+    "export": "Xuất",
+    "pdf": "PDF",
+    "yes": "Có",
+    "no": "Không"
+  },
+  "menu": {
+    "dashboard": "Dashboard",
+    "seasons": "Mùa giải",
+    "teams": "Đội bóng",
+    "stadiums": "Sân vận động",
+    "players": "Cầu thủ",
+    "schedule": "Lịch thi đấu",
+    "matches": "Kết quả trận đấu",
+    "standings": "Bảng xếp hạng",
+    "reports": "Báo cáo",
+    "regulations": "Quy định",
+    "users": "Quản lý người dùng",
+    "coaches": "Huấn luyện viên",
+    "headToHead": "Đối đầu"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "register": "Đăng ký",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu",
+    "changePassword": "Đổi mật khẩu",
+    "profile": "Thông tin tài khoản",
+    "loggedOut": "Đã đăng xuất"
+  },
+  "match": {
+    "homeTeam": "Đội nhà",
+    "awayTeam": "Đội khách",
+    "score": "Tỉ số",
+    "round": "Vòng",
+    "status": "Trạng thái",
+    "lineup": "Đội hình",
+    "events": "Sự kiện",
+    "starting": "Đá chính",
+    "substitute": "Dự bị"
+  },
+  "player": {
+    "goals": "Bàn thắng",
+    "assists": "Kiến tạo",
+    "yellowCards": "Thẻ vàng",
+    "redCards": "Thẻ đỏ",
+    "ownGoals": "Phản lưới",
+    "position": "Vị trí",
+    "nationality": "Quốc tịch",
+    "dob": "Ngày sinh"
+  },
+  "reports": {
+    "title": "Báo cáo & Thống kê",
+    "topScorers": "Vua phá lưới",
+    "cardStats": "Thẻ phạt",
+    "teamStats": "Thống kê đội",
+    "charts": "Biểu đồ"
+  },
+  "notification": {
+    "title": "Thông báo",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "empty": "Không có thông báo"
+  },
+  "theme": {
+    "light": "Chế độ sáng",
+    "dark": "Chế độ tối"
+  }
+}

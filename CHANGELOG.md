@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Backend: Coach Module** — Full CRUD for managing coaches with team assignment, license type, paginated list with search/filter
+- **Backend: Lineup Module** — Set/view/remove official match lineups (starting XI + substitutes) per team per match
+- **Backend: Notification Module** — In-app notifications with unread count, mark-read, broadcast to roles, paginated list
+- **Backend: Audit Log** — Global interceptor auto-logs all POST/PATCH/PUT/DELETE actions with entity, user, old/new values, IP
+- **Backend: Global Search** — Unified search across teams, players, stadiums, seasons, coaches via `/search?q=`
+- **Backend: Head-to-Head** — `GET /standings/head-to-head?team1=&team2=&seasonId=` returns win/draw/goal stats + match history
+- **Backend: Player Stats** — `GET /standings/player-stats/:id?seasonId=` returns goals, assists, cards, goals-by-round chart data
+- **Backend: WebSocket Gateway** — Socket.IO `/live` namespace for real-time match events, score updates, schedule publish, notifications
+- **Database Schema** — Added `Coach`, `MatchLineup`, `Notification`, `AuditLog` models + `LineupRole`, `NotificationType` enums
+- **Frontend: Dark Mode** — Theme toggle in header with localStorage persistence, Ant Design `darkAlgorithm` integration
+- **Frontend: Global Search Bar** — Debounced autocomplete search in AppShell header, navigates to matched entity
+- **Frontend: Notification Bell** — Bell icon with unread badge, popover with notification list, mark-read, auto-poll every 30s
+- **Frontend: Charts** — Recharts-powered visual tab in Reports (top scorers bar, goals pie, team W/D/L stacked bar)
+- **Frontend: PDF Export** — jsPDF + autotable export buttons on Reports page for top scorers and team stats
+- **Frontend: Coaches Page** — Full CRUD table with search, modal form, team assignment, license type management
+- **Frontend: Head-to-Head Page** — Team selector, season filter, comparison stats with match history table
+- **Frontend: Enhanced Player Stats** — Advanced stats tab with overview + goals-by-round bar chart powered by new API
+- **Frontend: Match Lineup UI** — Official lineup display (starting/substitutes) + modal to set lineup from roster
+- **Frontend: i18n** — Vietnamese + English translations via react-i18next with language toggle in header
+- **Frontend: Rate Limit Handler** — 429 response interceptor dispatches `api:rate-limited` custom event
+- **Frontend API Services** — `coachApi`, `lineupApi`, `notificationApi`, `searchApi` with full TypeScript types
+
 - **Frontend Page Tests**: 7 new page-level component tests — TeamsPage (6 tests), PlayersPage (6 tests), MatchesPage (6 tests), SeasonsPage (6 tests), SchedulePage (6 tests), RegulationsPage (6 tests), ProfilePage (6 tests) with vi.hoisted mocks and Ant Design rendering
 - **Test Infrastructure**: Added `ResizeObserver` polyfill to `vitest.setup.ts` for Ant Design Tabs/Collapse components
 - **Frontend Tests**: 12 new test files for all API service modules (83 tests total) — authApi, teamApi, playerApi, stadiumApi, seasonApi, seasonTeamApi, matchApi, scheduleApi, standingsApi, regulationApi, userApi, uploadApi

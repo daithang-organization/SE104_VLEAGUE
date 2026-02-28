@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface SearchResult {
-  type: 'team' | 'player' | 'match' | 'stadium' | 'season' | 'coach';
+  type: 'team' | 'player' | 'match' | 'stadium' | 'season';
   id: string;
   title: string;
   subtitle?: string;
@@ -95,27 +95,6 @@ export class SearchService {
         title: s.name,
         subtitle: `${s.year} · ${s.status}`,
         url: `/seasons`,
-      });
-    }
-
-    // Search coaches
-    const coaches = await this.prisma.coach.findMany({
-      where: {
-        OR: [
-          { fullName: { contains: query, mode: 'insensitive' } },
-          { nationality: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      select: { id: true, fullName: true, nationality: true },
-      take: limit,
-    });
-    for (const c of coaches) {
-      results.push({
-        type: 'coach',
-        id: c.id,
-        title: c.fullName,
-        subtitle: c.nationality ?? undefined,
-        url: `/coaches/${c.id}`,
       });
     }
 

@@ -2,7 +2,7 @@ import { api } from '../lib/api';
 
 // ─────────── Types ───────────
 export type SearchResult = {
-  type: 'team' | 'player' | 'match' | 'stadium' | 'season' | 'coach';
+  type: 'team' | 'player' | 'match' | 'stadium' | 'season';
   id: string;
   title: string;
   subtitle?: string;

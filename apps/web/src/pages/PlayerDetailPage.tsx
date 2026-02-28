@@ -6,17 +6,21 @@ import {
   Descriptions,
   message,
   Row,
+  Select,
   Space,
   Spin,
   Statistic,
   Table,
+  Tabs,
   Tag,
   Timeline,
   Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../lib/api';
+import { apiGetPlayerStats, type PlayerStats } from '../services/searchApi';
 
 const { Title } = Typography;
 
@@ -79,6 +83,17 @@ export default function PlayerDetailPage() {
   const navigate = useNavigate();
   const [player, setPlayer] = useState<PlayerDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsSeason, setStatsSeason] = useState<string>();
+  const [seasons, setSeasons] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    api
+      .get<{ data: { id: string; name: string }[] }>('/seasons', { params: { limit: 50 } })
+      .then((r) => setSeasons(r.data.data ?? []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -99,6 +114,16 @@ export default function PlayerDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // Fetch advanced player stats
+  useEffect(() => {
+    if (!id) return;
+    setStatsLoading(true);
+    apiGetPlayerStats(id, statsSeason)
+      .then(setPlayerStats)
+      .catch(() => setPlayerStats(null))
+      .finally(() => setStatsLoading(false));
+  }, [id, statsSeason]);
 
   if (loading) {
     return (
@@ -287,6 +312,107 @@ export default function PlayerDetailPage() {
           )}
         </Card>
       )}
+
+      {/* Advanced Stats with Chart */}
+      <Card
+        title="Thống kê nâng cao"
+        size="small"
+        style={{ marginTop: 16 }}
+        extra={
+          <Select
+            placeholder="Mùa giải"
+            value={statsSeason}
+            onChange={setStatsSeason}
+            allowClear
+            style={{ width: 180 }}
+            size="small"
+          >
+            {seasons.map((s) => (
+              <Select.Option key={s.id} value={s.id}>
+                {s.name}
+              </Select.Option>
+            ))}
+          </Select>
+        }
+      >
+        {statsLoading ? (
+          <div style={{ textAlign: 'center', padding: 24 }}>
+            <Spin />
+          </div>
+        ) : playerStats ? (
+          <Tabs
+            items={[
+              {
+                key: 'overview',
+                label: 'Tổng quan',
+                children: (
+                  <Row gutter={[16, 16]}>
+                    <Col xs={8} sm={4}>
+                      <Statistic title="Trận" value={playerStats.matchesPlayed} />
+                    </Col>
+                    <Col xs={8} sm={4}>
+                      <Statistic
+                        title="Bàn thắng"
+                        value={playerStats.goals}
+                        valueStyle={{ color: '#52c41a' }}
+                      />
+                    </Col>
+                    <Col xs={8} sm={4}>
+                      <Statistic title="Kiến tạo" value={playerStats.assists} />
+                    </Col>
+                    <Col xs={8} sm={4}>
+                      <Statistic title="Phản lưới" value={playerStats.ownGoals} />
+                    </Col>
+                    <Col xs={8} sm={4}>
+                      <Statistic
+                        title="Thẻ vàng"
+                        value={playerStats.yellowCards}
+                        valueStyle={{ color: '#faad14' }}
+                      />
+                    </Col>
+                    <Col xs={8} sm={4}>
+                      <Statistic
+                        title="Thẻ đỏ"
+                        value={playerStats.redCards}
+                        valueStyle={{ color: '#ff4d4f' }}
+                      />
+                    </Col>
+                  </Row>
+                ),
+              },
+              {
+                key: 'chart',
+                label: 'Biểu đồ bàn thắng',
+                children:
+                  playerStats.goalsByRound && playerStats.goalsByRound.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={playerStats.goalsByRound}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="round" tick={{ fontSize: 12 }} />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip />
+                        <Bar
+                          dataKey="goals"
+                          fill="#1890ff"
+                          name="Bàn thắng"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+                      Chưa có dữ liệu bàn thắng theo vòng đấu
+                    </div>
+                  ),
+              },
+            ]}
+          />
+        ) : (
+          <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+            Không thể tải thống kê nâng cao
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

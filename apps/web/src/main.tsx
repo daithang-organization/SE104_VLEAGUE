@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
+import './lib/i18n'; // Initialize i18n (side-effect)
 import { initSentry } from './lib/sentry';
 import { ThemeProvider, useAntdAlgorithm } from './shell/ThemeContext';
 

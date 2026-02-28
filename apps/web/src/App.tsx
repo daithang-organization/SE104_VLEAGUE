@@ -4,6 +4,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import HeadToHeadPage from './pages/HeadToHeadPage';
 import LoginPage from './pages/LoginPage';
 import MatchDetailPage from './pages/MatchDetailPage';
 import MatchesPage from './pages/MatchesPage';
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/matches" element={<MatchesPage />} />
         <Route path="/matches/:id" element={<MatchDetailPage />} />
         <Route path="/standings" element={<StandingsPage />} />
+        <Route path="/head-to-head" element={<HeadToHeadPage />} />
         <Route path="/regulations" element={<RegulationsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/users" element={<UsersPage />} />

@@ -470,13 +470,8 @@ export class StandingsService {
       },
     });
 
-    // Matches played (via lineup or events)
+    // Matches played (via events)
     const matchIds = new Set(events.map((e) => e.match.id));
-    const lineupMatches = await this.prisma.matchLineup.findMany({
-      where: { playerId, match: matchWhere },
-      select: { matchId: true },
-    });
-    for (const lm of lineupMatches) matchIds.add(lm.matchId);
 
     // Goals per round for chart
     const goalsByRound = events
