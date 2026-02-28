@@ -406,9 +406,14 @@ export default function PlayerDetailPage() {
                 key: 'chart',
                 label: t('playerDetail.statsTabChart'),
                 children:
-                  playerStats.goalsByRound && playerStats.goalsByRound.length > 0 ? (
+                  playerStats.goalsByRound && Object.keys(playerStats.goalsByRound).length > 0 ? (
                     <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={playerStats.goalsByRound}>
+                      <BarChart
+                        data={Object.entries(playerStats.goalsByRound).map(([round, goals]) => ({
+                          round: Number(round),
+                          goals,
+                        }))}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="round" tick={{ fontSize: 12 }} />
                         <YAxis allowDecimals={false} />

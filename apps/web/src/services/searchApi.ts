@@ -29,6 +29,7 @@ export type HeadToHeadResult = {
     awayScore: number | null;
     kickoffAt: string | null;
     stadium: { id: string; name: string } | null;
+    season?: { name: string } | null;
   }>;
 };
 

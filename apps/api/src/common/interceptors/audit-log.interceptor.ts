@@ -5,11 +5,16 @@ import {
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Observable, tap } from 'rxjs';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /** Methods that should be audited */
 const AUDIT_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+interface AuthenticatedRequest extends Request {
+  user?: { id: string; email: string };
+}
 
 @Injectable()
 export class AuditLogInterceptor implements NestInterceptor {
@@ -18,7 +23,7 @@ export class AuditLogInterceptor implements NestInterceptor {
   constructor(private prisma: PrismaService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const method = request.method;
 
     if (!AUDIT_METHODS.has(method)) {
@@ -26,8 +31,8 @@ export class AuditLogInterceptor implements NestInterceptor {
     }
 
     const user = request.user;
-    const url = request.url as string;
-    const body = request.body;
+    const url: string = request.url;
+    const body = request.body as Record<string, unknown> | undefined;
 
     // Extract entity from URL: /api/teams/uuid → teams
     const pathParts = url
@@ -53,9 +58,9 @@ export class AuditLogInterceptor implements NestInterceptor {
             newValue: body
               ? JSON.stringify(body).substring(0, 2000)
               : undefined,
-            ipAddress: request.ip,
-            userAgent: request.headers?.['user-agent']?.substring(0, 500),
-          }).catch((err) => {
+            ipAddress: request.ip ?? undefined,
+            userAgent: request.headers['user-agent']?.substring(0, 500),
+          }).catch((err: unknown) => {
             this.logger.error('Failed to save audit log', err);
           });
         },
@@ -105,7 +110,12 @@ export class AuditLogInterceptor implements NestInterceptor {
     ipAddress?: string;
     userAgent?: string;
   }) {
-    await this.prisma.auditLog.create({
+    await (
+      this.prisma as unknown as Record<
+        string,
+        { create: (args: unknown) => Promise<unknown> }
+      >
+    )['auditLog'].create({
       data: {
         userId: data.userId,
         userEmail: data.userEmail,

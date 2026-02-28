@@ -144,12 +144,12 @@ export default function HeadToHeadPage() {
               <Card size="small" style={{ textAlign: 'center' }}>
                 <Statistic
                   title={team1?.name ?? t('headToHead.team1Default')}
-                  value={result.team1Wins}
+                  value={result.team1.wins}
                   suffix={t('headToHead.winsSuffix')}
                   valueStyle={{ color: '#1890ff' }}
                 />
                 <div style={{ fontSize: 12, color: '#888' }}>
-                  {result.team1Goals} {t('headToHead.goalsSuffix')}
+                  {result.team1.goals} {t('headToHead.goalsSuffix')}
                 </div>
               </Card>
             </Col>
@@ -165,12 +165,12 @@ export default function HeadToHeadPage() {
               <Card size="small" style={{ textAlign: 'center' }}>
                 <Statistic
                   title={team2?.name ?? t('headToHead.team2Default')}
-                  value={result.team2Wins}
+                  value={result.team2.wins}
                   suffix={t('headToHead.winsSuffix')}
                   valueStyle={{ color: '#f5222d' }}
                 />
                 <div style={{ fontSize: 12, color: '#888' }}>
-                  {result.team2Goals} {t('headToHead.goalsSuffix')}
+                  {result.team2.goals} {t('headToHead.goalsSuffix')}
                 </div>
               </Card>
             </Col>
@@ -195,31 +195,31 @@ export default function HeadToHeadPage() {
                     title: t('headToHead.colSeason'),
                     key: 'season',
                     width: 140,
-                    render: (_: unknown, r: { season?: { name: string } }) => r.season?.name ?? '—',
+                    render: (_: unknown, r) => r.season?.name ?? '—',
                   },
                   {
                     title: t('headToHead.colHome'),
                     key: 'home',
-                    render: (_: unknown, r: { homeTeam?: { name: string } }) => r.homeTeam?.name,
+                    render: (_: unknown, r) => r.homeTeam?.name,
                   },
                   {
                     title: t('headToHead.colScore'),
                     key: 'score',
                     width: 80,
-                    align: 'center',
-                    render: (_: unknown, r: { homeScore?: number; awayScore?: number }) =>
+                    align: 'center' as const,
+                    render: (_: unknown, r) =>
                       r.homeScore != null ? `${r.homeScore} – ${r.awayScore}` : '—',
                   },
                   {
                     title: t('headToHead.colAway'),
                     key: 'away',
-                    render: (_: unknown, r: { awayTeam?: { name: string } }) => r.awayTeam?.name,
+                    render: (_: unknown, r) => r.awayTeam?.name,
                   },
                   {
                     title: t('headToHead.colDate'),
                     key: 'date',
                     width: 120,
-                    render: (_: unknown, r: { kickoffAt?: string }) =>
+                    render: (_: unknown, r) =>
                       r.kickoffAt ? new Date(r.kickoffAt).toLocaleDateString('vi-VN') : '—',
                   },
                 ]}

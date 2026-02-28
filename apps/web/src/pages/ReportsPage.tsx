@@ -76,6 +76,28 @@ export default function ReportsPage() {
     }
   };
 
+  const handleExportTeamStatsPdf = async () => {
+    try {
+      await exportPdf(
+        'VLeague - Thong ke doi bong',
+        ['Doi', 'Tran', 'Thang', 'Hoa', 'Thua', 'BT', 'BN', 'HS', 'Diem'],
+        teamStats.map((s) => [
+          s.teamName,
+          String(s.played),
+          String(s.won),
+          String(s.drawn),
+          String(s.lost),
+          String(s.goalsFor),
+          String(s.goalsAgainst),
+          String(s.goalDifference),
+          String(s.points),
+        ]),
+      );
+    } catch {
+      message.error(t('reports.exportError'));
+    }
+  };
+
   if (error) return <Alert type="error" message={error} showIcon />;
 
   return (

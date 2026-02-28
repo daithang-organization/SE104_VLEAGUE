@@ -17,7 +17,9 @@ export class SearchDto {
   })
   @IsString()
   @MinLength(2, { message: 'Từ khóa tìm kiếm phải có ít nhất 2 ký tự' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }): string =>
+    typeof value === 'string' ? value.trim() : (value as string),
+  )
   q: string;
 
   @ApiPropertyOptional({

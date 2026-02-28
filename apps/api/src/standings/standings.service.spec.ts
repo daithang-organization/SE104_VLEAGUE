@@ -6,7 +6,7 @@ describe('StandingsService', () => {
   let service: StandingsService;
   let prisma: PrismaService;
 
-  const mockTeams = [
+  const _mockTeams = [
     { id: 'team-1', name: 'Hà Nội FC', status: 'ACTIVE' },
     { id: 'team-2', name: 'Viettel FC', status: 'ACTIVE' },
   ];
