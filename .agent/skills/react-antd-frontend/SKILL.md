@@ -1,1217 +1,485 @@
 ---
-name: React + Ant Design Frontend Development
-description: Guide for developing frontend features using React, TypeScript, Vite, and Ant Design for SE104_VLEAGUE web application
+name: React + Ant Design Frontend
+description: Complete guide for the SE104_VLEAGUE React frontend — pages, services, components, auth flow, i18n, and patterns
 ---
 
-# React + Ant Design Frontend Development Skill
+# React + Ant Design Frontend Skill
 
-This skill provides comprehensive guidance for developing the frontend web application in the SE104_VLEAGUE project using React, TypeScript, Vite, and Ant Design.
+## Tech Stack
+
+| Category          | Package                         | Version   |
+| ----------------- | ------------------------------- | --------- |
+| UI Framework      | React                           | 19.x      |
+| Component Library | Ant Design                      | 6.x       |
+| Routing           | react-router-dom                | 7.x       |
+| HTTP Client       | Axios                           | 1.x       |
+| i18n              | i18next + react-i18next         | 25.x/16.x |
+| Charts            | Recharts                        | 3.x       |
+| Date              | dayjs                           | 1.x       |
+| PDF Export        | jsPDF + jspdf-autotable         | 4.x/5.x   |
+| Error Tracking    | @sentry/react                   | 10.x      |
+| Build             | Vite                            | 7.x       |
+| Test              | Vitest + @testing-library/react | 4.x/16.x  |
+| TypeScript        |                                 | 5.9       |
 
 ## Project Structure
 
-The web frontend is located at `apps/web/` with the following structure:
-
 ```
-apps/web/
-├── src/
-│   ├── main.tsx              # Application entry point
-│   ├── App.tsx               # Root component with routing
-│   ├── App.css               # Global styles
-│   ├── auth/                 # Authentication context & guards
-│   │   ├── AuthContext.tsx   # Auth state management
-│   │   ├── RequireAuth.tsx   # Protected route guard
-│   │   └── RequireRole.tsx   # Role-based route guard
-│   ├── shell/                # Application shell/layout
-│   │   ├── AppShell.tsx      # Main layout with sidebar
-│   │   └── menu.ts           # Menu configuration
-│   ├── components/           # Reusable components
-│   │   ├── LoadingSkeleton.tsx  # Loading skeletons
-│   │   └── ErrorBoundary.tsx    # Error handling
-│   ├── pages/                # Page components
-│   ├── services/             # API service layer
-│   └── lib/                  # Utilities and helpers
-├── public/                   # Static assets
-├── index.html               # HTML template
-├── vite.config.ts           # Vite configuration
-└── tsconfig.json            # TypeScript configuration
-```
-
-## Core Technologies
-
-- **Framework**: React 19.x
-- **Build Tool**: Vite 7.x
-- **Language**: TypeScript 5.9.x
-- **UI Library**: Ant Design 6.x
-- **Routing**: React Router DOM 7.x
-- **Linting**: ESLint with React plugins
-
-### React 19 + TypeScript Gotchas
-
-> [!WARNING]
-> **`useRef` requires explicit initial value**: React 19 types require an argument to `useRef`. Omitting it causes TS2554.
->
-> ```tsx
-> // ✅ Correct
-> const ref = useRef<string | undefined>(undefined);
-> // ❌ TS2554: Expected 1 arguments, but got 0
-> const ref = useRef<string | undefined>();
-> ```
-
-> [!WARNING]
-> **Always import `useNavigate`**: If you use `useNavigate()` in a component, you must import it from `react-router-dom`. Missing imports cause TS2552.
->
-> ```tsx
-> import { useNavigate } from 'react-router-dom';
-> ```
-
-## Getting Started
-
-### Development Server
-
-```bash
-cd apps/web
-pnpm dev
+apps/web/src/
+├── App.tsx                # Root routing (public + protected routes)
+├── main.tsx               # Entry: Sentry, i18n, BrowserRouter, AuthProvider, ThemeProvider
+├── auth/                  # AuthContext, RequireAuth, RequireRole, auth.types
+├── components/            # Shared: ErrorBoundary, EventModal, ExportButton, ImageUpload, LoadingSkeleton, ScoreEditModal
+├── lib/
+│   ├── api.ts             # Axios instance with token refresh interceptor
+│   └── i18n.ts            # i18next config (vi/en, localStorage detection)
+├── locales/
+│   ├── vi.ts              # Vietnamese translations (~1,244 lines)
+│   └── en.ts              # English translations (~1,207 lines)
+├── pages/                 # All page components (PascalCase)
+│   ├── __tests__/         # Page component tests
+│   ├── match-detail/      # MatchDetailPage sub-components
+│   └── reports/           # ReportsPage tab sub-components
+├── services/              # API service modules (camelCase)
+│   └── __tests__/         # Service tests
+├── shell/
+│   ├── AppShell.tsx       # Protected layout (Sider + Header + Content)
+│   ├── PublicLayout.tsx   # Public layout (gradient header + footer)
+│   ├── ThemeContext.tsx    # Dark/light mode context
+│   └── menu.ts            # Role-based menu items (13 items)
+└── utils/
+    └── constants.ts       # STATUS_MAP, EVENT_TYPE_MAP, POSITION_MAP, CAN_EDIT_ROLES
 ```
 
-Application runs at http://localhost:5173
+---
 
-### Build for Production
+## All Pages & Routes
 
-```bash
-cd apps/web
-pnpm build
-```
+### Public (No Auth)
 
-### Preview Production Build
+| Route                  | Component            | Load  | Description                            |
+| ---------------------- | -------------------- | ----- | -------------------------------------- |
+| `/login`               | `LoginPage`          | Eager | Email/password + Google/Facebook OAuth |
+| `/register`            | `RegisterPage`       | Eager | Registration with password rules       |
+| `/verify-email`        | `VerifyEmailPage`    | Lazy  | OTP email verification with resend     |
+| `/forgot-password`     | `ForgotPasswordPage` | Lazy  | Request password reset OTP             |
+| `/reset-password`      | `ResetPasswordPage`  | Lazy  | Reset password with OTP                |
+| `/auth/oauth-callback` | `OAuthCallbackPage`  | Eager | OAuth redirect token processing        |
+| `/403`                 | `ForbiddenPage`      | Eager | Access denied                          |
+| `*`                    | `NotFoundPage`       | Lazy  | 404 fallback                           |
 
-```bash
-cd apps/web
-pnpm preview
-```
+### Public Layout (`PublicLayout`)
 
-## Routing Map
+| Route               | Component             | Description                 |
+| ------------------- | --------------------- | --------------------------- |
+| `/public/standings` | `PublicStandingsPage` | League table (no auth)      |
+| `/public/schedule`  | `PublicSchedulePage`  | Schedule by round (no auth) |
+| `/public/results`   | `PublicResultsPage`   | Finished results (no auth)  |
 
-All routes are defined in `src/App.tsx`. Routes are split into **public** (no auth required) and **protected** (wrapped in `RequireAuth` + `AppShell`):
+### Protected (`RequireAuth` + `AppShell`)
 
-### Public Routes
+| Route              | Component            | Roles | Description                                                               |
+| ------------------ | -------------------- | ----- | ------------------------------------------------------------------------- |
+| `/`                | `DashboardPage`      | All   | Stats cards, mini standings, upcoming/recent matches, season progress     |
+| `/teams`           | `TeamsPage`          | All   | CRUD team list with search, logo, stadium link                            |
+| `/teams/:id`       | `TeamDetailPage`     | All   | Team info, roster, match history, standings                               |
+| `/players`         | `PlayersPage`        | All   | CRUD player list, pagination, filters, CSV import                         |
+| `/players/:id`     | `PlayerDetailPage`   | All   | Bio, stats (goals/cards), event timeline, goals-by-round chart            |
+| `/stadiums`        | `StadiumsPage`       | ADMIN | CRUD stadium list                                                         |
+| `/stadiums/:id`    | `StadiumDetailPage`  | ADMIN | Stadium info, home teams, match history                                   |
+| `/schedule`        | `SchedulePage`       | All   | Generate/publish schedule, edit match details, grouped by round           |
+| `/seasons`         | `SeasonsPage`        | ADMIN | CRUD seasons, team registration panel                                     |
+| `/matches`         | `MatchesPage`        | All   | Match list by round, detail modal, score edit, events, status transitions |
+| `/matches/:id`     | `MatchDetailPage`    | All   | Scoreboard, events timeline, roster tabs, stat cards                      |
+| `/standings`       | `StandingsPage`      | All   | Full standings with AFC CL/relegation highlights, top scorers, CSV export |
+| `/head-to-head`    | `HeadToHeadPage`     | All   | Compare two teams — wins/draws/goals + match history                      |
+| `/regulations`     | `RegulationsPage`    | ADMIN | CRUD regulations per season, seed defaults                                |
+| `/reports`         | `ReportsPage`        | All   | Tabs: Top Scorers, Card Stats, Team Stats, Charts — PDF/CSV export        |
+| `/users`           | `UsersPage`          | ADMIN | User management (create/role/delete)                                      |
+| `/profile`         | `ProfilePage`        | All   | View/edit profile, logout all                                             |
+| `/change-password` | `ChangePasswordPage` | All   | Change password form                                                      |
+| `/sessions`        | `SessionsPage`       | All   | Active sessions, revoke individual/all                                    |
 
-| Route                  | Page Component       | Description                    |
-| ---------------------- | -------------------- | ------------------------------ |
-| `/login`               | `LoginPage`          | Email/password + OAuth login   |
-| `/register`            | `RegisterPage`       | New account registration       |
-| `/verify-email`        | `VerifyEmailPage`    | OTP email verification         |
-| `/forgot-password`     | `ForgotPasswordPage` | Request password reset         |
-| `/reset-password`      | `ResetPasswordPage`  | Reset password with OTP        |
-| `/auth/oauth-callback` | `OAuthCallbackPage`  | Google/Facebook OAuth callback |
-| `/403`                 | `ForbiddenPage`      | Access denied page             |
+---
 
-### Protected Routes (inside `AppShell`)
+## All Services & API Methods
 
-| Route              | Page Component       | Description                    |
-| ------------------ | -------------------- | ------------------------------ |
-| `/`                | `DashboardPage`      | Main dashboard + quick actions |
-| `/teams`           | `TeamsPage`          | Team management (CRUD)         |
-| `/players`         | `PlayersPage`        | Player management (CRUD)       |
-| `/schedule`        | `SchedulePage`       | Match schedule management      |
-| `/seasons`         | `SeasonsPage`        | Season + team registration     |
-| `/stadiums`        | `StadiumsPage`       | Stadium management (ADMIN)     |
-| `/matches`         | `MatchesPage`        | Match results & events         |
-| `/standings`       | `StandingsPage`      | League standings + CSV export  |
-| `/regulations`     | `RegulationsPage`    | Regulation management (ADMIN)  |
-| `/reports`         | `ReportsPage`        | Reports & stats + CSV export   |
-| `/users`           | `UsersPage`          | User management (ADMIN)        |
-| `/profile`         | `ProfilePage`        | User profile management        |
-| `/change-password` | `ChangePasswordPage` | Password change form           |
-| `/sessions`        | `SessionsPage`       | Active sessions management     |
+### authApi.ts (17 functions)
 
-### Route Structure
+| Function             | Method | Endpoint                     |
+| -------------------- | ------ | ---------------------------- |
+| `apiLogin`           | POST   | `/auth/login`                |
+| `apiRefresh`         | POST   | `/auth/refresh`              |
+| `apiLogout`          | POST   | `/auth/logout`               |
+| `apiRegister`        | POST   | `/auth/register`             |
+| `apiVerifyEmail`     | POST   | `/auth/verify-email`         |
+| `apiResendOtp`       | POST   | `/auth/resend-otp`           |
+| `apiForgotPassword`  | POST   | `/auth/forgot-password`      |
+| `apiResetPassword`   | POST   | `/auth/reset-password`       |
+| `apiGetMe`           | GET    | `/auth/me`                   |
+| `apiChangePassword`  | POST   | `/auth/change-password`      |
+| `apiLogoutAll`       | POST   | `/auth/logout-all`           |
+| `apiUpdateProfile`   | PATCH  | `/auth/profile`              |
+| `apiGetSessions`     | GET    | `/auth/sessions`             |
+| `apiRevokeSession`   | DELETE | `/auth/sessions/:id`         |
+| `apiSetPassword`     | POST   | `/auth/set-password`         |
+| `getGoogleAuthUrl`   | —      | Returns `/auth/google` URL   |
+| `getFacebookAuthUrl` | —      | Returns `/auth/facebook` URL |
+
+### teamApi.ts
+
+| Function         | Method | Endpoint                          |
+| ---------------- | ------ | --------------------------------- |
+| `apiGetTeams`    | GET    | `/teams?page&limit&search&status` |
+| `apiGetTeam`     | GET    | `/teams/:id`                      |
+| `apiCreateTeam`  | POST   | `/teams`                          |
+| `apiUpdateTeam`  | PATCH  | `/teams/:id`                      |
+| `apiDeleteTeam`  | DELETE | `/teams/:id`                      |
+| `apiGetStadiums` | GET    | `/stadiums`                       |
+
+### playerApi.ts
+
+| Function              | Method | Endpoint                                                 |
+| --------------------- | ------ | -------------------------------------------------------- |
+| `apiGetPlayers`       | GET    | `/players?page&limit&search&position&nationality&teamId` |
+| `apiGetPlayer`        | GET    | `/players/:id`                                           |
+| `apiCreatePlayer`     | POST   | `/players`                                               |
+| `apiUpdatePlayer`     | PATCH  | `/players/:id`                                           |
+| `apiDeletePlayer`     | DELETE | `/players/:id`                                           |
+| `apiImportPlayersCsv` | POST   | `/players/import` (multipart FormData)                   |
+
+### stadiumApi.ts
+
+| Function           | Method | Endpoint        |
+| ------------------ | ------ | --------------- |
+| `apiGetStadiums`   | GET    | `/stadiums`     |
+| `apiGetStadium`    | GET    | `/stadiums/:id` |
+| `apiCreateStadium` | POST   | `/stadiums`     |
+| `apiUpdateStadium` | PATCH  | `/stadiums/:id` |
+| `apiDeleteStadium` | DELETE | `/stadiums/:id` |
+
+### seasonApi.ts
+
+| Function                | Method | Endpoint              |
+| ----------------------- | ------ | --------------------- |
+| `apiGetSeasons`         | GET    | `/seasons`            |
+| `apiGetSeason`          | GET    | `/seasons/:id`        |
+| `apiGetCurrentSeason`   | GET    | `/seasons/current`    |
+| `apiCreateSeason`       | POST   | `/seasons`            |
+| `apiUpdateSeason`       | PATCH  | `/seasons/:id`        |
+| `apiDeleteSeason`       | DELETE | `/seasons/:id`        |
+| `apiUpdateSeasonStatus` | PATCH  | `/seasons/:id/status` |
+
+### seasonTeamApi.ts
+
+| Function                    | Method | Endpoint                                  |
+| --------------------------- | ------ | ----------------------------------------- |
+| `apiGetSeasonTeams`         | GET    | `/seasons/:seasonId/teams`                |
+| `apiRegisterTeam`           | POST   | `/seasons/:seasonId/teams`                |
+| `apiUpdateSeasonTeamStatus` | PATCH  | `/seasons/:seasonId/teams/:teamId/status` |
+| `apiRemoveSeasonTeam`       | DELETE | `/seasons/:seasonId/teams/:teamId`        |
+
+### matchApi.ts
+
+| Function               | Method | Endpoint                       |
+| ---------------------- | ------ | ------------------------------ |
+| `apiGetMatches`        | GET    | `/matches?seasonId&page&limit` |
+| `apiGetMatch`          | GET    | `/matches/:id`                 |
+| `apiAddMatchEvent`     | POST   | `/matches/:id/events`          |
+| `apiRemoveMatchEvent`  | DELETE | `/matches/:id/events/:eventId` |
+| `apiGetTeamRoster`     | GET    | `/teams/:id/roster`            |
+| `apiUpdateMatch`       | PATCH  | `/matches/:id`                 |
+| `apiUpdateMatchStatus` | PATCH  | `/matches/:id/status`          |
+
+### scheduleApi.ts
+
+| Function              | Method | Endpoint                      |
+| --------------------- | ------ | ----------------------------- |
+| `apiGetSchedule`      | GET    | `/schedule?seasonId`          |
+| `apiGenerateSchedule` | POST   | `/schedule/generate?seasonId` |
+| `apiPublishSchedule`  | POST   | `/schedule/publish?seasonId`  |
+
+### standingsApi.ts
+
+| Function           | Method | Endpoint                                |
+| ------------------ | ------ | --------------------------------------- |
+| `apiGetStandings`  | GET    | `/standings?seasonId`                   |
+| `apiGetTopScorers` | GET    | `/standings/top-scorers?seasonId&limit` |
+| `apiGetCardStats`  | GET    | `/standings/card-stats?seasonId&limit`  |
+| `apiGetTeamStats`  | GET    | `/standings/team-stats?seasonId`        |
+
+### searchApi.ts
+
+| Function            | Method | Endpoint                                       |
+| ------------------- | ------ | ---------------------------------------------- |
+| `apiGlobalSearch`   | GET    | `/search?q&limit`                              |
+| `apiGetHeadToHead`  | GET    | `/standings/head-to-head?team1&team2&seasonId` |
+| `apiGetPlayerStats` | GET    | `/standings/player-stats/:playerId?seasonId`   |
+
+### regulationApi.ts
+
+| Function                    | Method | Endpoint                                 |
+| --------------------------- | ------ | ---------------------------------------- |
+| `apiGetRegulations`         | GET    | `/seasons/:id/regulations`               |
+| `apiGetRegulation`          | GET    | `/seasons/:id/regulations/:key`          |
+| `apiUpsertRegulation`       | PUT    | `/seasons/:id/regulations`               |
+| `apiDeleteRegulation`       | DELETE | `/seasons/:id/regulations/:key`          |
+| `apiSeedDefaultRegulations` | POST   | `/seasons/:id/regulations/seed-defaults` |
+
+### userApi.ts
+
+| Function            | Method | Endpoint          |
+| ------------------- | ------ | ----------------- |
+| `apiGetUsers`       | GET    | `/users`          |
+| `apiCreateUser`     | POST   | `/users`          |
+| `apiUpdateUserRole` | PATCH  | `/users/:id/role` |
+| `apiDeleteUser`     | DELETE | `/users/:id`      |
+
+### uploadApi.ts
+
+| Function         | Method | Endpoint                             |
+| ---------------- | ------ | ------------------------------------ |
+| `apiUploadImage` | POST   | `/upload/image` (multipart FormData) |
+
+### http.ts (LEGACY — not used)
+
+`fetch`-based HTTP client. All active services import from `lib/api.ts` (Axios) instead.
+
+---
+
+## Shared Components (`src/components/`)
+
+| Component         | Purpose                                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| `ErrorBoundary`   | Class component catching runtime errors → Ant Design `Result`, reports to Sentry, shows stack in dev |
+| `EventModal`      | Dynamic form for adding multiple match events at once (goal, card, sub) with team/player selectors   |
+| `ExportButton`    | CSV export button with UTF-8 BOM for Excel Vietnamese compatibility                                  |
+| `ImageUpload`     | Ant Design `Upload` wrapper for `/upload/image`, form-compatible (`value`/`onChange`)                |
+| `LoadingSkeleton` | Variants: `CardSkeleton`, `TableSkeleton`, `FormSkeleton`, `ProfileSkeleton`, `ListSkeleton`         |
+| `ScoreEditModal`  | Modal for editing home/away score with `InputNumber`                                                 |
+
+### Page Sub-Components
+
+| Location              | Components                                                   |
+| --------------------- | ------------------------------------------------------------ |
+| `pages/reports/`      | `TopScorersTab`, `CardStatsTab`, `TeamStatsTab`, `ChartsTab` |
+| `pages/match-detail/` | `EventFormModal`, `ScoreModal`                               |
+
+---
+
+## Auth Flow
+
+### Types (`auth/auth.types.ts`)
 
 ```typescript
-// App.tsx
-<Routes>
-  {/* Public */}
-  <Route path="/login" element={<LoginPage />} />
-  <Route path="/register" element={<RegisterPage />} />
-  ...
-
-  {/* Protected — wrapped in RequireAuth + AppShell */}
-  <Route element={<RequireAuth><AppShell /></RequireAuth>}>
-    <Route path="/" element={<DashboardPage />} />
-    <Route path="/standings" element={<StandingsPage />} />
-    ...
-  </Route>
-
-  {/* Fallback */}
-  <Route path="*" element={<Navigate to="/" replace />} />
-</Routes>
+User { id, email, role, name? }
+AuthState { user, accessToken, isAuthed }
+AuthContextValue = AuthState & { login, logout, applyOAuthTokens }
 ```
 
-## Creating a New Page
+### AuthContext (`auth/AuthContext.tsx`)
 
-### 1. Create Page Component
+- **Access token**: in-memory only (NEVER in localStorage)
+- **Refresh token**: in `localStorage` for persistence
+- **Bootstrap**: On mount → silent refresh via `/auth/refresh` → decode JWT for `User`
+- **Login**: POST `/auth/login` → stores both tokens
+- **OAuth**: `applyOAuthTokens(at, rt)` → decode JWT → set user
+- **Logout**: POST `/auth/logout` → clears both tokens
+- **Session expiry**: Listens for `auth:expired` custom event
 
-Create a new file in `src/pages/`:
+### Token Refresh (`lib/api.ts`)
 
-```typescript
-// src/pages/TeamsPage.tsx
-import { useState, useEffect } from 'react';
-import { Table, Card, Button, message } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import { fetchTeams } from '../services/api';
-import type { Team } from '../types';
+- Axios response interceptor on 401 → attempts refresh using stored RT
+- Queues concurrent failing requests during refresh (only one refresh runs at a time)
+- Dispatches `auth:expired` custom event when refresh fails
+- Also handles 429 → dispatches `api:rate-limited` custom event
 
-export function TeamsPage() {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
+### Route Guards
 
-  useEffect(() => {
-    loadTeams();
-  }, []);
+- **`RequireAuth`**: Redirects to `/login` if `!isAuthed`, preserves intended URL in `location.state`
+- **`RequireRole`**: Checks `user.role` against `allow[]` array, redirects to `/403`
 
-  const loadTeams = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchTeams();
-      setTeams(data);
-    } catch (error) {
-      message.error('Failed to load teams');
-    } finally {
-      setLoading(false);
-    }
-  };
+### Roles
 
-  const columns: ColumnsType<Team> = [
-    {
-      title: 'Team Name',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-    },
-  ];
+`ADMIN` | `TEAM_MANAGER` | `REFEREE` | `SUPERVISOR` | `PUBLIC`
 
-  return (
-    <Card title="Teams" extra={<Button type="primary">Add Team</Button>}>
-      <Table
-        columns={columns}
-        dataSource={teams}
-        loading={loading}
-        rowKey="id"
-      />
-    </Card>
-  );
-}
-```
+---
 
-### 2. Add Route
+## Shell / Layout
 
-Update `src/App.tsx`:
+### AppShell (`shell/AppShell.tsx`) — Protected
 
-```typescript
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { TeamsPage } from './pages/TeamsPage';
+- Ant Design `Layout` with collapsible `Sider` + `Header` + `Content`
+- **Sidebar**: Dynamic menu filtered by user role (from `menu.ts`)
+- **Header**: Global search (debounced 300ms autocomplete via `/search`), dark mode toggle, language toggle (VI/EN), user dropdown (profile, change password, logout)
+- `<Outlet />` renders child routes
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/teams" element={<TeamsPage />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-```
+### PublicLayout (`shell/PublicLayout.tsx`)
 
-## API Integration
+- Gradient header with V-League branding
+- Horizontal menu: Standings, Schedule, Results
+- Login button
+- Footer with copyright
 
-### HTTP Client Architecture
+### ThemeContext (`shell/ThemeContext.tsx`)
 
-The project uses **two HTTP clients** — Axios (primary) and a fetch-based wrapper:
+- Light/dark mode toggle via React Context
+- Persisted to `localStorage` key `vleague-theme`
+- Returns `theme.darkAlgorithm` or `theme.defaultAlgorithm` for Ant Design
 
-| File                   | Library   | Purpose                                            |
-| ---------------------- | --------- | -------------------------------------------------- |
-| `src/lib/api.ts`       | **Axios** | Primary HTTP client with token refresh interceptor |
-| `src/services/http.ts` | `fetch`   | Secondary wrapper with error toast notifications   |
+### Menu (`shell/menu.ts`) — 13 items
 
-> [!IMPORTANT]
-> **Use `lib/api.ts` (Axios)** for all new API calls. The `services/http.ts` fetch wrapper exists for legacy compatibility but the Axios instance provides automatic token refresh.
+| Menu Item                                   | Roles                                            |
+| ------------------------------------------- | ------------------------------------------------ |
+| Dashboard, Standings, Head-to-Head, Reports | All                                              |
+| Seasons, Stadiums, Regulations, Users       | ADMIN only                                       |
+| Teams, Players                              | ADMIN, TEAM_MANAGER, SUPERVISOR, PUBLIC          |
+| Schedule, Matches                           | ADMIN, TEAM_MANAGER, REFEREE, SUPERVISOR, PUBLIC |
 
-### Primary HTTP Client — `lib/api.ts`
+---
 
-Axios instance with automatic token management and refresh:
+## i18n Setup
 
-```typescript
-// src/lib/api.ts
-import axios from 'axios';
+### Configuration (`lib/i18n.ts`)
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+- **Languages**: Vietnamese (`vi`, fallback) and English (`en`)
+- **Detection**: `localStorage` key `vleague-lang` → browser navigator
+- **Plugin**: `i18next-browser-languagedetector`
 
-export const api = axios.create({
-  baseURL,
-  headers: { 'Content-Type': 'application/json' },
-});
+### Translation Files
 
-// Access token stored in-memory (never localStorage) for security
-let accessTokenMem: string | null = null;
-export function setAccessToken(token: string | null) { accessTokenMem = token; }
-export function getAccessToken() { return accessTokenMem; }
+- `locales/vi.ts` — ~1,244 lines, comprehensive Vietnamese catalog
+- `locales/en.ts` — ~1,207 lines, English mirror
 
-// Refresh token in localStorage for session persistence across reloads
-export function getRefreshToken() { return localStorage.getItem('refreshToken'); }
-export function setRefreshToken(token: string | null) { ... }
+### Namespace Convention
 
-// Request interceptor: attaches Bearer token
-// Response interceptor: handles 401 with automatic token refresh + request queue
-```
+`dashboard.*`, `matches.*`, `teams.*`, `players.*`, `seasons.*`, `schedule.*`, `standings.*`, `stadiums.*`, `users.*`, `profile.*`, `sessions.*`, `regulations.*`, `reports.*`, `headToHead.*`, `login.*`, `register.*`, `forgotPassword.*`, `resetPassword.*`, `changePassword.*`, `verifyEmail.*`, `teamDetail.*`, `playerDetail.*`, `stadiumDetail.*`, `forbidden.*`, `oauth.*`
 
-**Key features:**
-
-- Access token in-memory only (security best practice)
-- Refresh token in localStorage (persists across reloads)
-- Automatic 401 → refresh → retry with request queuing
-- Dispatches `auth:expired` event when refresh fails
-
-### Auth API Service — `services/authApi.ts`
-
-All authentication API functions (uses `lib/api.ts` under the hood):
-
-```typescript
-// src/services/authApi.ts
-import { api } from '../lib/api';
-
-// Auth operations
-apiLogin(email, password, rememberMe?) → LoginResponse
-apiRegister(email, password)            → RegisterResponse
-apiVerifyEmail(email, otp)              → VerifyEmailResponse
-apiResendOtp(email)                     → { message: string }
-apiForgotPassword(email)                → { message: string }
-apiResetPassword(email, otp, newPassword) → { message: string }
-apiRefresh(refreshToken)                → RefreshResponse
-apiLogout(refreshToken)                 → void
-apiLogoutAll()                          → { revokedCount: number }
-
-// Profile operations
-apiGetMe()                              → UserProfile
-apiUpdateProfile({ name?, avatarUrl? }) → UserProfile
-apiChangePassword(current, new)         → { success: boolean }
-apiSetPassword(newPassword)             → { success: boolean }
-
-// Session management
-apiGetSessions()                        → Session[]
-apiRevokeSession(sessionId)             → { success: boolean }
-
-// OAuth URLs
-getGoogleAuthUrl()                      → string
-getFacebookAuthUrl()                    → string
-```
-
-### Making API Calls in Components
-
-```typescript
-import { api } from '../lib/api';
-import { message } from 'antd';
-
-// GET request
-const loadTeams = async () => {
-  try {
-    setLoading(true);
-    const res = await api.get('/teams');
-    setTeams(res.data);
-  } catch (error) {
-    message.error('Không thể tải danh sách đội bóng');
-  } finally {
-    setLoading(false);
-  }
-};
-
-// POST request
-const createTeam = async (data: CreateTeamDto) => {
-  const res = await api.post('/teams', data);
-  return res.data;
-};
-```
+---
 
 ## TypeScript Types
 
-### Type Organization
-
-Types are **co-located** with their respective service/module files (no separate `src/types/` folder):
-
-```typescript
-// Types defined in src/services/authApi.ts
-export type LoginResponse = {
-  accessToken: string;
-  refreshToken: string;
-  user: { id: string; email: string; role: string; name?: string | null };
-};
-
-export type UserProfile = {
-  id: string;
-  email: string;
-  role: string;
-  name?: string | null;
-  avatarUrl?: string | null;
-  emailVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type Session = {
-  id: string;
-  deviceName: string | null;
-  userAgent: string | null;
-  ipAddress: string | null;
-  lastUsedAt: string | null;
-  createdAt: string;
-  expiresAt: string;
-};
-
-// Types defined in src/auth/auth.types.ts
-export type User = {
-  id: string;
-  email: string;
-  role: string;
-  name?: string | null;
-};
-
-export type AuthContextValue = AuthState & {
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  logout: () => Promise<void>;
-  applyOAuthTokens: (accessToken: string, refreshToken: string) => void;
-};
-```
-
-### Use Types in Components
-
-```typescript
-import type { UserProfile } from '../services/authApi';
-import type { FC } from 'react';
-
-interface TeamCardProps {
-  team: { id: string; name: string; status: string };
-  onClick?: (id: string) => void;
-}
-
-export const TeamCard: FC<TeamCardProps> = ({ team, onClick }) => {
-  return (
-    <Card onClick={() => onClick?.(team.id)}>
-      <h3>{team.name}</h3>
-      <p>Status: {team.status}</p>
-    </Card>
-  );
-};
-```
-
-## Ant Design Components
-
-### Common Components
-
-#### Table with Actions
-
-```typescript
-import { Table, Button, Space, Popconfirm } from 'antd';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-
-const columns: ColumnsType<Team> = [
-  {
-    title: 'Name',
-    dataIndex: 'name',
-    key: 'name',
-  },
-  {
-    title: 'Actions',
-    key: 'actions',
-    render: (_, record) => (
-      <Space>
-        <Button
-          type="link"
-          icon={<EditOutlined />}
-          onClick={() => handleEdit(record)}
-        >
-          Edit
-        </Button>
-        <Popconfirm
-          title="Are you sure?"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger icon={<DeleteOutlined />}>
-            Delete
-          </Button>
-        </Popconfirm>
-      </Space>
-    ),
-  },
-];
-```
-
-#### Form with Validation
-
-```typescript
-import { Form, Input, Button, Select, message } from 'antd';
-
-interface FormValues {
-  name: string;
-  status: string;
-}
-
-export function TeamForm() {
-  const [form] = Form.useForm<FormValues>();
-
-  const onFinish = async (values: FormValues) => {
-    try {
-      await createTeam(values);
-      message.success('Team created successfully');
-      form.resetFields();
-    } catch (error) {
-      message.error('Failed to create team');
-    }
-  };
-
-  return (
-    <Form form={form} onFinish={onFinish} layout="vertical">
-      <Form.Item
-        name="name"
-        label="Team Name"
-        rules={[{ required: true, message: 'Please enter team name' }]}
-      >
-        <Input placeholder="Enter team name" />
-      </Form.Item>
-
-      <Form.Item
-        name="status"
-        label="Status"
-        initialValue="ACTIVE"
-      >
-        <Select>
-          <Select.Option value="ACTIVE">Active</Select.Option>
-          <Select.Option value="INACTIVE">Inactive</Select.Option>
-        </Select>
-      </Form.Item>
-
-      <Form.Item>
-        <Button type="primary" htmlType="submit">
-          Submit
-        </Button>
-      </Form.Item>
-    </Form>
-  );
-}
-```
-
-#### Modal
-
-```typescript
-import { Modal, Button } from 'antd';
-import { useState } from 'react';
-
-export function TeamModal() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <>
-      <Button type="primary" onClick={() => setIsOpen(true)}>
-        Add Team
-      </Button>
-
-      <Modal
-        title="Add Team"
-        open={isOpen}
-        onCancel={() => setIsOpen(false)}
-        footer={null}
-      >
-        <TeamForm onSuccess={() => setIsOpen(false)} />
-      </Modal>
-    </>
-  );
-}
-```
-
-## Layout and Navigation
-
-### AppShell with Role-Based Menu
-
-The project uses `AppShell` component located at `src/shell/AppShell.tsx` which provides:
-
-- Collapsible sidebar with role-based menu filtering
-- Header with user dropdown (profile, change password, logout)
-- Content area with nested routing via `<Outlet />`
-
-```typescript
-// src/shell/AppShell.tsx
-import { Layout, Menu, Dropdown, Button } from 'antd';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
-import { MENU } from './menu';
-
-export default function AppShell() {
-  const { user, logout } = useAuth();
-  const nav = useNavigate();
-  const location = useLocation();
-
-  // Filter menu items based on user role
-  const menuItems = useMemo(() => {
-    const role = user?.role;
-    return MENU.filter((m) => !m.roles || (role && m.roles.includes(role))).map((m) => ({
-      key: m.key,
-      label: m.label,
-    }));
-  }, [user]);
-
-  const onMenuClick = (e: { key: string }) => {
-    const menuItem = MENU.find((m) => m.key === e.key);
-    if (menuItem) nav(menuItem.path);
-  };
-
-  return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible>
-        <Menu
-          theme="dark"
-          mode="inline"
-          items={menuItems}
-          onClick={onMenuClick}
-        />
-      </Sider>
-      <Layout>
-        <Header>
-          <Dropdown menu={{ items: userMenuItems }}>
-            <Button type="text" style={{ color: 'white' }}>
-              <UserOutlined /> {user?.email}
-            </Button>
-          </Dropdown>
-        </Header>
-        <Content style={{ padding: 24 }}>
-          <Outlet />
-        </Content>
-      </Layout>
-    </Layout>
-  );
-}
-```
-
-### Menu Configuration
-
-```typescript
-// src/shell/menu.ts
-type MenuItem = {
-  key: string;
-  label: string;
-  path: string;
-  roles?: string[]; // Allowed roles (undefined = all authenticated users)
-};
-
-export const MENU: MenuItem[] = [
-  { key: 'dashboard', label: 'Dashboard', path: '/' },
-  { key: 'seasons', label: 'Mùa giải', path: '/seasons', roles: ['ADMIN'] },
-  {
-    key: 'teams',
-    label: 'Đội bóng',
-    path: '/teams',
-    roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
-  },
-  { key: 'stadiums', label: 'Sân vận động', path: '/stadiums', roles: ['ADMIN'] },
-  {
-    key: 'players',
-    label: 'Cầu thủ',
-    path: '/players',
-    roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
-  },
-  {
-    key: 'schedule',
-    label: 'Lịch thi đấu',
-    path: '/schedule',
-    roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
-  },
-  {
-    key: 'matches',
-    label: 'Kết quả trận đấu',
-    path: '/matches',
-    roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
-  },
-  { key: 'standings', label: 'Bảng xếp hạng', path: '/standings' },
-  { key: 'reports', label: 'Báo cáo', path: '/reports' },
-  { key: 'regulations', label: 'Quy định', path: '/regulations', roles: ['ADMIN'] },
-  { key: 'users', label: 'Quản lý người dùng', path: '/users', roles: ['ADMIN'] },
-];
-```
-
-## Authentication Guards
-
-### RequireAuth - Protected Routes
-
-```typescript
-// src/auth/RequireAuth.tsx
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-
-export function RequireAuth({ children }: { children: ReactNode }) {
-  const { isAuthed } = useAuth();
-  const location = useLocation();
-
-  if (!isAuthed) {
-    // Save the attempted URL for redirecting after login
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  }
-
-  return children;
-}
-```
-
-### RequireRole - Role-Based Access
-
-```typescript
-// src/auth/RequireRole.tsx
-import { Navigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-
-export function RequireRole({ allow, children }: { allow: string[]; children: ReactNode }) {
-  const { user, isAuthed } = useAuth();
-
-  if (!isAuthed || !user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!allow.includes(user.role)) {
-    return <Navigate to="/403" replace />;
-  }
-
-  return children;
-}
-```
-
-### Usage in Routes
-
-```typescript
-// App.tsx
-<Route element={<RequireAuth><AppShell /></RequireAuth>}>
-  <Route path="/" element={<DashboardPage />} />
-  <Route path="/teams" element={
-    <RequireRole allow={['ADMIN', 'TEAM_MANAGER']}>
-      <TeamsPage />
-    </RequireRole>
-  } />
-</Route>
-```
-
-## Reusable UI Components
-
-### LoadingSkeleton
-
-Multi-purpose loading skeletons for different UI patterns:
-
-```typescript
-// src/components/LoadingSkeleton.tsx
-import { Card, Skeleton, Table } from 'antd';
-
-interface LoadingSkeletonProps {
-  type?: 'card' | 'table' | 'form' | 'profile' | 'list';
-  rows?: number;
-}
-
-export const LoadingSkeleton: FC<LoadingSkeletonProps> = ({ type = 'card', rows = 3 }) => {
-  switch (type) {
-    case 'table':
-      return <TableSkeleton rows={rows} />;
-    case 'form':
-      return <FormSkeleton />;
-    case 'profile':
-      return <ProfileSkeleton />;
-    case 'list':
-      return <ListSkeleton rows={rows} />;
-    default:
-      return <CardSkeleton />;
-  }
-};
-
-// Usage:
-<LoadingSkeleton type="table" rows={5} />
-<LoadingSkeleton type="profile" />
-```
-
-### ErrorBoundary
-
-Catches runtime errors and displays user-friendly error page:
-
-```typescript
-// src/components/ErrorBoundary.tsx
-import { Button, Result } from 'antd';
-import { Component, type ReactNode } from 'react';
-
-export class ErrorBoundary extends Component<Props, State> {
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error);
-    // TODO: Send to error tracking service
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <Result
-          status="error"
-          title="Đã xảy ra lỗi"
-          subTitle="Rất tiếc, đã có lỗi xảy ra. Vui lòng thử lại sau."
-          extra={[
-            <Button key="retry" type="primary" onClick={this.handleReset}>
-              Thử lại
-            </Button>,
-          ]}
-        />
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// Usage in App.tsx:
-<ErrorBoundary>
-  <RouterProvider router={router} />
-</ErrorBoundary>
-```
-
-### ExportButton
-
-Reusable CSV export component (`src/components/ExportButton.tsx`). Generates downloadable CSV files with UTF-8 BOM for Excel compatibility:
-
-```typescript
-// src/components/ExportButton.tsx
-import { DownloadOutlined } from '@ant-design/icons';
-import { Button, message } from 'antd';
-
-interface ExportColumn {
-  title: string;    // CSV column header
-  key: string;      // Data field key
-}
-
-interface ExportButtonProps {
-  columns: ExportColumn[];
-  dataSource: Record<string, unknown>[];
-  filename?: string;  // Without extension, defaults to 'export'
-}
-
-// Usage in any page:
-<ExportButton
-  columns={[
-    { title: '#', key: 'position' },
-    { title: 'Đội bóng', key: 'teamName' },
-    { title: 'Điểm', key: 'points' },
-  ]}
-  dataSource={standings as unknown as Record<string, unknown>[]}
-  filename="bang-xep-hang"
-/>
-```
-
-Currently integrated in:
-
-- **StandingsPage**: Export standings table + top scorers
-- **ReportsPage**: Export top scorers + card stats tabs
+### Domain Types (co-located in service files)
+
+| Type                   | Key Fields                                                                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Team`                 | id, name, shortName?, logoUrl?, city?, status, stadiumId?, stadium?                                                                                  |
+| `TeamDetail`           | extends Team + teamPlayers[], homeMatches[], awayMatches[], standings[]                                                                              |
+| `Player`               | id, fullName, dob, nationality, position, playerType, birthPlace?, heightCm?, weightKg?, teamPlayers?                                                |
+| `Stadium`              | id, name, address?, city, capacity?                                                                                                                  |
+| `StadiumDetail`        | extends Stadium + teams[], matches[]                                                                                                                 |
+| `Season`               | id, name, year, status, startDate?, endDate?                                                                                                         |
+| `SeasonTeam`           | id, seasonId, teamId, status, registeredAt, approvedAt, team                                                                                         |
+| `Match`                | id, roundNo, leg, seasonId?, homeTeamId, awayTeamId, homeTeam?, awayTeam?, homeScore?, awayScore?, stadiumId?, stadium?, kickoffAt?, status, events? |
+| `MatchEvent`           | id, minute, type, goalType?, playerId?, player?, teamId?, team?, relatedPlayerId?, relatedPlayer?, note?                                             |
+| `TeamStanding`         | position, teamId, teamName, played, won, drawn, lost, goalsFor, goalsAgainst, goalDifference, points                                                 |
+| `TopScorer`            | position, playerId, playerName, teamId, teamName, goals                                                                                              |
+| `CardStat`             | position, playerId, playerName, teamId, teamName, yellowCards, redCards, totalCards                                                                  |
+| `TeamStat`             | extends standings + cleanSheets, yellowCards, redCards                                                                                               |
+| `HeadToHeadResult`     | team comparison data                                                                                                                                 |
+| `PlayerStats`          | goals, assists, cards, goals-by-round                                                                                                                |
+| `Regulation`           | id, seasonId, key, value, valueType                                                                                                                  |
+| `User`                 | id, email, name?, role, emailVerified, avatarUrl?, googleId?, facebookId?                                                                            |
+| `Session`              | id, deviceName, userAgent, ipAddress, lastUsedAt, createdAt, expiresAt                                                                               |
+| `PaginatedResponse<T>` | data[], total, page, limit, totalPages                                                                                                               |
+
+### Enums (string unions)
+
+- **Position**: `'GK' | 'DF' | 'MF' | 'FW'`
+- **PlayerType**: `'DOMESTIC' | 'FOREIGN'`
+- **MatchStatus**: `'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'FINISHED' | 'POSTPONED'`
+- **SeasonStatus**: `'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED'`
+- **SeasonTeamStatus**: `'REGISTERED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN'`
+- **EventType**: `'GOAL' | 'OWN_GOAL' | 'PENALTY' | 'PENALTY_MISS' | 'YELLOW_CARD' | 'RED_CARD' | 'SUBSTITUTION'`
+- **UserRole**: `'ADMIN' | 'TEAM_MANAGER' | 'REFEREE' | 'SUPERVISOR' | 'PUBLIC'`
+- **ThemeMode**: `'light' | 'dark'`
+
+---
 
 ## State Management Patterns
 
-### useState for Local State
+**No Redux/Zustand** — pure React patterns:
 
-```typescript
-const [data, setData] = useState<Team[]>([]);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState<string | null>(null);
-```
+- **`AuthContext`**: Global auth state (React Context + `useState`)
+- **`ThemeContext`**: Dark/light mode (React Context + `useState`)
+- **Per-page local state**: `useState` + `useEffect` for data fetching
+- **`useCallback`**: Memoized fetch functions
+- **`useMemo`**: Derived data (filtered lists, role checks, menu items)
+- **`Promise.allSettled`**: Parallel API calls on Dashboard and Reports
+- **`useRef`**: Debounce timers (global search), prevent duplicate processing (OAuth)
+- **Custom events**: `auth:expired`, `api:rate-limited` for cross-cutting concerns
 
-### useEffect for Data Fetching
-
-```typescript
-useEffect(() => {
-  let cancelled = false;
-
-  async function loadData() {
-    try {
-      setLoading(true);
-      const result = await fetchTeams();
-      if (!cancelled) {
-        setData(result);
-      }
-    } catch (err) {
-      if (!cancelled) {
-        setError(err.message);
-      }
-    } finally {
-      if (!cancelled) {
-        setLoading(false);
-      }
-    }
-  }
-
-  loadData();
-
-  return () => {
-    cancelled = true; // Cleanup to prevent state updates after unmount
-  };
-}, []); // Dependencies array
-```
-
-### Custom Hooks
-
-```typescript
-// src/hooks/useTeams.ts
-import { useState, useEffect } from 'react';
-import { fetchTeams } from '../services/api';
-import type { Team } from '../types';
-
-export function useTeams() {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const refetch = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchTeams();
-      setTeams(data);
-      setError(null);
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    refetch();
-  }, []);
-
-  return { teams, loading, error, refetch };
-}
-
-// Usage in component
-function TeamsPage() {
-  const { teams, loading, error, refetch } = useTeams();
-
-  if (loading) return <Spin />;
-  if (error) return <Alert type="error" message={error.message} />;
-
-  return <TeamList teams={teams} onUpdate={refetch} />;
-}
-```
+---
 
 ## Environment Variables
 
-### Configuration
+| Variable            | Usage                                                  |
+| ------------------- | ------------------------------------------------------ |
+| `VITE_API_BASE_URL` | Backend API URL (default: `http://localhost:8080/api`) |
+| `VITE_SENTRY_DSN`   | Sentry DSN (optional, no-op when unset)                |
+| `VITE_APP_VERSION`  | Sentry release tag                                     |
 
-Create `apps/web/.env`:
+---
 
-```env
-VITE_API_BASE_URL=http://localhost:8080
-```
+## Utility Constants (`utils/constants.ts`)
 
-### Usage in Code
+| Constant            | Content                                            |
+| ------------------- | -------------------------------------------------- |
+| `STATUS_MAP`        | Match statuses → `{ label, color }` (admin labels) |
+| `PUBLIC_STATUS_MAP` | Match statuses → user-friendly labels              |
+| `EVENT_TYPE_MAP`    | Event types → `{ label, color, icon }`             |
+| `POSITION_MAP`      | `GK/DF/MF/FW` → `{ label, color }`                 |
+| `CAN_EDIT_ROLES`    | `['ADMIN', 'REFEREE']`                             |
 
-```typescript
-const apiUrl = import.meta.env.VITE_API_BASE_URL;
+---
 
-// Type-safe env variables
-interface ImportMetaEnv {
-  readonly VITE_API_BASE_URL: string;
-}
+## Notable Patterns
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-```
+1. **Lazy loading**: All protected pages + layouts are `React.lazy()`. Auth pages eager for fast first paint
+2. **Dual HTTP clients**: `lib/api.ts` (Axios, primary) + `services/http.ts` (fetch, legacy/unused)
+3. **Token refresh queue**: Concurrent 401s queued; only one refresh runs at a time
+4. **PDF export**: Dynamic `import('jspdf')` to avoid bundling unless needed
+5. **CSV export**: `ExportButton` component + `csvExport.ts` utility (UTF-8 BOM for Excel)
+6. **Player CSV import**: `apiImportPlayersCsv` sends FormData; `downloadPlayerCsvTemplate()` for template
+7. **Match status FSM**: `DRAFT → PUBLISHED → LOCKED → FINISHED` (with POSTPONED side-paths)
+8. **Standings highlighting**: AFC Champions League zone (green) + relegation zone (red) via CSS classes
+9. **Session management**: View active sessions, revoke individual/all
+10. **OAuth flow**: Server redirect → `/auth/oauth-callback?accessToken=&refreshToken=`
+11. **Global search**: Debounced 300ms autocomplete in AppShell header
+12. **Recharts**: Bar charts (goals by round, team points), Pie chart (goal distribution)
+13. **Sentry**: Browser tracing + session replay (100% dev / 20% prod)
 
-> [!IMPORTANT]
-> All environment variables must be prefixed with `VITE_` to be exposed to the client.
+---
 
-## Styling
+## Testing Conventions
 
-### Global Styles
+- **24 test suites, 143 tests**
+- Page tests: `src/pages/__tests__/*.test.tsx`
+- Service tests: `src/services/__tests__/*.test.ts`
+- Auth tests: `src/auth/AuthContext.test.tsx`, `RequireAuth.test.tsx`
+- **Always use `vi.hoisted()`** for mock variables inside `vi.mock()`
+- Mock `../../lib/api` for service tests
+- Mock individual service files + `react-router-dom` for page tests
+- Use `getAllByText()` instead of `getByText()` for Ant Design duplicate text
+- Import from `__tests__/` goes up one level: `../ComponentName`
 
-Edit `src/App.css`:
+### Polyfills (`vitest.setup.ts`)
 
-```css
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-}
+- `@testing-library/jest-dom/vitest` for custom matchers
+- i18n initialized with Vietnamese, no language detector
+- `ResizeObserver` polyfill (Ant Design Tabs/Collapse)
+- `window.matchMedia` polyfill (Ant Design responsive)
 
-.page-container {
-  padding: 24px;
-}
-
-.table-actions {
-  display: flex;
-  gap: 8px;
-}
-```
-
-### Inline Styles (TypeScript-safe)
-
-```typescript
-<div style={{ padding: '24px', backgroundColor: '#f5f5f5' }}>
-  Content
-</div>
-```
-
-### CSS Modules (Optional)
-
-```typescript
-// TeamCard.module.css
-.card {
-  border-radius: 8px;
-  padding: 16px;
-}
-
-// TeamCard.tsx
-import styles from './TeamCard.module.css';
-
-export function TeamCard() {
-  return <div className={styles.card}>...</div>;
-}
-```
-
-## Best Practices
-
-> [!TIP]
-> **Component Organization**: Keep components small and focused. Extract reusable logic into custom hooks.
-
-> [!TIP]
-> **Type Safety**: Always define TypeScript interfaces for props, API responses, and form values.
-
-> [!TIP]
-> **Loading States**: Always show loading indicators (Ant Design's `Spin` component) while fetching data.
-
-> [!WARNING]
-> **Console Errors**: React 19 is strict about certain patterns. Always clean up effects and avoid state updates on unmounted components.
+---
 
 ## Common Commands
 
 ```bash
-# Development
 cd apps/web
-pnpm dev          # Start dev server (port 5173)
-
-# Building
-pnpm build        # Build for production
-pnpm preview      # Preview production build
-
-# Linting
-pnpm lint         # Run ESLint
+pnpm dev                     # Start dev server (port 5173)
+pnpm build                   # Production build
+pnpm preview                 # Preview production build
+pnpm test                    # Vitest (24 suites, 143 tests)
+pnpm exec vitest             # Watch mode
+pnpm lint                    # ESLint
 ```
-
-## Ant Design Customization
-
-### Theme Configuration
-
-```typescript
-// src/main.tsx
-import { ConfigProvider } from 'antd';
-
-const theme = {
-  token: {
-    colorPrimary: '#1890ff',
-    borderRadius: 4,
-  },
-};
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <ConfigProvider theme={theme}>
-    <App />
-  </ConfigProvider>
-);
-```
-
-## Common Ant Design Components
-
-- **Layout**: `Layout`, `Header`, `Content`, `Sider`, `Footer`
-- **Navigation**: `Menu`, `Breadcrumb`, `Tabs`
-- **Data Display**: `Table`, `Card`, `Descriptions`, `Tag`
-- **Forms**: `Form`, `Input`, `Select`, `DatePicker`, `Checkbox`
-- **Feedback**: `Modal`, `message`, `notification`, `Spin`, `Alert`
-- **Buttons**: `Button`, `Dropdown`
-- **Icons**: Import from `@ant-design/icons`
-
-## Recommended Patterns
-
-### Loading and Error States
-
-```typescript
-if (loading) {
-  return <Spin tip="Loading..." />;
-}
-
-if (error) {
-  return <Alert type="error" message="Error" description={error.message} />;
-}
-
-if (!data || data.length === 0) {
-  return <Empty description="No data available" />;
-}
-
-return <DataDisplay data={data} />;
-```
-
-### Optimistic Updates
-
-```typescript
-async function handleUpdate(id: string, updates: Partial<Team>) {
-  // Optimistically update UI
-  setTeams(teams.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-
-  try {
-    await updateTeam(id, updates);
-    message.success('Updated successfully');
-  } catch (error) {
-    // Revert on error
-    refetch();
-    message.error('Update failed');
-  }
-}
-```
-
-## Frontend Service API Reference
-
-All service files are located in `src/services/` and use the primary Axios client (`lib/api.ts`).
-
-> [!IMPORTANT]
-> All service functions follow the naming pattern `api<Action><Entity>()`. Types are co-located and exported from each service file.
-
-### Service Files Overview
-
-| Service File      | #Functions | Key Types Exported                               |
-| ----------------- | ---------- | ------------------------------------------------ |
-| `authApi.ts`      | 16         | `LoginResponse`, `UserProfile`, `Session`        |
-| `teamApi.ts`      | 5          | `Team`, `CreateTeamPayload`, `UpdateTeamPayload` |
-| `playerApi.ts`    | 5          | `Player`, `CreatePlayerPayload`                  |
-| `matchApi.ts`     | 3          | `Match`, `MatchEvent`, `AddMatchEventPayload`    |
-| `scheduleApi.ts`  | 3          | `ScheduleMatch`                                  |
-| `seasonApi.ts`    | 3          | `Season`                                         |
-| `standingsApi.ts` | 4          | `TeamStanding`, `TopScorer`, `CardStat`          |
-| `userApi.ts`      | 4          | `User`, `CreateUserPayload`                      |
-
-### Detailed Function Reference
-
-#### `teamApi.ts`
-
-```typescript
-apiGetTeams()                        → Team[]
-apiGetTeam(id)                       → Team
-apiCreateTeam(data)                  → Team
-apiUpdateTeam(id, data)              → Team
-apiDeleteTeam(id)                    → { success: boolean }
-```
-
-#### `playerApi.ts`
-
-```typescript
-apiGetPlayers()                      → Player[]
-apiGetPlayer(id)                     → Player
-apiCreatePlayer(data)                → Player
-apiUpdatePlayer(id, data)            → Player
-apiDeletePlayer(id)                  → { success: boolean }
-```
-
-#### `matchApi.ts`
-
-```typescript
-apiGetMatches(seasonId?)             → Match[]
-apiGetMatch(id)                      → Match
-apiAddMatchEvent(matchId, data)      → { ok, matchId, createdEvent }
-```
-
-#### `scheduleApi.ts`
-
-```typescript
-apiGetSchedule()                     → { ok, matches: ScheduleMatch[] }
-apiGenerateSchedule()                → { ok, message }
-apiPublishSchedule()                 → { ok, message }
-```
-
-#### `seasonApi.ts`
-
-```typescript
-apiGetSeasons()                      → Season[]
-apiGetSeason(id)                     → Season
-apiGetCurrentSeason()                → Season | null
-```
-
-#### `standingsApi.ts`
-
-```typescript
-apiGetStandings(seasonId?)           → TeamStanding[]
-apiGetTopScorers(seasonId?, limit?)  → TopScorer[]
-apiGetCardStats(seasonId?, limit?)   → CardStat[]
-apiGetTeamStats(seasonId?)           → TeamStat[]
-```
-
-#### `userApi.ts`
-
-```typescript
-apiGetUsers()                        → User[]
-apiCreateUser(data)                  → User
-apiUpdateUserRole(id, role)          → User
-apiDeleteUser(id)                    → { success: boolean }
-```
-
-### Legacy HTTP Client — `services/http.ts`
-
-> [!WARNING]
-> The fetch-based `http.ts` wrapper exists for legacy compatibility. It provides its own error toast notifications and status-specific handling (401→logout, 403→forbidden toast, 429→rate limit toast). **Do not use for new code** — use `lib/api.ts` (Axios) instead.
-
-## Frontend Testing
-
-The frontend has comprehensive test coverage using **Vitest** + **@testing-library/react**.
-
-### Test Framework Stack
-
-| Package                     | Version | Purpose                                    |
-| --------------------------- | ------- | ------------------------------------------ |
-| `vitest`                    | 4.x     | Test runner (Vite-native, Jest-compatible) |
-| `@testing-library/react`    | latest  | Component rendering & DOM queries          |
-| `@testing-library/jest-dom` | latest  | Custom matchers (`toBeInTheDocument()`)    |
-| `jsdom`                     | latest  | DOM environment for tests                  |
-
-### Running Tests
-
-```bash
-cd apps/web
-
-pnpm test                # Alias for vitest run
-pnpm exec vitest         # Watch mode
-pnpm exec vitest run     # Single run (CI)
-```
-
-### Test Coverage
-
-| Category             | Files  | Tests   | Description                      |
-| -------------------- | ------ | ------- | -------------------------------- |
-| API Service tests    | 12     | 83      | All `services/*.ts` files tested |
-| Page component tests | 10     | 60      | All major pages tested           |
-| **Total**            | **24** | **143** |                                  |
-
-### Test File Locations
-
-- **API service tests**: `src/services/__tests__/*.test.ts`
-- **Page component tests**: `src/pages/__tests__/*.test.tsx`
-- **Test setup**: `vitest.setup.ts` (polyfills for Ant Design)
-
-### Key Testing Patterns
-
-1. **`vi.hoisted()` for mock variables** — required so mocks are available inside `vi.mock()`
-2. **Mock `lib/api`** for service tests, mock individual service files for page tests
-3. **Mock `react-router-dom`** for page components that use `useNavigate`
-4. **`waitFor()`** for async operations (data loading)
-5. **`getAllByText()`** instead of `getByText()` when Ant Design renders text in multiple DOM locations
-
-### Ant Design Testing Gotchas
-
-- **`ResizeObserver` polyfill** needed in `vitest.setup.ts` for Tabs, Collapse
-- **`window.matchMedia` polyfill** needed for responsive components
-- Ant Design renders text in Card headers, Breadcrumbs, etc. — same text appears multiple times in DOM
-
-> [!TIP]
-> See the [Testing & CI/CD Skill](../testing-cicd/SKILL.md) for detailed test patterns, examples, and CI pipeline info.

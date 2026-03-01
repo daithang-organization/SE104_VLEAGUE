@@ -1,185 +1,220 @@
 ---
-name: Business Rules & Regulations
-description: Guide for VLeague-specific business logic, regulations, scoring system, and role-based access control
+name: Business Rules
+description: All business rules, state machines, scoring, regulations, and domain constraints for SE104_VLEAGUE
 ---
 
-# Business Rules & Regulations Skill
+# Business Rules Skill
 
-This skill documents all VLeague-specific business rules, configurable regulations, state machines, and RBAC permissions.
+## Configurable Regulations (Per-Season)
 
-## Configurable Regulations
+Stored in the `regulations` table, keyed by `seasonId`. Managed via `RegulationModule`.
 
-Regulations are stored in the `regulations` table, scoped per season (`@@unique([seasonId, key])`). Each regulation has a `key`, `value`, and `valueType` (`INT` or `JSON`).
+| Key                   | Default | Type   | Purpose                       |
+| --------------------- | ------- | ------ | ----------------------------- |
+| `MIN_AGE`             | 16      | number | Minimum player age            |
+| `MAX_AGE`             | 40      | number | Maximum player age            |
+| `MIN_ROSTER`          | 15      | number | Minimum team roster size      |
+| `MAX_ROSTER`          | 22      | number | Maximum team roster size      |
+| `MAX_FOREIGN_PLAYERS` | 3       | number | Foreign player limit per team |
+| `WIN_POINTS`          | 3       | number | Points awarded for a win      |
+| `DRAW_POINTS`         | 1       | number | Points awarded for a draw     |
+| `LOSS_POINTS`         | 0       | number | Points awarded for a loss     |
+| `MAX_GOAL_TIME`       | 96      | number | Maximum allowed goal minute   |
 
-### Default Regulation Values
+### RegulationHelper
 
-Defined in `DEFAULT_REGULATIONS` in `regulation.service.ts` and seeded per season:
-
-| Key                   | Default | Type   | Description                  |
-| --------------------- | ------- | ------ | ---------------------------- |
-| `MIN_AGE`             | `16`    | number | Minimum player age           |
-| `MAX_AGE`             | `40`    | number | Maximum player age           |
-| `MIN_ROSTER`          | `15`    | number | Minimum players per team     |
-| `MAX_ROSTER`          | `22`    | number | Maximum players per team     |
-| `MAX_FOREIGN_PLAYERS` | `3`     | number | Max foreign players per team |
-| `WIN_POINTS`          | `3`     | number | Points for a win             |
-| `DRAW_POINTS`         | `1`     | number | Points for a draw            |
-| `LOSS_POINTS`         | `0`     | number | Points for a loss            |
-| `MAX_GOAL_TIME`       | `96`    | number | Maximum goal minute allowed  |
-
-> [!TIP]
-> To add a new regulation, add it to `DEFAULT_REGULATIONS` in `regulation.service.ts` and use `RegulationHelper.getNumericValue()` to query it.
-
-### RegulationHelper Service
-
-`RegulationHelper` (`regulation/regulation.helper.ts`) provides a clean interface for querying regulation values:
+Cross-module helper exported from `RegulationModule`:
 
 ```typescript
-// Query with season-specific override + fallback
-const minAge = await this.regulationHelper.getNumericValue(
-  seasonId, // optional — falls back to DEFAULT_REGULATIONS if null
-  'MIN_AGE', // regulation key
-  16, // fallback if neither DB nor defaults have the key
-);
+regulationHelper.getNumericValue(seasonId, 'MAX_ROSTER', 22);
+// Lookup chain: DB → defaults → hardcoded fallback
 ```
 
-**Used by:**
+Used by: `RegistrationModule` (age), `RosterModule` (roster/foreign limits), `MatchModule` (goal time).
 
-- `RegistrationService` — age validation (`MIN_AGE`, `MAX_AGE`)
-- `RosterService` — roster limits (`MAX_ROSTER`, `MAX_FOREIGN_PLAYERS`)
-- `MatchService` — goal time validation (`MAX_GOAL_TIME`)
+---
 
-## Scoring & Ranking System
+## Scoring System
 
-### Points
+| Result | Points                           |
+| ------ | -------------------------------- |
+| Win    | 3 (configurable via WIN_POINTS)  |
+| Draw   | 1 (configurable via DRAW_POINTS) |
+| Loss   | 0 (configurable via LOSS_POINTS) |
 
-- **Win**: 3 points
-- **Draw**: 1 point
-- **Loss**: 0 points
+### Standings Sort Order (Priority)
 
-### Ranking Tiebreak Order
+1. **Points** (descending)
+2. **Goal Difference** (descending)
+3. **Goals For** (descending)
+4. **Team Name** (alphabetical)
 
-1. Total points (descending)
-2. Goal difference (descending)
-3. Goals scored (descending)
-4. Team name (alphabetically — fallback)
+Only APPROVED season teams are shown in standings. Non-approved teams excluded.
+
+---
 
 ## State Machines
 
 ### Match Status Flow
 
-```mermaid
-stateDiagram-v2
-    [*] --> DRAFT
-    DRAFT --> PUBLISHED: Admin publishes schedule
-    DRAFT --> POSTPONED: Match postponed
-    PUBLISHED --> LOCKED: Match day begins
-    PUBLISHED --> POSTPONED: Match postponed
-    LOCKED --> FINISHED: Match completed (scores required)
-    POSTPONED --> DRAFT: Rescheduled
+```
+DRAFT → PUBLISHED → LOCKED → FINISHED
+DRAFT → POSTPONED
+PUBLISHED → POSTPONED
+POSTPONED → DRAFT
 ```
 
-**FINISHED transition guards:**
+- **DRAFT**: Initial state after schedule generation
+- **PUBLISHED**: Visible to public, not yet started
+- **LOCKED**: Match in progress (scores being recorded)
+- **FINISHED**: Match completed → triggers auto standings recalculation
+- **POSTPONED**: Match delayed → can return to DRAFT
 
-- `homeScore` and `awayScore` must both be set (not null)
-- After FINISHED: standings are auto-recalculated for the season
+**Validation rules**:
 
-> [!IMPORTANT]
-> When a match transitions to FINISHED, `MatchService` automatically calls `StandingsService.getStandings(seasonId)` to recalculate the season standings.
+- Cannot finish match if scores are null
+- Standings auto-recalculated when status transitions to FINISHED
 
 ### Season Status Flow
 
-```mermaid
-stateDiagram-v2
-    [*] --> UPCOMING
-    UPCOMING --> IN_PROGRESS: Season starts
-    IN_PROGRESS --> COMPLETED: All matches finished
+```
+UPCOMING → IN_PROGRESS → COMPLETED
 ```
 
-### Season Team Registration Status
+- Single-direction only (no backward transitions)
+- Only ONE season can be `IN_PROGRESS` at a time
 
-```mermaid
-stateDiagram-v2
-    [*] --> REGISTERED
-    REGISTERED --> APPROVED: Admin approves
-    REGISTERED --> REJECTED: Admin rejects
-    APPROVED --> WITHDRAWN: Team withdraws
-    REJECTED --> REGISTERED: Re-register
+### Season Team Registration Flow
+
+```
+REGISTERED → APPROVED
+REGISTERED → REJECTED
+REGISTERED → WITHDRAWN
 ```
 
-**Transition guards:**
+---
 
-- Only transitions from `REGISTERED` → `APPROVED` or `REJECTED` are allowed
-- `APPROVED` → `WITHDRAWN` for teams that leave after approval
-- `approvedAt` timestamp is set automatically when status becomes `APPROVED`
-- Duplicate registration (same team + season) is prevented via `@@unique([seasonId, teamId])`
+## Match Event Rules
 
-> [!NOTE]
-> Season team management is handled by `SeasonTeamController` at `/seasons/:seasonId/teams`. Teams are registered via `POST`, approved/rejected via `PATCH :teamId/status`, and removed via `DELETE :teamId`.
+### Event Types
+
+| Type           | Scoring              | Description                                                        |
+| -------------- | -------------------- | ------------------------------------------------------------------ |
+| `GOAL`         | +1 for scoring team  | Regular goal                                                       |
+| `OWN_GOAL`     | +1 for opposing team | Own goal — points awarded to OTHER team                            |
+| `PENALTY`      | +1 for scoring team  | Penalty goal (counts as regular goal for scoring)                  |
+| `PENALTY_MISS` | No score change      | Missed/saved penalty                                               |
+| `YELLOW_CARD`  | —                    | Yellow card                                                        |
+| `RED_CARD`     | —                    | Red card                                                           |
+| `SUBSTITUTION` | —                    | Player substitution (requires `relatedPlayerId` for sub-in player) |
+
+### Auto Score Recalculation
+
+When events are added or removed:
+
+- `homeScore` / `awayScore` are **automatically recalculated** from events
+- GOAL + PENALTY events → scored for the event's team
+- OWN_GOAL → scored for the opposing team
+
+### Goal Time Validation
+
+- Event `minute` must not exceed `MAX_GOAL_TIME` regulation (default: 96)
+
+---
 
 ## Player Constraints
 
-| Constraint    | Rule                                                                            |
-| ------------- | ------------------------------------------------------------------------------- |
-| Age range     | Between `MIN_AGE` and `MAX_AGE` (queried from regulations via RegulationHelper) |
-| Roster size   | Max `MAX_ROSTER` players (queried from regulations via RegulationHelper)        |
-| Foreign limit | Max `MAX_FOREIGN_PLAYERS` foreign players (queried via RegulationHelper)        |
-| Jersey number | Unique per team (via `team_players` table)                                      |
-| Player type   | `DOMESTIC` or `FOREIGN`                                                         |
-| Position      | `GK`, `DF`, `MF`, or `FW`                                                       |
+| Rule                      | Source                                       | Default |
+| ------------------------- | -------------------------------------------- | ------- |
+| Minimum age               | `MIN_AGE` regulation                         | 16      |
+| Maximum age               | `MAX_AGE` regulation                         | 40      |
+| Max roster size           | `MAX_ROSTER` regulation                      | 22      |
+| Min roster size           | `MIN_ROSTER` regulation                      | 15      |
+| Foreign player limit      | `MAX_FOREIGN_PLAYERS` regulation             | 3       |
+| Jersey number uniqueness  | Enforced per active team roster              | —       |
+| Exclusive team membership | Player can only belong to one team at a time | —       |
+| Soft removal              | `leftAt` timestamp set (not deleted)         | —       |
 
-## Match Events
+### CSV Bulk Import
 
-| Event Type     | Description         | Goal Time Check  |
-| -------------- | ------------------- | ---------------- |
-| `GOAL`         | Regular goal        | ✅ MAX_GOAL_TIME |
-| `OWN_GOAL`     | Own goal            | ✅ MAX_GOAL_TIME |
-| `PENALTY`      | Penalty scored      | ✅ MAX_GOAL_TIME |
-| `PENALTY_MISS` | Penalty missed      |                  |
-| `YELLOW_CARD`  | Yellow card         |                  |
-| `RED_CARD`     | Red card            |                  |
-| `SUBSTITUTION` | Player substitution |                  |
+- `POST /api/players/import` accepts CSV file (max 2MB)
+- Validates each row individually
+- Reports per-row errors (row number + error message)
+- Supports optional `teamId` for automatic roster assignment
 
-Events are recorded with `minute`, `playerId`, `teamId`, and optional `note`.
+---
 
-> [!NOTE]
-> Goal events (GOAL, OWN_GOAL, PENALTY) are validated against `MAX_GOAL_TIME` regulation. If `minute > MAX_GOAL_TIME`, the event is rejected.
+## Scheduling Rules
+
+### Round-Robin Generation
+
+- **Double round-robin**: Leg 1 (lượt đi) + Leg 2 (lượt về) with swapped home/away
+- **BYE handling**: Odd number of teams → one team gets a bye per round
+- **Kickoff time slots**: Saturday/Sunday with VLeague-typical times (17:00, 18:00, 19:15)
+- **Stadium assignment**: Auto-assigns home team's stadium
+- **Clean slate**: Deletes ALL existing matches for the season before regenerating
+
+---
 
 ## RBAC Permission Matrix
 
-Based on actual `@Roles()` decorators in controllers:
+| Resource       | ADMIN               | TEAM_MANAGER    | REFEREE           | SUPERVISOR | PUBLIC    |
+| -------------- | ------------------- | --------------- | ----------------- | ---------- | --------- |
+| Teams (CRUD)   | ✅                  | Read only       | Read only         | Read only  | Read only |
+| Players (CRUD) | ✅                  | Create/Edit own | Read only         | Read only  | Read only |
+| Stadiums       | ✅                  | Read only       | Read only         | Read only  | Read only |
+| Seasons        | ✅                  | Read only       | Read only         | Read only  | Read only |
+| Schedule       | ✅ Generate/Publish | Read only       | Read only         | Read only  | Read only |
+| Matches (edit) | ✅                  | Read only       | Add/Remove events | Read only  | Read only |
+| Match status   | ✅                  | —               | —                 | —          | —         |
+| Roster         | ✅                  | ✅ Own team     | Read only         | Read only  | Read only |
+| Regulations    | ✅                  | Read only       | Read only         | Read only  | Read only |
+| Users          | ✅                  | —               | —                 | —          | —         |
+| Standings      | Read                | Read            | Read              | Read       | Read      |
+| Upload         | ✅                  | ✅              | —                 | —          | —         |
 
-| Action                        | ADMIN | TEAM_MANAGER | REFEREE | SUPERVISOR | PUBLIC |
-| ----------------------------- | ----- | ------------ | ------- | ---------- | ------ |
-| Manage users                  | ✅    |              |         |            |        |
-| Create/Update/Delete teams    | ✅    |              |         |            |        |
-| Create/Update/Delete stadiums | ✅    |              |         |            |        |
-| Create/Update/Delete seasons  | ✅    |              |         |            |        |
-| Register teams to season      | ✅    |              |         |            |        |
-| Approve/Reject season teams   | ✅    |              |         |            |        |
-| Manage regulations            | ✅    |              |         |            |        |
-| Generate/Publish schedule     | ✅    |              |         |            |        |
-| Register players              | ✅    | ✅           |         |            |        |
-| Manage roster                 | ✅    | ✅           |         |            |        |
-| Add match events              | ✅    |              | ✅      |            |        |
-| View schedule                 | ✅    | ✅           | ✅      |            |        |
-| View matches (all)            | ✅    | ✅           | ✅      |            |        |
-| View season teams             | ✅    | ✅           | ✅      | ✅         | ✅     |
-| View standings (public)       | ✅    | ✅           | ✅      | ✅         | ✅     |
+---
 
-> [!NOTE]
-> Endpoints **without** `@Roles()` but **with** `@UseGuards(JwtAuthGuard)` require any authenticated user.
-> Endpoints **without** any guard are fully public (e.g., `GET /standings`, `GET /health`).
+## Statistics
 
-## User Roles
+### Top Scorers
 
-| Role           | Description               | Seed Account             |
-| -------------- | ------------------------- | ------------------------ |
-| `ADMIN`        | Full system administrator | `admin@demo.local`       |
-| `TEAM_MANAGER` | Team manager              | `teammanager@demo.local` |
-| `REFEREE`      | Match referee             | `referee@demo.local`     |
-| `SUPERVISOR`   | League supervisor         | `supervisor@demo.local`  |
-| `PUBLIC`       | Public viewer             | `public@demo.local`      |
+- Counts `GOAL` + `PENALTY` events per player
+- Grouped by player with team info
 
-- All demo accounts use password: `Demo@12345`
-- Dual auth: `UserRole` enum on user + FK to `roles` table
+### Card Stats
+
+- Weighted sorting: Red card = 3× Yellow card weight
+- Shows yellow, red, and total cards per player
+
+### Team Stats
+
+- Aggregated: goals, cards, clean sheets per team
+- Clean sheet = match where team conceded 0 goals
+
+### Head-to-Head
+
+- Historical record between two teams
+- Includes goals scored, wins/draws/losses, and match list
+
+### Player Stats
+
+- Individual: goals, assists (via `relatedPlayerId`), cards
+- Goals-per-round chart data for Recharts visualization
+
+### CSV Export
+
+- All 4 stat views exportable as CSV
+- UTF-8 BOM prepended for Excel Vietnamese character support
+
+---
+
+## Demo Seed Accounts
+
+| Email                      | Password         | Role         |
+| -------------------------- | ---------------- | ------------ |
+| `admin@vleague.local`      | `Admin@123`      | ADMIN        |
+| `manager@vleague.local`    | `Manager@123`    | TEAM_MANAGER |
+| `referee@vleague.local`    | `Referee@123`    | REFEREE      |
+| `supervisor@vleague.local` | `Supervisor@123` | SUPERVISOR   |
+| `user@vleague.local`       | `User@123`       | PUBLIC       |
