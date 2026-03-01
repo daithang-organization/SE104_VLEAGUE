@@ -1,417 +1,448 @@
 ---
 name: NestJS + Prisma Development
-description: Guide for developing backend features using NestJS framework with Prisma ORM for SE104_VLEAGUE project
+description: Complete guide for the SE104_VLEAGUE NestJS backend — modules, endpoints, Prisma schema, guards, interceptors, and patterns
 ---
 
 # NestJS + Prisma Development Skill
 
-This skill provides comprehensive guidance for developing backend features in the SE104_VLEAGUE project using NestJS and Prisma.
-
 ## Project Structure
-
-The API backend is located at `apps/api/` with the following structure:
 
 ```
 apps/api/
 ├── src/
-│   ├── app.module.ts          # Root module
-│   ├── main.ts               # Application entry point
-│   ├── auth/                 # Authentication module
-│   ├── common/               # Shared utilities (filters, interceptors, etc.)
-│   ├── config/               # Configuration module
-│   ├── mail/                 # Email service module
-│   ├── match/               # Match management module
-│   ├── registration/         # Team & player registration module
-│   ├── roster/              # Team roster management module
-│   ├── scheduling/           # Match scheduling module
-│   ├── season/              # Season management module
-│   ├── stadium/             # Stadium management module
-│   ├── standings/           # League standings module
-│   ├── users/               # User management module (ADMIN)
-│   └── prisma/              # Prisma service
+│   ├── app.module.ts          # Root module (imports all feature modules)
+│   ├── main.ts                # Bootstrap: ValidationPipe, CORS, Helmet, Swagger, Pino
+│   ├── auth/                  # Authentication & authorization (JWT, OAuth, OTP, RBAC)
+│   ├── common/                # Shared: filters, interceptors, middleware, logger
+│   ├── config/                # ConfigModule wrapper
+│   ├── health/                # Health check (/api/health)
+│   ├── mail/                  # Email service (Handlebars templates, OTP, welcome)
+│   ├── match/                 # Match management & events
+│   ├── prisma/                # PrismaService (driver adapter with pg.Pool)
+│   ├── registration/          # Teams & players CRUD + CSV import
+│   ├── regulation/            # Season-scoped key-value regulations
+│   ├── roster/                # Team-player assignments & jersey numbers
+│   ├── scheduling/            # Round-robin schedule generation
+│   ├── search/                # Global search across all entities
+│   ├── season/                # Season CRUD & team registration workflow
+│   ├── stadium/               # Stadium CRUD
+│   ├── standings/             # League table, top scorers, card/team stats, exports
+│   ├── upload/                # Image upload (Multer, 5MB, JPEG/PNG/WebP/GIF)
+│   └── users/                 # Admin user management
 ├── prisma/
-│   ├── schema.prisma        # Database schema
-│   ├── seed.ts             # Database seeding
-│   └── migrations/         # Migration history
-└── test/                   # E2E tests
+│   ├── schema.prisma          # 12 models, 10 enums
+│   ├── seed.ts                # Master seeder (chains all seed scripts)
+│   ├── seed-teams.ts          # 10 V-League teams with stadium mappings
+│   ├── seed-players.ts        # 100+ randomized Vietnamese + foreign players
+│   ├── seed-stadiums.ts       # 15 stadiums
+│   ├── verify-demo-users.ts   # Ensure 5 demo role accounts exist
+│   ├── register-teams-to-season.ts
+│   ├── cleanup-stale-matches.ts
+│   └── migrations/            # 13 migrations
+└── test/                      # E2E specs (Supertest)
 ```
 
 ## Core Technologies
 
-- **Framework**: NestJS 11.x
-- **ORM**: Prisma 7.x with PostgreSQL adapter
-- **Database**: PostgreSQL
-- **Testing**: Jest (unit) + Supertest (e2e)
-- **Validation**: Built-in NestJS validation pipes
+| Layer      | Technology                          | Version |
+| ---------- | ----------------------------------- | ------- |
+| Framework  | NestJS                              | 11.x    |
+| ORM        | Prisma (with `@prisma/adapter-pg`)  | 7.x     |
+| Database   | PostgreSQL                          | 16      |
+| Auth       | Passport (JWT, Google, Facebook)    | 0.7.x   |
+| Rate Limit | @nestjs/throttler                   | 6.x     |
+| Cache      | @nestjs/cache-manager               | 3.x     |
+| Logging    | nestjs-pino                         | 4.x     |
+| Email      | @nestjs-modules/mailer + Handlebars |         |
+| Testing    | Jest + ts-jest + Supertest          |         |
 
-## Creating a New Module
-
-### 1. Generate Module Structure
-
-Use NestJS CLI to create a new module:
-
-```bash
-cd apps/api
-pnpm exec nest generate module <module-name>
-pnpm exec nest generate controller <module-name>
-pnpm exec nest generate service <module-name>
-```
-
-### 2. Module Organization
-
-Each module should follow this pattern:
+## Global Infrastructure (main.ts)
 
 ```typescript
-// <module-name>.module.ts
-import { Module } from '@nestjs/common';
-import { ModuleNameController } from './<module-name>.controller';
-import { ModuleNameService } from './<module-name>.service';
-import { PrismaModule } from '../prisma/prisma.module';
+// Bootstrap configuration (already applied globally)
+app.setGlobalPrefix('api'); // All routes: /api/...
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true, // Strip unknown props
+    forbidNonWhitelisted: true, // Reject unexpected props
+    transform: true, // Auto-transform to DTO classes
+    transformOptions: { enableImplicitConversion: true }, // "1" → 1
+  }),
+);
+app.useGlobalFilters(new HttpExceptionFilter()); // Unified error shape
+app.useGlobalInterceptors(new LoggingInterceptor()); // Perf timing + Server-Timing header
+app.enableCors({ origin: CORS_ORIGIN, credentials: true });
 
-@Module({
-  imports: [PrismaModule],
-  controllers: [ModuleNameController],
-  providers: [ModuleNameService],
-  exports: [ModuleNameService],
-})
-export class ModuleNameModule {}
+// Static assets
+app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
+
+// Swagger at /api/docs
+SwaggerModule.setup('docs', app, document);
 ```
 
-### 3. Controller Pattern
+### Global Guards (via APP_GUARD)
 
-Controllers handle HTTP requests and route them to services:
+| Guard            | Scope  | Purpose                                                                     |
+| ---------------- | ------ | --------------------------------------------------------------------------- |
+| `JwtAuthGuard`   | Global | JWT Bearer auth; skipped on `@Public()` endpoints                           |
+| `RolesGuard`     | Global | RBAC; checks `@Roles()` metadata vs `req.user.role`                         |
+| `ThrottlerGuard` | Global | Rate limiting: default(100/60s), short(20/1s), medium(50/10s), long(30/60s) |
 
-```typescript
-// <module-name>.controller.ts
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { ModuleNameService } from './<module-name>.service';
-import { CreateDto, ResponseDto } from './dto';
+### Interceptors
 
-@Controller('api-prefix')
-export class ModuleNameController {
-  constructor(private readonly service: ModuleNameService) {}
+| Interceptor           | Scope                  | Purpose                                                          |
+| --------------------- | ---------------------- | ---------------------------------------------------------------- |
+| `LoggingInterceptor`  | Global                 | Logs timing (🟢<100ms 🟡<500ms 🔴>500ms), `Server-Timing` header |
+| `AuditLogInterceptor` | Available (not global) | Logs POST/PATCH/PUT/DELETE mutations (entity, action, user, IP)  |
+| `CacheInterceptor`    | StandingsController    | `@nestjs/cache-manager` with `@CacheTTL(30000)`                  |
 
-  @Get()
-  async findAll(): Promise<ResponseDto[]> {
-    return this.service.findAll();
-  }
+### Filters & Middleware
 
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<ResponseDto> {
-    return this.service.findOne(id);
-  }
+| Component             | Scope  | Purpose                                                         |
+| --------------------- | ------ | --------------------------------------------------------------- |
+| `HttpExceptionFilter` | Global | Unified error: `{code, message, details, requestId, timestamp}` |
+| `SecurityMiddleware`  | Module | Helmet: CSP, HSTS, frameguard, noSniff, XSS filter              |
 
-  @Post()
-  async create(@Body() createDto: CreateDto): Promise<ResponseDto> {
-    return this.service.create(createDto);
-  }
-}
-```
+---
 
-### 4. Service Pattern with Prisma
+## Prisma Schema (12 Models, 10 Enums)
 
-Services contain business logic and interact with the database:
+### Enums
 
-```typescript
-// <module-name>.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateDto, ResponseDto } from './dto';
+| Enum               | Values                                                                     |
+| ------------------ | -------------------------------------------------------------------------- |
+| `TeamStatus`       | ACTIVE, INACTIVE                                                           |
+| `PlayerPosition`   | GK, DF, MF, FW                                                             |
+| `PlayerType`       | DOMESTIC, FOREIGN                                                          |
+| `MatchStatus`      | DRAFT, PUBLISHED, LOCKED, FINISHED, POSTPONED                              |
+| `SeasonStatus`     | UPCOMING, IN_PROGRESS, COMPLETED                                           |
+| `SeasonTeamStatus` | REGISTERED, APPROVED, REJECTED, WITHDRAWN                                  |
+| `EventType`        | GOAL, OWN_GOAL, YELLOW_CARD, RED_CARD, SUBSTITUTION, PENALTY, PENALTY_MISS |
+| `UserRole`         | ADMIN, TEAM_MANAGER, REFEREE, SUPERVISOR, PUBLIC                           |
+| `OtpType`          | EMAIL_VERIFICATION, PASSWORD_RESET                                         |
 
-@Injectable()
-export class ModuleNameService {
-  constructor(private prisma: PrismaService) {}
+### Models
 
-  async findAll(): Promise<ResponseDto[]> {
-    const items = await this.prisma.modelName.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-    return items;
-  }
+| Model          | Table            | Key Fields                                                                                             |
+| -------------- | ---------------- | ------------------------------------------------------------------------------------------------------ |
+| `User`         | `users`          | id, email, passwordHash, role, emailVerified, name, avatarUrl, googleId, facebookId, roleId            |
+| `Role`         | `roles`          | id, name, description                                                                                  |
+| `OtpCode`      | `otp_codes`      | id, code, type, userId, usedAt, expiresAt                                                              |
+| `RefreshToken` | `refresh_tokens` | id, tokenHash, userId, userAgent, ipAddress, deviceName, lastUsedAt, revokedAt, expiresAt              |
+| `Team`         | `teams`          | id, name, shortName, city, logoUrl, status, stadiumId                                                  |
+| `Player`       | `players`        | id, fullName, dob, nationality, position, birthPlace, heightCm, weightKg, playerType                   |
+| `Stadium`      | `stadiums`       | id, name, address, city, capacity                                                                      |
+| `Season`       | `seasons`        | id, name, year, status, startDate, endDate                                                             |
+| `TeamPlayer`   | `team_players`   | id, teamId, playerId, jerseyNumber, joinedAt, leftAt                                                   |
+| `SeasonTeam`   | `season_teams`   | id, seasonId, teamId, status, registeredAt, approvedAt                                                 |
+| `Match`        | `matches`        | id, roundNo, leg, seasonId, homeTeamId, awayTeamId, stadiumId, kickoffAt, homeScore, awayScore, status |
+| `MatchEvent`   | `match_events`   | id, matchId, minute, type, goalType, playerId, relatedPlayerId, teamId, note                           |
+| `Regulation`   | `regulations`    | id, seasonId, key, value, valueType                                                                    |
+| `Standing`     | `standings`      | id, seasonId, teamId, played, win, draw, loss, goalsFor, goalsAgainst, goalDiff, points, rank          |
 
-  async findOne(id: string): Promise<ResponseDto> {
-    const item = await this.prisma.modelName.findUnique({
-      where: { id },
-    });
-
-    if (!item) {
-      throw new NotFoundException(`Item with ID ${id} not found`);
-    }
-
-    return item;
-  }
-
-  async create(createDto: CreateDto): Promise<ResponseDto> {
-    return this.prisma.modelName.create({
-      data: createDto,
-    });
-  }
-}
-```
-
-## Prisma Schema Conventions
-
-### Model Definition
+### Schema Conventions
 
 ```prisma
 model EntityName {
-  id        String   @id @default(uuid()) @db.Uuid
-  fieldName String   @map("field_name")
-
+  id        String   @id @default(uuid()) @db.Uuid   // Always UUID
+  fieldName String   @map("field_name")               // snake_case in DB
   status    EnumType @default(VALUE)
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("table_name")
+  @@map("table_name")                                 // snake_case table
 }
 ```
 
-> [!IMPORTANT]
-> All PK and FK columns must use `@db.Uuid` for native PostgreSQL UUID type. This provides better performance and data integrity compared to `TEXT`.
+> **IMPORTANT**: All PK and FK use `@db.Uuid`. Prisma 7 uses `@prisma/adapter-pg` driver adapter with raw `pg.Pool`.
 
-### Enum Definition
+### Prisma Relation Names
 
-```prisma
-enum EnumName {
-  VALUE_ONE
-  VALUE_TWO
-}
-```
-
-### Relationships Example
-
-```prisma
-model Team {
-  id      String   @id @default(uuid()) @db.Uuid
-  name    String   @unique
-  roster  TeamPlayer[]
-
-  @@map("teams")
-}
-
-model Player {
-  id     String       @id @default(uuid()) @db.Uuid
-  roster TeamPlayer[]
-
-  @@map("players")
-}
-
-model TeamPlayer {
-  id       String @id @default(uuid()) @db.Uuid
-  teamId   String @map("team_id") @db.Uuid
-  playerId String @map("player_id") @db.Uuid
-  team     Team   @relation(fields: [teamId], references: [id])
-  player   Player @relation(fields: [playerId], references: [id])
-
-  @@map("team_players")
-}
-```
-
-> [!WARNING]
-> **Prisma relation name vs table name**: The Prisma relation field on `Team` and `Player` is `roster` (not `teamPlayers`), while the underlying table is `team_players`. Always use `roster` in `include` and `where` clauses:
+> **WARNING**: The relation field on `Team` and `Player` for the join table is named `roster` (from `TeamPlayer[]`), NOT `teamPlayers`. Always use `roster` in `include` and `where`:
 >
 > ```typescript
 > // ✅ Correct
-> this.prisma.player.findMany({ include: { roster: { ... } } });
-> // ❌ Wrong — Prisma will reject this
-> this.prisma.player.findMany({ include: { teamPlayers: { ... } } });
+> this.prisma.player.findMany({ include: { roster: { include: { team: true } } } });
+> // ❌ Wrong
+> this.prisma.player.findMany({ include: { teamPlayers: true } });
 > ```
 
-````
+### Prisma Enum Casting
 
-## DTOs and Validation
+> **TIP**: When assigning string literals to Prisma-generated enum fields, use `as never`:
+>
+> ```typescript
+> position: dto.position as never,
+> playerType: (dto.playerType ?? 'DOMESTIC') as never,
+> ```
 
-> [!IMPORTANT]
-> Always create separate DTOs for requests and responses to maintain clear API contracts.
+---
 
-### Request DTO with Validation
+## All Modules & Endpoints
+
+### 1. AuthModule (`/api/auth`) — 19 endpoints
+
+| Method | Endpoint                    | Auth          | Rate Limit   | Description                          |
+| ------ | --------------------------- | ------------- | ------------ | ------------------------------------ |
+| POST   | `/auth/register`            | Public        | 5/min        | Register + send OTP email            |
+| POST   | `/auth/verify-email`        | Public        | 5/10s        | Verify email with OTP                |
+| POST   | `/auth/resend-otp`          | Public        | 3/min        | Resend verification OTP              |
+| POST   | `/auth/forgot-password`     | Public        | 3/min        | Request password reset OTP           |
+| POST   | `/auth/reset-password`      | Public        | 5/10s        | Reset password with OTP              |
+| POST   | `/auth/login`               | Public        | 5/min        | Login, returns access+refresh tokens |
+| POST   | `/auth/refresh`             | Public        | SkipThrottle | Refresh access token                 |
+| POST   | `/auth/logout`              | Public        | SkipThrottle | Revoke refresh token                 |
+| GET    | `/auth/me`                  | JWT           | SkipThrottle | Current user profile                 |
+| POST   | `/auth/change-password`     | JWT           | SkipThrottle | Change password                      |
+| POST   | `/auth/logout-all`          | JWT           | SkipThrottle | Revoke all sessions                  |
+| PATCH  | `/auth/profile`             | JWT           | SkipThrottle | Update name/avatarUrl                |
+| GET    | `/auth/sessions`            | JWT           | SkipThrottle | List active sessions                 |
+| DELETE | `/auth/sessions/:sessionId` | JWT           | SkipThrottle | Revoke specific session              |
+| POST   | `/auth/set-password`        | JWT           | SkipThrottle | Set password for OAuth users         |
+| GET    | `/auth/google`              | GoogleGuard   | SkipThrottle | Start Google OAuth                   |
+| GET    | `/auth/google/callback`     | GoogleGuard   | SkipThrottle | Google OAuth callback                |
+| GET    | `/auth/facebook`            | FacebookGuard | SkipThrottle | Start Facebook OAuth                 |
+| GET    | `/auth/facebook/callback`   | FacebookGuard | SkipThrottle | Facebook OAuth callback              |
+
+### 2. RegistrationModule (`/api/teams`, `/api/players`) — 11 endpoints
+
+| Method | Endpoint          | Auth                | Description                                                            |
+| ------ | ----------------- | ------------------- | ---------------------------------------------------------------------- |
+| GET    | `/teams`          | Public              | List teams (paginated, search, filter by status)                       |
+| GET    | `/teams/:id`      | Public              | Team detail (roster, matches, standings)                               |
+| POST   | `/teams`          | ADMIN               | Create team                                                            |
+| PATCH  | `/teams/:id`      | ADMIN               | Update team                                                            |
+| DELETE | `/teams/:id`      | ADMIN               | Delete team                                                            |
+| GET    | `/players`        | Public              | List players (paginated, filter by search/position/nationality/teamId) |
+| GET    | `/players/:id`    | Public              | Player detail (history, events)                                        |
+| POST   | `/players`        | ADMIN, TEAM_MANAGER | Create player (age validation via regulation)                          |
+| PATCH  | `/players/:id`    | ADMIN, TEAM_MANAGER | Update player (handles team reassignment)                              |
+| DELETE | `/players/:id`    | ADMIN, TEAM_MANAGER | Delete player                                                          |
+| POST   | `/players/import` | ADMIN               | CSV bulk import (max 2MB, per-row errors)                              |
+
+### 3. MatchModule (`/api/matches`) — 6 endpoints
+
+| Method | Endpoint                       | Auth           | Description                                            |
+| ------ | ------------------------------ | -------------- | ------------------------------------------------------ |
+| GET    | `/matches`                     | All roles      | List matches (filter: seasonId, round, status, teamId) |
+| GET    | `/matches/:id`                 | All roles      | Match detail (events, teams, stadium)                  |
+| POST   | `/matches/:id/events`          | ADMIN, REFEREE | Add event (auto-recalculates scores)                   |
+| DELETE | `/matches/:id/events/:eventId` | ADMIN, REFEREE | Remove event                                           |
+| PATCH  | `/matches/:id`                 | ADMIN          | Update match (stadium, kickoff, scores)                |
+| PATCH  | `/matches/:id/status`          | ADMIN          | Status transition (state machine)                      |
+
+### 4. SchedulingModule (`/api/schedule`) — 3 endpoints
+
+| Method | Endpoint             | Auth      | Description                               |
+| ------ | -------------------- | --------- | ----------------------------------------- |
+| POST   | `/schedule/generate` | ADMIN     | Auto-generate double round-robin schedule |
+| POST   | `/schedule/publish`  | ADMIN     | Bulk publish DRAFT → PUBLISHED            |
+| GET    | `/schedule`          | All roles | Get schedule with relations               |
+
+### 5. SeasonModule (`/api/seasons`) — 11 endpoints
+
+| Method | Endpoint                                  | Auth   | Description                             |
+| ------ | ----------------------------------------- | ------ | --------------------------------------- |
+| GET    | `/seasons`                                | Public | List all seasons (ordered by year desc) |
+| GET    | `/seasons/current`                        | Public | Get IN_PROGRESS season                  |
+| GET    | `/seasons/:id`                            | Public | Season detail                           |
+| POST   | `/seasons`                                | ADMIN  | Create season                           |
+| PATCH  | `/seasons/:id`                            | ADMIN  | Update season                           |
+| DELETE | `/seasons/:id`                            | ADMIN  | Delete season                           |
+| PATCH  | `/seasons/:id/status`                     | ADMIN  | Status transition (state machine)       |
+| GET    | `/seasons/:seasonId/teams`                | Public | List registered teams                   |
+| POST   | `/seasons/:seasonId/teams`                | ADMIN  | Register team to season                 |
+| PATCH  | `/seasons/:seasonId/teams/:teamId/status` | ADMIN  | Update registration status              |
+| DELETE | `/seasons/:seasonId/teams/:teamId`        | ADMIN  | Remove team from season                 |
+
+### 6. StadiumModule (`/api/stadiums`) — 5 endpoints
+
+| Method | Endpoint        | Auth   | Description                     |
+| ------ | --------------- | ------ | ------------------------------- |
+| GET    | `/stadiums`     | Public | List all stadiums               |
+| GET    | `/stadiums/:id` | Public | Stadium detail (teams, matches) |
+| POST   | `/stadiums`     | ADMIN  | Create stadium                  |
+| PATCH  | `/stadiums/:id` | ADMIN  | Update stadium                  |
+| DELETE | `/stadiums/:id` | ADMIN  | Delete stadium                  |
+
+### 7. RosterModule (`/api/teams/:teamId/roster`) — 4 endpoints
+
+| Method | Endpoint                          | Auth                | Description                                      |
+| ------ | --------------------------------- | ------------------- | ------------------------------------------------ |
+| GET    | `/teams/:teamId/roster`           | Public              | Get team roster                                  |
+| POST   | `/teams/:teamId/roster`           | ADMIN, TEAM_MANAGER | Add player (validates max roster, foreign limit) |
+| PATCH  | `/teams/:teamId/roster/:playerId` | ADMIN, TEAM_MANAGER | Update jersey number                             |
+| DELETE | `/teams/:teamId/roster/:playerId` | ADMIN, TEAM_MANAGER | Soft remove (sets leftAt)                        |
+
+### 8. RegulationModule (`/api/seasons/:seasonId/regulations`) — 5 endpoints
+
+| Method | Endpoint                                       | Auth   | Description                |
+| ------ | ---------------------------------------------- | ------ | -------------------------- |
+| GET    | `/seasons/:seasonId/regulations`               | Public | List regulations           |
+| GET    | `/seasons/:seasonId/regulations/:key`          | Public | Get by key                 |
+| PUT    | `/seasons/:seasonId/regulations`               | ADMIN  | Upsert regulation          |
+| DELETE | `/seasons/:seasonId/regulations/:key`          | ADMIN  | Delete regulation          |
+| POST   | `/seasons/:seasonId/regulations/seed-defaults` | ADMIN  | Seed 9 default regulations |
+
+### 9. StandingsModule (`/api/standings`) — 11 endpoints
+
+| Method | Endpoint                            | Auth   | Description                               |
+| ------ | ----------------------------------- | ------ | ----------------------------------------- |
+| GET    | `/standings`                        | Public | League table (cached 30s)                 |
+| GET    | `/standings/:seasonId`              | Public | Standings by season                       |
+| GET    | `/standings/top-scorers`            | Public | Top scorers                               |
+| GET    | `/standings/card-stats`             | Public | Card statistics                           |
+| GET    | `/standings/team-stats`             | Public | Team aggregated stats (inc. clean sheets) |
+| GET    | `/standings/head-to-head`           | Public | Head-to-head between 2 teams              |
+| GET    | `/standings/player-stats/:playerId` | Public | Individual player stats                   |
+| GET    | `/standings/export/standings`       | Public | CSV export - standings                    |
+| GET    | `/standings/export/top-scorers`     | Public | CSV export - scorers                      |
+| GET    | `/standings/export/card-stats`      | Public | CSV export - cards                        |
+| GET    | `/standings/export/team-stats`      | Public | CSV export - team stats                   |
+
+### 10. UsersModule (`/api/users`) — 4 endpoints (ADMIN only)
+
+| Method | Endpoint          | Auth  | Description                |
+| ------ | ----------------- | ----- | -------------------------- |
+| GET    | `/users`          | ADMIN | List all users             |
+| POST   | `/users`          | ADMIN | Create user (pre-verified) |
+| PATCH  | `/users/:id/role` | ADMIN | Update user role           |
+| DELETE | `/users/:id`      | ADMIN | Delete user + related      |
+
+### 11. UploadModule (`/api/upload`) — 1 endpoint
+
+| Method | Endpoint        | Auth                | Description                               |
+| ------ | --------------- | ------------------- | ----------------------------------------- |
+| POST   | `/upload/image` | ADMIN, TEAM_MANAGER | Upload image (JPEG/PNG/WebP/GIF, max 5MB) |
+
+### 12. SearchModule (`/api/search`) — 1 endpoint
+
+| Method | Endpoint                  | Auth   | Rate Limit | Description                                               |
+| ------ | ------------------------- | ------ | ---------- | --------------------------------------------------------- |
+| GET    | `/search?q=...&limit=...` | Public | 10/5s      | Global search: teams, players, matches, stadiums, seasons |
+
+### 13. HealthModule (`/api/health`) — 1 endpoint
+
+| Method | Endpoint  | Auth                  | Description                           |
+| ------ | --------- | --------------------- | ------------------------------------- |
+| GET    | `/health` | Public (SkipThrottle) | DB connectivity + memory heap (150MB) |
+
+### 14. MailModule (internal service, no controller)
+
+- `sendEmailVerificationOtp`, `sendPasswordResetOtp`, `sendWelcomeEmail`
+- Dev mode: `MAIL_SKIP_SEND=true` logs OTP to console
+- Handlebars templates: `email-verification.hbs`, `password-reset.hbs`, `welcome.hbs`
+
+### 15. PrismaModule (internal service)
+
+- `PrismaService` extends `PrismaClient` with `@prisma/adapter-pg` driver adapter
+- Lifecycle: `onModuleInit` → `$connect()`, `onModuleDestroy` → `$disconnect()`
+
+---
+
+## Guards & Decorators
+
+### Guards
+
+| Guard               | Location                             | Purpose                       |
+| ------------------- | ------------------------------------ | ----------------------------- |
+| `JwtAuthGuard`      | `auth/guards/jwt-auth.guard.ts`      | JWT Bearer; skips `@Public()` |
+| `RolesGuard`        | `auth/guards/roles.guard.ts`         | RBAC vs `@Roles()` metadata   |
+| `GoogleAuthGuard`   | `auth/guards/google-auth.guard.ts`   | Passport Google OAuth 2.0     |
+| `FacebookAuthGuard` | `auth/guards/facebook-auth.guard.ts` | Passport Facebook OAuth       |
+| `ThrottlerGuard`    | Global (APP_GUARD)                   | Multi-config rate limiting    |
+
+### Decorators
+
+| Decorator         | Usage                                   |
+| ----------------- | --------------------------------------- |
+| `@Public()`       | Skip JWT auth on endpoint               |
+| `@Roles(...)`     | Require specific UserRole(s)            |
+| `@CurrentUser()`  | Extract `req.user` as param decorator   |
+| `@SkipThrottle()` | Bypass rate limiting                    |
+| `@Throttle()`     | Override rate limit config per endpoint |
+| `@CacheTTL(ms)`   | Set cache duration for endpoint         |
+
+### Strategies
+
+| Strategy           | Purpose                                   |
+| ------------------ | ----------------------------------------- |
+| `JwtStrategy`      | Validate JWT from `Authorization: Bearer` |
+| `GoogleStrategy`   | Google OAuth 2.0 via Passport             |
+| `FacebookStrategy` | Facebook OAuth via Passport               |
+
+---
+
+## Cross-Module Dependencies
+
+```
+MatchModule → imports StandingsModule, RegulationModule
+  - StandingsService: auto-recalculate on match FINISHED
+  - RegulationHelper: MAX_GOAL_TIME validation
+
+RegistrationModule → imports RegulationModule
+  - RegulationHelper: MIN_AGE, MAX_AGE validation
+
+RosterModule → imports RegulationModule
+  - RegulationHelper: MAX_ROSTER, MAX_FOREIGN_PLAYERS validation
+
+RegulationModule → exports RegulationService, RegulationHelper
+  - RegulationHelper.getNumericValue(seasonId, key, fallback)
+```
+
+---
+
+## Common Module (`src/common/`)
+
+| Directory       | File                       | Purpose                                      |
+| --------------- | -------------------------- | -------------------------------------------- |
+| `errors/`       | `app-error.ts`             | Custom `AppError` class with error codes     |
+| `filters/`      | `http-exception.filter.ts` | Unified error response shape (global filter) |
+| `interceptors/` | `logging.interceptor.ts`   | Request/response performance logging         |
+| `interceptors/` | `audit-log.interceptor.ts` | Optional mutation logging                    |
+| `logger/`       | `logger.module.ts`         | `nestjs-pino` structured logging             |
+| `middleware/`   | `security.middleware.ts`   | Helmet security headers                      |
+
+---
+
+## DTO & Validation Patterns
 
 ```typescript
-// create-team.dto.ts
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-
-export enum TeamStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-}
-
+// Create DTO
 export class CreateTeamDto {
-  @ApiProperty({
-    description: 'Team name',
-    example: 'Hoàng Anh Gia Lai',
-  })
+  @ApiProperty({ description: 'Team name', example: 'Hoàng Anh Gia Lai' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional({
-    description: 'Team status',
-    enum: TeamStatus,
-    default: TeamStatus.ACTIVE,
-  })
+  @ApiPropertyOptional({ enum: TeamStatus, default: TeamStatus.ACTIVE })
   @IsOptional()
   @IsEnum(TeamStatus)
   status?: TeamStatus;
 }
-````
 
-### Player DTO with Date Validation
-
-```typescript
-// create-player.dto.ts
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
-
-export enum PlayerPosition {
-  GK = 'GK',
-  DF = 'DF',
-  MF = 'MF',
-  FW = 'FW',
-}
-
-export class CreatePlayerDto {
-  @ApiProperty({ description: 'Full name', example: 'Nguyễn Quang Hải' })
-  @IsString()
-  @IsNotEmpty()
-  fullName: string;
-
-  @ApiProperty({ description: 'Date of birth (ISO 8601)', example: '1997-04-12' })
-  @IsDateString()
-  dob: string;
-
-  @ApiProperty({ description: 'Nationality', example: 'Vietnam' })
-  @IsString()
-  @IsNotEmpty()
-  nationality: string;
-
-  @ApiProperty({ description: 'Position', enum: PlayerPosition })
-  @IsEnum(PlayerPosition)
-  position: PlayerPosition;
-
-  @ApiPropertyOptional({ description: 'Team ID', format: 'uuid' })
-  @IsOptional()
-  @IsUUID()
-  teamId?: string;
-}
-```
-
-### Response DTO Example
-
-```typescript
-// team-response.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-
-export class TeamResponseDto {
-  @ApiProperty({ description: 'Team ID', format: 'uuid' })
-  id: string;
-
-  @ApiProperty({ description: 'Team name' })
-  name: string;
-
-  @ApiProperty({ description: 'Status', enum: ['ACTIVE', 'INACTIVE'] })
-  status: string;
-
-  @ApiProperty({ description: 'Created date' })
-  createdAt: Date;
-
-  @ApiProperty({ description: 'Updated date' })
-  updatedAt: Date;
-}
-```
-
-### Update DTO Pattern (Partial)
-
-```typescript
-// update-team.dto.ts
-import { PartialType } from '@nestjs/swagger';
-import { CreateTeamDto } from './create-team.dto';
-
+// Update DTO (partial of Create)
 export class UpdateTeamDto extends PartialType(CreateTeamDto) {}
-```
 
-### Barrel Export
-
-```typescript
-// dto/index.ts
+// Barrel export: dto/index.ts
 export * from './create-team.dto';
 export * from './update-team.dto';
-export * from './team-response.dto';
 ```
 
-## Error Handling
-
-Use NestJS built-in exceptions:
-
-```typescript
-import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
-
-// Not found
-throw new NotFoundException('Resource not found');
-
-// Bad request
-throw new BadRequestException('Invalid input');
-
-// Conflict (duplicate)
-throw new ConflictException('Resource already exists');
-```
+---
 
 ## Testing
 
-The backend has **23 test suites** with **233+ tests** covering services, controllers, and E2E.
+**23 test suites, 233+ tests** covering services, controllers, and E2E.
 
-### Test File Structure
-
-```
-apps/api/src/
-├── auth/
-│   ├── auth.service.spec.ts           # 30+ tests
-│   └── auth.controller.spec.ts        # 19 tests
-├── registration/
-│   ├── registration.service.spec.ts
-│   ├── teams.controller.spec.ts       # 6 tests
-│   └── players.controller.spec.ts     # 6 tests
-├── match/
-│   ├── match.service.spec.ts
-│   └── match.controller.spec.ts       # 7 tests
-├── scheduling/
-│   ├── scheduling.service.spec.ts
-│   └── scheduling.controller.spec.ts  # 7 tests
-├── season/
-│   ├── season.service.spec.ts
-│   ├── season.controller.spec.ts      # 8 tests
-│   └── season-team.controller.spec.ts # 5 tests
-├── stadium/
-│   └── stadium.service.spec.ts
-├── standings/
-│   └── standings.service.spec.ts
-├── roster/
-│   └── roster.service.spec.ts
-├── regulation/
-│   ├── regulation.service.spec.ts
-│   └── regulation.controller.spec.ts  # 6 tests
-├── users/
-│   ├── users.service.spec.ts          # 15 tests
-│   └── users.controller.spec.ts       # 5 tests
-└── upload/
-    └── upload.controller.spec.ts      # 6 tests
-```
-
-### Unit Test Example
+### Test Pattern
 
 ```typescript
-// <module-name>.service.spec.ts
-import { Test, TestingModule } from '@nestjs/testing';
-import { ModuleNameService } from './<module-name>.service';
-import { PrismaService } from '../prisma/prisma.service';
-
 describe('ModuleNameService', () => {
   let service: ModuleNameService;
   let prisma: PrismaService;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    const module = await Test.createTestingModule({
       providers: [
         ModuleNameService,
         {
@@ -426,771 +457,71 @@ describe('ModuleNameService', () => {
         },
       ],
     }).compile();
-
-    service = module.get<ModuleNameService>(ModuleNameService);
-    prisma = module.get<PrismaService>(PrismaService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    service = module.get(ModuleNameService);
+    prisma = module.get(PrismaService);
   });
 });
 ```
 
-### E2E Test Example
+### Auth Service Tests: `jest.mock('bcrypt')` at module level
 
-```typescript
-// test/<module-name>.e2e-spec.ts
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
+### E2E Tests: `test/*.e2e-spec.ts` with Supertest
 
-describe('ModuleNameController (e2e)', () => {
-  let app: INestApplication;
+---
 
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+## Environment Variables
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('/api-prefix (GET)', () => {
-    return request(app.getHttpServer()).get('/api-prefix').expect(200);
-  });
-});
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/vleague"
+PORT=8080
+CORS_ORIGIN=http://localhost:5173
+JWT_SECRET=your-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+JWT_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=...
+MAIL_PASS=...
+MAIL_FROM=noreply@vleague.local
+MAIL_SKIP_SEND=true              # Dev: log OTP to console
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_CALLBACK_URL=http://localhost:8080/api/auth/google/callback
+FACEBOOK_APP_ID=...
+FACEBOOK_APP_SECRET=...
+FACEBOOK_CALLBACK_URL=http://localhost:8080/api/auth/facebook/callback
+FRONTEND_URL=http://localhost:5173
 ```
+
+---
 
 ## Common Commands
 
 ```bash
-# Development
 cd apps/api
-pnpm dev                    # Start dev server with watch mode
-
-# Database
-pnpm dlx prisma migrate dev # Create and apply migration
-pnpm dlx prisma generate    # Generate Prisma client
-pnpm dlx prisma studio      # Open Prisma Studio GUI
-pnpm run db:seed           # Seed database
-
-# Testing
-pnpm test                  # Run unit tests
-pnpm test:watch           # Run tests in watch mode
-pnpm test:cov             # Generate coverage report
-pnpm test:e2e             # Run e2e tests
-
-# Linting & Formatting
-pnpm lint                 # Run ESLint
-pnpm format              # Run Prettier
-```
-
-## Best Practices
-
-> [!TIP]
-> **Dependency Injection**: Always use constructor injection for services and follow NestJS's dependency injection patterns.
-
-> [!TIP]
-> **Prisma Transactions**: For operations that modify multiple tables, use Prisma transactions:
->
-> ```typescript
-> await this.prisma.$transaction([
->   this.prisma.team.create({ data: teamData }),
->   this.prisma.player.create({ data: playerData }),
-> ]);
-> ```
-
-> [!WARNING]
-> **Don't forget postinstall**: The project has a `postinstall` script that runs `prisma generate`. This ensures Prisma Client is always up-to-date after `npm install`.
-
-> [!WARNING]
-> **Prisma enum casting**: When assigning string literals to Prisma-generated enum fields (e.g. `PlayerPosition`, `PlayerType`), TypeScript may reject the assignment. Use `as never` to bridge the string-literal → Prisma enum gap:
->
-> ```typescript
-> // ✅ Correct — validated string cast through `as never`
-> position: position as never,
-> playerType: (dto.playerType ?? 'DOMESTIC') as never,
-> // ❌ Wrong — TS2322: Type '"GK"' is not assignable to type 'PlayerPosition'
-> position: position as 'GK' | 'DF' | 'MF' | 'FW',
-> ```
-
-> [!TIP]
-> **Cross-Module Dependency Injection**: When a service needs functionality from another module, import that module and inject its exported service. Example pattern used by `MatchService`:
->
-> ```typescript
-> // match.module.ts
-> @Module({
->   imports: [PrismaModule, StandingsModule, RegulationModule],
->   providers: [MatchService],
-> })
->
-> // match.service.ts
-> constructor(
->   private prisma: PrismaService,
->   private standingsService: StandingsService,
->   private regulationHelper: RegulationHelper,
-> ) {}
-> ```
->
-> The source module must `export` the service (e.g., `RegulationModule` exports `RegulationHelper`).
-
-## Current Modules Reference
-
-- **`auth/`**: Authentication (JWT, OAuth, OTP, sessions) and authorization (RBAC)
-- **`registration/`**: Team and player registration
-  - Imports: `PrismaModule`, `RegulationModule`
-  - Uses `RegulationHelper` for dynamic age validation (`MIN_AGE`, `MAX_AGE`)
-  - `teams.controller.ts`: Team management endpoints
-  - `players.controller.ts`: Player management endpoints
-  - `registration.service.ts`: Shared registration logic
-- **`scheduling/`**: Match scheduling logic
-- **`match/`**: Match management and events
-  - Imports: `PrismaModule`, `StandingsModule`, `RegulationModule`
-  - Uses `StandingsService` for auto-recalculation on FINISHED
-  - Uses `RegulationHelper` for MAX_GOAL_TIME validation
-- **`season/`**: Season management (CRUD, status transitions)
-  - `season.controller.ts`: Season CRUD endpoints
-  - `season-team.controller.ts`: Season team registration endpoints (`/seasons/:seasonId/teams`)
-    - `GET /` — List registered teams
-    - `POST /` — Register a team (ADMIN)
-    - `PATCH /:teamId/status` — Approve/Reject/Withdraw (ADMIN)
-    - `DELETE /:teamId` — Remove team (ADMIN)
-  - `season.service.ts`: Season + team management logic
-- **`stadium/`**: Stadium management
-- **`roster/`**: Team roster management (player assignments, jersey numbers)
-  - Imports: `PrismaModule`, `RegulationModule`
-  - Uses `RegulationHelper` for dynamic roster/foreign limits
-  - **Note**: Prisma relation name is `roster` (not `teamPlayers`) on both `Team` and `Player` models
-- **`standings/`**: League standings computation
-  - Auto-triggered by `MatchService` when match finishes
-- **`regulation/`**: Season-scoped regulations
-  - Exports: `RegulationService`, `RegulationHelper`
-  - `RegulationHelper` provides `getNumericValue(seasonId, key, fallback)` for cross-module regulation queries
-- **`users/`**: User management (ADMIN-only CRUD, role assignment)
-  - `users.controller.ts`: User CRUD endpoints (list, create, update role, delete)
-  - `users.service.ts`: User management logic
-  - `dto/update-role.dto.ts`, `dto/create-user.dto.ts`: Validation DTOs
-- **`health/`**: Health check endpoint
-- **`mail/`**: Email service (verification OTP, password reset, welcome)
-- **`config/`**: Configuration module
-- **`common/`**: Shared utilities (filters, interceptors, middleware)
-- **`prisma/`**: Database service wrapper
-
-### Database Schema (14 Tables, 9 Enums)
-
-All ID fields use native PostgreSQL `UUID` type. Key tables:
-
-| Table                                     | Purpose                                 |
-| ----------------------------------------- | --------------------------------------- |
-| `roles`, `users`                          | Authentication & RBAC (dual: enum + FK) |
-| `refresh_tokens`, `otp_codes`             | Session & verification                  |
-| `stadiums`, `teams`, `seasons`, `players` | Core domain entities                    |
-| `team_players`, `season_teams`            | Many-to-many join tables                |
-| `matches`, `match_events`                 | Match scheduling & events               |
-| `regulations`                             | Per-season config rules                 |
-| `standings`                               | League table (computed & cached)        |
-
-## Environment Variables
-
-Required in `apps/api/.env`:
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
-PORT=8080
-```
-
-## Registering Module in App Module
-
-After creating a new module, register it in `src/app.module.ts`:
-
-```typescript
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './prisma/prisma.module';
-import { YourNewModule } from './your-new/your-new.module';
-
-@Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    PrismaModule,
-    YourNewModule, // Add here
-  ],
-})
-export class AppModule {}
-```
-
-## Guards and Custom Decorators
-
-### JWT Auth Guard
-
-```typescript
-// auth/guards/jwt-auth.guard.ts
-import { Injectable, ExecutionContext } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-
-@Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector) {
-    super();
-  }
-
-  canActivate(context: ExecutionContext) {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
-    return super.canActivate(context);
-  }
-}
-```
-
-### Role Guard
-
-```typescript
-// auth/guards/roles.guard.ts
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from '../decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
-
-@Injectable()
-export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-
-  canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!requiredRoles) return true;
-
-    const { user } = context.switchToHttp().getRequest();
-    return requiredRoles.includes(user.role);
-  }
-}
-```
-
-### Custom Decorators
-
-```typescript
-// auth/decorators/public.decorator.ts
-import { SetMetadata } from '@nestjs/common';
-export const IS_PUBLIC_KEY = 'isPublic';
-export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
-
-// auth/decorators/roles.decorator.ts
-import { SetMetadata } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
-export const ROLES_KEY = 'roles';
-export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
-
-// auth/decorators/current-user.decorator.ts
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
-  const request = ctx.switchToHttp().getRequest();
-  return request.user;
-});
-```
-
-### Usage in Controllers
-
-```typescript
-@Controller('teams')
-export class TeamsController {
-  @Get()
-  @Public() // No auth required
-  findAll() {}
-
-  @Post()
-  @Roles(UserRole.ADMIN) // Admin only
-  create(@Body() dto: CreateTeamDto, @CurrentUser() user: User) {}
-}
-```
-
-## Interceptors
-
-### Logging Interceptor
-
-```typescript
-// common/interceptors/logging.interceptor.ts
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-
-@Injectable()
-export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('HTTP');
-
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
-    const { method, url } = request;
-    const now = Date.now();
-
-    return next.handle().pipe(
-      tap(() => {
-        const response = context.switchToHttp().getResponse();
-        this.logger.log(`${method} ${url} ${response.statusCode} - ${Date.now() - now}ms`);
-      }),
-    );
-  }
-}
-```
-
-### Response Transform Interceptor
-
-```typescript
-// common/interceptors/transform.interceptor.ts
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-
-export interface Response<T> {
-  data: T;
-  meta?: { timestamp: string };
-}
-
-@Injectable()
-export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
-    return next.handle().pipe(
-      map((data) => ({
-        data,
-        meta: { timestamp: new Date().toISOString() },
-      })),
-    );
-  }
-}
-```
-
-### Register Interceptors Globally
-
-```typescript
-// main.ts
-app.useGlobalInterceptors(new LoggingInterceptor(), new TransformInterceptor());
-```
-
-## Exception Filters
-
-### Custom HTTP Exception Filter
-
-```typescript
-// common/filters/http-exception.filter.ts
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, Logger } from '@nestjs/common';
-import { Response } from 'express';
-
-@Catch(HttpException)
-export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger('ExceptionFilter');
-
-  catch(exception: HttpException, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const status = exception.getStatus();
-    const exceptionResponse = exception.getResponse();
-
-    const errorResponse = {
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      message:
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : (exceptionResponse as any).message,
-    };
-
-    this.logger.error(`Status ${status}: ${JSON.stringify(errorResponse)}`);
-    response.status(status).json(errorResponse);
-  }
-}
-```
-
-## Pagination Pattern
-
-### Pagination DTO
-
-```typescript
-// common/dto/pagination.dto.ts
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
-
-export class PaginationQueryDto {
-  @ApiPropertyOptional({ default: 1, minimum: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 10;
-}
-
-export class PaginatedResponseDto<T> {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-```
-
-### Pagination Service
-
-```typescript
-// common/services/pagination.service.ts
-import { Injectable } from '@nestjs/common';
-import { PaginationQueryDto, PaginatedResponseDto } from '../dto/pagination.dto';
-
-@Injectable()
-export class PaginationService {
-  paginate<T>(data: T[], total: number, query: PaginationQueryDto): PaginatedResponseDto<T> {
-    const { page = 1, limit = 10 } = query;
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  }
-}
-```
-
-### Usage in Service
-
-```typescript
-async findAll(query: PaginationQueryDto): Promise<PaginatedResponseDto<Team>> {
-  const { page = 1, limit = 10 } = query;
-  const skip = (page - 1) * limit;
-
-  const [data, total] = await Promise.all([
-    this.prisma.team.findMany({ skip, take: limit, orderBy: { name: 'asc' } }),
-    this.prisma.team.count(),
-  ]);
-
-  return this.paginationService.paginate(data, total, query);
-}
-```
-
-## File Upload
-
-### Multer Configuration
-
-```typescript
-// common/config/multer.config.ts
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { BadRequestException } from '@nestjs/common';
-
-export const multerConfig = {
-  storage: diskStorage({
-    destination: './uploads',
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-    },
-  }),
-  fileFilter: (req, file, cb) => {
-    if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
-      cb(new BadRequestException('Only image files are allowed'), false);
-    }
-    cb(null, true);
-  },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-};
-```
-
-### File Upload Controller
-
-```typescript
-// teams/teams.controller.ts
-import { Controller, Post, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { multerConfig } from '../common/config/multer.config';
-
-@Controller('teams')
-export class TeamsController {
-  @Post(':id/logo')
-  @UseInterceptors(FileInterceptor('file', multerConfig))
-  uploadLogo(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
-    return this.teamsService.updateLogo(id, file.filename);
-  }
-}
-```
-
-> [!IMPORTANT]
-> Add `@types/multer` to dev dependencies: `pnpm add -D @types/multer`
-
-## Implemented Modules Reference
-
-### Registration Module (`src/registration/`)
-
-Handles team and player registration.
-
-| Method | Endpoint       | Role                | Description      |
-| ------ | -------------- | ------------------- | ---------------- |
-| `GET`  | `/api/teams`   | ADMIN, TEAM_MANAGER | List all teams   |
-| `GET`  | `/api/players` | Public              | List all players |
-
-> [!NOTE]
-> Teams and Players are registered via separate controllers (`teams.controller.ts`, `players.controller.ts`) but share the same `RegistrationService`.
-
----
-
-### Match Module (`src/match/`)
-
-Manages match details and match events (goals, cards, substitutions).
-
-| Method | Endpoint                  | Role                         | Description                       |
-| ------ | ------------------------- | ---------------------------- | --------------------------------- |
-| `GET`  | `/api/matches/:id`        | ADMIN, TEAM_MANAGER, REFEREE | Get match details with events     |
-| `POST` | `/api/matches/:id/events` | ADMIN, REFEREE               | Add match event (goal, card, sub) |
-
-**Event types:** `GOAL`, `YELLOW_CARD`, `RED_CARD`, `SUBSTITUTION`
-
----
-
-### Scheduling Module (`src/scheduling/`)
-
-Handles match schedule generation and publishing.
-
-| Method | Endpoint                 | Role                         | Description                  |
-| ------ | ------------------------ | ---------------------------- | ---------------------------- |
-| `POST` | `/api/schedule/generate` | ADMIN                        | Auto-generate match schedule |
-| `POST` | `/api/schedule/publish`  | ADMIN                        | Publish schedule to public   |
-| `GET`  | `/api/schedule`          | ADMIN, TEAM_MANAGER, REFEREE | Get all scheduled matches    |
-
----
-
-### Common Module (`src/common/`)
-
-Shared utilities used across all modules:
-
-| Directory       | File                       | Purpose                                        |
-| --------------- | -------------------------- | ---------------------------------------------- |
-| `errors/`       | `app-error.ts`             | Custom `AppError` class with error codes       |
-| `filters/`      | `http-exception.filter.ts` | Unified error response shape (global filter)   |
-| `interceptors/` | `logging.interceptor.ts`   | Request/response performance logging           |
-| `logger/`       | `logger.module.ts`         | `nestjs-pino` structured logging configuration |
-| `middleware/`   | `security.middleware.ts`   | Security headers middleware                    |
-
-**Error Response Shape** (from `HttpExceptionFilter`):
-
-```json
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "code": "VALIDATION_ERROR",
-  "timestamp": "2025-01-01T00:00:00.000Z"
-}
+pnpm dev                         # Start dev server (watch mode)
+pnpm test                        # Unit tests (23 suites, 233+ tests)
+pnpm test:e2e                    # E2E tests
+pnpm test:cov                    # Coverage report
+pnpm dlx prisma migrate dev      # Create migration
+pnpm dlx prisma generate         # Generate Prisma client
+pnpm dlx prisma studio           # Open Prisma Studio GUI
+pnpm run db:seed                 # Seed database
+pnpm lint                        # ESLint
 ```
 
 ---
 
-### Season Module (`src/season/`)
+## Notable Patterns
 
-Manages VLeague seasons (e.g., VLeague 2024, VLeague 2025).
-
-| Method   | Endpoint               | Role   | Description                      |
-| -------- | ---------------------- | ------ | -------------------------------- |
-| `GET`    | `/api/seasons`         | Public | List all seasons                 |
-| `GET`    | `/api/seasons/current` | Public | Get current season (IN_PROGRESS) |
-| `GET`    | `/api/seasons/:id`     | Public | Get season details               |
-| `POST`   | `/api/seasons`         | ADMIN  | Create new season                |
-| `PATCH`  | `/api/seasons/:id`     | ADMIN  | Update season                    |
-| `DELETE` | `/api/seasons/:id`     | ADMIN  | Delete season                    |
-
----
-
-### Stadium Module (`src/stadium/`)
-
-Manages stadium information.
-
-| Method   | Endpoint            | Role   | Description         |
-| -------- | ------------------- | ------ | ------------------- |
-| `GET`    | `/api/stadiums`     | Public | List all stadiums   |
-| `GET`    | `/api/stadiums/:id` | Public | Get stadium details |
-| `POST`   | `/api/stadiums`     | ADMIN  | Create stadium      |
-| `PATCH`  | `/api/stadiums/:id` | ADMIN  | Update stadium      |
-| `DELETE` | `/api/stadiums/:id` | ADMIN  | Delete stadium      |
-
----
-
-### Roster Module (`src/roster/`)
-
-Manages team-player relationships.
-
-| Method   | Endpoint                              | Role                | Description            |
-| -------- | ------------------------------------- | ------------------- | ---------------------- |
-| `GET`    | `/api/teams/:teamId/roster`           | Public              | Get team roster        |
-| `POST`   | `/api/teams/:teamId/roster`           | ADMIN, TEAM_MANAGER | Add player to team     |
-| `PATCH`  | `/api/teams/:teamId/roster/:playerId` | ADMIN, TEAM_MANAGER | Update (jersey number) |
-| `DELETE` | `/api/teams/:teamId/roster/:playerId` | ADMIN, TEAM_MANAGER | Remove player          |
-
-**Business Rules:**
-
-- One player can only be in one team at a time
-- Jersey numbers must be unique within team
-
----
-
-### Standings Module (`src/standings/`)
-
-Auto-calculates league standings and top scorers.
-
-| Method | Endpoint                      | Role   | Description                  |
-| ------ | ----------------------------- | ------ | ---------------------------- |
-| `GET`  | `/api/standings`              | Public | Get current season standings |
-| `GET`  | `/api/standings?seasonId=xxx` | Public | Get standings by season      |
-| `GET`  | `/api/standings/top-scorers`  | Public | Get top scorers list         |
-
-**Scoring:** Win=3pts, Draw=1pt, Loss=0pts
-
-**Ranking criteria (priority order):**
-
-1. Points
-2. Goal difference
-3. Goals scored
-4. Team name (alphabetically)
-
----
-
-### Mail Module (`src/mail/`)
-
-Handles email sending with templates.
-
-```typescript
-// Usage in services
-import { MailService } from './mail';
-
-@Injectable()
-export class AuthService {
-  constructor(private readonly mail: MailService) {}
-
-  async sendOtp(email: string, otp: string) {
-    await this.mail.sendEmailVerificationOtp(email, otp);
-  }
-}
-```
-
-**Templates:**
-
-- `email-verification.hbs` - Email verification OTP
-- `password-reset.hbs` - Password reset OTP
-- `welcome.hbs` - Welcome email
-
-**Environment Variables:**
-
-```env
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USER=your-email@gmail.com
-MAIL_PASS=your-app-password
-MAIL_FROM=noreply@vleague.local
-```
-
----
-
-## Global Configuration (main.ts)
-
-The application bootstraps with several global configurations in `src/main.ts`:
-
-### Global Validation Pipe
-
-> [!IMPORTANT]
-> **All incoming DTOs are automatically validated.** Fields not in the DTO are stripped (`whitelist`) and rejected if present with `forbidNonWhitelisted`.
-
-```typescript
-// main.ts — already configured
-app.useGlobalPipes(
-  new ValidationPipe({
-    whitelist: true, // Strip unknown properties
-    forbidNonWhitelisted: true, // Throw on unexpected properties
-    transform: true, // Auto-transform payloads to DTO classes
-    transformOptions: {
-      enableImplicitConversion: true, // Convert string "1" → number 1
-    },
-  }),
-);
-```
-
-### Global Exception Filter
-
-```typescript
-// main.ts — already configured
-app.useGlobalFilters(new HttpExceptionFilter());
-```
-
-All exceptions are caught and normalized to `{ code, message, details?, requestId?, timestamp }`. See the **Error Handling** skill for details.
-
-### Global Logging Interceptor
-
-```typescript
-// main.ts — already configured
-app.useGlobalInterceptors(new LoggingInterceptor());
-```
-
-The `LoggingInterceptor` logs request entry/exit with performance timing (🟢 <100ms, 🟡 <500ms, 🔴 >500ms).
-
-### CORS Configuration
-
-```typescript
-// main.ts — already configured
-app.enableCors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true,
-});
-```
-
-### Helmet Security Headers (Production Only)
-
-```typescript
-// main.ts — only in production
-if (process.env.NODE_ENV === 'production') {
-  const helmet = await import('helmet');
-  app.use(
-    helmet.default({
-      contentSecurityPolicy: {
-        directives: {
-          /* ... */
-        },
-      },
-      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-      frameguard: { action: 'deny' },
-      hidePoweredBy: true,
-      noSniff: true,
-      xssFilter: true,
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    }),
-  );
-}
-```
-
-> [!TIP]
-> There is also a `SecurityMiddleware` class in `src/common/middleware/security.middleware.ts` that wraps Helmet as a NestJS middleware. Use it for module-level application via `configure(consumer)` if needed.
-
-### Global API Prefix
-
-```typescript
-app.setGlobalPrefix('api');
-// All routes become /api/... — Swagger docs at /api/docs (via SwaggerModule.setup('docs', ...))
-```
+1. **Prisma 7 Driver Adapter**: Uses `@prisma/adapter-pg` with raw `pg.Pool` instead of binary engine
+2. **Vietnamese messages**: All user-facing error messages in Vietnamese
+3. **CSV export with BOM**: `toCsv()` helper prepends `\uFEFF` for Excel Vietnamese support
+4. **Structured error codes**: `AUTH_EMAIL_EXISTS`, `AUTH_OTP_INVALID`, etc. for deterministic client handling
+5. **Device-aware sessions**: Refresh tokens track userAgent, ipAddress, deviceName, lastUsedAt
+6. **OAuth account linking**: Google/Facebook auto-link to existing email; users can set password post-OAuth
+7. **WebSocket deps present**: `@nestjs/websockets` + `socket.io` in deps but no gateway implemented yet
+8. **Regulation-driven rules**: Core limits (age, roster, foreign players, goal time) configurable per-season
+9. **RegulationHelper fallback**: DB value → defaults → hardcoded fallback
+10. **Standings computed live**: From match events, not from Standing model directly

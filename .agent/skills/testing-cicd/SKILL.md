@@ -1,288 +1,188 @@
 ---
 name: Testing & CI/CD
-description: Guide for running tests, understanding CI pipelines, and following development workflows for SE104_VLEAGUE
+description: Complete guide for testing patterns, test structure, CI pipeline, and development workflow for SE104_VLEAGUE
 ---
 
 # Testing & CI/CD Skill
 
-This skill covers testing strategies, CI/CD pipelines, and development workflows for the SE104_VLEAGUE project.
+## Test Coverage Summary
 
-## Testing Overview
+| Area                  | Suites | Tests | Framework                       |
+| --------------------- | ------ | ----- | ------------------------------- |
+| API Unit + Controller | 23     | 233+  | Jest + ts-jest                  |
+| API E2E               | 13     | —     | Jest + Supertest                |
+| Web Unit + Component  | 24     | 143   | Vitest + @testing-library/react |
 
-The project has comprehensive test coverage across both API and Web:
+---
 
-- **API (apps/api)**: Jest for unit tests + Supertest for E2E tests — **23 suites, 233+ tests**
-- **Web (apps/web)**: Vitest + @testing-library/react for unit/component tests — **24 suites, 143+ tests**
-- **All workspaces**: Prettier for code formatting, ESLint for code quality
+## Backend Testing (Jest)
 
-### Test Coverage Summary
-
-| Layer   | Test Type            | Suites | Tests | Framework                       |
-| ------- | -------------------- | ------ | ----- | ------------------------------- |
-| **API** | Service specs        | 10     | ~150  | Jest                            |
-| **API** | Controller specs     | 11     | ~64   | Jest                            |
-| **API** | E2E specs            | 8      | ~19   | Jest + Supertest                |
-| **Web** | API service tests    | 12     | 83    | Vitest                          |
-| **Web** | Page component tests | 10     | 60    | Vitest + @testing-library/react |
-| **Web** | Controller/unit      | 2      | ~6    | Vitest                          |
-
-## API Testing
-
-### Test Structure
+### Test File Structure
 
 ```
-apps/api/
-├── src/
-│   ├── auth/
-│   │   ├── auth.service.spec.ts        # Service unit tests
-│   │   └── auth.controller.spec.ts     # Controller unit tests
-│   ├── registration/
-│   │   ├── registration.service.spec.ts
-│   │   ├── teams.controller.spec.ts
-│   │   └── players.controller.spec.ts
-│   ├── match/
-│   │   ├── match.service.spec.ts
-│   │   └── match.controller.spec.ts
-│   ├── scheduling/
-│   │   ├── scheduling.service.spec.ts
-│   │   └── scheduling.controller.spec.ts
-│   ├── season/
-│   │   ├── season.service.spec.ts
-│   │   ├── season.controller.spec.ts
-│   │   └── season-team.controller.spec.ts
-│   ├── stadium/
-│   │   └── stadium.service.spec.ts
-│   ├── standings/
-│   │   └── standings.service.spec.ts
-│   ├── roster/
-│   │   └── roster.service.spec.ts
-│   ├── regulation/
-│   │   ├── regulation.service.spec.ts
-│   │   └── regulation.controller.spec.ts
-│   ├── users/
-│   │   ├── users.service.spec.ts
-│   │   └── users.controller.spec.ts
-│   └── upload/
-│       └── upload.controller.spec.ts
-└── test/
-    ├── app.e2e-spec.ts
-    ├── auth.e2e-spec.ts
-    ├── matches.e2e-spec.ts
-    ├── regulations.e2e-spec.ts
-    ├── seasons.e2e-spec.ts
-    ├── stadiums.e2e-spec.ts
-    ├── standings.e2e-spec.ts
-    ├── teams.e2e-spec.ts
-    ├── scheduling.e2e-spec.ts
-    ├── roster.e2e-spec.ts
-    ├── users.e2e-spec.ts
-    └── upload.e2e-spec.ts
+apps/api/src/
+├── app.controller.spec.ts
+├── auth/
+│   ├── auth.service.spec.ts           # 30+ tests
+│   └── auth.controller.spec.ts        # 19 tests
+├── registration/
+│   ├── registration.service.spec.ts
+│   ├── teams.controller.spec.ts       # 6 tests
+│   └── players.controller.spec.ts     # 6 tests
+├── match/
+│   ├── match.service.spec.ts
+│   └── match.controller.spec.ts       # 7 tests
+├── scheduling/
+│   ├── scheduling.service.spec.ts
+│   └── scheduling.controller.spec.ts  # 7 tests
+├── season/
+│   ├── season.service.spec.ts
+│   ├── season.controller.spec.ts      # 8 tests
+│   └── season-team.controller.spec.ts # 5 tests
+├── stadium/
+│   └── stadium.service.spec.ts
+├── standings/
+│   └── standings.service.spec.ts
+├── roster/
+│   └── roster.service.spec.ts
+├── regulation/
+│   ├── regulation.service.spec.ts
+│   └── regulation.controller.spec.ts  # 6 tests
+├── users/
+│   ├── users.service.spec.ts          # 15 tests
+│   └── users.controller.spec.ts       # 5 tests
+└── upload/
+    └── upload.controller.spec.ts      # 6 tests
+
+apps/api/test/                          # E2E tests
+├── app.e2e-spec.ts
+├── auth.e2e-spec.ts
+├── matches.e2e-spec.ts
+├── regulations.e2e-spec.ts
+├── roster.e2e-spec.ts
+├── scheduling.e2e-spec.ts
+├── seasons.e2e-spec.ts
+├── stadiums.e2e-spec.ts
+├── standings.e2e-spec.ts
+├── teams.e2e-spec.ts
+├── upload.e2e-spec.ts
+├── users.e2e-spec.ts
+└── jest-e2e.json
 ```
 
-### Running Tests
-
-```bash
-cd apps/api
-
-# Run all unit tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Generate coverage report
-pnpm test:cov
-
-# Run E2E tests
-pnpm test:e2e
-
-# Run specific test file
-pnpm test -- teams.service.spec.ts
-```
-
-### Unit Test Example
+### Unit Test Pattern (Service)
 
 ```typescript
-// src/registration/teams.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { TeamsService } from './teams.service';
+import { ModuleService } from './module.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-describe('TeamsService', () => {
-  let service: TeamsService;
+describe('ModuleService', () => {
+  let service: ModuleService;
   let prisma: PrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        TeamsService,
+        ModuleService,
         {
           provide: PrismaService,
           useValue: {
-            team: {
+            modelName: {
               findMany: jest.fn(),
               findUnique: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
               delete: jest.fn(),
+              count: jest.fn(),
             },
           },
         },
       ],
     }).compile();
 
-    service = module.get<TeamsService>(TeamsService);
+    service = module.get<ModuleService>(ModuleService);
     prisma = module.get<PrismaService>(PrismaService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
+  it('should return paginated results', async () => {
+    const mockData = [{ id: 'uuid-1', name: 'Test' }];
+    (prisma.modelName.findMany as jest.Mock).mockResolvedValue(mockData);
+    (prisma.modelName.count as jest.Mock).mockResolvedValue(1);
 
-  describe('findAll', () => {
-    it('should return an array of teams', async () => {
-      const mockTeams = [
-        { id: '1', name: 'Team A', status: 'ACTIVE' },
-        { id: '2', name: 'Team B', status: 'ACTIVE' },
-      ];
-
-      jest.spyOn(prisma.team, 'findMany').mockResolvedValue(mockTeams);
-
-      const result = await service.findAll();
-      expect(result).toEqual(mockTeams);
-      expect(prisma.team.findMany).toHaveBeenCalled();
-    });
-  });
-
-  describe('create', () => {
-    it('should create a new team', async () => {
-      const createDto = { name: 'New Team', status: 'ACTIVE' };
-      const mockTeam = { id: '1', ...createDto };
-
-      jest.spyOn(prisma.team, 'create').mockResolvedValue(mockTeam);
-
-      const result = await service.create(createDto);
-      expect(result).toEqual(mockTeam);
-      expect(prisma.team.create).toHaveBeenCalledWith({ data: createDto });
-    });
+    const result = await service.findAll({ page: 1, limit: 10 });
+    expect(result.data).toEqual(mockData);
+    expect(result.total).toBe(1);
   });
 });
 ```
 
-### Authentication Service Test Pattern
-
-When testing auth service with multiple dependencies:
+### Controller Test Pattern
 
 ```typescript
-// auth.service.spec.ts
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import { MailService } from '../mail/mail.service';
-import * as bcrypt from 'bcrypt';
-
-// Mock bcrypt at module level
-jest.mock('bcrypt', () => ({
-  hash: jest.fn(),
-  compare: jest.fn(),
-}));
-
-describe('AuthService', () => {
-  let service: AuthService;
-  let prisma: PrismaService;
-
-  const mockUser = {
-    id: 'user-1',
-    email: 'test@example.com',
-    passwordHash: 'hashed-password',
-    role: 'USER',
-    roleId: null, // Required: UUID FK to roles table
-    emailVerified: true,
-  };
+describe('ModuleController', () => {
+  let controller: ModuleController;
+  let service: ModuleService;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    const module = await Test.createTestingModule({
+      controllers: [ModuleController],
       providers: [
-        AuthService,
         {
-          provide: PrismaService,
+          provide: ModuleService,
           useValue: {
-            user: {
-              findUnique: jest.fn(),
-              create: jest.fn(),
-            },
-            otpCode: {
-              create: jest.fn(),
-              findFirst: jest.fn(),
-            },
-            refreshToken: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              updateMany: jest.fn(),
-            },
-            $transaction: jest.fn(),
-          },
-        },
-        {
-          provide: JwtService,
-          useValue: {
-            signAsync: jest.fn().mockResolvedValue('mock-token'),
-          },
-        },
-        {
-          provide: MailService,
-          useValue: {
-            sendEmailVerificationOtp: jest.fn().mockResolvedValue(undefined),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+            create: jest.fn(),
           },
         },
       ],
     }).compile();
 
-    service = module.get<AuthService>(AuthService);
-    prisma = module.get<PrismaService>(PrismaService);
-    jest.clearAllMocks();
+    controller = module.get(ModuleController);
+    service = module.get(ModuleService);
   });
 
-  describe('login', () => {
-    it('should return tokens for valid credentials', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      jest.spyOn(prisma.refreshToken, 'create').mockResolvedValue({} as any);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-
-      const result = await service.login('test@example.com', 'password');
-
-      expect(result.accessToken).toBeDefined();
-      expect(result.user.email).toBe(mockUser.email);
-    });
-
-    it('should throw UnauthorizedException for invalid credentials', async () => {
-      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-
-      await expect(service.login('test@example.com', 'wrong')).rejects.toThrow();
-    });
+  it('should delegate to service', async () => {
+    const mockResult = { id: 'uuid-1' };
+    (service.findOne as jest.Mock).mockResolvedValue(mockResult);
+    expect(await controller.findOne('uuid-1')).toBe(mockResult);
   });
 });
 ```
 
-### E2E Test Example
+### Auth Service Test Pattern
 
 ```typescript
-// test/teams.e2e-spec.ts
+// IMPORTANT: Mock bcrypt at module level
+jest.mock('bcrypt');
+import * as bcrypt from 'bcrypt';
+
+describe('AuthService', () => {
+  // ... setup with mocked PrismaService, JwtService, MailService, ConfigService
+
+  it('should login successfully', async () => {
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+    // ... test login flow
+  });
+});
+```
+
+### E2E Test Pattern
+
+```typescript
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 
-describe('Teams API (e2e)', () => {
+describe('TeamsController (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
-
     app = moduleFixture.createNestApplication();
     await app.init();
   });
@@ -291,670 +191,298 @@ describe('Teams API (e2e)', () => {
     await app.close();
   });
 
-  it('/teams (GET) - should return list of teams', () => {
-    return request(app.getHttpServer())
-      .get('/teams')
-      .expect(200)
-      .expect((res) => {
-        expect(Array.isArray(res.body)).toBe(true);
-      });
-  });
-
-  it('/teams (POST) - should create a new team', () => {
-    const createDto = {
-      name: 'Test Team',
-      status: 'ACTIVE',
-    };
-
-    return request(app.getHttpServer())
-      .post('/teams')
-      .send(createDto)
-      .expect(201)
-      .expect((res) => {
-        expect(res.body).toHaveProperty('id');
-        expect(res.body.name).toBe(createDto.name);
-      });
+  it('/api/teams (GET)', () => {
+    return request(app.getHttpServer()).get('/api/teams').expect(200);
   });
 });
 ```
 
-### Test Configuration
+### Backend Test Tips
 
-Jest configuration is in `apps/api/package.json`:
+- Use `as any` for Prisma mock return types when TypeScript complains
+- Mock cross-module services (e.g., `StandingsService`, `RegulationHelper`) when testing modules that import them
+- For `MatchService` tests: mock `StandingsService.recalculate()` and `RegulationHelper.getNumericValue()`
+- For `RosterService` tests: mock `RegulationHelper` for MAX_ROSTER, MAX_FOREIGN_PLAYERS validation
 
-```json
-{
-  "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
-  }
-}
-```
+---
 
-## Web (Frontend) Testing
+## Frontend Testing (Vitest)
 
-### Test Framework
-
-The frontend uses **Vitest** + **@testing-library/react** for component and service testing:
-
-| Package                     | Purpose                                        |
-| --------------------------- | ---------------------------------------------- |
-| `vitest`                    | Test runner (Vite-native, Jest-compatible API) |
-| `@testing-library/react`    | Component rendering & DOM queries              |
-| `@testing-library/jest-dom` | Custom DOM matchers (`toBeInTheDocument()`)    |
-| `jsdom`                     | DOM environment for tests                      |
-
-### Test Structure
+### Test File Structure
 
 ```
 apps/web/src/
-├── services/
-│   └── __tests__/                    # API service unit tests (12 files, 83 tests)
-│       ├── authApi.test.ts
-│       ├── teamApi.test.ts
-│       ├── playerApi.test.ts
-│       ├── stadiumApi.test.ts
-│       ├── seasonApi.test.ts
-│       ├── seasonTeamApi.test.ts
-│       ├── matchApi.test.ts
-│       ├── scheduleApi.test.ts
-│       ├── standingsApi.test.ts
-│       ├── regulationApi.test.ts
-│       ├── userApi.test.ts
-│       └── uploadApi.test.ts
-├── pages/
-│   └── __tests__/                    # Page component tests (10 files, 60 tests)
-│       ├── DashboardPage.test.tsx
-│       ├── StandingsPage.test.tsx
-│       ├── LoginPage.test.tsx
-│       ├── TeamsPage.test.tsx
-│       ├── PlayersPage.test.tsx
-│       ├── MatchesPage.test.tsx
-│       ├── SeasonsPage.test.tsx
-│       ├── SchedulePage.test.tsx
-│       ├── RegulationsPage.test.tsx
-│       └── ProfilePage.test.tsx
-└── vitest.setup.ts                   # Global test setup (polyfills)
+├── auth/
+│   ├── AuthContext.test.tsx
+│   └── RequireAuth.test.tsx
+├── pages/__tests__/
+│   ├── DashboardPage.test.tsx
+│   ├── TeamsPage.test.tsx
+│   ├── PlayersPage.test.tsx
+│   ├── StadiumsPage.test.tsx
+│   ├── SeasonsPage.test.tsx
+│   ├── MatchesPage.test.tsx
+│   ├── SchedulePage.test.tsx
+│   ├── StandingsPage.test.tsx
+│   ├── HeadToHeadPage.test.tsx
+│   ├── RegulationsPage.test.tsx
+│   ├── ReportsPage.test.tsx
+│   ├── UsersPage.test.tsx
+│   ├── ProfilePage.test.tsx
+│   ├── ChangePasswordPage.test.tsx
+│   ├── SessionsPage.test.tsx
+│   ├── LoginPage.test.tsx
+│   ├── RegisterPage.test.tsx
+│   ├── VerifyEmailPage.test.tsx
+│   ├── ForgotPasswordPage.test.tsx
+│   ├── ResetPasswordPage.test.tsx
+│   └── MatchDetailPage.test.tsx
+└── services/__tests__/
+    ├── authApi.test.ts
+    ├── teamApi.test.ts
+    ├── playerApi.test.ts
+    ├── stadiumApi.test.ts
+    ├── seasonApi.test.ts
+    ├── seasonTeamApi.test.ts
+    ├── matchApi.test.ts
+    ├── scheduleApi.test.ts
+    ├── standingsApi.test.ts
+    ├── regulationApi.test.ts
+    ├── searchApi.test.ts
+    ├── userApi.test.ts
+    └── uploadApi.test.ts
 ```
 
-### Running Frontend Tests
-
-```bash
-cd apps/web
-
-# Run all tests
-pnpm test
-
-# Run with Vitest directly
-pnpm exec vitest run
-
-# Watch mode
-pnpm exec vitest
-
-# Run specific file
-pnpm exec vitest run src/services/__tests__/teamApi.test.ts
-```
-
-### Test Setup — `vitest.setup.ts`
-
-The setup file provides required polyfills for Ant Design components:
+### Service Test Pattern
 
 ```typescript
-// apps/web/vitest.setup.ts
-import '@testing-library/jest-dom/vitest';
-
-// Polyfill ResizeObserver (needed by Antd Tabs, Collapse, etc.)
-if (typeof globalThis.ResizeObserver === 'undefined') {
-  globalThis.ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  } as unknown as typeof ResizeObserver;
-}
-
-// Polyfill window.matchMedia (needed by Antd responsive components)
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: (query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }),
-});
-```
-
-> [!IMPORTANT]
-> Without these polyfills, Ant Design components (Tabs, Collapse, Layout) throw errors in jsdom during tests.
-
-### Frontend Service Test Pattern
-
-Service tests mock the Axios `api` client using `vi.hoisted()` + `vi.mock()`:
-
-```typescript
-// src/services/__tests__/teamApi.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Step 1: Hoist mock variables so they're available inside vi.mock()
-const mocks = vi.hoisted(() => ({
+// CRITICAL: Use vi.hoisted() for mock variables
+const mockApi = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
-  put: vi.fn(),
   patch: vi.fn(),
   delete: vi.fn(),
+  put: vi.fn(),
 }));
 
-// Step 2: Mock the api module
 vi.mock('../../lib/api', () => ({
-  api: mocks,
+  default: mockApi,
 }));
 
-// Step 3: Import the service under test (AFTER vi.mock)
 import { apiGetTeams, apiCreateTeam } from '../teamApi';
 
 describe('teamApi', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-  it('apiGetTeams calls GET /teams', async () => {
-    mocks.get.mockResolvedValue({ data: [{ id: '1', name: 'Team A' }] });
-    const result = await apiGetTeams();
-    expect(mocks.get).toHaveBeenCalledWith('/teams');
-    expect(result).toEqual([{ id: '1', name: 'Team A' }]);
+  it('should fetch teams', async () => {
+    const mockResponse = { data: { data: [], total: 0, page: 1, limit: 10 } };
+    mockApi.get.mockResolvedValue(mockResponse);
+    const result = await apiGetTeams({ page: 1, limit: 10 });
+    expect(mockApi.get).toHaveBeenCalledWith('/teams', { params: { page: 1, limit: 10 } });
+    expect(result).toEqual(mockResponse.data);
   });
 });
 ```
 
-> [!IMPORTANT]
-> The `vi.hoisted()` pattern is essential. Without it, mock variables won't be available inside `vi.mock()` callbacks because Vitest hoists `vi.mock()` to the top of the file.
-
-### Frontend Page Component Test Pattern
-
-Page tests mock both API services and React Router, then verify rendering:
+### Page Component Test Pattern
 
 ```typescript
-// src/pages/__tests__/TeamsPage.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
-// Step 1: Hoist mocks
-const apiMock = vi.hoisted(() => ({
-  apiGetTeams: vi.fn(),
+// Mock services
+vi.mock('../../services/teamApi', () => ({
+  apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 10, totalPages: 0 }),
 }));
-const navMock = vi.hoisted(() => ({ useNavigate: vi.fn(() => vi.fn()) }));
 
-// Step 2: Mock dependencies
-vi.mock('../../services/teamApi', () => apiMock);
+// Mock react-router-dom partially
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
-  return { ...actual, ...navMock };
+  return { ...actual, useNavigate: vi.fn(() => vi.fn()) };
 });
 
-// Step 3: Import component
-import { TeamsPage } from '../TeamsPage';
+// Import paths from __tests__/ go up one level
+import TeamsPage from '../TeamsPage';
 
 describe('TeamsPage', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('renders the page title', async () => {
-    apiMock.apiGetTeams.mockResolvedValue([]);
-    render(<TeamsPage />);
-    expect(screen.getByText('Quản lý Đội bóng')).toBeInTheDocument();
-  });
-
-  it('renders teams data in table', async () => {
-    apiMock.apiGetTeams.mockResolvedValue([
-      { id: '1', name: 'Team A', status: 'ACTIVE' },
-    ]);
-    render(<TeamsPage />);
+  it('renders without crashing', async () => {
+    render(
+      <MemoryRouter>
+        <TeamsPage />
+      </MemoryRouter>
+    );
     await waitFor(() => {
-      expect(screen.getByText('Team A')).toBeInTheDocument();
-    });
-  });
-
-  it('handles API error gracefully', async () => {
-    apiMock.apiGetTeams.mockRejectedValue(new Error('fail'));
-    render(<TeamsPage />);
-    await waitFor(() => {
-      expect(apiMock.apiGetTeams).toHaveBeenCalled();
+      // Use getAllByText for Ant Design duplicate rendering
+      expect(screen.getAllByText(/teams/i).length).toBeGreaterThan(0);
     });
   });
 });
 ```
 
-### Frontend Testing Gotchas
+### Test Setup (`vitest.setup.ts`)
 
-> [!WARNING]
-> **Ant Design renders text in multiple DOM locations**: Some components (Card title, Breadcrumb, admin actions) render the same text multiple times. Use `getAllByText()` instead of `getByText()` when this happens:
->
-> ```typescript
-> // ✅ Correct — Ant Design may render title in Card header + Breadcrumb
-> expect(screen.getAllByText('Thông tin cá nhân').length).toBeGreaterThanOrEqual(1);
-> ```
+```typescript
+import '@testing-library/jest-dom/vitest';
 
-> [!WARNING]
-> **Import paths in `__tests__/`**: Test files inside `__tests__/` subdirectories must use `../ComponentName` (go up one level), **not** `./ComponentName`:
->
-> ```typescript
-> // ✅ Correct (from pages/__tests__/)
-> import { TeamsPage } from '../TeamsPage';
-> // ❌ Wrong
-> import { TeamsPage } from './TeamsPage';
-> ```
+// i18n — Vietnam, no language detector
+import './lib/i18n';
 
-> [!WARNING]
-> **LoginPage button selector**: The Login page has both "Đăng nhập" as page title and as button text. Use exact text matching or `getByRole('button')` to avoid conflicts.
-
-## Linting and Formatting
-
-### Running Linters
-
-```bash
-# Root level (all workspaces)
-pnpm lint        # Run ESLint on all workspaces
-pnpm format      # Run Prettier on all files
-
-# API only
-cd apps/api
-pnpm lint        # ESLint with auto-fix
-
-# Web only
-cd apps/web
-pnpm lint        # ESLint
-```
-
-### ESLint Configuration
-
-**API**: `apps/api/eslint.config.mjs`
-**Web**: `apps/web/eslint.config.js`
-
-Both use TypeScript ESLint with project-specific rules.
-
-### Prettier Configuration
-
-**Root level**: `.prettierrc.cjs`
-
-```javascript
-module.exports = {
-  semi: true,
-  trailingComma: 'all',
-  singleQuote: true,
-  printWidth: 80,
-  tabWidth: 2,
+// ResizeObserver polyfill (Ant Design Tabs, Collapse)
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 };
+
+// window.matchMedia polyfill (Ant Design responsive)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 ```
 
-## CI/CD Pipeline
+### Frontend Test Gotchas
 
-### GitHub Actions Workflows
+1. **`vi.hoisted()` is MANDATORY** for mock variables used inside `vi.mock()` — Vitest hoists `vi.mock()` to top of file
+2. **Ant Design duplicate text**: Use `getAllByText()` instead of `getByText()` — AntD often renders text in multiple DOM nodes
+3. **Import paths**: Tests in `__tests__/` must import components with `../ComponentName`
+4. **LoginPage button**: The submit button renders as `<button>` inside AntD Form — query by role: `getByRole('button', { name: /login/i })`
+5. **Mock individual services**: Don't mock the entire services directory — mock specific service files
+6. **Vitest config**: `environment: 'jsdom'`, `globals: true`, `css: false`
 
-The project has multiple CI/CD workflows in `.github/workflows/`:
+---
 
-| Workflow   | File             | Purpose                                    |
-| ---------- | ---------------- | ------------------------------------------ |
-| CI         | `ci.yml`         | Main CI pipeline (lint, test, build)       |
-| PR Labeler | `pr-labeler.yml` | Auto-label PRs based on title, files, size |
-| CodeQL     | `codeql.yml`     | Security analysis for JS/TS                |
+## CI/CD Pipeline (GitHub Actions)
 
-### CI Pipeline Features
+### Workflow Structure
 
-The main CI pipeline (`ci.yml`) includes:
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on: [push, pull_request] → main
 
-1. **Concurrency Control**: Cancels in-progress runs when new commits are pushed
-2. **pnpm Caching**: Speeds up dependency installation
-3. **TypeScript Type Checking**: Runs `tsc --noEmit` before build
-4. **Security Audit**: Checks for vulnerable dependencies
-5. **Test Coverage**: Uploads coverage reports to Codecov
-6. **Build Artifacts**: Uploads build outputs for deployment
+jobs:
+  api-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+        ports: ["5432:5432"]
+    steps:
+      - Checkout
+      - Setup Node.js + pnpm
+      - Install dependencies
+      - Generate Prisma client
+      - Run migrations (migrate deploy)
+      - Seed database
+      - Run unit tests (pnpm test)
+      - Run E2E tests (pnpm test:e2e)
 
-### CI Pipeline Jobs
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        CI Pipeline                          │
-├─────────────────────────────────────────────────────────────┤
-│  api                │  web                │  security       │
-│  ├─ Lint            │  ├─ Lint            │  └─ pnpm audit  │
-│  ├─ Type Check      │  ├─ Type Check      │                 │
-│  ├─ Test + Coverage │  ├─ Test (Vitest)   │                 │
-│  └─ Build           │  └─ Build           │                 │
-├─────────────────────────────────────────────────────────────┤
-│  pr-title           │  pr-branch          │  pr-size        │
-│  (Conventional)     │  (Naming)           │  (Warnings)     │
-├─────────────────────────────────────────────────────────────┤
-│                      ci-success                             │
-│                 (Final status gate)                         │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Running CI Locally
-
-Simulate what CI runs locally:
-
-```bash
-# Full CI simulation
-pnpm lint && pnpm test && pnpm build
-
-# API only
-cd apps/api
-pnpm lint
-pnpm exec tsc --noEmit
-pnpm test
-pnpm test:cov
-pnpm build
-
-# Web only
-cd apps/web
-pnpm lint
-pnpm exec tsc --noEmit
-pnpm build
-
-# Security audit
-pnpm audit --audit-level high
+  web-test:
+    runs-on: ubuntu-latest
+    steps:
+      - Checkout
+      - Setup Node.js + pnpm
+      - Install dependencies
+      - Run Vitest (pnpm test)
 ```
 
-### Environment Variables in CI
+### Additional CI Features
 
-CI uses these environment variables:
+- **PR Labeler**: Auto-labels PRs based on file paths
+- **CodeQL**: Security scanning
+- **Dependabot**: Automated dependency updates
 
-| Variable       | Purpose                          |
-| -------------- | -------------------------------- |
-| `NODE_VERSION` | Node.js version (20)             |
-| `STORE_PATH`   | pnpm store directory for caching |
-
-### Dependabot Configuration
-
-The project uses Dependabot (`.github/dependabot.yml`) for automatic dependency updates:
-
-- **NPM dependencies**: Weekly updates on Monday
-- **GitHub Actions**: Monthly updates
-- **Grouping**: Minor/patch updates are grouped to reduce PR noise
-- **Labels**: Auto-labeled with `dependencies`, `type:chore`, and area labels
-
-### CodeQL Security Analysis
-
-The CodeQL workflow (`.github/workflows/codeql.yml`) provides:
-
-- JavaScript/TypeScript security scanning
-- Runs on push, PRs, and weekly schedule
-- Reports vulnerabilities in GitHub Security tab
-
-### PR Auto-Labeling
-
-The PR labeler workflow adds labels based on:
-
-1. **PR Title** (Conventional Commits):
-   - `feat:` → `type:feature`
-   - `fix:` → `type:bugfix`
-   - `chore:` → `type:chore`
-   - etc.
-
-2. **Changed Files**:
-   - `apps/api/*` → `area:api`
-   - `apps/web/*` → `area:web`
-   - `.github/*` → `area:ci`
-   - `*.md` → `area:docs`
-
-3. **PR Size**:
-   - `size:XS` (<10 changes)
-   - `size:S` (10-49 changes)
-   - `size:M` (50-199 changes)
-   - `size:L` (200-499 changes)
-   - `size:XL` (500+ changes)
-
-## Conventional Commits
-
-### PR Title Format
-
-All PRs to `main` must follow Conventional Commits format:
-
-```
-<type>: <summary>
-```
-
-**Allowed types**:
-
-- `feat`: New feature
-- `fix`: Bug fix
-- `chore`: Maintenance tasks
-- `docs`: Documentation changes
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `ci`: CI/CD changes
-
-**Examples**:
-
-- ✅ `feat: add team registration endpoint`
-- ✅ `fix: resolve match scheduling conflict`
-- ✅ `chore: update dependencies`
-- ✅ `docs: update README with setup instructions`
-- ❌ `Add new feature` (missing type)
-- ❌ `Feature: add teams` (wrong capitalization)
-
-### PR Title Validation
-
-The CI pipeline includes a PR title check that validates the format using a GitHub Action.
-
-## Branch Protection
-
-### Rules for `main` branch:
-
-1. **Require Pull Request**: Direct pushes to `main` are blocked
-2. **Require Approvals**: At least 1 approval needed
-3. **Required Status Checks**:
-   - API lint must pass
-   - API test must pass
-   - API build must pass
-   - Web lint must pass
-   - Web build must pass
-   - PR title check must pass
-4. **Up-to-date branches**: Branch must be up-to-date with `main`
+---
 
 ## Development Workflow
 
-### Standard Workflow
+### Branch Strategy
 
-1. **Create Feature Branch**:
-
-   ```bash
-   git checkout -b feat/add-player-management
-   ```
-
-2. **Make Changes**:
-   - Write code
-   - Write tests
-   - Run tests locally
-
-3. **Lint and Format**:
-
-   ```bash
-   pnpm lint
-   pnpm format
-   ```
-
-4. **Commit Changes**:
-
-   ```bash
-   git add .
-   git commit -m "feat: add player management endpoints"
-   ```
-
-5. **Push and Create PR**:
-
-   ```bash
-   git push origin feat/add-player-management
-   ```
-
-   - Create PR with Conventional Commits title
-   - Wait for CI to pass
-   - Request review
-
-6. **Merge**:
-   - Once approved and CI passes
-   - Squash and merge to `main`
-
-### Pre-commit Checklist
-
-Before pushing code, ensure:
-
-- [ ] Code compiles without errors
-- [ ] All tests pass (`pnpm test`)
-- [ ] No linting errors (`pnpm lint`)
-- [ ] Code is formatted (`pnpm format`)
-- [ ] New features have tests
-- [ ] Database migrations are created if schema changed
-- [ ] Environment variables documented if added
-
-## CI/CD Best Practices
-
-> [!TIP]
-> **Test Locally First**: Always run `pnpm lint` and `pnpm test` locally before pushing to avoid CI failures.
-
-> [!TIP]
-> **Small PRs**: Keep PRs small and focused. Easier to review and faster to merge.
-
-> [!IMPORTANT]
-> **Prisma Generate**: The project has a `postinstall` script that runs `prisma generate`. This ensures CI has the Prisma Client available.
-
-> [!WARNING]
-> **Environment Variables**: Never commit `.env` files or secrets to Git. Use GitHub Secrets for sensitive data in CI.
-
-> [!WARNING]
-> **Prisma relation names in test expectations**: The Prisma relation for team-player roster is `roster` (not `teamPlayers`). Test assertions using `toHaveBeenCalledWith` must match the exact relation name used in `include` queries:
->
-> ```typescript
-> // ✅ Correct
-> expect(prisma.player.findMany).toHaveBeenCalledWith({
->   include: { roster: { where: { leftAt: null }, ... } },
-> });
-> // ❌ Wrong — will fail
-> expect(prisma.player.findMany).toHaveBeenCalledWith({
->   include: { teamPlayers: { ... } },
-> });
-> ```
-
-## Troubleshooting CI Failures
-
-### API Build Fails
-
-**Cause**: Prisma Client not generated
-
-**Solution**: The `postinstall` script should handle this, but if it fails:
-
-```yaml
-- name: Generate Prisma Client
-  working-directory: apps/api
-  run: pnpm dlx prisma generate
+```
+main (protected)
+  ├── feature/VL-xxx-description
+  ├── fix/VL-xxx-description
+  └── chore/description
 ```
 
-### Tests Fail in CI but Pass Locally
+### Commit Convention (Conventional Commits)
 
-**Causes**:
+```
+feat(module): add new feature
+fix(module): fix bug description
+test(module): add/update tests
+docs: update documentation
+chore: maintenance tasks
+refactor(module): code restructuring
+```
 
-1. Missing environment variables
-2. Database connection issues
-3. Different Node.js versions
+### PR Flow
 
-**Solutions**:
+1. Create feature branch from `main`
+2. Implement + add tests
+3. Push → CI runs automatically
+4. PR review → merge to `main`
 
-1. Check `DATABASE_URL` is set in workflow
-2. Verify PostgreSQL service is running
-3. Match Node.js version (20.x) in workflow
+### Branch Protection Rules
 
-### Lint Errors
+- Require CI passing before merge
+- Require PR review
+- No direct push to `main`
 
-**Cause**: Code doesn't follow ESLint rules
+---
 
-**Solution**:
+## Running Tests
 
 ```bash
-cd apps/api  # or apps/web
-pnpm lint    # Shows errors
+# Backend
+cd apps/api
+pnpm test                    # Unit tests (23 suites, 233+ tests)
+pnpm test:watch              # Watch mode
+pnpm test:cov                # Coverage report
+pnpm test:e2e                # E2E tests (requires DB)
+
+# Frontend
+cd apps/web
+pnpm test                    # Vitest (24 suites, 143 tests)
+pnpm exec vitest             # Watch mode
+pnpm exec vitest --coverage  # Coverage
+
+# Run single test file
+cd apps/api && pnpm test -- auth.service.spec
+cd apps/web && pnpm exec vitest src/services/__tests__/teamApi.test.ts
 ```
 
-Fix manually or use auto-fix where possible.
+---
 
-### PR Title Check Fails
+## Troubleshooting
 
-**Cause**: PR title doesn't follow Conventional Commits
+### API Tests
 
-**Solution**: Edit PR title to match format:
+- **"Cannot find module 'bcrypt'"**: Ensure `jest.mock('bcrypt')` is at module level (before imports)
+- **Prisma type errors in mocks**: Use `as any` for mock return values
+- **E2E tests fail**: Check PostgreSQL is running and DATABASE_URL is correct
+- **Cross-module injection errors**: Ensure mock providers include all injected services
 
-```
-feat: description
-```
+### Web Tests
 
-## Common Commands Summary
-
-```bash
-# Testing
-pnpm test              # Run all tests (root)
-pnpm --filter api test # API tests only
-pnpm test:watch        # Watch mode
-pnpm test:cov          # Coverage report
-
-# Linting & Formatting
-pnpm lint              # Lint all workspaces
-pnpm format            # Format all files
-pnpm --filter api lint # API only
-pnpm --filter web lint # Web only
-
-# Building
-pnpm build             # Build all workspaces
-pnpm --filter api build
-pnpm --filter web build
-
-# CI Simulation (run what CI runs)
-pnpm lint && pnpm test && pnpm build
-```
-
-## Build Artifacts
-
-After successful CI runs, the following artifacts are produced:
-
-- **API**: `apps/api/dist/` - Compiled JavaScript
-- **Web**: `apps/web/dist/` - Optimized static files
-
-> [!NOTE]
-> Currently, artifacts are built but not deployed. Deployment configuration may be added in the future.
-
-## Monitoring CI
-
-### View CI Runs
-
-1. Go to GitHub repository
-2. Click "Actions" tab
-3. View workflow runs
-
-### CI Status Badge
-
-Add to README.md:
-
-```markdown
-![CI](https://github.com/username/SE104_VLEAGUE/workflows/CI/badge.svg)
-```
-
-## Future CI/CD Enhancements
-
-Potential additions:
-
-- [ ] Automated deployment to staging
-- [ ] E2E tests with Playwright/Cypress (browser-based)
-- [ ] Performance testing
-- [ ] Security scanning
-- [ ] Docker image publishing
-- [ ] Automated releases with semantic versioning
-- [x] Frontend unit/component tests with Vitest
-- [x] Backend service + controller spec coverage
-- [x] Backend E2E test coverage
-- [x] Test step in Web CI job
+- **"ReferenceError: vi is not defined"**: Add `globals: true` to vitest.config.ts
+- **"ResizeObserver is not defined"**: Check vitest.setup.ts polyfill is loaded
+- **"Cannot find module"**: Verify import paths (from `__tests__/` → `../Component`)
+- **Ant Design matcher failures**: Use `getAllByText` or `queryAllByText` instead of singular variants
+- **Mock not working**: Ensure `vi.hoisted()` wraps mock variables, and `vi.mock()` path matches import exactly

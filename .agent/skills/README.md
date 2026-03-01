@@ -1,191 +1,83 @@
-# SE104_VLEAGUE Agent Skills
+# Agent Skills Index
 
-This directory contains specialized agent skills for working with the SE104_VLEAGUE project. Each skill provides comprehensive guidance on specific aspects of the project.
+Quick reference for all skill guides in this project. Each skill covers a specific domain of the SE104_VLEAGUE system.
 
-## Available Skills
+## Skills Directory
 
-### 🔧 [NestJS + Prisma Development](./nestjs-prisma-development/SKILL.md)
+| #   | Skill                  | Path                                                                   | Covers                                                                   |
+| --- | ---------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 1   | **NestJS + Prisma**    | [nestjs-prisma-development/](nestjs-prisma-development/SKILL.md)       | 15 modules, 65+ endpoints, Prisma schema, guards, interceptors, patterns |
+| 2   | **React + Ant Design** | [react-antd-frontend/](react-antd-frontend/SKILL.md)                   | 25+ pages, 12 services, auth flow, i18n, shell, components               |
+| 3   | **Testing & CI/CD**    | [testing-cicd/](testing-cicd/SKILL.md)                                 | Jest (23 suites), Vitest (24 suites), E2E, GitHub Actions                |
+| 4   | **Business Rules**     | [business-rules/](business-rules/SKILL.md)                             | Regulations, scoring, state machines, RBAC matrix, constraints           |
+| 5   | **Auth & RBAC**        | [authentication-authorization/](authentication-authorization/SKILL.md) | JWT, OAuth (Google/Facebook), OTP, sessions, 5 roles                     |
+| 6   | **Database**           | [database-management/](database-management/SKILL.md)                   | 12 models, 10 enums, migrations, seeding, ERD                            |
+| 7   | **Error Handling**     | [error-handling/](error-handling/SKILL.md)                             | HttpExceptionFilter, error codes, frontend handling                      |
+| 8   | **Performance**        | [performance-monitoring/](performance-monitoring/SKILL.md)             | Pino logging, caching, rate limiting, health, Sentry                     |
+| 9   | **API Documentation**  | [api-documentation/](api-documentation/SKILL.md)                       | Swagger/OpenAPI setup, decorators, DTO docs                              |
+| 10  | **Docker Setup**       | [docker-environment-setup/](docker-environment-setup/SKILL.md)         | Docker Compose, env vars, dev workflows, ports                           |
+| 11  | **Deployment**         | [deployment/](deployment/SKILL.md)                                     | Production Docker, migrations, SSL, security                             |
 
-Guide for developing backend features using NestJS framework with Prisma ORM.
+## Quick Reference
 
-**Use this skill when**:
+### Tech Stack
 
-- Creating new API modules, controllers, or services
-- Working with Prisma schema and database models
-- Writing DTOs and implementing validation
-- Implementing business logic in services
-- Writing backend unit tests (service/controller specs)
-
-**Key topics**:
-
-- Module structure and organization
-- Controller and service patterns
-- Prisma schema conventions
-- Error handling
-- Unit testing with Jest (23 suites, 233+ tests)
-
----
-
-### 🗄️ [Database Management](./database-management/SKILL.md)
-
-Guide for managing PostgreSQL database using Prisma migrations and seeding.
-
-**Use this skill when**:
-
-- Creating or modifying database schema
-- Running migrations
-- Seeding data
-- Troubleshooting database connections
-- Managing schema evolution
-
-**Key topics**:
-
-- Prisma migration workflow
-- Schema development patterns
-- Database seeding
-- Prisma CLI commands
-- Connection troubleshooting
-
----
-
-### ⚛️ [React + Ant Design Frontend](./react-antd-frontend/SKILL.md)
-
-Guide for developing frontend features using React, TypeScript, Vite, and Ant Design.
-
-**Use this skill when**:
-
-- Creating new pages or components
-- Integrating with backend APIs
-- Using Ant Design components
-- Implementing forms and tables
-- Managing component state
-- Writing frontend tests with Vitest
-
-**Key topics**:
-
-- Component patterns and structure
-- API service layer
-- TypeScript types and interfaces
-- Ant Design component usage
-- Routing with React Router
-- Frontend testing with Vitest + @testing-library/react
-
----
-
-### 🐳 [Docker & Environment Setup](./docker-environment-setup/SKILL.md)
-
-Guide for Docker infrastructure, environment configuration, and local development setup.
-
-**Use this skill when**:
-
-- Setting up local development environment
-- Working with Docker Compose
-- Configuring environment variables
-- Troubleshooting infrastructure issues
-- Understanding port configurations
-
-**Key topics**:
-
-- Docker Compose workflows
-- Environment variable management
-- Local development setup
-- PostgreSQL in Docker
-- Common infrastructure issues
-
----
-
-### ✅ [Testing & CI/CD](./testing-cicd/SKILL.md)
-
-Guide for running tests, understanding CI pipelines, and following development workflows.
-
-**Use this skill when**:
-
-- Writing or running tests (backend Jest or frontend Vitest)
-- Understanding CI/CD pipeline
-- Following Conventional Commits
-- Troubleshooting CI failures
-- Understanding branch protection rules
-
-**Key topics**:
-
-- Jest unit and E2E testing (API — 23 suites, 233+ tests)
-- Vitest + @testing-library/react (Web — 24 suites, 143+ tests)
-- Frontend test patterns (`vi.hoisted()`, mocking, Ant Design polyfills)
-- ESLint and Prettier
-- GitHub Actions workflow
-- Conventional Commits format
-- Development workflow best practices
-
----
-
-## How to Use These Skills
-
-1. **Read the relevant skill** when starting work on a specific area
-2. **Follow the patterns** and examples provided
-3. **Reference commands** as needed during development
-4. **Check troubleshooting sections** when encountering issues
-
-## Project Quick Reference
-
-### Key Technologies
-
-- **Backend**: NestJS 11, Prisma 7, PostgreSQL, TypeScript
-- **Frontend**: React 19, Vite 7, Ant Design 6, TypeScript
-- **Infrastructure**: Docker, pnpm workspaces
-- **CI/CD**: GitHub Actions, Conventional Commits
+| Layer          | Technology                      | Version     |
+| -------------- | ------------------------------- | ----------- |
+| Backend        | NestJS + Prisma + PostgreSQL    | 11 / 7 / 16 |
+| Frontend       | React + Vite + Ant Design       | 19 / 7 / 6  |
+| Backend Tests  | Jest + ts-jest + Supertest      | —           |
+| Frontend Tests | Vitest + @testing-library/react | 4 / 16      |
+| i18n           | i18next (vi + en)               | 25          |
+| Charts         | Recharts                        | 3           |
+| Error Tracking | @sentry/react                   | 10          |
 
 ### Common Commands
 
 ```bash
 # Development
-pnpm dev                    # Start all services
-pnpm --filter api dev       # API only
-pnpm --filter web dev       # Web only
+cd apps/api && pnpm dev          # API on :8080
+cd apps/web && pnpm dev          # Web on :5173
 
 # Database
 cd apps/api
-pnpm dlx prisma migrate dev # Create migration
-pnpm dlx prisma studio      # Open database GUI
-pnpm run db:seed           # Seed database
+pnpm dlx prisma migrate dev     # Create migration
+pnpm dlx prisma generate        # Generate client
+pnpm dlx prisma studio          # GUI at :5555
+pnpm run db:seed                # Seed data
 
-# Testing & Linting
-pnpm test                  # Run all tests
-pnpm lint                  # Lint all workspaces
-pnpm format                # Format all files
-pnpm build                 # Build all workspaces
+# Testing
+cd apps/api && pnpm test         # API: 23 suites, 233+ tests
+cd apps/api && pnpm test:e2e     # E2E tests
+cd apps/web && pnpm test         # Web: 24 suites, 143 tests
 
 # Docker
-docker compose -f infra/docker-compose.db.yml up -d  # Start PostgreSQL
-docker compose up --build                             # Start all services
+docker compose -f infra/docker-compose.db.yml up -d   # PostgreSQL only
+docker compose up -d --build                            # Full stack
 ```
 
 ### Project Structure
 
 ```
 SE104_VLEAGUE/
-├── apps/
-│   ├── api/              # NestJS backend
-│   │   ├── src/          # Source code
-│   │   ├── prisma/       # Database schema & migrations
-│   │   └── test/         # E2E tests
-│   └── web/              # React frontend
-│       └── src/          # Source code
-├── docs/                 # Documentation
-├── infra/                # Docker configurations
-└── .github/              # CI/CD workflows
+├── apps/api/              # NestJS backend (15 modules, ~65 endpoints)
+│   ├── src/               # Source code (auth, match, season, standings, ...)
+│   ├── prisma/            # Schema (12 models, 10 enums), migrations, seeds
+│   └── test/              # E2E specs
+├── apps/web/              # React frontend (25+ pages, 12 services)
+│   └── src/               # Pages, services, components, auth, shell, i18n
+├── .agent/skills/         # This directory — 11 skill guides
+├── .github/               # CI workflows, copilot-instructions.md
+├── docs/                  # Architecture, API docs, guides
+├── infra/                 # Docker Compose configs
+└── scripts/               # Setup scripts (PowerShell + Bash)
 ```
 
-### Ports
+### Key URLs (Development)
 
-| Service    | Port | URL                   |
-| ---------- | ---- | --------------------- |
-| PostgreSQL | 5432 | localhost:5432        |
-| API        | 8080 | http://localhost:8080 |
-| Web        | 5173 | http://localhost:5173 |
-
-## Need Help?
-
-1. Check the relevant skill document
-2. Review `docs/` directory for additional documentation
-3. Check project README for quick start guide
-4. Review existing code for patterns and examples
+| URL                              | Purpose         |
+| -------------------------------- | --------------- |
+| `http://localhost:5173`          | Frontend (Vite) |
+| `http://localhost:8080/api`      | Backend API     |
+| `http://localhost:8080/api/docs` | Swagger UI      |
+| `http://localhost:5555`          | Prisma Studio   |
