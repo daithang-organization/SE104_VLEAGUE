@@ -178,7 +178,7 @@ export default function PlayerDetailPage() {
             <Statistic
               title={t('playerDetail.statYellowCards')}
               value={yellowCards}
-              valueStyle={{ color: '#faad14' }}
+              styles={{ content: { color: '#faad14' } }}
               prefix={<WarningOutlined />}
             />
           </Card>
@@ -188,7 +188,7 @@ export default function PlayerDetailPage() {
             <Statistic
               title={t('playerDetail.statRedCards')}
               value={redCards}
-              valueStyle={{ color: '#ff4d4f' }}
+              styles={{ content: { color: '#ff4d4f' } }}
               prefix={<WarningOutlined />}
             />
           </Card>
@@ -370,7 +370,7 @@ export default function PlayerDetailPage() {
                       <Statistic
                         title={t('playerDetail.statsGoals')}
                         value={playerStats.goals}
-                        valueStyle={{ color: '#52c41a' }}
+                        styles={{ content: { color: '#52c41a' } }}
                       />
                     </Col>
                     <Col xs={8} sm={4}>
@@ -389,14 +389,14 @@ export default function PlayerDetailPage() {
                       <Statistic
                         title={t('playerDetail.statsYellowCards')}
                         value={playerStats.yellowCards}
-                        valueStyle={{ color: '#faad14' }}
+                        styles={{ content: { color: '#faad14' } }}
                       />
                     </Col>
                     <Col xs={8} sm={4}>
                       <Statistic
                         title={t('playerDetail.statsRedCards')}
                         value={playerStats.redCards}
-                        valueStyle={{ color: '#ff4d4f' }}
+                        styles={{ content: { color: '#ff4d4f' } }}
                       />
                     </Col>
                   </Row>

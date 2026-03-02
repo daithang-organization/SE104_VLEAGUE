@@ -161,7 +161,7 @@ export default function StadiumDetailPage() {
                   : t('stadiumDetail.statCapacityEmpty')
               }
               prefix={<TeamOutlined />}
-              valueStyle={{ fontSize: stadium.capacity ? 24 : 16 }}
+              styles={{ content: { fontSize: stadium.capacity ? 24 : 16 } }}
             />
           </Card>
         </Col>

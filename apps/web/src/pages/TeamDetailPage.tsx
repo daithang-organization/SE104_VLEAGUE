@@ -228,7 +228,7 @@ export default function TeamDetailPage() {
               title={t('teamDetail.statStadium')}
               value={team.stadium?.name ?? t('teamDetail.stadiumEmpty')}
               prefix={<EnvironmentOutlined />}
-              valueStyle={{ fontSize: 16 }}
+              styles={{ content: { fontSize: 16 } }}
             />
           </Card>
         </Col>

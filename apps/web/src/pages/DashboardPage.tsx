@@ -221,7 +221,7 @@ export default function DashboardPage() {
                   title={t('dashboard.statTeams')}
                   value={stats.teams}
                   prefix={<TeamOutlined />}
-                  valueStyle={{ color: '#1890ff' }}
+                  styles={{ content: { color: '#1890ff' } }}
                 />
               </Card>
             </Col>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
                   title={t('dashboard.statPlayers')}
                   value={stats.players}
                   prefix={<UserOutlined />}
-                  valueStyle={{ color: '#52c41a' }}
+                  styles={{ content: { color: '#52c41a' } }}
                 />
               </Card>
             </Col>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
                   title={t('dashboard.statMatches')}
                   value={stats.matches}
                   prefix={<CalendarOutlined />}
-                  valueStyle={{ color: '#faad14' }}
+                  styles={{ content: { color: '#faad14' } }}
                 />
               </Card>
             </Col>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                   title={t('dashboard.statSeasons')}
                   value={stats.seasons}
                   prefix={<TrophyOutlined />}
-                  valueStyle={{ color: '#eb2f96' }}
+                  styles={{ content: { color: '#eb2f96' } }}
                 />
               </Card>
             </Col>
