@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { RequireAuth } from './auth/RequireAuth';
+import { RequireAuth, RequireRole } from './auth';
 import { ErrorBoundary, TableSkeleton } from './components';
 
 // ── Auth pages (small, loaded eagerly for fast first paint) ──
@@ -86,17 +86,52 @@ export default function App() {
             <Route path="/teams/:id" element={<TeamDetailPage />} />
             <Route path="/players" element={<PlayersPage />} />
             <Route path="/players/:id" element={<PlayerDetailPage />} />
-            <Route path="/stadiums" element={<StadiumsPage />} />
-            <Route path="/stadiums/:id" element={<StadiumDetailPage />} />
+            <Route
+              path="/stadiums"
+              element={
+                <RequireRole allow={['ADMIN']}>
+                  <StadiumsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/stadiums/:id"
+              element={
+                <RequireRole allow={['ADMIN']}>
+                  <StadiumDetailPage />
+                </RequireRole>
+              }
+            />
             <Route path="/schedule" element={<SchedulePage />} />
-            <Route path="/seasons" element={<SeasonsPage />} />
+            <Route
+              path="/seasons"
+              element={
+                <RequireRole allow={['ADMIN']}>
+                  <SeasonsPage />
+                </RequireRole>
+              }
+            />
             <Route path="/matches" element={<MatchesPage />} />
             <Route path="/matches/:id" element={<MatchDetailPage />} />
             <Route path="/standings" element={<StandingsPage />} />
             <Route path="/head-to-head" element={<HeadToHeadPage />} />
-            <Route path="/regulations" element={<RegulationsPage />} />
+            <Route
+              path="/regulations"
+              element={
+                <RequireRole allow={['ADMIN']}>
+                  <RegulationsPage />
+                </RequireRole>
+              }
+            />
             <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/users" element={<UsersPage />} />
+            <Route
+              path="/users"
+              element={
+                <RequireRole allow={['ADMIN']}>
+                  <UsersPage />
+                </RequireRole>
+              }
+            />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route path="/sessions" element={<SessionsPage />} />

@@ -146,7 +146,7 @@ export default function HeadToHeadPage() {
                   title={team1?.name ?? t('headToHead.team1Default')}
                   value={result.team1.wins}
                   suffix={t('headToHead.winsSuffix')}
-                  valueStyle={{ color: '#1890ff' }}
+                  styles={{ content: { color: '#1890ff' } }}
                 />
                 <div style={{ fontSize: 12, color: '#888' }}>
                   {result.team1.goals} {t('headToHead.goalsSuffix')}
@@ -167,7 +167,7 @@ export default function HeadToHeadPage() {
                   title={team2?.name ?? t('headToHead.team2Default')}
                   value={result.team2.wins}
                   suffix={t('headToHead.winsSuffix')}
-                  valueStyle={{ color: '#f5222d' }}
+                  styles={{ content: { color: '#f5222d' } }}
                 />
                 <div style={{ fontSize: 12, color: '#888' }}>
                   {result.team2.goals} {t('headToHead.goalsSuffix')}
