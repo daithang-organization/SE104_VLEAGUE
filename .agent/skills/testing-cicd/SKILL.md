@@ -11,7 +11,7 @@ description: Complete guide for testing patterns, test structure, CI pipeline, a
 | --------------------- | ------ | ------------------------------- |
 | API Unit + Controller | 23     | Jest + ts-jest                  |
 | API E2E               | 13     | Jest + Supertest                |
-| Web Unit + Component  | 25     | Vitest + @testing-library/react |
+| Web Unit + Component  | 30     | Vitest + @testing-library/react |
 
 ---
 
@@ -450,7 +450,7 @@ pnpm test:e2e                # E2E tests (requires DB)
 
 # Frontend
 cd apps/web
-pnpm test                    # Vitest (25 suites)
+pnpm test                    # Vitest (30 suites)
 pnpm exec vitest             # Watch mode
 pnpm exec vitest --coverage  # Coverage
 

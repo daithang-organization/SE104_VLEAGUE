@@ -453,7 +453,7 @@ AuthContextValue = AuthState & { login, logout, applyOAuthTokens }
 
 ## Testing Conventions
 
-- **10 page test suites, 13 service test suites, 2 auth test suites**
+- **15 page test suites, 13 service test suites, 2 auth test suites**
 - Page tests: `src/pages/__tests__/*.test.tsx`
 - Service tests: `src/services/__tests__/*.test.ts`
 - Auth tests: `src/auth/AuthContext.test.tsx`, `RequireAuth.test.tsx`
@@ -479,7 +479,7 @@ cd apps/web
 pnpm dev                     # Start dev server (port 5173)
 pnpm build                   # Production build
 pnpm preview                 # Preview production build
-pnpm test                    # Vitest (25 suites)
+pnpm test                    # Vitest (30 suites)
 pnpm exec vitest             # Watch mode
 pnpm lint                    # ESLint
 ```

@@ -82,8 +82,11 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 - Bảng xếp hạng real-time với caching
 - Thống kê vua phá lưới, thẻ phạt, đội bóng
+- So sánh đối đầu giữa 2 đội (Head-to-Head)
+- Thống kê cá nhân cầu thủ
 - Báo cáo tổng hợp theo mùa giải
-- Xuất dữ liệu CSV (bảng xếp hạng, vua phá lưới, thẻ phạt)
+- Xuất dữ liệu CSV/PDF (bảng xếp hạng, vua phá lưới, thẻ phạt, thống kê đội)
+- Tìm kiếm toàn cục (đội, cầu thủ, trận đấu, sân, mùa giải)
 
 ### 👤 Quản lý Người dùng (Admin)
 
@@ -96,21 +99,29 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 ### Backend
 
-| Công nghệ      | Mô tả                                   |
-| -------------- | --------------------------------------- |
-| **NestJS**     | Framework Node.js cho việc xây dựng API |
-| **Prisma**     | ORM hiện đại cho TypeScript             |
-| **PostgreSQL** | Hệ quản trị CSDL quan hệ                |
-| **TypeScript** | Ngôn ngữ lập trình typed                |
+| Công nghệ                         | Phiên bản | Mô tả                                   |
+| --------------------------------- | --------- | --------------------------------------- |
+| **NestJS**                        | 11.x      | Framework Node.js cho việc xây dựng API |
+| **Prisma** (`@prisma/adapter-pg`) | 7.x       | ORM hiện đại với driver adapter         |
+| **PostgreSQL**                    | 16        | Hệ quản trị CSDL quan hệ                |
+| **TypeScript**                    | 5.9       | Ngôn ngữ lập trình typed                |
+| **Passport** (JWT, Google, FB)    | 0.7.x     | Xác thực đa phương thức                 |
+| **nestjs-pino**                   | 4.x       | Structured logging                      |
+| **@nestjs/throttler**             | 6.x       | Rate limiting                           |
+| **@nestjs/cache-manager**         | 3.x       | In-memory caching                       |
 
 ### Frontend
 
-| Công nghệ        | Mô tả                  |
-| ---------------- | ---------------------- |
-| **React 19**     | Thư viện UI hiện đại   |
-| **Vite**         | Build tool nhanh chóng |
-| **Ant Design**   | UI Component Library   |
-| **React Router** | Routing cho SPA        |
+| Công nghệ        | Phiên bản | Mô tả                  |
+| ---------------- | --------- | ---------------------- |
+| **React**        | 19.x      | Thư viện UI hiện đại   |
+| **Vite**         | 7.x       | Build tool nhanh chóng |
+| **Ant Design**   | 6.x       | UI Component Library   |
+| **React Router** | 7.x       | Routing cho SPA        |
+| **i18next**      | 25.x      | Đa ngôn ngữ (Vi/En)    |
+| **Recharts**     | 3.x       | Biểu đồ thống kê       |
+| **Axios**        | 1.x       | HTTP Client            |
+| **Sentry**       | 10.x      | Error tracking         |
 
 ### DevOps & Tools
 
@@ -135,12 +146,13 @@ Hệ thống cung cấp các công cụ để quản lý:
 ┌─────────────────────────────────────────────────────────────────┐
 │              Frontend (React 19 + Vite + Ant Design)            │
 │                        :5173                                    │
-│  21 pages · 12 API services · Auth context + protected routes   │
+│  28 pages · 14 API services · i18n (Vi/En) · Dark mode          │
+│  Auth context + RequireAuth/RequireRole protected routes        │
 └─────────────────────────────┬───────────────────────────────────┘
                               │ HTTP/REST (Axios)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Backend (NestJS) :8080                         │
+│                   Backend (NestJS 11) :8080                      │
 │                                                                  │
 │  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
 │  │   Auth   │ │ Registration │ │ Scheduling │ │  Match   │      │
@@ -148,17 +160,21 @@ Hệ thống cung cấp các công cụ để quản lý:
 │  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
 │  │  Season  │ │   Stadium    │ │   Roster   │ │Standings │      │
 │  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
-│  ┌──────────┐ ┌──────────────┐ ┌────────────┐                   │
-│  │Regulation│ │    Users     │ │   Health   │                   │
-│  └──────────┘ └──────────────┘ └────────────┘                   │
+│  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
+│  │Regulation│ │    Users     │ │   Search   │ │  Upload  │      │
+│  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
+│  ┌──────────┐ ┌──────────────┐                                   │
+│  │  Health  │ │     Mail     │                                   │
+│  └──────────┘ └──────────────┘                                   │
 │                                                                  │
-│  Swagger docs: /api/docs · Rate limiting · Caching              │
+│  Swagger: /api/docs · Rate limiting · Caching · Pino logging    │
 └─────────────────────────────┬───────────────────────────────────┘
-                              │ Prisma ORM
+                              │ Prisma 7 ORM (@prisma/adapter-pg)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Database (PostgreSQL) :5432                         │
-│         14 tables · 9 enums · UUID primary keys                 │
+│              Database (PostgreSQL 16) :5432                      │
+│         12 models · 10 enums · UUID primary keys                │
+│         13 migrations · Indexed for performance                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -166,21 +182,23 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 ## 🧪 Test Coverage
 
-| Layer        | Framework                       | Suites | Tests | Chạy lệnh                  |
-| ------------ | ------------------------------- | ------ | ----- | -------------------------- |
-| **Backend**  | Jest + ts-jest                  | 23     | 233+  | `cd apps/api && pnpm test` |
-| **Frontend** | Vitest + @testing-library/react | 24     | 143+  | `cd apps/web && pnpm test` |
+| Layer        | Framework                       | Suites | Chạy lệnh                      |
+| ------------ | ------------------------------- | ------ | ------------------------------ |
+| **Backend**  | Jest + ts-jest                  | 23     | `cd apps/api && pnpm test`     |
+| **Frontend** | Vitest + @testing-library/react | 30     | `cd apps/web && pnpm test`     |
+| **E2E**      | Jest + Supertest                | 13     | `cd apps/api && pnpm test:e2e` |
 
-### Backend Tests
+### Backend Tests (23 suites)
 
-- **Service specs** (10 files): auth, match, scheduling, season, regulation, standings, roster, registration, stadium, users
-- **Controller specs** (11 files): auth, teams, players, season, season-team, match, scheduling, regulation, users, upload, roster
-- **E2E specs** (8+ files): scheduling, roster, users, upload, teams, matches, seasons, stadiums, standings, regulations
+- **Service specs** (10): auth, match, scheduling, season, regulation, standings, roster, registration, stadium, users
+- **Controller specs** (12): auth, teams, players, players-import(?), season, season-team, match, scheduling, regulation, users, upload, roster, standings
+- **E2E specs** (13): app, auth, scheduling, roster, users, upload, teams, matches, seasons, stadiums, standings, regulations
 
-### Frontend Tests
+### Frontend Tests (30 suites)
 
-- **API service tests** (12 files, 83 tests): tất cả các service trong `src/services/`
-- **Page component tests** (10 files, 60 tests): Dashboard, Standings, Login, Teams, Players, Matches, Seasons, Schedule, Regulations, Profile
+- **API service tests** (13): auth, team, player, stadium, season, seasonTeam, match, schedule, standings, regulation, search, user, upload
+- **Page component tests** (15): Dashboard, Standings, Login, Teams, Players, Matches, Seasons, Schedule, Regulations, Profile, Stadiums, HeadToHead, Reports, Users, Sessions
+- **Auth tests** (2): AuthContext, RequireAuth
 
 ---
 
@@ -203,10 +221,12 @@ SE104_VLEAGUE/
 │   │   │   ├── 📂 regulation/     # Quy định giải đấu
 │   │   │   ├── 📂 users/          # Quản lý người dùng (ADMIN)
 │   │   │   ├── 📂 health/         # Health check endpoint
-│   │   │   ├── 📂 common/         # Filters, guards, interceptors
+│   │   │   ├── 📂 common/         # Filters, guards, interceptors, logger
 │   │   │   ├── 📂 config/         # App configuration
 │   │   │   ├── 📂 mail/           # Email service (OTP, verification)
-│   │   │   └── 📂 prisma/         # Prisma service & middleware
+│   │   │   ├── 📂 upload/         # Image upload (Multer)
+│   │   │   ├── 📂 search/         # Global search
+│   │   │   └── 📂 prisma/         # Prisma service (driver adapter)
 │   │   └── 📂 test/               # E2E tests
 │   │
 │   └── 📂 web/                    # Frontend React
@@ -215,8 +235,8 @@ SE104_VLEAGUE/
 │           ├── 📂 shell/          # AppShell layout & menu
 │           ├── 📂 components/     # Shared components
 │           ├── 📂 lib/            # API client (Axios) & utilities
-│           ├── 📂 pages/          # 21 trang UI
-│           └── 📂 services/       # 12 API service files
+│           ├── 📂 pages/          # 28 trang UI (inc. public + detail)
+│           └── 📂 services/       # 14 API service files
 │
 ├── 📂 docs/                       # Tài liệu dự án
 ├── 📂 infra/                      # Docker configs
@@ -265,7 +285,7 @@ docker exec -it vleague_api npx prisma db seed
 
 ---
 
-## 🔑 Demo Accounts (Sprint 1)
+## 🔑 Demo Accounts
 
 Password chung cho tất cả demo users: `Demo@12345`
 
@@ -281,11 +301,12 @@ Password chung cho tất cả demo users: `Demo@12345`
 
 ```bash
 cd apps/api
-pnpm prisma migrate dev   # Áp dụng migrations
-pnpm prisma db seed       # Seed demo data (idempotent - chạy bao nhiêu lần cũng OK)
+pnpm dlx prisma migrate dev   # Áp dụng migrations
+pnpm run db:seed              # Seed demo data (idempotent)
 ```
 
 > 💡 **Note:** Seed script là idempotent - có thể chạy nhiều lần mà không tạo duplicate data.
+> Seed bao gồm: 5 demo accounts, 2 đội, 10 cầu thủ, 1 mùa giải, quy định mặc định.
 
 ---
 
@@ -367,15 +388,21 @@ pnpm dev
 ### Backend (`apps/api/.env`)
 
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vleague?schema=public"
+DATABASE_URL="postgresql://vleague:vleague@localhost:5432/vleague"
 PORT=8080
-NODE_ENV=development
+CORS_ORIGIN=http://localhost:5173
+JWT_SECRET=dev-jwt-secret
+JWT_REFRESH_SECRET=dev-refresh-secret
+JWT_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
+MAIL_SKIP_SEND=true
+FRONTEND_URL=http://localhost:5173
 ```
 
 ### Frontend (`apps/web/.env`)
 
 ```env
-VITE_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
 ---

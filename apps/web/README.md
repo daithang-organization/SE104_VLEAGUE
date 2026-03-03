@@ -43,7 +43,7 @@ apps/web/
 │
 ├── 📂 src/
 │   ├── 📄 main.tsx                # Entry point
-│   ├── 📄 App.tsx                 # Root component + Routes (27 pages)
+│   ├── 📄 App.tsx                 # Root component + Routes (28 pages)
 │   ├── 📄 App.css                 # Global styles
 │   ├── 📄 index.css               # Base CSS
 │   │
@@ -62,7 +62,7 @@ apps/web/
 │   │   ├── LoadingSkeleton.tsx    # Loading states
 │   │   └── ErrorBoundary.tsx      # Error handling
 │   │
-│   ├── 📂 pages/                  # 📄 27 Page Components
+│   ├── 📂 pages/                  # 📄 28 Page Components
 │   │   ├── LoginPage.tsx          # /login
 │   │   ├── RegisterPage.tsx       # /register
 │   │   ├── VerifyEmailPage.tsx    # /verify-email
@@ -82,6 +82,12 @@ apps/web/
 │   │   ├── ProfilePage.tsx        # /profile
 │   │   ├── ChangePasswordPage.tsx # /change-password
 │   │   ├── SessionsPage.tsx       # /sessions
+│   │   ├── HeadToHeadPage.tsx     # /head-to-head
+│   │   ├── TeamDetailPage.tsx     # /teams/:id
+│   │   ├── PlayerDetailPage.tsx   # /players/:id
+│   │   ├── StadiumDetailPage.tsx  # /stadiums/:id
+│   │   ├── MatchDetailPage.tsx    # /matches/:id
+│   │   ├── NotFoundPage.tsx       # /404
 │   │   └── ForbiddenPage.tsx      # /403
 │   │
 │   ├── 📂 services/               # 🔌 14 API Service Files
@@ -97,6 +103,7 @@ apps/web/
 │   │   ├── standingsApi.ts        # Standings + stats
 │   │   ├── regulationApi.ts       # Regulations
 │   │   ├── userApi.ts             # Admin user management
+│   │   ├── searchApi.ts           # Global search + head-to-head
 │   │   └── uploadApi.ts           # File upload
 │   │
 │   ├── 📂 lib/                    # 🔧 Utilities
@@ -143,7 +150,7 @@ cp .env.example .env
 Nội dung file `.env`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
 ### Chạy Development Server
@@ -204,6 +211,11 @@ App sử dụng **React Router v7** để quản lý routes:
 | `/profile`         | `ProfilePage`        | Hồ sơ cá nhân             |
 | `/change-password` | `ChangePasswordPage` | Đổi mật khẩu              |
 | `/sessions`        | `SessionsPage`       | Phiên đăng nhập           |
+| `/head-to-head`    | `HeadToHeadPage`     | So sánh đối đầu           |
+| `/teams/:id`       | `TeamDetailPage`     | Chi tiết đội              |
+| `/players/:id`     | `PlayerDetailPage`   | Chi tiết cầu thủ          |
+| `/stadiums/:id`    | `StadiumDetailPage`  | Chi tiết sân              |
+| `/matches/:id`     | `MatchDetailPage`    | Chi tiết trận đấu         |
 
 ---
 
