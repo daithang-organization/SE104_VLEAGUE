@@ -12,28 +12,31 @@ Swagger UI available at `/api/docs` (set up in `main.ts`).
 ```typescript
 const config = new DocumentBuilder()
   .setTitle('VLeague API')
-  .setDescription('VLeague Management System API')
+  .setDescription('V-League Football Management System API')
   .setVersion('1.0')
-  .addBearerAuth()
-  .addTag('Auth', 'Authentication & authorization')
-  .addTag('Teams', 'Team management')
-  .addTag('Players', 'Player management')
-  .addTag('Matches', 'Match management & events')
-  .addTag('Schedule', 'Match scheduling')
-  .addTag('Seasons', 'Season management')
-  .addTag('Stadiums', 'Stadium management')
-  .addTag('Roster', 'Team roster management')
-  .addTag('Regulations', 'Season regulations')
-  .addTag('Standings', 'League standings & statistics')
-  .addTag('Users', 'User management (ADMIN)')
-  .addTag('Upload', 'File upload')
-  .addTag('Search', 'Global search')
-  .addTag('Health', 'Health check')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      name: 'JWT',
+      description: 'Enter JWT access token',
+      in: 'header',
+    },
+    'access-token',
+  )
+  .addTag('Authentication', 'User authentication endpoints')
+  .addTag('Teams', 'Team management endpoints')
+  .addTag('Players', 'Player management endpoints')
+  .addTag('Matches', 'Match scheduling and management')
+  .addTag('Scheduling', 'Schedule generation and publishing')
   .build();
 
 const document = SwaggerModule.createDocument(app, config);
 SwaggerModule.setup('docs', app, document);
 ```
+
+> **NOTE**: Only 5 tags are declared in the `DocumentBuilder`. Additional tags (`Seasons`, `Stadiums`, `Roster`, `Regulations`, `Standings`, `Users`, `Upload`, `Search`, `Health`) are auto-discovered from `@ApiTags()` decorators on controllers and appear in the Swagger UI automatically.
 
 ---
 

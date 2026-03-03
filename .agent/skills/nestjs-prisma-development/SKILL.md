@@ -19,7 +19,7 @@ apps/api/
 │   ├── mail/                  # Email service (Handlebars templates, OTP, welcome)
 │   ├── match/                 # Match management & events
 │   ├── prisma/                # PrismaService (driver adapter with pg.Pool)
-│   ├── registration/          # Teams & players CRUD + CSV import
+│   ├── registration/          # Teams & players CRUD + CSV import (3 controllers)
 │   ├── regulation/            # Season-scoped key-value regulations
 │   ├── roster/                # Team-player assignments & jersey numbers
 │   ├── scheduling/            # Round-robin schedule generation
@@ -74,9 +74,10 @@ app.useGlobalInterceptors(new LoggingInterceptor()); // Perf timing + Server-Tim
 app.enableCors({ origin: CORS_ORIGIN, credentials: true });
 
 // Static assets
-app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
+app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });
 
-// Swagger at /api/docs
+// Swagger at /api/docs — 5 tags declared in DocumentBuilder
+// Additional tags auto-discovered from @ApiTags() on controllers
 SwaggerModule.setup('docs', app, document);
 ```
 
@@ -205,6 +206,8 @@ model EntityName {
 
 ### 2. RegistrationModule (`/api/teams`, `/api/players`) — 11 endpoints
 
+> **NOTE**: The CSV import endpoint is in a **separate** `PlayersImportController` (`players-import.controller.ts`), not in `PlayersController`.
+
 | Method | Endpoint          | Auth                | Description                                                            |
 | ------ | ----------------- | ------------------- | ---------------------------------------------------------------------- |
 | GET    | `/teams`          | Public              | List teams (paginated, search, filter by status)                       |
@@ -217,7 +220,7 @@ model EntityName {
 | POST   | `/players`        | ADMIN, TEAM_MANAGER | Create player (age validation via regulation)                          |
 | PATCH  | `/players/:id`    | ADMIN, TEAM_MANAGER | Update player (handles team reassignment)                              |
 | DELETE | `/players/:id`    | ADMIN, TEAM_MANAGER | Delete player                                                          |
-| POST   | `/players/import` | ADMIN               | CSV bulk import (max 2MB, per-row errors)                              |
+| POST   | `/players/import` | ADMIN               | CSV bulk import (max 2MB, per-row errors) — `PlayersImportController`  |
 
 ### 3. MatchModule (`/api/matches`) — 6 endpoints
 
@@ -283,12 +286,12 @@ model EntityName {
 | DELETE | `/seasons/:seasonId/regulations/:key`          | ADMIN  | Delete regulation          |
 | POST   | `/seasons/:seasonId/regulations/seed-defaults` | ADMIN  | Seed 9 default regulations |
 
-### 9. StandingsModule (`/api/standings`) — 11 endpoints
+### 9. StandingsModule (`/api/standings`) — 12 endpoints
 
 | Method | Endpoint                            | Auth   | Description                               |
 | ------ | ----------------------------------- | ------ | ----------------------------------------- |
 | GET    | `/standings`                        | Public | League table (cached 30s)                 |
-| GET    | `/standings/:seasonId`              | Public | Standings by season                       |
+| GET    | `/standings/:seasonId`              | Public | Standings by season (param-based)         |
 | GET    | `/standings/top-scorers`            | Public | Top scorers                               |
 | GET    | `/standings/card-stats`             | Public | Card statistics                           |
 | GET    | `/standings/team-stats`             | Public | Team aggregated stats (inc. clean sheets) |
@@ -432,7 +435,7 @@ export * from './update-team.dto';
 
 ## Testing
 
-**23 test suites, 233+ tests** covering services, controllers, and E2E.
+**23 test suites** covering services, controllers, and E2E.
 
 ### Test Pattern
 
@@ -501,7 +504,7 @@ FRONTEND_URL=http://localhost:5173
 ```bash
 cd apps/api
 pnpm dev                         # Start dev server (watch mode)
-pnpm test                        # Unit tests (23 suites, 233+ tests)
+pnpm test                        # Unit tests (23 suites)
 pnpm test:e2e                    # E2E tests
 pnpm test:cov                    # Coverage report
 pnpm dlx prisma migrate dev      # Create migration
