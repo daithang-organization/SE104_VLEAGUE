@@ -170,6 +170,11 @@ const en = {
     recentColMatch: 'Match',
     recentColDate: 'Date',
     recentEmpty: 'No match results yet',
+    topScorersTitle: 'Top Scorers (Top 5)',
+    topScorersColPlayer: 'Player',
+    topScorersColTeam: 'Team',
+    topScorersEmpty: 'No top scorer data',
+    teamFormTitle: 'Team Form',
   },
 
   // ─────────────────────────────────────────────
@@ -270,6 +275,7 @@ const en = {
     statSubstitutions: 'Substitutions',
     ownGoalSuffix: '(OG)',
     penaltySuffix: '(P)',
+    tabTimeline: 'Match Timeline',
   },
 
   scoreModal: {
