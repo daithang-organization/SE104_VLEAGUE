@@ -31,6 +31,7 @@ import {
 } from '../services/matchApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
 import EventFormModal from './match-detail/EventFormModal';
+import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
 
 const { Title, Text } = Typography;
@@ -467,6 +468,21 @@ export default function MatchDetailPage() {
                   </Card>
                 </Col>
               </Row>
+            ),
+          },
+          {
+            key: 'timeline',
+            label: `⏱ ${t('matchDetail.tabTimeline')}`,
+            children: (
+              <Card size="small">
+                <MatchTimeline
+                  events={events}
+                  homeTeamId={match.homeTeamId}
+                  homeTeamName={match.homeTeam?.name ?? '—'}
+                  awayTeamName={match.awayTeam?.name ?? '—'}
+                  onPlayerClick={(pid) => navigate(`/players/${pid}`)}
+                />
+              </Card>
             ),
           },
           {
