@@ -65,7 +65,7 @@ export default function MatchDetailPage() {
       ]);
       setHomeRoster(home.players ?? []);
       setAwayRoster(away.players ?? []);
-    } catch {
+    } catch (_err) {
       setHomeRoster([]);
       setAwayRoster([]);
     } finally {
@@ -80,7 +80,7 @@ export default function MatchDetailPage() {
       const data = await apiGetMatch(id);
       setMatch(data);
       loadRosters(data);
-    } catch {
+    } catch (_err) {
       message.error(t('matchDetail.loadError'));
     } finally {
       setLoading(false);

@@ -27,7 +27,7 @@ export default function PublicSchedulePage() {
     try {
       const res = await apiGetSchedule(selectedSeasonId);
       setMatches(res.matches ?? []);
-    } catch {
+    } catch (_err) {
       message.error('Không thể tải lịch thi đấu');
     } finally {
       setLoading(false);

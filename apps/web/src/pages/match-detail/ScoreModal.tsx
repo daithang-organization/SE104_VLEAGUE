@@ -37,7 +37,7 @@ export default function ScoreModal({ match, open, onCancel, onSuccess }: Props) 
       message.success(t('scoreModal.success'));
       onCancel();
       onSuccess();
-    } catch {
+    } catch (_err) {
       message.error(t('scoreModal.error'));
     } finally {
       setSaving(false);

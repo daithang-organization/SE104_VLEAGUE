@@ -42,7 +42,7 @@ export default function TeamDetailPage() {
       try {
         const data = await apiGetTeam(id);
         if (!cancelled) setTeam(data);
-      } catch {
+      } catch (_err) {
         if (!cancelled) message.error(t('teamDetail.loadError'));
       } finally {
         if (!cancelled) setLoading(false);

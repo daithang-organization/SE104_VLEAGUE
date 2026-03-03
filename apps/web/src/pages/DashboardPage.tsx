@@ -130,7 +130,7 @@ export default function DashboardPage() {
         if (scorersData.status === 'fulfilled') {
           setTopScorers(scorersData.value.slice(0, 5));
         }
-      } catch {
+      } catch (_err) {
         message.error(t('dashboard.errorLoad'));
       } finally {
         setLoading(false);

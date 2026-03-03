@@ -62,7 +62,7 @@ export default function TeamsPage() {
     try {
       const res = await apiGetTeams();
       setTeams(res.data);
-    } catch {
+    } catch (_err) {
       message.error(t('teams.loadError'));
     } finally {
       setLoading(false);
@@ -73,7 +73,7 @@ export default function TeamsPage() {
     try {
       const data = await apiGetStadiums();
       setStadiums(data);
-    } catch {
+    } catch (_err) {
       // Stadiums may fail to load, that's ok
     }
   }, []);
@@ -141,7 +141,7 @@ export default function TeamsPage() {
       await apiDeleteTeam(id);
       message.success(t('teams.deleteSuccess'));
       fetchTeams();
-    } catch {
+    } catch (_err) {
       message.error(t('teams.deleteError'));
     }
   };

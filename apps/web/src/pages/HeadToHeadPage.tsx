@@ -49,7 +49,7 @@ export default function HeadToHeadPage() {
     try {
       const data = await apiGetHeadToHead(team1Id, team2Id, seasonId);
       setResult(data);
-    } catch {
+    } catch (_err) {
       setResult(null);
     }
     setLoading(false);
