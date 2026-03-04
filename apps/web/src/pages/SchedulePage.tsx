@@ -85,7 +85,7 @@ export default function SchedulePage() {
     try {
       const data = await apiGetSchedule(selectedSeasonId);
       setMatches(data.matches ?? []);
-    } catch {
+    } catch (_err) {
       message.error(t('schedule.loadError'));
     } finally {
       setLoading(false);
@@ -130,7 +130,7 @@ export default function SchedulePage() {
       const result = await apiPublishSchedule(selectedSeasonId);
       message.success(result.message || t('schedule.publishSuccess'));
       fetchSchedule();
-    } catch {
+    } catch (_err) {
       message.error(t('schedule.publishError'));
     } finally {
       setPublishing(false);
@@ -159,7 +159,7 @@ export default function SchedulePage() {
       message.success(t('schedule.matchUpdateSuccess'));
       setEditModalOpen(false);
       fetchSchedule();
-    } catch {
+    } catch (_err) {
       message.error(t('schedule.matchUpdateError'));
     } finally {
       setSaving(false);

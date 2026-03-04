@@ -7,11 +7,11 @@ description: Complete guide for testing patterns, test structure, CI pipeline, a
 
 ## Test Coverage Summary
 
-| Area                  | Suites | Tests | Framework                       |
-| --------------------- | ------ | ----- | ------------------------------- |
-| API Unit + Controller | 23     | 233+  | Jest + ts-jest                  |
-| API E2E               | 13     | —     | Jest + Supertest                |
-| Web Unit + Component  | 24     | 143   | Vitest + @testing-library/react |
+| Area                  | Suites | Framework                       |
+| --------------------- | ------ | ------------------------------- |
+| API Unit + Controller | 23     | Jest + ts-jest                  |
+| API E2E               | 13     | Jest + Supertest                |
+| Web Unit + Component  | 30     | Vitest + @testing-library/react |
 
 ---
 
@@ -42,9 +42,11 @@ apps/api/src/
 ├── stadium/
 │   └── stadium.service.spec.ts
 ├── standings/
-│   └── standings.service.spec.ts
+│   ├── standings.service.spec.ts
+│   └── standings.controller.spec.ts
 ├── roster/
-│   └── roster.service.spec.ts
+│   ├── roster.service.spec.ts
+│   └── roster.controller.spec.ts
 ├── regulation/
 │   ├── regulation.service.spec.ts
 │   └── regulation.controller.spec.ts  # 6 tests
@@ -219,24 +221,13 @@ apps/web/src/
 │   ├── DashboardPage.test.tsx
 │   ├── TeamsPage.test.tsx
 │   ├── PlayersPage.test.tsx
-│   ├── StadiumsPage.test.tsx
 │   ├── SeasonsPage.test.tsx
 │   ├── MatchesPage.test.tsx
 │   ├── SchedulePage.test.tsx
 │   ├── StandingsPage.test.tsx
-│   ├── HeadToHeadPage.test.tsx
 │   ├── RegulationsPage.test.tsx
-│   ├── ReportsPage.test.tsx
-│   ├── UsersPage.test.tsx
 │   ├── ProfilePage.test.tsx
-│   ├── ChangePasswordPage.test.tsx
-│   ├── SessionsPage.test.tsx
-│   ├── LoginPage.test.tsx
-│   ├── RegisterPage.test.tsx
-│   ├── VerifyEmailPage.test.tsx
-│   ├── ForgotPasswordPage.test.tsx
-│   ├── ResetPasswordPage.test.tsx
-│   └── MatchDetailPage.test.tsx
+│   └── LoginPage.test.tsx
 └── services/__tests__/
     ├── authApi.test.ts
     ├── teamApi.test.ts
@@ -452,14 +443,14 @@ refactor(module): code restructuring
 ```bash
 # Backend
 cd apps/api
-pnpm test                    # Unit tests (23 suites, 233+ tests)
+pnpm test                    # Unit tests (23 suites)
 pnpm test:watch              # Watch mode
 pnpm test:cov                # Coverage report
 pnpm test:e2e                # E2E tests (requires DB)
 
 # Frontend
 cd apps/web
-pnpm test                    # Vitest (24 suites, 143 tests)
+pnpm test                    # Vitest (30 suites)
 pnpm exec vitest             # Watch mode
 pnpm exec vitest --coverage  # Coverage
 

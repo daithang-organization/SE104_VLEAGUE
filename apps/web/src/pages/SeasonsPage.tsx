@@ -91,7 +91,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       ]);
       setTeams(seasonTeams);
       setAllTeams(teamRes.data);
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.teamPanelLoadError'));
     } finally {
       setLoading(false);
@@ -115,7 +115,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       message.success(t('seasons.teamPanelRegSuccess'));
       setSelectedTeamId(undefined);
       fetchTeams();
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.teamPanelRegError'));
     } finally {
       setAdding(false);
@@ -127,7 +127,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       await apiUpdateSeasonTeamStatus(seasonId, teamId, status);
       message.success(t('seasons.teamPanelStatusSuccess'));
       fetchTeams();
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.teamPanelStatusError'));
     }
   };
@@ -137,7 +137,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       await apiRemoveSeasonTeam(seasonId, teamId);
       message.success(t('seasons.teamPanelRemoveSuccess'));
       fetchTeams();
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.teamPanelRemoveError'));
     }
   };
@@ -290,7 +290,7 @@ export default function SeasonsPage() {
     try {
       const data = await apiGetSeasons();
       setSeasons(data);
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.loadError'));
     } finally {
       setLoading(false);
@@ -354,7 +354,7 @@ export default function SeasonsPage() {
 
       setModalOpen(false);
       fetchSeasons();
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.saveError'));
     } finally {
       setSaving(false);
@@ -366,7 +366,7 @@ export default function SeasonsPage() {
       await apiDeleteSeason(id);
       message.success(t('seasons.deleteSuccess'));
       fetchSeasons();
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.deleteError'));
     }
   };
@@ -376,7 +376,7 @@ export default function SeasonsPage() {
       await apiUpdateSeasonStatus(id, status);
       message.success(t('seasons.statusUpdateSuccess'));
       fetchSeasons();
-    } catch {
+    } catch (_err) {
       message.error(t('seasons.statusUpdateError'));
     }
   };

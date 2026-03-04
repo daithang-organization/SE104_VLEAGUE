@@ -100,7 +100,7 @@ export default function PlayerDetailPage() {
       try {
         const res = await api.get<PlayerDetail>(`/players/${id}`);
         if (!cancelled) setPlayer(res.data);
-      } catch {
+      } catch (_err) {
         if (!cancelled) message.error(t('playerDetail.loadError'));
       } finally {
         if (!cancelled) setLoading(false);

@@ -28,7 +28,7 @@ export default function PublicResultsPage() {
       const res = await apiGetMatches(selectedSeasonId, 1, 200);
       // Only show finished matches
       setMatches(res.data.filter((m) => m.status === 'FINISHED'));
-    } catch {
+    } catch (_err) {
       message.error('Không thể tải kết quả');
     } finally {
       setLoading(false);

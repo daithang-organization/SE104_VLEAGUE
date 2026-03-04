@@ -31,7 +31,12 @@ import { apiGetMatches } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule, type ScheduleMatch } from '../services/scheduleApi';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
-import { apiGetStandings, type TeamStanding } from '../services/standingsApi';
+import {
+  apiGetStandings,
+  apiGetTopScorers,
+  type TeamStanding,
+  type TopScorer,
+} from '../services/standingsApi';
 import { apiGetTeams } from '../services/teamApi';
 
 type RecentResult = {
@@ -59,22 +64,32 @@ export default function DashboardPage() {
   const [upcoming, setUpcoming] = useState<ScheduleMatch[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
+  const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [teams, players, schedule, seasons, standingsData, matchesData, curSeason] =
-          await Promise.allSettled([
-            apiGetTeams(),
-            apiGetPlayers(),
-            apiGetSchedule(),
-            apiGetSeasons(),
-            apiGetStandings(),
-            apiGetMatches(undefined, 1, 100),
-            apiGetCurrentSeason(),
-          ]);
+        const [
+          teams,
+          players,
+          schedule,
+          seasons,
+          standingsData,
+          matchesData,
+          curSeason,
+          scorersData,
+        ] = await Promise.allSettled([
+          apiGetTeams(),
+          apiGetPlayers(),
+          apiGetSchedule(),
+          apiGetSeasons(),
+          apiGetStandings(),
+          apiGetMatches(undefined, 1, 100),
+          apiGetCurrentSeason(),
+          apiGetTopScorers(undefined, 5),
+        ]);
 
         setStats({
           teams: teams.status === 'fulfilled' ? teams.value.total : 0,
@@ -111,7 +126,11 @@ export default function DashboardPage() {
         if (curSeason.status === 'fulfilled') {
           setCurrentSeason(curSeason.value);
         }
-      } catch {
+
+        if (scorersData.status === 'fulfilled') {
+          setTopScorers(scorersData.value.slice(0, 5));
+        }
+      } catch (_err) {
         message.error(t('dashboard.errorLoad'));
       } finally {
         setLoading(false);
@@ -351,9 +370,9 @@ export default function DashboardPage() {
             </Col>
           </Row>
 
-          {/* Recent results */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24}>
+          {/* Recent results + Top scorers */}
+          <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+            <Col xs={24} md={14}>
               <Card title={t('dashboard.recentTitle')} size="small">
                 <Table
                   columns={recentCols}
@@ -366,7 +385,129 @@ export default function DashboardPage() {
                 />
               </Card>
             </Col>
+            <Col xs={24} md={10}>
+              <Card title={`🏅 ${t('dashboard.topScorersTitle')}`} size="small">
+                <Table
+                  dataSource={topScorers}
+                  rowKey="playerId"
+                  loading={loading}
+                  pagination={false}
+                  size="small"
+                  locale={{ emptyText: t('dashboard.topScorersEmpty') }}
+                  columns={[
+                    { title: '#', dataIndex: 'position', width: 40 },
+                    {
+                      title: t('dashboard.topScorersColPlayer'),
+                      dataIndex: 'playerName',
+                      ellipsis: true,
+                    },
+                    {
+                      title: t('dashboard.topScorersColTeam'),
+                      dataIndex: 'teamName',
+                      width: 120,
+                      ellipsis: true,
+                    },
+                    {
+                      title: '⚽',
+                      dataIndex: 'goals',
+                      width: 50,
+                      align: 'center',
+                      render: (v: number) => <strong style={{ color: '#1890ff' }}>{v}</strong>,
+                    },
+                  ]}
+                />
+              </Card>
+            </Col>
           </Row>
+
+          {/* Team Form (last 5 matches) */}
+          {standings.length > 0 && recentResults.length > 0 && (
+            <Row gutter={[16, 16]}>
+              <Col xs={24}>
+                <Card title={`📊 ${t('dashboard.teamFormTitle')}`} size="small">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    {standings.map((team) => {
+                      // Derive form from recent results for this team
+                      const teamResults = recentResults
+                        .filter(
+                          (r) =>
+                            r.homeTeam.name === team.teamName || r.awayTeam.name === team.teamName,
+                        )
+                        .slice(0, 5)
+                        .map((r) => {
+                          const isHome = r.homeTeam.name === team.teamName;
+                          const ownScore = isHome ? r.homeScore : r.awayScore;
+                          const oppScore = isHome ? r.awayScore : r.homeScore;
+                          if (ownScore == null || oppScore == null) return 'D';
+                          if (ownScore > oppScore) return 'W';
+                          if (ownScore < oppScore) return 'L';
+                          return 'D';
+                        });
+                      if (teamResults.length === 0) return null;
+                      return (
+                        <div
+                          key={team.teamId}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '6px 12px',
+                            borderRadius: 8,
+                            background: 'var(--ant-color-fill-quaternary, #fafafa)',
+                            minWidth: 200,
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, minWidth: 100, fontSize: 13 }}>
+                            {team.teamName}
+                          </span>
+                          <Space size={4}>
+                            {teamResults.map((result, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: '50%',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: '#fff',
+                                  background:
+                                    result === 'W'
+                                      ? '#52c41a'
+                                      : result === 'L'
+                                        ? '#ff4d4f'
+                                        : '#8c8c8c',
+                                }}
+                              >
+                                {result}
+                              </span>
+                            ))}
+                          </Space>
+                          <Tag
+                            color={
+                              teamResults.filter((r) => r === 'W').length >= 3
+                                ? 'green'
+                                : teamResults.filter((r) => r === 'L').length >= 3
+                                  ? 'red'
+                                  : 'default'
+                            }
+                            style={{ marginLeft: 'auto', fontSize: 11 }}
+                          >
+                            {teamResults.filter((r) => r === 'W').length}W{' '}
+                            {teamResults.filter((r) => r === 'D').length}D{' '}
+                            {teamResults.filter((r) => r === 'L').length}L
+                          </Tag>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          )}
         </>
       )}
     </div>

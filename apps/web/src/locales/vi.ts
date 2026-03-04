@@ -193,6 +193,11 @@ const vi = {
     recentColMatch: 'Trận đấu',
     recentColDate: 'Ngày',
     recentEmpty: 'Chưa có kết quả trận đấu',
+    topScorersTitle: 'Vua phá lưới (Top 5)',
+    topScorersColPlayer: 'Cầu thủ',
+    topScorersColTeam: 'Đội',
+    topScorersEmpty: 'Chưa có dữ liệu vua phá lưới',
+    teamFormTitle: 'Phong độ đội bóng',
   },
 
   // ─────────────────────────────────────────────
@@ -294,6 +299,7 @@ const vi = {
     // OWN_GOAL suffix in scorer display
     ownGoalSuffix: '(PL)',
     penaltySuffix: '(P)',
+    tabTimeline: 'Diễn biến trận đấu',
   },
 
   // ─────────────────────────────────────────────

@@ -12,14 +12,24 @@ Swagger UI available at `/api/docs` (set up in `main.ts`).
 ```typescript
 const config = new DocumentBuilder()
   .setTitle('VLeague API')
-  .setDescription('VLeague Management System API')
+  .setDescription('V-League Football Management System API')
   .setVersion('1.0')
-  .addBearerAuth()
-  .addTag('Auth', 'Authentication & authorization')
-  .addTag('Teams', 'Team management')
-  .addTag('Players', 'Player management')
-  .addTag('Matches', 'Match management & events')
-  .addTag('Schedule', 'Match scheduling')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      name: 'JWT',
+      description: 'Enter JWT access token',
+      in: 'header',
+    },
+    'access-token',
+  )
+  .addTag('Authentication', 'User authentication endpoints')
+  .addTag('Teams', 'Team management endpoints')
+  .addTag('Players', 'Player management endpoints')
+  .addTag('Matches', 'Match scheduling and management')
+  .addTag('Scheduling', 'Schedule generation and publishing')
   .addTag('Seasons', 'Season management')
   .addTag('Stadiums', 'Stadium management')
   .addTag('Roster', 'Team roster management')

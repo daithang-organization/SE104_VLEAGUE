@@ -62,7 +62,7 @@ export default function UsersPage() {
     try {
       const data = await apiGetUsers();
       setUsers(data);
-    } catch {
+    } catch (_err) {
       message.error(t('users.loadError'));
     } finally {
       setLoading(false);
@@ -107,7 +107,7 @@ export default function UsersPage() {
       message.success(t('users.roleUpdateSuccess'));
       setEditOpen(false);
       fetchUsers();
-    } catch {
+    } catch (_err) {
       message.error(t('users.roleUpdateError'));
     } finally {
       setUpdating(false);
@@ -120,7 +120,7 @@ export default function UsersPage() {
       await apiDeleteUser(id);
       message.success(t('users.deleteSuccess'));
       fetchUsers();
-    } catch {
+    } catch (_err) {
       message.error(t('users.deleteError'));
     }
   };

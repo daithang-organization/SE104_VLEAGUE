@@ -40,7 +40,7 @@
 ```
 apps/api/
 ├── 📂 prisma/                     # Database Schema & Migrations
-│   ├── 📄 schema.prisma           # Prisma schema (14 models, 8 enums)
+│   ├── 📄 schema.prisma           # Prisma schema (12 models, 10 enums)
 │   ├── 📄 seed.ts                 # Database seeding script
 │   └── 📂 migrations/             # Migration history (13 migrations)
 │
@@ -54,11 +54,12 @@ apps/api/
 │   ├── 📂 match/                  # ⚽ Matches (5 endpoints)
 │   ├── 📂 season/                 # 📆 Seasons + Season Teams (11 endpoints)
 │   ├── 📂 stadium/                # 🏟️ Stadiums (5 endpoints)
-│   ├── 📂 standings/              # 📊 Standings (5 endpoints)
+│   ├── 📂 standings/              # 📊 Standings (12 endpoints)
 │   ├── 📂 roster/                 # 📋 Roster (4 endpoints)
 │   ├── 📂 regulation/             # ⚙️ Regulations (5 endpoints)
 │   ├── 📂 users/                  # 👤 User Admin (4 endpoints)
 │   ├── 📂 upload/                 # 📤 File Upload (1 endpoint)
+│   ├── 📂 search/                 # 🔍 Global Search (1 endpoint)
 │   ├── 📂 health/                 # 💚 Health Check (1 endpoint)
 │   ├── 📂 prisma/                 # 🗄️ Prisma ORM Service
 │   ├── 📂 mail/                   # 📧 Email Service (Handlebars templates)
@@ -105,11 +106,21 @@ Nội dung file `.env`:
 
 ```env
 # Database
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vleague?schema=public"
+DATABASE_URL="postgresql://vleague:vleague@localhost:5432/vleague"
 
 # Server
 PORT=8080
-NODE_ENV=development
+CORS_ORIGIN=http://localhost:5173
+
+# JWT
+JWT_SECRET=dev-jwt-secret
+JWT_REFRESH_SECRET=dev-refresh-secret
+JWT_EXPIRATION=15m
+JWT_REFRESH_EXPIRATION=7d
+
+# Mail (skip in dev)
+MAIL_SKIP_SEND=true
+FRONTEND_URL=http://localhost:5173
 ```
 
 ### 📧 Cấu hình Email (Mailtrap)
@@ -421,13 +432,19 @@ POST /matches/:id/events         → Thêm sự kiện (ADMIN/REF)
 PATCH /matches/:id/status        → Đổi trạng thái
 ```
 
-### Standings (5 endpoints)
+### Standings (12 endpoints)
 
 ```
 GET  /standings                  → Bảng xếp hạng
+GET  /standings/:seasonId        → BXH theo mùa giải
 GET  /standings/top-scorers      → Vua phá lưới
 GET  /standings/card-stats       → Thống kê thẻ
 GET  /standings/team-stats       → Thống kê đội
+GET  /standings/head-to-head     → Đối đầu 2 đội
+GET  /standings/csv/standings    → Export BXH CSV
+GET  /standings/csv/top-scorers  → Export vua phá lưới CSV
+GET  /standings/csv/card-stats   → Export thẻ CSV
+GET  /standings/csv/team-stats   → Export thống kê CSV
 ```
 
 ### Roster (4 endpoints)

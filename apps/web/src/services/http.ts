@@ -29,7 +29,7 @@ async function parseErrorResponse(res: Response): Promise<ApiError> {
       message: data.message || `HTTP Error ${res.status}`,
       statusCode: res.status,
     };
-  } catch {
+  } catch (_err) {
     return {
       code: `HTTP_${res.status}`,
       message: res.statusText || `HTTP Error ${res.status}`,

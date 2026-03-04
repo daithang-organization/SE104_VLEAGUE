@@ -71,7 +71,7 @@ export default function ReportsPage() {
         ['#', 'Cau thu', 'Doi', 'Ban thang'],
         scorers.map((s) => [String(s.position), s.playerName, s.teamName, String(s.goals)]),
       );
-    } catch {
+    } catch (_err) {
       message.error(t('reports.exportError'));
     }
   };
@@ -93,7 +93,7 @@ export default function ReportsPage() {
           String(s.points),
         ]),
       );
-    } catch {
+    } catch (_err) {
       message.error(t('reports.exportError'));
     }
   };

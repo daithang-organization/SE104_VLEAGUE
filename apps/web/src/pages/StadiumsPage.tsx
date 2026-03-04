@@ -48,7 +48,7 @@ export default function StadiumsPage() {
     try {
       const data = await apiGetStadiums();
       setStadiums(data);
-    } catch {
+    } catch (_err) {
       message.error(t('stadiums.loadError'));
     } finally {
       setLoading(false);
@@ -112,7 +112,7 @@ export default function StadiumsPage() {
       await apiDeleteStadium(id);
       message.success(t('stadiums.deleteSuccess'));
       fetchStadiums();
-    } catch {
+    } catch (_err) {
       message.error(t('stadiums.deleteError'));
     }
   };

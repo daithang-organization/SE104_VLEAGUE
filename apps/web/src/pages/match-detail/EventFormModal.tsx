@@ -87,7 +87,7 @@ export default function EventFormModal({
           };
           await apiAddMatchEvent(match.id, payload);
           successCount++;
-        } catch {
+        } catch (_err) {
           message.error(t('eventFormModal.eventError', { minute: evt.minute }));
         }
       }

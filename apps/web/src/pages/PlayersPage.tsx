@@ -79,7 +79,7 @@ export default function PlayersPage() {
       const res = await apiGetPlayers(page, limit);
       setPlayers(res.data);
       setPagination({ page: res.page, limit: res.limit, total: res.total });
-    } catch {
+    } catch (_err) {
       message.error(t('players.loadError'));
     } finally {
       setLoading(false);
@@ -156,7 +156,7 @@ export default function PlayersPage() {
       await apiDeletePlayer(id);
       message.success(t('players.deleteSuccess'));
       fetchPlayers();
-    } catch {
+    } catch (_err) {
       message.error(t('players.deleteError'));
     }
   };

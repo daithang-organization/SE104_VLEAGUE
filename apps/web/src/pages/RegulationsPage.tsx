@@ -85,7 +85,7 @@ export default function RegulationsPage() {
     try {
       const data = await apiGetRegulations(selectedSeason);
       setRegulations(data);
-    } catch {
+    } catch (_err) {
       message.error(t('regulations.loadRegError'));
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ export default function RegulationsPage() {
       message.success(editingReg ? t('regulations.updateSuccess') : t('regulations.createSuccess'));
       setModalOpen(false);
       loadRegulations();
-    } catch {
+    } catch (_err) {
       // validation errors handled by form
     }
   }
@@ -130,7 +130,7 @@ export default function RegulationsPage() {
       await apiDeleteRegulation(selectedSeason, key);
       message.success(t('regulations.deleteSuccess'));
       loadRegulations();
-    } catch {
+    } catch (_err) {
       message.error(t('regulations.deleteError'));
     }
   }
@@ -140,7 +140,7 @@ export default function RegulationsPage() {
       await apiSeedDefaultRegulations(selectedSeason);
       message.success(t('regulations.seedSuccess'));
       loadRegulations();
-    } catch {
+    } catch (_err) {
       message.error(t('regulations.seedError'));
     }
   }

@@ -40,7 +40,7 @@ export default function StandingsPage() {
       ]);
       setStandings(standingsData);
       setTopScorers(scorersData);
-    } catch {
+    } catch (_err) {
       message.error(t('standings.loadError'));
     } finally {
       setLoading(false);

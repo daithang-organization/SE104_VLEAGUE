@@ -73,7 +73,7 @@ export default function AppShell() {
             result: r,
           })),
         );
-      } catch {
+      } catch (_err) {
         /* silent */
       }
       setSearchLoading(false);

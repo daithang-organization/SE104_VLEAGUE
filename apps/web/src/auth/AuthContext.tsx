@@ -6,11 +6,13 @@ import type { AuthContextValue, User } from './auth.types';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Decode JWT payload to extract user info
-function decodeJwtPayload(token: string): { sub: string; email: string; role: string; name?: string } | null {
+function decodeJwtPayload(
+  token: string,
+): { sub: string; email: string; role: string; name?: string } | null {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return payload;
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -101,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           applySession(null, null, null);
         }
-      } catch {
+      } catch (_err) {
         applySession(null, null, null);
       } finally {
         setIsInitialized(true);

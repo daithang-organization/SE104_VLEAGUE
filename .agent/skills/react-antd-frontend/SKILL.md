@@ -46,7 +46,7 @@ apps/web/src/
 │   ├── AppShell.tsx       # Protected layout (Sider + Header + Content)
 │   ├── PublicLayout.tsx   # Public layout (gradient header + footer)
 │   ├── ThemeContext.tsx    # Dark/light mode context
-│   └── menu.ts            # Role-based menu items (13 items)
+│   └── menu.ts            # Role-based menu items (12 items)
 └── utils/
     └── constants.ts       # STATUS_MAP, EVENT_TYPE_MAP, POSITION_MAP, CAN_EDIT_ROLES
 ```
@@ -78,27 +78,27 @@ apps/web/src/
 
 ### Protected (`RequireAuth` + `AppShell`)
 
-| Route              | Component            | Roles | Description                                                               |
-| ------------------ | -------------------- | ----- | ------------------------------------------------------------------------- |
-| `/`                | `DashboardPage`      | All   | Stats cards, mini standings, upcoming/recent matches, season progress     |
-| `/teams`           | `TeamsPage`          | All   | CRUD team list with search, logo, stadium link                            |
-| `/teams/:id`       | `TeamDetailPage`     | All   | Team info, roster, match history, standings                               |
-| `/players`         | `PlayersPage`        | All   | CRUD player list, pagination, filters, CSV import                         |
-| `/players/:id`     | `PlayerDetailPage`   | All   | Bio, stats (goals/cards), event timeline, goals-by-round chart            |
-| `/stadiums`        | `StadiumsPage`       | ADMIN | CRUD stadium list                                                         |
-| `/stadiums/:id`    | `StadiumDetailPage`  | ADMIN | Stadium info, home teams, match history                                   |
-| `/schedule`        | `SchedulePage`       | All   | Generate/publish schedule, edit match details, grouped by round           |
-| `/seasons`         | `SeasonsPage`        | ADMIN | CRUD seasons, team registration panel                                     |
-| `/matches`         | `MatchesPage`        | All   | Match list by round, detail modal, score edit, events, status transitions |
-| `/matches/:id`     | `MatchDetailPage`    | All   | Scoreboard, events timeline, roster tabs, stat cards                      |
-| `/standings`       | `StandingsPage`      | All   | Full standings with AFC CL/relegation highlights, top scorers, CSV export |
-| `/head-to-head`    | `HeadToHeadPage`     | All   | Compare two teams — wins/draws/goals + match history                      |
-| `/regulations`     | `RegulationsPage`    | ADMIN | CRUD regulations per season, seed defaults                                |
-| `/reports`         | `ReportsPage`        | All   | Tabs: Top Scorers, Card Stats, Team Stats, Charts — PDF/CSV export        |
-| `/users`           | `UsersPage`          | ADMIN | User management (create/role/delete)                                      |
-| `/profile`         | `ProfilePage`        | All   | View/edit profile, logout all                                             |
-| `/change-password` | `ChangePasswordPage` | All   | Change password form                                                      |
-| `/sessions`        | `SessionsPage`       | All   | Active sessions, revoke individual/all                                    |
+| Route              | Component            | Roles         | Description                                                               |
+| ------------------ | -------------------- | ------------- | ------------------------------------------------------------------------- |
+| `/`                | `DashboardPage`      | All           | Stats cards, mini standings, upcoming/recent matches, season progress     |
+| `/teams`           | `TeamsPage`          | All           | CRUD team list with search, logo, stadium link                            |
+| `/teams/:id`       | `TeamDetailPage`     | All           | Team info, roster, match history, standings                               |
+| `/players`         | `PlayersPage`        | All           | CRUD player list, pagination, filters, CSV import                         |
+| `/players/:id`     | `PlayerDetailPage`   | All           | Bio, stats (goals/cards), event timeline, goals-by-round chart            |
+| `/stadiums`        | `StadiumsPage`       | ADMIN (guard) | CRUD stadium list — wrapped in `RequireRole`                              |
+| `/stadiums/:id`    | `StadiumDetailPage`  | ADMIN (guard) | Stadium info, home teams, match history — wrapped in `RequireRole`        |
+| `/schedule`        | `SchedulePage`       | All           | Generate/publish schedule, edit match details, grouped by round           |
+| `/seasons`         | `SeasonsPage`        | ADMIN (guard) | CRUD seasons, team registration panel — wrapped in `RequireRole`          |
+| `/matches`         | `MatchesPage`        | All           | Match list by round, detail modal, score edit, events, status transitions |
+| `/matches/:id`     | `MatchDetailPage`    | All           | Scoreboard, events timeline, roster tabs, stat cards                      |
+| `/standings`       | `StandingsPage`      | All           | Full standings with AFC CL/relegation highlights, top scorers, CSV export |
+| `/head-to-head`    | `HeadToHeadPage`     | All           | Compare two teams — wins/draws/goals + match history                      |
+| `/regulations`     | `RegulationsPage`    | ADMIN (guard) | CRUD regulations per season, seed defaults — wrapped in `RequireRole`     |
+| `/reports`         | `ReportsPage`        | All           | Tabs: Top Scorers, Card Stats, Team Stats, Charts — PDF/CSV export        |
+| `/users`           | `UsersPage`          | ADMIN (guard) | User management (create/role/delete) — wrapped in `RequireRole`           |
+| `/profile`         | `ProfilePage`        | All           | View/edit profile, logout all                                             |
+| `/change-password` | `ChangePasswordPage` | All           | Change password form                                                      |
+| `/sessions`        | `SessionsPage`       | All           | Active sessions, revoke individual/all                                    |
 
 ---
 
@@ -260,10 +260,10 @@ apps/web/src/
 
 ### Page Sub-Components
 
-| Location              | Components                                                   |
-| --------------------- | ------------------------------------------------------------ |
-| `pages/reports/`      | `TopScorersTab`, `CardStatsTab`, `TeamStatsTab`, `ChartsTab` |
-| `pages/match-detail/` | `EventFormModal`, `ScoreModal`                               |
+| Location              | Components                                                                       |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `pages/reports/`      | `TopScorersTab`, `CardStatsTab`, `TeamStatsTab`, `ChartsTab`                     |
+| `pages/match-detail/` | `EventFormModal`, `ScoreModal`, `constants.ts` (match-detail specific constants) |
 
 ---
 
@@ -327,7 +327,7 @@ AuthContextValue = AuthState & { login, logout, applyOAuthTokens }
 - Persisted to `localStorage` key `vleague-theme`
 - Returns `theme.darkAlgorithm` or `theme.defaultAlgorithm` for Ant Design
 
-### Menu (`shell/menu.ts`) — 13 items
+### Menu (`shell/menu.ts`) — 12 items
 
 | Menu Item                                   | Roles                                            |
 | ------------------------------------------- | ------------------------------------------------ |
@@ -453,7 +453,7 @@ AuthContextValue = AuthState & { login, logout, applyOAuthTokens }
 
 ## Testing Conventions
 
-- **24 test suites, 143 tests**
+- **15 page test suites, 13 service test suites, 2 auth test suites**
 - Page tests: `src/pages/__tests__/*.test.tsx`
 - Service tests: `src/services/__tests__/*.test.ts`
 - Auth tests: `src/auth/AuthContext.test.tsx`, `RequireAuth.test.tsx`
@@ -479,7 +479,7 @@ cd apps/web
 pnpm dev                     # Start dev server (port 5173)
 pnpm build                   # Production build
 pnpm preview                 # Preview production build
-pnpm test                    # Vitest (24 suites, 143 tests)
+pnpm test                    # Vitest (30 suites)
 pnpm exec vitest             # Watch mode
 pnpm lint                    # ESLint
 ```

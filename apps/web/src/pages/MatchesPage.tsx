@@ -81,7 +81,7 @@ export default function MatchesPage() {
     try {
       const res = await apiGetMatches(selectedSeasonId, 1, 200);
       setMatches(res.data);
-    } catch {
+    } catch (_err) {
       message.error(t('matches.loadError'));
     } finally {
       setLoading(false);
@@ -144,7 +144,7 @@ export default function MatchesPage() {
       ]);
       setHomeRoster(home.players ?? []);
       setAwayRoster(away.players ?? []);
-    } catch {
+    } catch (_err) {
       setHomeRoster([]);
       setAwayRoster([]);
     } finally {
@@ -158,7 +158,7 @@ export default function MatchesPage() {
       const data = await apiGetMatch(matchId);
       setDetailMatch(data);
       loadRosters(data);
-    } catch {
+    } catch (_err) {
       message.error(t('matches.detailError'));
     } finally {
       setDetailLoading(false);
@@ -175,7 +175,7 @@ export default function MatchesPage() {
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
       fetchMatches();
-    } catch {
+    } catch (_err) {
       message.error(t('matches.scoreUpdateError'));
     } finally {
       setSavingScore(false);
@@ -226,7 +226,7 @@ export default function MatchesPage() {
           };
           await apiAddMatchEvent(detailMatch.id, payload);
           successCount++;
-        } catch {
+        } catch (_err) {
           message.error(t('matches.eventError', { minute: evt.minute }));
         }
       }
@@ -236,7 +236,7 @@ export default function MatchesPage() {
         viewDetail(detailMatch.id);
         fetchMatches();
       }
-    } catch {
+    } catch (_err) {
       message.error(t('matches.eventAddError'));
     } finally {
       setSavingEvent(false);

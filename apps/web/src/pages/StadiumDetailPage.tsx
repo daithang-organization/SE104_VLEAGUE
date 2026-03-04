@@ -43,7 +43,7 @@ export default function StadiumDetailPage() {
       try {
         const data = await apiGetStadium(id);
         if (!cancelled) setStadium(data);
-      } catch {
+      } catch (_err) {
         if (!cancelled) message.error(t('stadiumDetail.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
