@@ -1,5 +1,6 @@
 import { ArrowLeftOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import {
+  Badge,
   Button,
   Card,
   Col,
@@ -21,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useMatchSocket } from '../hooks/useMatchSocket';
 import {
   apiGetMatch,
   apiGetTeamRoster,
@@ -90,6 +92,18 @@ export default function MatchDetailPage() {
   useEffect(() => {
     fetchMatch();
   }, [fetchMatch]);
+
+  // ── Real-time WebSocket updates ──
+  const { isConnected } = useMatchSocket({
+    matchId: id,
+    onMatchEvent: useCallback(() => fetchMatch(), [fetchMatch]),
+    onScoreUpdate: useCallback((data: { homeScore: number | null; awayScore: number | null }) => {
+      setMatch((prev) =>
+        prev ? { ...prev, homeScore: data.homeScore, awayScore: data.awayScore } : prev,
+      );
+    }, []),
+    onStatusChange: useCallback(() => fetchMatch(), [fetchMatch]),
+  });
 
   // ── Status update ──
   const handleStatusChange = async (newStatus: string) => {
@@ -316,6 +330,7 @@ export default function MatchDetailPage() {
         <Title level={4} style={{ margin: 0 }}>
           {t('matchDetail.title', { round: match.roundNo })}
         </Title>
+        {isConnected && <Badge status="processing" text="Live" style={{ marginLeft: 12 }} />}
       </Space>
 
       {/* Scoreboard */}

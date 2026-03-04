@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -23,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
+import { AuditLogInterceptor } from '../common/interceptors/audit-log.interceptor';
 import { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 import { RegistrationService } from './registration.service';
 
@@ -60,6 +62,7 @@ export class TeamsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({
@@ -77,6 +80,7 @@ export class TeamsController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({
@@ -95,6 +99,7 @@ export class TeamsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({

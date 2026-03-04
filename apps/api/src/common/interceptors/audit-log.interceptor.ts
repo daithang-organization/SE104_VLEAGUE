@@ -49,20 +49,24 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: (responseBody) => {
-          this.saveLog({
-            userId: user?.id,
-            userEmail: user?.email,
-            action,
-            entity,
-            entityId: entityId ?? this.extractIdFromResponse(responseBody),
-            newValue: body
-              ? JSON.stringify(body).substring(0, 2000)
-              : undefined,
-            ipAddress: request.ip ?? undefined,
-            userAgent: request.headers['user-agent']?.substring(0, 500),
-          }).catch((err: unknown) => {
-            this.logger.error('Failed to save audit log', err);
-          });
+          this.prisma.auditLog
+            .create({
+              data: {
+                userId: user?.id,
+                userEmail: user?.email,
+                action,
+                entity,
+                entityId: entityId ?? this.extractIdFromResponse(responseBody),
+                newValue: body
+                  ? JSON.stringify(body).substring(0, 2000)
+                  : undefined,
+                ipAddress: request.ip ?? undefined,
+                userAgent: request.headers['user-agent']?.substring(0, 500),
+              },
+            })
+            .catch((err: unknown) => {
+              this.logger.error('Failed to save audit log', err);
+            });
         },
       }),
     );
@@ -74,10 +78,7 @@ export class AuditLogInterceptor implements NestInterceptor {
         return 'CREATE';
       case 'PATCH':
       case 'PUT':
-        // Check for status changes
         if (pathParts.includes('status')) return 'STATUS_CHANGE';
-        if (pathParts.includes('read') || pathParts.includes('read-all'))
-          return 'UPDATE';
         return 'UPDATE';
       case 'DELETE':
         return 'DELETE';
@@ -97,36 +98,5 @@ export class AuditLogInterceptor implements NestInterceptor {
     const obj = body as Record<string, unknown>;
     if (typeof obj.id === 'string') return obj.id;
     return undefined;
-  }
-
-  private async saveLog(data: {
-    userId?: string;
-    userEmail?: string;
-    action: string;
-    entity: string;
-    entityId?: string;
-    oldValue?: string;
-    newValue?: string;
-    ipAddress?: string;
-    userAgent?: string;
-  }) {
-    await (
-      this.prisma as unknown as Record<
-        string,
-        { create: (args: unknown) => Promise<unknown> }
-      >
-    )['auditLog'].create({
-      data: {
-        userId: data.userId,
-        userEmail: data.userEmail,
-        action: data.action,
-        entity: data.entity,
-        entityId: data.entityId,
-        oldValue: data.oldValue,
-        newValue: data.newValue,
-        ipAddress: data.ipAddress,
-        userAgent: data.userAgent,
-      },
-    });
   }
 }

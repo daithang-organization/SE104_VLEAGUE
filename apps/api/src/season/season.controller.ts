@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -21,6 +22,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { AuditLogInterceptor } from '../common/interceptors/audit-log.interceptor';
 import { CreateSeasonDto, UpdateSeasonDto } from './dto';
 import { SeasonService } from './season.service';
 
@@ -84,6 +86,7 @@ export class SeasonController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({
@@ -117,6 +120,7 @@ export class SeasonController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({
@@ -148,6 +152,7 @@ export class SeasonController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({
@@ -164,6 +169,7 @@ export class SeasonController {
 
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseInterceptors(AuditLogInterceptor)
   @Roles(Role.ADMIN)
   @ApiBearerAuth('access-token')
   @ApiOperation({

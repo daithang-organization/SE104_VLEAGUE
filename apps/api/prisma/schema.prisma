@@ -389,4 +389,23 @@ model Standing {
   @@map("standings")
 }
 
+// ─── Audit Log ──────────────────────────────────────────────
 
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  userEmail String?  @map("user_email")
+  action    String   // CREATE, UPDATE, DELETE, STATUS_CHANGE
+  entity    String   // teams, players, matches, etc.
+  entityId  String?  @map("entity_id")
+  oldValue  String?  @map("old_value") @db.Text
+  newValue  String?  @map("new_value") @db.Text
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
