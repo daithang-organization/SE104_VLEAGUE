@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -23,6 +24,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
+import { AuditLogInterceptor } from '../common/interceptors/audit-log.interceptor';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { MatchService } from './match.service';
 
@@ -30,6 +32,7 @@ import { MatchService } from './match.service';
 @ApiBearerAuth('access-token')
 @Controller('matches')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(AuditLogInterceptor)
 export class MatchController {
   constructor(private readonly match: MatchService) {}
 

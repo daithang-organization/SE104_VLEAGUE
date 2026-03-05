@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma/prisma.service';
 import { MatchController } from './match.controller';
 import { MatchService } from './match.service';
 
@@ -49,6 +50,14 @@ describe('MatchController', () => {
             updateStatus: jest
               .fn()
               .mockResolvedValue({ ...mockMatch, status: 'PUBLISHED' }),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            auditLog: {
+              create: jest.fn().mockResolvedValue({}),
+            },
           },
         },
       ],

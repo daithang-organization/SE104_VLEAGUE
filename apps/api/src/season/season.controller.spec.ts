@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma/prisma.service';
 import { SeasonController } from './season.controller';
 import { SeasonService } from './season.service';
 
@@ -35,6 +36,14 @@ describe('SeasonController', () => {
             updateStatus: jest
               .fn()
               .mockResolvedValue({ ...mockSeason, status: 'IN_PROGRESS' }),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            auditLog: {
+              create: jest.fn().mockResolvedValue({}),
+            },
           },
         },
       ],

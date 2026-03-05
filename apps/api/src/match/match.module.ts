@@ -3,12 +3,13 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { RegulationModule } from '../regulation/regulation.module';
 import { StandingsModule } from '../standings/standings.module';
 import { MatchController } from './match.controller';
+import { MatchGateway } from './match.gateway';
 import { MatchService } from './match.service';
 
 @Module({
   imports: [PrismaModule, StandingsModule, RegulationModule],
   controllers: [MatchController],
-  providers: [MatchService],
+  providers: [MatchService, MatchGateway],
   exports: [MatchService],
 })
 export class MatchModule {}

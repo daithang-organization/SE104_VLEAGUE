@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { StandingsService } from '../standings/standings.service';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
+import { MatchGateway } from './match.gateway';
 
 /** Fallback for max goal minute when no regulation is available */
 const DEFAULT_MAX_GOAL_TIME = 96;
@@ -28,6 +29,7 @@ export class MatchService {
     private prisma: PrismaService,
     private standingsService: StandingsService,
     private regulationHelper: RegulationHelper,
+    private matchGateway: MatchGateway,
   ) {}
 
   async getMatchById(id: string) {
@@ -204,7 +206,21 @@ export class MatchService {
       dto.type === 'PENALTY'
     ) {
       await this.recalculateScore(matchId);
+      // Emit live score update via WebSocket
+      const updated = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { homeScore: true, awayScore: true },
+      });
+      if (updated) {
+        this.matchGateway.emitScoreUpdate(matchId, updated);
+      }
     }
+
+    // Emit live match event via WebSocket
+    this.matchGateway.emitMatchEvent(
+      matchId,
+      event as unknown as Record<string, unknown>,
+    );
 
     return {
       ok: true,
@@ -244,6 +260,14 @@ export class MatchService {
       event.type === 'PENALTY'
     ) {
       await this.recalculateScore(matchId);
+      // Emit live score update via WebSocket
+      const updated = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { homeScore: true, awayScore: true },
+      });
+      if (updated) {
+        this.matchGateway.emitScoreUpdate(matchId, updated);
+      }
     }
 
     return { success: true };
@@ -347,6 +371,13 @@ export class MatchService {
         );
       }
     }
+
+    // Emit live status change via WebSocket
+    this.matchGateway.emitStatusChange(matchId, {
+      status: newStatus,
+      homeTeam: updated.homeTeam,
+      awayTeam: updated.awayTeam,
+    });
 
     return updated;
   }

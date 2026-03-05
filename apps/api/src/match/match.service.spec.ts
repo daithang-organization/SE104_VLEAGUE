@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { StandingsService } from '../standings/standings.service';
+import { MatchGateway } from './match.gateway';
 import { MatchService } from './match.service';
 
 describe('MatchService', () => {
@@ -60,6 +61,14 @@ describe('MatchService', () => {
           provide: RegulationHelper,
           useValue: {
             getNumericValue: jest.fn().mockResolvedValue(96),
+          },
+        },
+        {
+          provide: MatchGateway,
+          useValue: {
+            emitMatchEvent: jest.fn(),
+            emitScoreUpdate: jest.fn(),
+            emitStatusChange: jest.fn(),
           },
         },
       ],

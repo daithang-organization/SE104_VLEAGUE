@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma/prisma.service';
 import { RegistrationService } from './registration.service';
 import { TeamsController } from './teams.controller';
 
@@ -38,6 +39,14 @@ describe('TeamsController', () => {
               .fn()
               .mockResolvedValue({ ...mockTeam, name: 'Updated' }),
             deleteTeam: jest.fn().mockResolvedValue({ success: true }),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            auditLog: {
+              create: jest.fn().mockResolvedValue({}),
+            },
           },
         },
       ],
