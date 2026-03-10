@@ -8,6 +8,22 @@ const en = {
   // SHARED / CROSS-CUTTING
   // ─────────────────────────────────────────────
 
+  menu: {
+    dashboard: 'Dashboard',
+    seasons: 'Seasons',
+    teams: 'Teams',
+    stadiums: 'Stadiums',
+    players: 'Players',
+    schedule: 'Schedule',
+    matches: 'Match Results',
+    standings: 'Standings',
+    headToHead: 'Head to Head',
+    reports: 'Reports',
+    regulations: 'Regulations',
+    users: 'User Management',
+    coaches: 'Coaches',
+  },
+
   common: {
     save: 'Save',
     create: 'Create',
@@ -147,7 +163,7 @@ const en = {
     statMatches: 'Matches',
     statSeasons: 'Seasons',
     inProgress: 'In progress',
-    seasonProgress: '{percent}% of season',
+    seasonProgress: '{{percent}}% of season',
     quickActions: '⚡ Quick Actions',
     btnSeason: 'Season',
     btnTeam: 'Teams',
