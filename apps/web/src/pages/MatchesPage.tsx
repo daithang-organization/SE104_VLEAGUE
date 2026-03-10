@@ -510,7 +510,7 @@ export default function MatchesPage() {
         <Collapse
           defaultActiveKey={activeKeys}
           items={collapseItems}
-          style={{ background: '#fff' }}
+          style={{ background: 'var(--ant-color-bg-container)' }}
         />
       )}
 
@@ -651,7 +651,7 @@ export default function MatchesPage() {
                 <div
                   style={{
                     padding: '20px 16px',
-                    background: '#f6f6f6',
+                    background: 'var(--ant-color-bg-layout)',
                     borderRadius: 8,
                     marginBottom: 16,
                   }}

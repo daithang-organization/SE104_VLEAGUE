@@ -26,19 +26,33 @@ import { Server, Socket } from 'socket.io';
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: '/matches',
+  pingInterval: 25000,
+  pingTimeout: 10000,
 })
 export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(MatchGateway.name);
+  private readonly roomViewers = new Map<string, number>();
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
+    client.emit('connected', {
+      message: 'Kết nối WebSocket thành công',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+    // Clean up room viewer counts
+    for (const [room] of this.roomViewers) {
+      const roomObj = this.server?.adapter;
+      if (roomObj) {
+        this.updateViewerCount(room);
+      }
+    }
   }
 
   @SubscribeMessage('joinMatch')
@@ -49,7 +63,11 @@ export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const room = `match:${matchId}`;
     client.join(room);
     this.logger.log(`Client ${client.id} joined room ${room}`);
-    return { event: 'joinedMatch', data: { matchId } };
+    this.updateViewerCount(room);
+    return {
+      event: 'joinedMatch',
+      data: { matchId, viewers: this.roomViewers.get(room) ?? 1 },
+    };
   }
 
   @SubscribeMessage('leaveMatch')
@@ -60,7 +78,16 @@ export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const room = `match:${matchId}`;
     client.leave(room);
     this.logger.log(`Client ${client.id} left room ${room}`);
+    this.updateViewerCount(room);
     return { event: 'leftMatch', data: { matchId } };
+  }
+
+  private updateViewerCount(room: string) {
+    const roomObj = this.server?.sockets?.adapter?.rooms?.get(room);
+    const count = roomObj?.size ?? 0;
+    this.roomViewers.set(room, count);
+    this.server.to(room).emit('viewerCount', { room, viewers: count });
+    if (count === 0) this.roomViewers.delete(room);
   }
 
   /** Emit when a new match event is added (goal, card, sub) */

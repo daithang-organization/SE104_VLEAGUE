@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { StandingsService } from '../standings/standings.service';
+import { NotificationService } from '../notification/notification.service';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { MatchGateway } from './match.gateway';
 
@@ -30,6 +31,7 @@ export class MatchService {
     private standingsService: StandingsService,
     private regulationHelper: RegulationHelper,
     private matchGateway: MatchGateway,
+    private notificationService: NotificationService,
   ) {}
 
   async getMatchById(id: string) {
@@ -51,7 +53,7 @@ export class MatchService {
     });
 
     if (!match) {
-      throw new NotFoundException(`Match with ID ${id} not found`);
+      throw new NotFoundException(`Không tìm thấy trận đấu với ID ${id}`);
     }
 
     return match;
@@ -65,6 +67,8 @@ export class MatchService {
       round?: number;
       status?: string;
       teamId?: string;
+      dateFrom?: string;
+      dateTo?: string;
     },
   ) {
     const page = pagination?.page ?? 1;
@@ -80,6 +84,17 @@ export class MatchService {
         { homeTeamId: pagination.teamId },
         { awayTeamId: pagination.teamId },
       ];
+    }
+    // Date range filter
+    if (pagination?.dateFrom || pagination?.dateTo) {
+      const kickoffFilter: Record<string, Date> = {};
+      if (pagination?.dateFrom) {
+        kickoffFilter.gte = new Date(pagination.dateFrom);
+      }
+      if (pagination?.dateTo) {
+        kickoffFilter.lte = new Date(pagination.dateTo);
+      }
+      where.kickoffAt = kickoffFilter;
     }
 
     const [data, total] = await Promise.all([
@@ -120,7 +135,7 @@ export class MatchService {
     });
 
     if (!match) {
-      throw new NotFoundException(`Match with ID ${matchId} not found`);
+      throw new NotFoundException(`Không tìm thấy trận đấu với ID ${matchId}`);
     }
 
     // Block edits on FINISHED or LOCKED matches
@@ -155,7 +170,7 @@ export class MatchService {
     });
 
     if (!match) {
-      throw new NotFoundException(`Match with ID ${matchId} not found`);
+      throw new NotFoundException(`Không tìm thấy trận đấu với ID ${matchId}`);
     }
 
     // Block adding events to FINISHED matches
@@ -235,7 +250,7 @@ export class MatchService {
     });
 
     if (!event) {
-      throw new NotFoundException('Event not found');
+      throw new NotFoundException('Không tìm thấy sự kiện');
     }
 
     // Block removing events from FINISHED matches
@@ -326,7 +341,7 @@ export class MatchService {
     });
 
     if (!match) {
-      throw new NotFoundException(`Match with ID ${matchId} not found`);
+      throw new NotFoundException(`Không tìm thấy trận đấu với ID ${matchId}`);
     }
 
     const currentStatus = match.status;
@@ -378,6 +393,34 @@ export class MatchService {
       homeTeam: updated.homeTeam,
       awayTeam: updated.awayTeam,
     });
+
+    // Send notifications
+    const homeName = updated.homeTeam?.name ?? 'Đội nhà';
+    const awayName = updated.awayTeam?.name ?? 'Đội khách';
+
+    this.notificationService
+      .notifyMatchStatusChange(matchId, homeName, awayName, newStatus)
+      .catch((err) =>
+        this.logger.error('Failed to send status notification', err),
+      );
+
+    if (
+      newStatus === 'FINISHED' &&
+      match.homeScore != null &&
+      match.awayScore != null
+    ) {
+      this.notificationService
+        .notifyMatchResult(
+          matchId,
+          homeName,
+          awayName,
+          match.homeScore,
+          match.awayScore,
+        )
+        .catch((err) =>
+          this.logger.error('Failed to send result notification', err),
+        );
+    }
 
     return updated;
   }

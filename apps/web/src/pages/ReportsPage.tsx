@@ -98,6 +98,24 @@ export default function ReportsPage() {
     }
   };
 
+  const handleExportCardStatsPdf = async () => {
+    try {
+      await exportPdf(
+        'VLeague - Thong ke the phat',
+        ['#', 'Cau thu', 'Doi', 'The vang', 'The do'],
+        cardStats.map((s, i) => [
+          String(i + 1),
+          s.playerName,
+          s.teamName,
+          String(s.yellowCards),
+          String(s.redCards),
+        ]),
+      );
+    } catch (_err) {
+      message.error(t('reports.exportError'));
+    }
+  };
+
   if (error) return <Alert type="error" message={error} showIcon />;
 
   return (
@@ -120,6 +138,13 @@ export default function ReportsPage() {
             disabled={teamStats.length === 0}
           >
             {t('reports.exportTeamStatsPdf')}
+          </Button>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportCardStatsPdf}
+            disabled={cardStats.length === 0}
+          >
+            {t('reports.exportCardStatsPdf')}
           </Button>
         </Space>
       </Flex>

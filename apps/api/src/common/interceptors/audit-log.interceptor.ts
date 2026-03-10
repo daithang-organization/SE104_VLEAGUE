@@ -46,30 +46,90 @@ export class AuditLogInterceptor implements NestInterceptor {
     // Determine action
     const action = this.getAction(method, pathParts);
 
-    return next.handle().pipe(
-      tap({
-        next: (responseBody) => {
-          this.prisma.auditLog
-            .create({
-              data: {
-                userId: user?.id,
-                userEmail: user?.email,
-                action,
-                entity,
-                entityId: entityId ?? this.extractIdFromResponse(responseBody),
-                newValue: body
-                  ? JSON.stringify(body).substring(0, 2000)
-                  : undefined,
-                ipAddress: request.ip ?? undefined,
-                userAgent: request.headers['user-agent']?.substring(0, 500),
-              },
-            })
-            .catch((err: unknown) => {
-              this.logger.error('Failed to save audit log', err);
-            });
-        },
-      }),
-    );
+    // Capture old value for UPDATE and DELETE operations
+    const oldValuePromise =
+      (method === 'PATCH' || method === 'PUT' || method === 'DELETE') &&
+      entityId
+        ? this.fetchOldValue(entity, entityId)
+        : Promise.resolve(undefined);
+
+    return new Observable((subscriber) => {
+      oldValuePromise
+        .then((oldValue) => {
+          next
+            .handle()
+            .pipe(
+              tap({
+                next: (responseBody) => {
+                  this.prisma.auditLog
+                    .create({
+                      data: {
+                        userId: user?.id,
+                        userEmail: user?.email,
+                        action,
+                        entity,
+                        entityId:
+                          entityId ?? this.extractIdFromResponse(responseBody),
+                        oldValue: oldValue
+                          ? JSON.stringify(oldValue).substring(0, 2000)
+                          : undefined,
+                        newValue: body
+                          ? JSON.stringify(body).substring(0, 2000)
+                          : undefined,
+                        ipAddress: request.ip ?? undefined,
+                        userAgent: request.headers['user-agent']?.substring(
+                          0,
+                          500,
+                        ),
+                      },
+                    })
+                    .catch((err: unknown) => {
+                      this.logger.error('Failed to save audit log', err);
+                    });
+                },
+              }),
+            )
+            .subscribe(subscriber);
+        })
+        .catch(() => {
+          next.handle().subscribe(subscriber);
+        });
+    });
+  }
+
+  /**
+   * Attempt to fetch old value of the entity before update/delete.
+   */
+  private async fetchOldValue(
+    entity: string,
+    entityId: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    try {
+      const modelName = this.getModelName(entity);
+      if (!modelName) return undefined;
+      const model = (this.prisma as Record<string, unknown>)[
+        modelName
+      ] as Record<string, (...args: unknown[]) => unknown>;
+      if (!model?.findUnique) return undefined;
+      return (await model.findUnique({ where: { id: entityId } })) as
+        | Record<string, unknown>
+        | undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private getModelName(entity: string): string | undefined {
+    const map: Record<string, string> = {
+      teams: 'team',
+      players: 'player',
+      matches: 'match',
+      seasons: 'season',
+      stadiums: 'stadium',
+      users: 'user',
+      regulations: 'regulation',
+    };
+    return map[entity];
   }
 
   private getAction(method: string, pathParts: string[]): string {

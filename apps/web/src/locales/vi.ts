@@ -198,6 +198,10 @@ const vi = {
     topScorersColTeam: 'Đội',
     topScorersEmpty: 'Chưa có dữ liệu vua phá lưới',
     teamFormTitle: 'Phong độ đội bóng',
+    goalsPerRoundTitle: 'Bàn thắng theo vòng đấu',
+    cardStatsTitle: 'Thẻ phạt (Top 5)',
+    cardStatsEmpty: 'Chưa có dữ liệu thẻ phạt',
+    cardStatsColPlayer: 'Cầu thủ',
   },
 
   // ─────────────────────────────────────────────
@@ -802,6 +806,7 @@ const vi = {
     loadError: 'Không thể tải dữ liệu báo cáo',
     exportScorersPdf: 'PDF Vua phá lưới',
     exportTeamStatsPdf: 'PDF Thống kê đội',
+    exportCardStatsPdf: 'PDF Thẻ phạt',
     exportError: 'Lỗi xuất PDF',
     pdfExportDate: 'Ngày xuất: {date}',
     tabScorers: '🏆 Vua phá lưới',

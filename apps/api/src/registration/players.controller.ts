@@ -43,6 +43,9 @@ export class PlayersController {
     @Query('position') position?: string,
     @Query('nationality') nationality?: string,
     @Query('teamId') teamId?: string,
+    @Query('playerType') playerType?: string,
+    @Query('minAge') minAge?: string,
+    @Query('maxAge') maxAge?: string,
   ) {
     return await this.reg.listPlayers({
       ...pagination,
@@ -50,6 +53,9 @@ export class PlayersController {
       position,
       nationality,
       teamId,
+      playerType,
+      minAge: minAge ? Number(minAge) : undefined,
+      maxAge: maxAge ? Number(maxAge) : undefined,
     });
   }
 

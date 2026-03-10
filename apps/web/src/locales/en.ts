@@ -175,6 +175,10 @@ const en = {
     topScorersColTeam: 'Team',
     topScorersEmpty: 'No top scorer data',
     teamFormTitle: 'Team Form',
+    goalsPerRoundTitle: 'Goals per Round',
+    cardStatsTitle: 'Card Stats (Top 5)',
+    cardStatsEmpty: 'No card stats data',
+    cardStatsColPlayer: 'Player',
   },
 
   // ─────────────────────────────────────────────
@@ -768,6 +772,7 @@ const en = {
     loadError: 'Failed to load report data',
     exportScorersPdf: 'PDF Top Scorers',
     exportTeamStatsPdf: 'PDF Team Stats',
+    exportCardStatsPdf: 'PDF Card Stats',
     exportError: 'PDF export error',
     pdfExportDate: 'Export date: {date}',
     tabScorers: '🏆 Top Scorers',

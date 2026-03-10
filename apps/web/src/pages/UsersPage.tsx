@@ -17,6 +17,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TableSkeleton } from '../components/LoadingSkeleton';
 import {
   apiCreateUser,
   apiDeleteUser,
@@ -223,18 +224,23 @@ export default function UsersPage() {
           </Space>
         </div>
 
-        <Table
-          columns={columns}
-          dataSource={filteredUsers}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => t('users.totalCount', { total }),
-          }}
-          size="middle"
-        />
+        {loading && filteredUsers.length === 0 ? (
+          <TableSkeleton rows={8} />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={filteredUsers}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => t('users.totalCount', { total }),
+            }}
+            size="middle"
+            locale={{ emptyText: t('common.noData') }}
+          />
+        )}
       </Card>
 
       {/* Create User Modal */}

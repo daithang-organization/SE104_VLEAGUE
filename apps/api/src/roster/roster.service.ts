@@ -12,6 +12,8 @@ import { AddPlayerToRosterDto, UpdateRosterPlayerDto } from './dto';
 /** Fallback limits when no season regulation is available */
 const DEFAULT_MAX_ROSTER = 22;
 const DEFAULT_MAX_FOREIGN = 3;
+const DEFAULT_MIN_AGE = 16;
+const DEFAULT_MAX_AGE = 40;
 
 @Injectable()
 export class RosterService {
@@ -29,7 +31,7 @@ export class RosterService {
     });
 
     if (!team) {
-      throw new NotFoundException(`Team with ID ${teamId} not found`);
+      throw new NotFoundException(`Không tìm thấy đội bóng với ID ${teamId}`);
     }
 
     const roster = await this.prisma.teamPlayer.findMany({
@@ -70,7 +72,7 @@ export class RosterService {
     });
 
     if (!team) {
-      throw new NotFoundException(`Team with ID ${teamId} not found`);
+      throw new NotFoundException(`Không tìm thấy đội bóng với ID ${teamId}`);
     }
 
     // Check player exists
@@ -79,7 +81,41 @@ export class RosterService {
     });
 
     if (!player) {
-      throw new NotFoundException(`Player with ID ${dto.playerId} not found`);
+      throw new NotFoundException(
+        `Không tìm thấy cầu thủ với ID ${dto.playerId}`,
+      );
+    }
+
+    // Validate player age against regulation
+    const minAge = await this.regulationHelper.getNumericValue(
+      dto.seasonId,
+      'MIN_AGE',
+      DEFAULT_MIN_AGE,
+    );
+    const maxAge = await this.regulationHelper.getNumericValue(
+      dto.seasonId,
+      'MAX_AGE',
+      DEFAULT_MAX_AGE,
+    );
+
+    const dob = new Date(player.dob);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+
+    if (age < minAge) {
+      throw new BadRequestException(
+        `Cầu thủ phải ít nhất ${minAge} tuổi để tham gia đội hình (hiện tại: ${age} tuổi)`,
+      );
+    }
+
+    if (age > maxAge) {
+      throw new BadRequestException(
+        `Cầu thủ không được quá ${maxAge} tuổi để tham gia đội hình (hiện tại: ${age} tuổi)`,
+      );
     }
 
     // Check if player already in a team
@@ -93,7 +129,7 @@ export class RosterService {
 
     if (existingRoster) {
       throw new ConflictException(
-        `Player is already in team "${existingRoster.team.name}"`,
+        `Cầu thủ đã thuộc đội "${existingRoster.team.name}"`,
       );
     }
 
@@ -149,7 +185,7 @@ export class RosterService {
 
       if (jerseyTaken) {
         throw new BadRequestException(
-          `Jersey number ${dto.jerseyNumber} is already taken`,
+          `Số áo ${dto.jerseyNumber} đã được sử dụng`,
         );
       }
     }
@@ -168,13 +204,13 @@ export class RosterService {
 
       return {
         success: true,
-        message: `${player.fullName} added to ${team.name}`,
+        message: `Đã thêm ${player.fullName} vào ${team.name}`,
         data: teamPlayer,
       };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException('Player is already in this team');
+          throw new ConflictException('Cầu thủ đã có trong đội hình này');
         }
       }
       throw error;
@@ -198,7 +234,7 @@ export class RosterService {
     });
 
     if (!teamPlayer) {
-      throw new NotFoundException('Player not found in this team');
+      throw new NotFoundException('Không tìm thấy cầu thủ trong đội hình này');
     }
 
     // Check jersey number availability
@@ -214,7 +250,7 @@ export class RosterService {
 
       if (jerseyTaken) {
         throw new BadRequestException(
-          `Jersey number ${dto.jerseyNumber} is already taken`,
+          `Số áo ${dto.jerseyNumber} đã được sử dụng`,
         );
       }
     }
@@ -240,7 +276,7 @@ export class RosterService {
     });
 
     if (!teamPlayer) {
-      throw new NotFoundException('Player not found in this team');
+      throw new NotFoundException('Không tìm thấy cầu thủ trong đội hình này');
     }
 
     await this.prisma.teamPlayer.update({
@@ -250,7 +286,7 @@ export class RosterService {
 
     return {
       success: true,
-      message: `${teamPlayer.player.fullName} removed from ${teamPlayer.team.name}`,
+      message: `Đã xóa ${teamPlayer.player.fullName} khỏi ${teamPlayer.team.name}`,
     };
   }
 }

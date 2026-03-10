@@ -1,5 +1,6 @@
 import {
   CalendarOutlined,
+  FireOutlined,
   PlusOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -18,6 +19,7 @@ import {
   Statistic,
   Table,
   Tag,
+  Tooltip as AntTooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -25,15 +27,18 @@ import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../auth/AuthContext';
 import { CardSkeleton } from '../components';
-import { apiGetMatches } from '../services/matchApi';
+import { apiGetMatches, type Match } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule, type ScheduleMatch } from '../services/scheduleApi';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
+  apiGetCardStats,
   apiGetStandings,
   apiGetTopScorers,
+  type CardStat,
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
@@ -65,6 +70,8 @@ export default function DashboardPage() {
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
+  const [cardStats, setCardStats] = useState<CardStat[]>([]);
+  const [goalsPerRound, setGoalsPerRound] = useState<{ round: string; goals: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -80,6 +87,7 @@ export default function DashboardPage() {
           matchesData,
           curSeason,
           scorersData,
+          cardStatsData,
         ] = await Promise.allSettled([
           apiGetTeams(),
           apiGetPlayers(),
@@ -89,6 +97,7 @@ export default function DashboardPage() {
           apiGetMatches(undefined, 1, 100),
           apiGetCurrentSeason(),
           apiGetTopScorers(undefined, 5),
+          apiGetCardStats(undefined, 5),
         ]);
 
         setStats({
@@ -129,6 +138,29 @@ export default function DashboardPage() {
 
         if (scorersData.status === 'fulfilled') {
           setTopScorers(scorersData.value.slice(0, 5));
+        }
+
+        if (cardStatsData.status === 'fulfilled') {
+          setCardStats(cardStatsData.value.slice(0, 5));
+        }
+
+        // Calculate goals per round from finished matches
+        if (matchesData.status === 'fulfilled') {
+          const finished = matchesData.value.data.filter((m: Match) => m.status === 'FINISHED');
+          const roundGoals = new Map<number, number>();
+          finished.forEach((m: Match) => {
+            const round = m.roundNo;
+            const goals = (m.homeScore ?? 0) + (m.awayScore ?? 0);
+            roundGoals.set(round, (roundGoals.get(round) ?? 0) + goals);
+          });
+          const chartData = [...roundGoals.entries()]
+            .sort(([a], [b]) => a - b)
+            .slice(0, 15)
+            .map(([round, goals]) => ({
+              round: `V${round}`,
+              goals,
+            }));
+          setGoalsPerRound(chartData);
         }
       } catch (_err) {
         message.error(t('dashboard.errorLoad'));
@@ -508,6 +540,61 @@ export default function DashboardPage() {
               </Col>
             </Row>
           )}
+
+          {/* Goals per round chart + Card stats */}
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            {goalsPerRound.length > 0 && (
+              <Col xs={24} md={14}>
+                <Card title={`⚽ ${t('dashboard.goalsPerRoundTitle')}`} size="small">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={goalsPerRound}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="round" fontSize={12} />
+                      <YAxis allowDecimals={false} fontSize={12} />
+                      <Tooltip />
+                      <Bar dataKey="goals" fill="#1890ff" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              </Col>
+            )}
+            {cardStats.length > 0 && (
+              <Col xs={24} md={goalsPerRound.length > 0 ? 10 : 24}>
+                <Card title={`🟨 ${t('dashboard.cardStatsTitle')}`} size="small">
+                  <Table
+                    dataSource={cardStats}
+                    rowKey="playerId"
+                    loading={loading}
+                    pagination={false}
+                    size="small"
+                    locale={{ emptyText: t('dashboard.cardStatsEmpty') }}
+                    columns={[
+                      { title: '#', key: 'pos', width: 40, render: (_, __, i) => i + 1 },
+                      {
+                        title: t('dashboard.cardStatsColPlayer'),
+                        dataIndex: 'playerName',
+                        ellipsis: true,
+                      },
+                      {
+                        title: '🟨',
+                        dataIndex: 'yellowCards',
+                        width: 50,
+                        align: 'center' as const,
+                        render: (v: number) => <strong style={{ color: '#faad14' }}>{v}</strong>,
+                      },
+                      {
+                        title: '🟥',
+                        dataIndex: 'redCards',
+                        width: 50,
+                        align: 'center' as const,
+                        render: (v: number) => <strong style={{ color: '#ff4d4f' }}>{v}</strong>,
+                      },
+                    ]}
+                  />
+                </Card>
+              </Col>
+            )}
+          </Row>
         </>
       )}
     </div>
