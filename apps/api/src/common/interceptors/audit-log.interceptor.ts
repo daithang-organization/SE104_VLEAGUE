@@ -107,7 +107,7 @@ export class AuditLogInterceptor implements NestInterceptor {
     try {
       const modelName = this.getModelName(entity);
       if (!modelName) return undefined;
-      const model = (this.prisma as Record<string, unknown>)[
+      const model = (this.prisma as unknown as Record<string, unknown>)[
         modelName
       ] as Record<string, (...args: unknown[]) => unknown>;
       if (!model?.findUnique) return undefined;

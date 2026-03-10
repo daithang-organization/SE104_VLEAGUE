@@ -48,8 +48,7 @@ export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Client disconnected: ${client.id}`);
     // Clean up room viewer counts
     for (const [room] of this.roomViewers) {
-      const roomObj = this.server?.adapter;
-      if (roomObj) {
+      if (this.server) {
         this.updateViewerCount(room);
       }
     }
