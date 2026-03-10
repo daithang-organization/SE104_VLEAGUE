@@ -147,7 +147,7 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 README hiện tham chiếu bản use case mới nhất tại `docs/usecase_diagram.md`, bao gồm:
 
-- Nguồn PlantUML để render lại sơ đồ
+- Nguồn Mermaid render trực tiếp trên GitHub
 - Tóm tắt các thay đổi từ v1 sang v2
 - Ma trận actor/use case theo từng vai trò
 

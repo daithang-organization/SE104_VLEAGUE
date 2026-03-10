@@ -4,175 +4,149 @@
 
 ---
 
-## Sơ đồ Use Case (PlantUML)
+## Sơ đồ Use Case (Mermaid)
 
-Dán đoạn PlantUML bên dưới vào [plantuml.com/plantuml](https://www.plantuml.com/plantuml/uml) hoặc extension PlantUML trong VS Code để render ra ảnh.
+GitHub render được Mermaid trực tiếp trong Markdown. Mermaid chưa có cú pháp UML use case thuần như PlantUML, nên sơ đồ bên dưới được biểu diễn theo dạng flowchart nhưng vẫn giữ nguyên actor, system boundary và quan hệ `<<include>>` / `<<extend>>`.
 
-```plantuml
-@startuml VLeague_UseCase_v2
-left to right direction
-skinparam packageStyle rectangle
-skinparam usecase {
-  BackgroundColor #E8F4FD
-  BorderColor #2196F3
-  ArrowColor #333333
-}
-skinparam actor {
-  BackgroundColor #FFFFFF
-  BorderColor #333333
-}
+```mermaid
+flowchart LR
+  classDef actor fill:#ffffff,stroke:#333333,color:#111827,stroke-width:1.5px;
+  classDef actorBase fill:#f3f4f6,stroke:#333333,color:#111827,stroke-width:1.5px;
+  classDef usecase fill:#e8f4fd,stroke:#2196f3,color:#0f172a,stroke-width:1.5px;
 
-' ─── ACTORS ───
-actor "User\n(base)" as User #LightGray
-actor "Admin"           as Admin
-actor "Team Manager"    as TM
-actor "Referee"         as Referee
-actor "Supervisor"      as Supervisor
-actor "Public"          as Public
+  User[User<br/>base]
+  Admin[Admin]
+  TM[Team Manager]
+  Referee[Referee]
+  Supervisor[Supervisor]
+  Public[Public]
 
-' ─── Actor Generalization ───
-User <|-- Admin
-User <|-- TM
-User <|-- Referee
-User <|-- Supervisor
-User <|-- Public
+  class User actorBase;
+  class Admin,TM,Referee,Supervisor,Public actor;
 
-' ─── SYSTEM BOUNDARY ───
-rectangle "VLeague Management System" {
+  Admin -. inherits .-> User
+  TM -. inherits .-> User
+  Referee -. inherits .-> User
+  Supervisor -. inherits .-> User
+  Public -. inherits .-> User
 
-  ' ══════ Authentication ══════
-  package "Authentication" {
-    usecase "Đăng nhập"          as UC_Login
-    usecase "Đăng ký"            as UC_Register
-    usecase "Đăng xuất"          as UC_Logout
-    usecase "Đổi mật khẩu"      as UC_ChangePW
-    usecase "Quên mật khẩu"     as UC_ForgotPW
-    usecase "OAuth\n(Google/Facebook)" as UC_OAuth
-  }
+  subgraph System[VLeague Management System]
+    direction LR
 
-  ' ══════ User Management ══════
-  package "User Management" {
-    usecase "Xem danh sách\nngười dùng"  as UC_ViewUsers
-    usecase "Thêm người dùng"            as UC_AddUser
-    usecase "Phân quyền\nngười dùng"     as UC_AssignRole
-    usecase "Xóa người dùng"            as UC_DeleteUser
-  }
+    subgraph Auth[Authentication]
+      direction TB
+      UC_Login([Đăng nhập])
+      UC_Register([Đăng ký])
+      UC_Logout([Đăng xuất])
+      UC_ChangePW([Đổi mật khẩu])
+      UC_ForgotPW([Quên mật khẩu])
+      UC_OAuth([OAuth<br/>Google/Facebook])
+    end
 
-  ' ══════ Team & Player ══════
-  package "Team & Player" {
-    usecase "Xem danh sách\nđội bóng"  as UC_ViewTeams
-    usecase "Thêm đội bóng"            as UC_AddTeam
-    usecase "Sửa đội bóng"             as UC_EditTeam
-    usecase "Xóa đội bóng"             as UC_DeleteTeam
-    usecase "Xem danh sách\ncầu thủ"   as UC_ViewPlayers
-    usecase "Thêm cầu thủ"             as UC_AddPlayer
-    usecase "Sửa cầu thủ"              as UC_EditPlayer
-    usecase "Xóa cầu thủ"              as UC_DeletePlayer
-    usecase "Quản lý đội hình\n(Roster)" as UC_Roster
-  }
+    subgraph UserManagement[User Management]
+      direction TB
+      UC_ViewUsers([Xem danh sách<br/>người dùng])
+      UC_AddUser([Thêm người dùng])
+      UC_AssignRole([Phân quyền<br/>người dùng])
+      UC_DeleteUser([Xóa người dùng])
+    end
 
-  ' ══════ Season & Regulation ══════
-  package "Season & Regulation" {
-    usecase "Xem mùa giải"         as UC_ViewSeason
-    usecase "Thêm / Sửa mùa giải" as UC_ManageSeason
-    usecase "Xóa mùa giải"        as UC_DeleteSeason
-    usecase "Xem quy định"        as UC_ViewRegulation
-    usecase "Cập nhật quy định"   as UC_EditRegulation
-    usecase "Duyệt đăng ký\nđội tham gia" as UC_ApproveTeam
-  }
+    subgraph TeamPlayer[Team and Player]
+      direction TB
+      UC_ViewTeams([Xem danh sách<br/>đội bóng])
+      UC_AddTeam([Thêm đội bóng])
+      UC_EditTeam([Sửa đội bóng])
+      UC_DeleteTeam([Xóa đội bóng])
+      UC_ViewPlayers([Xem danh sách<br/>cầu thủ])
+      UC_AddPlayer([Thêm cầu thủ])
+      UC_EditPlayer([Sửa cầu thủ])
+      UC_DeletePlayer([Xóa cầu thủ])
+      UC_Roster([Quản lý đội hình<br/>Roster])
+    end
 
-  ' ══════ Stadium ══════
-  package "Stadium" {
-    usecase "Xem sân vận động"      as UC_ViewStadium
-    usecase "Thêm / Sửa\nsân vận động" as UC_ManageStadium
-    usecase "Xóa sân vận động"     as UC_DeleteStadium
-  }
+    subgraph SeasonRegulation[Season and Regulation]
+      direction TB
+      UC_ViewSeason([Xem mùa giải])
+      UC_ManageSeason([Thêm hoặc sửa mùa giải])
+      UC_DeleteSeason([Xóa mùa giải])
+      UC_ViewRegulation([Xem quy định])
+      UC_EditRegulation([Cập nhật quy định])
+      UC_ApproveTeam([Duyệt đăng ký<br/>đội tham gia])
+    end
 
-  ' ══════ Schedule & Match ══════
-  package "Schedule & Match" {
-    usecase "Xem lịch thi đấu"         as UC_ViewSchedule
-    usecase "Lập lịch thi đấu"         as UC_CreateSchedule
-    usecase "Xem kết quả\ntrận đấu"    as UC_ViewResult
-    usecase "Ghi nhận kết quả\ntrận đấu" as UC_RecordResult
-    usecase "Quản lý sự kiện\ntrận đấu" as UC_MatchEvent
-  }
+    subgraph Stadium[Stadium]
+      direction TB
+      UC_ViewStadium([Xem sân vận động])
+      UC_ManageStadium([Thêm hoặc sửa<br/>sân vận động])
+      UC_DeleteStadium([Xóa sân vận động])
+    end
 
-  ' ══════ Standings & Reports ══════
-  package "Standings & Reports" {
-    usecase "Xem bảng xếp hạng"           as UC_Standings
-    usecase "Xem thống kê\n& báo cáo"     as UC_Stats
-    usecase "Tìm kiếm"                    as UC_Search
-    usecase "Gửi báo cáo\ngiám sát trận"  as UC_SupervisorReport
-  }
-}
+    subgraph ScheduleMatch[Schedule and Match]
+      direction TB
+      UC_ViewSchedule([Xem lịch thi đấu])
+      UC_CreateSchedule([Lập lịch thi đấu])
+      UC_ViewResult([Xem kết quả<br/>trận đấu])
+      UC_RecordResult([Ghi nhận kết quả<br/>trận đấu])
+      UC_MatchEvent([Quản lý sự kiện<br/>trận đấu])
+    end
 
-' ═══════════════════════════════════════
-'  ASSOCIATIONS
-' ═══════════════════════════════════════
+    subgraph StandingsReports[Standings and Reports]
+      direction TB
+      UC_Standings([Xem bảng xếp hạng])
+      UC_Stats([Xem thống kê<br/>và báo cáo])
+      UC_Search([Tìm kiếm])
+      UC_SupervisorReport([Gửi báo cáo<br/>giám sát trận])
+    end
+  end
 
-' --- Authentication (User base) ---
-User --> UC_Login
-User --> UC_Register
-User --> UC_Logout
-User --> UC_ChangePW
-User --> UC_ForgotPW
+  class UC_Login,UC_Register,UC_Logout,UC_ChangePW,UC_ForgotPW,UC_OAuth,UC_ViewUsers,UC_AddUser,UC_AssignRole,UC_DeleteUser,UC_ViewTeams,UC_AddTeam,UC_EditTeam,UC_DeleteTeam,UC_ViewPlayers,UC_AddPlayer,UC_EditPlayer,UC_DeletePlayer,UC_Roster,UC_ViewSeason,UC_ManageSeason,UC_DeleteSeason,UC_ViewRegulation,UC_EditRegulation,UC_ApproveTeam,UC_ViewStadium,UC_ManageStadium,UC_DeleteStadium,UC_ViewSchedule,UC_CreateSchedule,UC_ViewResult,UC_RecordResult,UC_MatchEvent,UC_Standings,UC_Stats,UC_Search,UC_SupervisorReport usecase;
 
-' OAuth <<extend>> Đăng nhập
-UC_Login <.. UC_OAuth : <<extend>>
+  User --> UC_Login
+  User --> UC_Register
+  User --> UC_Logout
+  User --> UC_ChangePW
+  User --> UC_ForgotPW
 
-' --- Admin ---
-Admin --> UC_ViewUsers
-Admin --> UC_AddUser
-Admin --> UC_AssignRole
-Admin --> UC_DeleteUser
+  Admin --> UC_ViewUsers
+  Admin --> UC_AddUser
+  Admin --> UC_AssignRole
+  Admin --> UC_DeleteUser
+  Admin --> UC_AddTeam
+  Admin --> UC_EditTeam
+  Admin --> UC_DeleteTeam
+  Admin --> UC_ManageSeason
+  Admin --> UC_DeleteSeason
+  Admin --> UC_EditRegulation
+  Admin --> UC_ApproveTeam
+  Admin --> UC_ManageStadium
+  Admin --> UC_DeleteStadium
+  Admin --> UC_CreateSchedule
+  Admin --> UC_RecordResult
 
-Admin --> UC_AddTeam
-Admin --> UC_EditTeam
-Admin --> UC_DeleteTeam
+  TM --> UC_AddPlayer
+  TM --> UC_EditPlayer
+  TM --> UC_DeletePlayer
+  TM --> UC_Roster
 
-Admin --> UC_ManageSeason
-Admin --> UC_DeleteSeason
-Admin --> UC_EditRegulation
-Admin --> UC_ApproveTeam
+  Referee --> UC_MatchEvent
+  Referee --> UC_RecordResult
 
-Admin --> UC_ManageStadium
-Admin --> UC_DeleteStadium
+  Supervisor --> UC_SupervisorReport
 
-Admin --> UC_CreateSchedule
-Admin --> UC_RecordResult
+  Public --> UC_ViewTeams
+  Public --> UC_ViewPlayers
+  Public --> UC_ViewSeason
+  Public --> UC_ViewRegulation
+  Public --> UC_ViewStadium
+  Public --> UC_ViewSchedule
+  Public --> UC_ViewResult
+  Public --> UC_Standings
+  Public --> UC_Stats
+  Public --> UC_Search
 
-' --- Team Manager ---
-TM --> UC_AddPlayer
-TM --> UC_EditPlayer
-TM --> UC_DeletePlayer
-TM --> UC_Roster
-
-' --- Referee ---
-Referee --> UC_MatchEvent
-Referee --> UC_RecordResult
-
-' --- Supervisor ---
-Supervisor --> UC_SupervisorReport
-
-' --- Public (bao gồm người chưa đăng nhập) ---
-Public --> UC_ViewTeams
-Public --> UC_ViewPlayers
-Public --> UC_ViewSeason
-Public --> UC_ViewRegulation
-Public --> UC_ViewStadium
-Public --> UC_ViewSchedule
-Public --> UC_ViewResult
-Public --> UC_Standings
-Public --> UC_Stats
-Public --> UC_Search
-
-' ═══════════════════════════════════════
-'  INCLUDE relationships
-' ═══════════════════════════════════════
-UC_RecordResult ..> UC_MatchEvent : <<include>>
-UC_CreateSchedule ..> UC_ViewSeason : <<include>>
-
-@enduml
+  UC_OAuth -. <<extend>> .-> UC_Login
+  UC_RecordResult -. <<include>> .-> UC_MatchEvent
+  UC_CreateSchedule -. <<include>> .-> UC_ViewSeason
 ```
 
 ---
