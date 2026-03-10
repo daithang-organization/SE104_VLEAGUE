@@ -111,7 +111,7 @@ export class RegistrationService {
     });
 
     if (!team) {
-      throw new NotFoundException(`Team with ID ${id} not found`);
+      throw new NotFoundException(`Không tìm thấy đội bóng với ID ${id}`);
     }
 
     return team;
@@ -133,7 +133,7 @@ export class RegistrationService {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException(
-            `Team with name "${dto.name}" already exists`,
+            `Đội bóng với tên "${dto.name}" đã tồn tại`,
           );
         }
       }
@@ -153,7 +153,7 @@ export class RegistrationService {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException(
-            `Team with name "${dto.name}" already exists`,
+            `Đội bóng với tên "${dto.name}" đã tồn tại`,
           );
         }
       }
@@ -177,6 +177,9 @@ export class RegistrationService {
     position?: string;
     nationality?: string;
     teamId?: string;
+    playerType?: string;
+    minAge?: number;
+    maxAge?: number;
   }) {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 20;
@@ -200,6 +203,33 @@ export class RegistrationService {
       where.roster = {
         some: { teamId: pagination.teamId, leftAt: null },
       };
+    }
+    if (pagination?.playerType) {
+      where.playerType = pagination.playerType;
+    }
+    // Age range filter (calculate DOB range from age)
+    if (pagination?.minAge || pagination?.maxAge) {
+      const dobFilter: Record<string, Date> = {};
+      const today = new Date();
+      if (pagination?.maxAge) {
+        // Player must be at most maxAge → born after this date
+        const minDob = new Date(
+          today.getFullYear() - pagination.maxAge - 1,
+          today.getMonth(),
+          today.getDate(),
+        );
+        dobFilter.gte = minDob;
+      }
+      if (pagination?.minAge) {
+        // Player must be at least minAge → born before this date
+        const maxDob = new Date(
+          today.getFullYear() - pagination.minAge,
+          today.getMonth(),
+          today.getDate(),
+        );
+        dobFilter.lte = maxDob;
+      }
+      where.dob = dobFilter;
     }
 
     const [data, total] = await Promise.all([
@@ -265,7 +295,7 @@ export class RegistrationService {
     });
 
     if (!player) {
-      throw new NotFoundException(`Player with ID ${id} not found`);
+      throw new NotFoundException(`Không tìm thấy cầu thủ với ID ${id}`);
     }
 
     return player;

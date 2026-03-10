@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { StandingsService } from '../standings/standings.service';
@@ -69,6 +70,13 @@ describe('MatchService', () => {
             emitMatchEvent: jest.fn(),
             emitScoreUpdate: jest.fn(),
             emitStatusChange: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {
+            notifyMatchStatusChange: jest.fn().mockResolvedValue(undefined),
+            notifyMatchResult: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

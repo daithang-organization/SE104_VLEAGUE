@@ -1,6 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Flex, Form, Input, InputNumber, Modal, Radio, Select, Typography } from 'antd';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { RosterPlayer } from '../services/matchApi';
 import { EVENT_TYPE_MAP } from '../utils/constants';
 
@@ -37,6 +38,7 @@ export default function EventModal({
   rosterLoading,
 }: EventModalProps) {
   const [form] = Form.useForm();
+  const { t } = useTranslation();
   const [teamSide, setTeamSide] = useState<'home' | 'away' | null>(null);
 
   const currentRoster = useMemo(() => {
@@ -60,13 +62,13 @@ export default function EventModal({
 
   return (
     <Modal
-      title="Thêm sự kiện trận đấu"
+      title={t('eventFormModal.title')}
       open={open}
       onCancel={handleCancel}
       onOk={handleOk}
       confirmLoading={loading}
-      okText="Thêm tất cả"
-      cancelText="Hủy"
+      okText={t('eventFormModal.okText')}
+      cancelText={t('eventFormModal.cancel')}
       destroyOnClose
       width={680}
       afterOpenChange={(isOpen) => {
@@ -80,8 +82,8 @@ export default function EventModal({
         {/* Team selector */}
         <Form.Item
           name="teamSide"
-          label="Đội"
-          rules={[{ required: true, message: 'Vui lòng chọn đội' }]}
+          label={t('eventFormModal.teamLabel')}
+          rules={[{ required: true, message: t('eventFormModal.teamRequired') }]}
         >
           <Radio.Group
             onChange={(e) => {
@@ -115,7 +117,10 @@ export default function EventModal({
                 <div
                   key={key}
                   style={{
-                    background: idx % 2 === 0 ? '#fafafa' : '#f0f0f0',
+                    background:
+                      idx % 2 === 0
+                        ? 'var(--ant-color-bg-layout)'
+                        : 'var(--ant-color-fill-quaternary)',
                     padding: '12px 12px 4px',
                     borderRadius: 8,
                     marginBottom: 8,
@@ -123,8 +128,8 @@ export default function EventModal({
                   }}
                 >
                   <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-                    <Typography.Text strong style={{ fontSize: 13, color: '#666' }}>
-                      Sự kiện {idx + 1}
+                    <Typography.Text strong style={{ fontSize: 13 }} type="secondary">
+                      {t('eventFormModal.eventLabel', { index: idx + 1 })}
                     </Typography.Text>
                     {fields.length > 1 && (
                       <Button
@@ -141,10 +146,10 @@ export default function EventModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'type']}
-                      rules={[{ required: true, message: 'Chọn loại' }]}
+                      rules={[{ required: true, message: t('eventFormModal.typeRequired') }]}
                       style={{ flex: 2, marginBottom: 8 }}
                     >
-                      <Select placeholder="Loại sự kiện" size="middle">
+                      <Select placeholder={t('eventFormModal.typePlaceholder')} size="middle">
                         {Object.entries(EVENT_TYPE_MAP).map(([value, { label, icon }]) => (
                           <Select.Option key={value} value={value}>
                             {icon} {label}
@@ -155,10 +160,15 @@ export default function EventModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'minute']}
-                      rules={[{ required: true, message: 'Phút' }]}
+                      rules={[{ required: true, message: t('eventFormModal.minuteRequired') }]}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
-                      <InputNumber min={0} max={150} style={{ width: '100%' }} placeholder="Phút" />
+                      <InputNumber
+                        min={0}
+                        max={150}
+                        style={{ width: '100%' }}
+                        placeholder={t('eventFormModal.minutePlaceholder')}
+                      />
                     </Form.Item>
                   </Flex>
 
@@ -169,7 +179,11 @@ export default function EventModal({
                       style={{ flex: 2, marginBottom: 8 }}
                     >
                       <Select
-                        placeholder={teamSide ? 'Chọn cầu thủ' : 'Chọn đội trước'}
+                        placeholder={
+                          teamSide
+                            ? t('eventFormModal.playerPlaceholder')
+                            : t('eventFormModal.playerDisabledHint')
+                        }
                         disabled={!teamSide || rosterLoading}
                         loading={rosterLoading}
                         showSearch
@@ -186,7 +200,7 @@ export default function EventModal({
                       name={[name, 'note']}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
-                      <Input placeholder="Ghi chú" />
+                      <Input placeholder={t('eventFormModal.notePlaceholder')} />
                     </Form.Item>
                   </Flex>
 
@@ -211,12 +225,21 @@ export default function EventModal({
                               name={[name, 'goalType']}
                               style={{ flex: 1, marginBottom: 8 }}
                             >
-                              <Select placeholder="Loại bàn thắng" allowClear>
-                                <Select.Option value="NORMAL">Bình thường</Select.Option>
-                                <Select.Option value="HEADER">Đánh đầu</Select.Option>
-                                <Select.Option value="FREE_KICK">Sút phạt</Select.Option>
-                                <Select.Option value="PENALTY_KICK">Penalty</Select.Option>
-                                <Select.Option value="LONG_RANGE">Sút xa</Select.Option>
+                              <Select
+                                placeholder={t('eventFormModal.goalTypePlaceholder')}
+                                allowClear
+                              >
+                                <Select.Option value="NORMAL">{t('goalType.NORMAL')}</Select.Option>
+                                <Select.Option value="HEADER">{t('goalType.HEADER')}</Select.Option>
+                                <Select.Option value="FREE_KICK">
+                                  {t('goalType.FREE_KICK')}
+                                </Select.Option>
+                                <Select.Option value="PENALTY_KICK">
+                                  {t('goalType.PENALTY_KICK')}
+                                </Select.Option>
+                                <Select.Option value="LONG_RANGE">
+                                  {t('goalType.LONG_RANGE')}
+                                </Select.Option>
                               </Select>
                             </Form.Item>
                           )}
@@ -227,7 +250,11 @@ export default function EventModal({
                               style={{ flex: 1, marginBottom: 8 }}
                             >
                               <Select
-                                placeholder={evtType === 'GOAL' ? 'Kiến tạo' : 'Cầu thủ bị thay'}
+                                placeholder={
+                                  evtType === 'GOAL'
+                                    ? t('eventFormModal.assistPlaceholder')
+                                    : t('eventFormModal.subPlayerPlaceholder')
+                                }
                                 disabled={!teamSide || rosterLoading}
                                 loading={rosterLoading}
                                 showSearch
@@ -254,7 +281,7 @@ export default function EventModal({
                 icon={<PlusOutlined />}
                 style={{ marginTop: 4 }}
               >
-                Thêm sự kiện
+                {t('eventFormModal.addEventBtn')}
               </Button>
             </>
           )}

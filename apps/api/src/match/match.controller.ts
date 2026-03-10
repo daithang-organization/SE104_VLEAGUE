@@ -56,12 +56,16 @@ export class MatchController {
     @Query('round') round?: string,
     @Query('status') status?: string,
     @Query('teamId') teamId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
   ) {
     return this.match.findAll(seasonId, {
       ...pagination,
       round: round ? Number(round) : undefined,
       status,
       teamId,
+      dateFrom,
+      dateTo,
     });
   }
 

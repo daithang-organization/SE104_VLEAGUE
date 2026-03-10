@@ -1,4 +1,4 @@
-import { api } from '../lib/api';
+import { api, SERVER_URL } from '../lib/api';
 
 export type LoginResponse = {
   accessToken: string;
@@ -49,7 +49,9 @@ export type Session = {
  * Login API call
  */
 export function apiLogin(email: string, password: string, rememberMe?: boolean) {
-  return api.post<LoginResponse>('/auth/login', { email, password, rememberMe }).then((res) => res.data);
+  return api
+    .post<LoginResponse>('/auth/login', { email, password, rememberMe })
+    .then((res) => res.data);
 }
 
 /**
@@ -77,7 +79,9 @@ export function apiRegister(email: string, password: string) {
  * Verify email with OTP
  */
 export function apiVerifyEmail(email: string, otp: string) {
-  return api.post<VerifyEmailResponse>('/auth/verify-email', { email, otp }).then((res) => res.data);
+  return api
+    .post<VerifyEmailResponse>('/auth/verify-email', { email, otp })
+    .then((res) => res.data);
 }
 
 /**
@@ -167,14 +171,12 @@ export function apiSetPassword(newPassword: string) {
  * Get Google OAuth URL
  */
 export function getGoogleAuthUrl() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  return `${apiBaseUrl}/auth/google`;
+  return `${SERVER_URL}/api/auth/google`;
 }
 
 /**
  * Get Facebook OAuth URL
  */
 export function getFacebookAuthUrl() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  return `${apiBaseUrl}/auth/facebook`;
+  return `${SERVER_URL}/api/auth/facebook`;
 }

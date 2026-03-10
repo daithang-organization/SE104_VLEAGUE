@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+echo "⏳ Waiting for database to be ready..."
+until pg_isready -h db -p 5432 -U postgres -q; do
+  echo "  DB not ready yet, retrying in 2s..."
+  sleep 2
+done
+echo "✅ Database is ready!"
+
 echo "🔧 Generating Prisma Client..."
 node ../../node_modules/prisma/build/index.js generate
 

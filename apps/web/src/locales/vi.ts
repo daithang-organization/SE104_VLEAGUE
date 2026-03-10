@@ -18,6 +18,22 @@ const vi = {
   // SHARED / CROSS-CUTTING
   // ─────────────────────────────────────────────
 
+  menu: {
+    dashboard: 'Dashboard',
+    seasons: 'Mùa giải',
+    teams: 'Đội bóng',
+    stadiums: 'Sân vận động',
+    players: 'Cầu thủ',
+    schedule: 'Lịch thi đấu',
+    matches: 'Kết quả trận đấu',
+    standings: 'Bảng xếp hạng',
+    headToHead: 'Đối đầu',
+    reports: 'Báo cáo',
+    regulations: 'Quy định',
+    users: 'Quản lý người dùng',
+    coaches: 'Huấn luyện viên',
+  },
+
   common: {
     save: 'Lưu',
     create: 'Tạo',
@@ -170,7 +186,7 @@ const vi = {
     statMatches: 'Trận đấu',
     statSeasons: 'Mùa giải',
     inProgress: 'Đang diễn ra',
-    seasonProgress: '{percent}% mùa giải',
+    seasonProgress: '{{percent}}% mùa giải',
     quickActions: '⚡ Thao tác nhanh',
     btnSeason: 'Mùa giải',
     btnTeam: 'Đội bóng',
@@ -198,6 +214,10 @@ const vi = {
     topScorersColTeam: 'Đội',
     topScorersEmpty: 'Chưa có dữ liệu vua phá lưới',
     teamFormTitle: 'Phong độ đội bóng',
+    goalsPerRoundTitle: 'Bàn thắng theo vòng đấu',
+    cardStatsTitle: 'Thẻ phạt (Top 5)',
+    cardStatsEmpty: 'Chưa có dữ liệu thẻ phạt',
+    cardStatsColPlayer: 'Cầu thủ',
   },
 
   // ─────────────────────────────────────────────
@@ -802,6 +822,7 @@ const vi = {
     loadError: 'Không thể tải dữ liệu báo cáo',
     exportScorersPdf: 'PDF Vua phá lưới',
     exportTeamStatsPdf: 'PDF Thống kê đội',
+    exportCardStatsPdf: 'PDF Thẻ phạt',
     exportError: 'Lỗi xuất PDF',
     pdfExportDate: 'Ngày xuất: {date}',
     tabScorers: '🏆 Vua phá lưới',

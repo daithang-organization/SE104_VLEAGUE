@@ -23,6 +23,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import NotificationBell from '../components/NotificationBell';
 import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import { useTheme } from './ThemeContext';
 import { MENU } from './menu';
@@ -212,6 +213,9 @@ export default function AppShell() {
               {i18n.language === 'vi' ? 'VI' : 'EN'}
             </span>
           </Button>
+
+          {/* Notification Bell */}
+          <NotificationBell />
 
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
             <Button type="text" style={{ color: 'white' }}>

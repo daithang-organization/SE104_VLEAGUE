@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { TableSkeleton } from '../components/LoadingSkeleton';
 import {
   apiCreatePlayer,
   apiDeletePlayer,
@@ -73,10 +74,10 @@ export default function PlayersPage() {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
 
-  const fetchPlayers = useCallback(async (page = 1, limit = 20) => {
+  const fetchPlayers = useCallback(async (page = 1, limit = 20, searchQuery?: string) => {
     setLoading(true);
     try {
-      const res = await apiGetPlayers(page, limit);
+      const res = await apiGetPlayers(page, limit, { search: searchQuery || undefined });
       setPlayers(res.data);
       setPagination({ page: res.page, limit: res.limit, total: res.total });
     } catch (_err) {
@@ -322,8 +323,10 @@ export default function PlayersPage() {
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onPressEnter={() => fetchPlayers(1, pagination.limit, search)}
             style={{ width: 300 }}
             allowClear
+            onClear={() => fetchPlayers(1, pagination.limit)}
           />
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -333,21 +336,27 @@ export default function PlayersPage() {
         </Space>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={filteredPlayers}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: pagination.page,
-          pageSize: pagination.limit,
-          total: pagination.total,
-          showSizeChanger: true,
-          showTotal: (total) => t('players.totalCount', { total }),
-          onChange: (page, pageSize) => fetchPlayers(page, pageSize),
-        }}
-        size="middle"
-      />
+      {loading && filteredPlayers.length === 0 ? (
+        <TableSkeleton rows={8} />
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={filteredPlayers}
+          rowKey="id"
+          loading={loading}
+          scroll={{ x: 1000 }}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.limit,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => t('players.totalCount', { total }),
+            onChange: (page, pageSize) => fetchPlayers(page, pageSize, search),
+          }}
+          size="middle"
+          locale={{ emptyText: t('common.noData') }}
+        />
+      )}
 
       <Modal
         title={editingPlayer ? t('players.modalEditTitle') : t('players.modalCreateTitle')}

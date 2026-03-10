@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import ImageUpload from '../components/ImageUpload';
+import { TableSkeleton } from '../components/LoadingSkeleton';
 import {
   apiCreateTeam,
   apiDeleteTeam,
@@ -268,14 +269,19 @@ export default function TeamsPage() {
         </Space>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={filteredTeams}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 15, showSizeChanger: true }}
-        size="middle"
-      />
+      {loading && filteredTeams.length === 0 ? (
+        <TableSkeleton rows={8} />
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={filteredTeams}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 15, showSizeChanger: true }}
+          size="middle"
+          locale={{ emptyText: t('common.noData') }}
+        />
+      )}
 
       <Modal
         title={editingTeam ? t('teams.modalEditTitle') : t('teams.modalCreateTitle')}

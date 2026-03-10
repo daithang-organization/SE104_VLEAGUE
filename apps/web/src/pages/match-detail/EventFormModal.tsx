@@ -159,7 +159,10 @@ export default function EventFormModal({
                 <div
                   key={key}
                   style={{
-                    background: idx % 2 === 0 ? '#fafafa' : '#f0f0f0',
+                    background:
+                      idx % 2 === 0
+                        ? 'var(--ant-color-bg-layout)'
+                        : 'var(--ant-color-fill-quaternary)',
                     padding: '12px 12px 4px',
                     borderRadius: 8,
                     marginBottom: 8,
@@ -167,7 +170,7 @@ export default function EventFormModal({
                   }}
                 >
                   <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-                    <Text strong style={{ fontSize: 13, color: '#666' }}>
+                    <Text strong style={{ fontSize: 13 }} type="secondary">
                       {t('eventFormModal.eventLabel', { index: idx + 1 })}
                     </Text>
                     {fields.length > 1 && (

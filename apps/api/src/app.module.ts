@@ -3,10 +3,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './common/logger';
 import { HealthModule } from './health/health.module';
 import { MatchModule } from './match/match.module';
+import { NotificationModule } from './notification/notification.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationModule } from './registration/registration.module';
 import { RegulationModule } from './regulation/regulation.module';
@@ -70,6 +72,8 @@ import { UsersModule } from './users/users.module';
     UploadModule,
     // v1.2.0 modules
     SearchModule,
+    AuditModule,
+    NotificationModule,
   ],
   providers: [
     // Apply throttler globally

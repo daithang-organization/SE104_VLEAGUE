@@ -137,46 +137,27 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 ## 🏗 Kiến trúc hệ thống
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Client (Browser)                         │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Frontend (React 19 + Vite + Ant Design)            │
-│                        :5173                                    │
-│  28 pages · 14 API services · i18n (Vi/En) · Dark mode          │
-│  Auth context + RequireAuth/RequireRole protected routes        │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │ HTTP/REST (Axios)
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Backend (NestJS 11) :8080                      │
-│                                                                  │
-│  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
-│  │   Auth   │ │ Registration │ │ Scheduling │ │  Match   │      │
-│  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
-│  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
-│  │  Season  │ │   Stadium    │ │   Roster   │ │Standings │      │
-│  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
-│  ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌──────────┐      │
-│  │Regulation│ │    Users     │ │   Search   │ │  Upload  │      │
-│  └──────────┘ └──────────────┘ └────────────┘ └──────────┘      │
-│  ┌──────────┐ ┌──────────────┐                                   │
-│  │  Health  │ │     Mail     │                                   │
-│  └──────────┘ └──────────────┘                                   │
-│                                                                  │
-│  Swagger: /api/docs · Rate limiting · Caching · Pino logging    │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │ Prisma 7 ORM (@prisma/adapter-pg)
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Database (PostgreSQL 16) :5432                      │
-│         12 models · 10 enums · UUID primary keys                │
-│         13 migrations · Indexed for performance                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+![System Architecture](docs/architecture.png)
+
+---
+
+## 📐 Sơ đồ Use Case
+
+[Tài liệu Use Case Diagram v2](docs/usecase_diagram.md)
+
+README hiện tham chiếu bản use case mới nhất tại `docs/usecase_diagram.md`, bao gồm:
+
+- Nguồn Mermaid render trực tiếp trên GitHub
+- Tóm tắt các thay đổi từ v1 sang v2
+- Ma trận actor/use case theo từng vai trò
+
+Các cập nhật chính của sơ đồ mới:
+
+- Bổ sung actor cha `User` và quan hệ kế thừa cho 5 vai trò
+- Chuyển `OAuth` thành quan hệ `<<extend>>` của `Đăng nhập`
+- Tách các nhóm nghiệp vụ lớn thành các use case CRUD rõ ràng hơn
+- Bổ sung các quyền public như xem lịch thi đấu, kết quả trận đấu, bảng xếp hạng và tìm kiếm
+- Làm rõ vai trò `Supervisor`, `Referee`, `Team Manager` theo đúng nghiệp vụ hiện tại
 
 ---
 

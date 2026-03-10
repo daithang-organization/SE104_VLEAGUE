@@ -58,7 +58,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         else {
           errorResponse = {
             code: this.getErrorCode(status),
-            message: (resp.message as string) || exception.message,
+            message:
+              (resp.message as string) ||
+              this.getDefaultVietnameseMessage(status),
           };
         }
       } else {
@@ -110,9 +112,34 @@ export class HttpExceptionFilter implements ExceptionFilter {
       403: 'FORBIDDEN',
       404: 'NOT_FOUND',
       409: 'CONFLICT',
+      413: 'PAYLOAD_TOO_LARGE',
       422: 'UNPROCESSABLE_ENTITY',
+      429: 'TOO_MANY_REQUESTS',
       500: 'INTERNAL_ERROR',
+      502: 'BAD_GATEWAY',
+      503: 'SERVICE_UNAVAILABLE',
     };
     return codeMap[status] || 'UNKNOWN_ERROR';
+  }
+
+  /**
+   * Provide a user-friendly Vietnamese message for common HTTP status codes
+   * when no specific message is available from the exception.
+   */
+  private getDefaultVietnameseMessage(status: number): string {
+    const messageMap: Record<number, string> = {
+      400: 'Yêu cầu không hợp lệ',
+      401: 'Chưa đăng nhập hoặc phiên đã hết hạn',
+      403: 'Bạn không có quyền thực hiện thao tác này',
+      404: 'Không tìm thấy tài nguyên yêu cầu',
+      409: 'Dữ liệu bị trùng lặp',
+      413: 'Dữ liệu gửi lên quá lớn',
+      422: 'Dữ liệu không thể xử lý',
+      429: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.',
+      500: 'Đã xảy ra lỗi không mong muốn',
+      502: 'Máy chủ tạm thời không phản hồi',
+      503: 'Dịch vụ tạm thời không khả dụng',
+    };
+    return messageMap[status] || 'Đã xảy ra lỗi không mong muốn';
   }
 }

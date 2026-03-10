@@ -8,6 +8,22 @@ const en = {
   // SHARED / CROSS-CUTTING
   // ─────────────────────────────────────────────
 
+  menu: {
+    dashboard: 'Dashboard',
+    seasons: 'Seasons',
+    teams: 'Teams',
+    stadiums: 'Stadiums',
+    players: 'Players',
+    schedule: 'Schedule',
+    matches: 'Match Results',
+    standings: 'Standings',
+    headToHead: 'Head to Head',
+    reports: 'Reports',
+    regulations: 'Regulations',
+    users: 'User Management',
+    coaches: 'Coaches',
+  },
+
   common: {
     save: 'Save',
     create: 'Create',
@@ -147,7 +163,7 @@ const en = {
     statMatches: 'Matches',
     statSeasons: 'Seasons',
     inProgress: 'In progress',
-    seasonProgress: '{percent}% of season',
+    seasonProgress: '{{percent}}% of season',
     quickActions: '⚡ Quick Actions',
     btnSeason: 'Season',
     btnTeam: 'Teams',
@@ -175,6 +191,10 @@ const en = {
     topScorersColTeam: 'Team',
     topScorersEmpty: 'No top scorer data',
     teamFormTitle: 'Team Form',
+    goalsPerRoundTitle: 'Goals per Round',
+    cardStatsTitle: 'Card Stats (Top 5)',
+    cardStatsEmpty: 'No card stats data',
+    cardStatsColPlayer: 'Player',
   },
 
   // ─────────────────────────────────────────────
@@ -768,6 +788,7 @@ const en = {
     loadError: 'Failed to load report data',
     exportScorersPdf: 'PDF Top Scorers',
     exportTeamStatsPdf: 'PDF Team Stats',
+    exportCardStatsPdf: 'PDF Card Stats',
     exportError: 'PDF export error',
     pdfExportDate: 'Export date: {date}',
     tabScorers: '🏆 Top Scorers',

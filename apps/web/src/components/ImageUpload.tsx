@@ -2,7 +2,7 @@ import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import { message, Upload } from 'antd';
 import type { RcFile, UploadChangeParam } from 'antd/es/upload';
 import { useState } from 'react';
-import { getAccessToken } from '../lib/api';
+import { getAccessToken, SERVER_URL } from '../lib/api';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE_MB = 5;
@@ -35,7 +35,7 @@ function beforeUpload(file: RcFile) {
  */
 export default function ImageUpload({ value, onChange, hint }: ImageUploadProps) {
   const [loading, setLoading] = useState(false);
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+  const apiBaseUrl = `${SERVER_URL}/api`;
 
   const handleChange = (info: UploadChangeParam) => {
     if (info.file.status === 'uploading') {
@@ -47,7 +47,7 @@ export default function ImageUpload({ value, onChange, hint }: ImageUploadProps)
       const url = info.file.response?.url;
       if (url) {
         // Construct full URL for display
-        const fullUrl = url.startsWith('http') ? url : `${baseUrl.replace('/api', '')}${url}`;
+        const fullUrl = url.startsWith('http') ? url : `${SERVER_URL}${url}`;
         onChange?.(fullUrl);
       }
     }
@@ -62,7 +62,7 @@ export default function ImageUpload({ value, onChange, hint }: ImageUploadProps)
       name="file"
       listType="picture-card"
       showUploadList={false}
-      action={`${baseUrl}/upload/image`}
+      action={`${apiBaseUrl}/upload/image`}
       headers={{ Authorization: `Bearer ${getAccessToken() ?? ''}` }}
       beforeUpload={beforeUpload}
       onChange={handleChange}

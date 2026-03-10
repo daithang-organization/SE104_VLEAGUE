@@ -1,8 +1,49 @@
 import { Card, Tag, Typography } from 'antd';
 import type { MatchEvent } from '../../services/matchApi';
+import { useTheme } from '../../shell/ThemeContext';
 import { EVENT_TYPE_MAP } from './constants';
 
 const { Text } = Typography;
+
+const LIGHT_BG: Record<string, string> = {
+  GOAL: '#f6ffed',
+  PENALTY: '#f6ffed',
+  OWN_GOAL: '#fff7e6',
+  RED_CARD: '#fff1f0',
+  YELLOW_CARD: '#fffbe6',
+  SUBSTITUTION: '#e6f7ff',
+  DEFAULT: '#fafafa',
+};
+
+const DARK_BG: Record<string, string> = {
+  GOAL: '#162312',
+  PENALTY: '#162312',
+  OWN_GOAL: '#2b1d11',
+  RED_CARD: '#2a1215',
+  YELLOW_CARD: '#2b2611',
+  SUBSTITUTION: '#111d2c',
+  DEFAULT: '#1f1f1f',
+};
+
+const LIGHT_BORDER: Record<string, string> = {
+  GOAL: '#b7eb8f',
+  PENALTY: '#b7eb8f',
+  OWN_GOAL: '#ffd591',
+  RED_CARD: '#ffa39e',
+  YELLOW_CARD: '#ffe58f',
+  SUBSTITUTION: '#91d5ff',
+  DEFAULT: '#d9d9d9',
+};
+
+const DARK_BORDER: Record<string, string> = {
+  GOAL: '#274916',
+  PENALTY: '#274916',
+  OWN_GOAL: '#593815',
+  RED_CARD: '#58181c',
+  YELLOW_CARD: '#594e15',
+  SUBSTITUTION: '#15395b',
+  DEFAULT: '#424242',
+};
 
 interface MatchTimelineProps {
   events: MatchEvent[];
@@ -20,6 +61,9 @@ export default function MatchTimeline({
   onPlayerClick,
 }: MatchTimelineProps) {
   const sorted = [...events].sort((a, b) => a.minute - b.minute);
+  const { isDark } = useTheme();
+  const palette = isDark ? DARK_BG : LIGHT_BG;
+  const borders = isDark ? DARK_BORDER : LIGHT_BORDER;
 
   if (sorted.length === 0) {
     return (
@@ -27,8 +71,28 @@ export default function MatchTimeline({
     );
   }
 
+  // CSS keyframes for slide-in animation
+  const animStyles = `
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .timeline-event-home { animation: slideInLeft 0.4s ease-out forwards; }
+    .timeline-event-away { animation: slideInRight 0.4s ease-out forwards; }
+    .timeline-minute { animation: popIn 0.3s ease-out forwards; }
+  `;
+
   return (
     <div>
+      <style>{animStyles}</style>
       {/* Header */}
       <div
         style={{
@@ -75,31 +139,9 @@ export default function MatchTimeline({
             icon: '•',
           };
 
-          const bgColor =
-            event.type === 'GOAL' || event.type === 'PENALTY'
-              ? '#f6ffed'
-              : event.type === 'OWN_GOAL'
-                ? '#fff7e6'
-                : event.type === 'RED_CARD'
-                  ? '#fff1f0'
-                  : event.type === 'YELLOW_CARD'
-                    ? '#fffbe6'
-                    : event.type === 'SUBSTITUTION'
-                      ? '#e6f7ff'
-                      : '#fafafa';
+          const bgColor = palette[event.type] ?? palette.DEFAULT;
 
-          const borderColor =
-            event.type === 'GOAL' || event.type === 'PENALTY'
-              ? '#b7eb8f'
-              : event.type === 'OWN_GOAL'
-                ? '#ffd591'
-                : event.type === 'RED_CARD'
-                  ? '#ffa39e'
-                  : event.type === 'YELLOW_CARD'
-                    ? '#ffe58f'
-                    : event.type === 'SUBSTITUTION'
-                      ? '#91d5ff'
-                      : '#d9d9d9';
+          const borderColor = borders[event.type] ?? borders.DEFAULT;
 
           return (
             <div
@@ -109,6 +151,8 @@ export default function MatchTimeline({
                 alignItems: 'center',
                 marginBottom: 8,
                 minHeight: 44,
+                animationDelay: `${idx * 0.08}s`,
+                animationFillMode: 'both',
               }}
             >
               {/* Left (home) side */}
@@ -123,12 +167,14 @@ export default function MatchTimeline({
                 {isHome && (
                   <Card
                     size="small"
+                    className="timeline-event-home"
                     style={{
                       background: bgColor,
                       border: `1px solid ${borderColor}`,
                       borderRadius: 8,
                       maxWidth: 280,
                       cursor: event.playerId ? 'pointer' : 'default',
+                      animationDelay: `${idx * 0.08}s`,
                     }}
                     styles={{ body: { padding: '6px 10px' } }}
                     onClick={() => event.playerId && onPlayerClick?.(event.playerId)}
@@ -164,10 +210,12 @@ export default function MatchTimeline({
 
               {/* Center minute bubble */}
               <div
+                className="timeline-minute"
                 style={{
                   width: 40,
                   height: 40,
                   borderRadius: '50%',
+                  animationDelay: `${idx * 0.08}s`,
                   background:
                     event.type === 'GOAL' || event.type === 'PENALTY'
                       ? '#52c41a'
@@ -206,12 +254,14 @@ export default function MatchTimeline({
                 {!isHome && (
                   <Card
                     size="small"
+                    className="timeline-event-away"
                     style={{
                       background: bgColor,
                       border: `1px solid ${borderColor}`,
                       borderRadius: 8,
                       maxWidth: 280,
                       cursor: event.playerId ? 'pointer' : 'default',
+                      animationDelay: `${idx * 0.08}s`,
                     }}
                     styles={{ body: { padding: '6px 10px' } }}
                     onClick={() => event.playerId && onPlayerClick?.(event.playerId)}
