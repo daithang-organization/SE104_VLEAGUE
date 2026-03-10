@@ -4,10 +4,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { StandingsService } from '../standings/standings.service';
-import { NotificationService } from '../notification/notification.service';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { MatchGateway } from './match.gateway';
 

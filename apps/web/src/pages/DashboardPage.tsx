@@ -1,6 +1,5 @@
 import {
   CalendarOutlined,
-  FireOutlined,
   PlusOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -19,7 +18,6 @@ import {
   Statistic,
   Table,
   Tag,
-  Tooltip as AntTooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
