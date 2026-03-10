@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { SERVER_URL } from '../lib/api';
 
-const WS_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api').replace(
-  '/api',
-  '',
-);
+const WS_URL = SERVER_URL;
 
 interface MatchEvent {
   matchId: string;

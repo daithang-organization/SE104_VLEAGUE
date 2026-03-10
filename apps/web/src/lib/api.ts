@@ -1,6 +1,15 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_PREFIX = '/api';
+
+/** Server origin without trailing slash (e.g. http://localhost:8080) */
+export const SERVER_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(
+  /\/+$/,
+  '',
+);
+
+/** Full API base URL with /api prefix (e.g. http://localhost:8080/api) */
+const baseURL = `${SERVER_URL}${API_PREFIX}`;
 
 export const api = axios.create({
   baseURL,

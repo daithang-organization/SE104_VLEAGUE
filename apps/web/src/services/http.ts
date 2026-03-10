@@ -46,7 +46,7 @@ export async function http<T>(
   options: RequestInit = {},
   showErrorToast = true,
 ): Promise<T> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL as string;
+  const baseUrl = `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '')}/api`;
 
   const token = getToken();
   const headers = new Headers(options.headers);
