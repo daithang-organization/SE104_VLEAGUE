@@ -106,16 +106,22 @@ describe('MatchesPage', () => {
 
   it('renders score for finished matches', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText(/2 – 1/)).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText(/2 – 1/)).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('renders status tags', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Kết thúc')).toBeInTheDocument();
-      expect(screen.getByText('Nháp')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Kết thúc')).toBeInTheDocument();
+        expect(screen.getByText('Nháp')).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 });

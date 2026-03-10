@@ -7,7 +7,10 @@ const mockApi = vi.hoisted(() => ({
   delete: vi.fn(),
 }));
 
-vi.mock('../../lib/api', () => ({ api: mockApi }));
+vi.mock('../../lib/api', () => ({
+  api: mockApi,
+  SERVER_URL: 'http://localhost:8080',
+}));
 
 import {
   apiChangePassword,

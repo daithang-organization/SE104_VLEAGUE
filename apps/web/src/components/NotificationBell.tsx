@@ -32,6 +32,7 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- polling pattern: initial fetch + interval
     fetchNotifications();
     timerRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => {

@@ -53,16 +53,14 @@ describe('SearchService', () => {
         .mockResolvedValue([
           { id: 't1', name: 'Hà Nội FC', city: 'Hà Nội' } as any,
         ]);
-      jest
-        .spyOn(prisma.player, 'findMany')
-        .mockResolvedValue([
-          {
-            id: 'p1',
-            fullName: 'Nguyễn Văn A',
-            position: 'FW',
-            nationality: 'Việt Nam',
-          } as any,
-        ]);
+      jest.spyOn(prisma.player, 'findMany').mockResolvedValue([
+        {
+          id: 'p1',
+          fullName: 'Nguyễn Văn A',
+          position: 'FW',
+          nationality: 'Việt Nam',
+        } as any,
+      ]);
       jest.spyOn(prisma.stadium, 'findMany').mockResolvedValue([]);
       jest.spyOn(prisma.season, 'findMany').mockResolvedValue([]);
       jest.spyOn(prisma.match, 'findMany').mockResolvedValue([]);
@@ -108,16 +106,14 @@ describe('SearchService', () => {
       jest.spyOn(prisma.team, 'findMany').mockResolvedValue([]);
       jest.spyOn(prisma.player, 'findMany').mockResolvedValue([]);
       jest.spyOn(prisma.stadium, 'findMany').mockResolvedValue([]);
-      jest
-        .spyOn(prisma.season, 'findMany')
-        .mockResolvedValue([
-          {
-            id: 'se1',
-            name: 'V-League 2026',
-            year: 2026,
-            status: 'IN_PROGRESS',
-          } as any,
-        ]);
+      jest.spyOn(prisma.season, 'findMany').mockResolvedValue([
+        {
+          id: 'se1',
+          name: 'V-League 2026',
+          year: 2026,
+          status: 'IN_PROGRESS',
+        } as any,
+      ]);
       jest.spyOn(prisma.match, 'findMany').mockResolvedValue([]);
 
       const result = await service.globalSearch('V-League', 10);
