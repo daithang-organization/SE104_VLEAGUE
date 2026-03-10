@@ -143,7 +143,21 @@ Hệ thống cung cấp các công cụ để quản lý:
 
 ## 📐 Sơ đồ Use Case
 
-![Use Case Diagram](docs/usecase_diagram.png)
+[Tài liệu Use Case Diagram v2](docs/usecase_diagram.md)
+
+README hiện tham chiếu bản use case mới nhất tại `docs/usecase_diagram.md`, bao gồm:
+
+- Nguồn PlantUML để render lại sơ đồ
+- Tóm tắt các thay đổi từ v1 sang v2
+- Ma trận actor/use case theo từng vai trò
+
+Các cập nhật chính của sơ đồ mới:
+
+- Bổ sung actor cha `User` và quan hệ kế thừa cho 5 vai trò
+- Chuyển `OAuth` thành quan hệ `<<extend>>` của `Đăng nhập`
+- Tách các nhóm nghiệp vụ lớn thành các use case CRUD rõ ràng hơn
+- Bổ sung các quyền public như xem lịch thi đấu, kết quả trận đấu, bảng xếp hạng và tìm kiếm
+- Làm rõ vai trò `Supervisor`, `Referee`, `Team Manager` theo đúng nghiệp vụ hiện tại
 
 ---
 

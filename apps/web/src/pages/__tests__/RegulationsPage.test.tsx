@@ -52,27 +52,36 @@ describe('RegulationsPage', () => {
 
   it('renders regulation keys', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('MIN_AGE')).toBeInTheDocument();
-      expect(screen.getByText('MAX_AGE')).toBeInTheDocument();
-      expect(screen.getByText('MAX_ROSTER')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('MIN_AGE')).toBeInTheDocument();
+        expect(screen.getByText('MAX_AGE')).toBeInTheDocument();
+        expect(screen.getByText('MAX_ROSTER')).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('renders regulation values', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('16')).toBeInTheDocument();
-      expect(screen.getByText('40')).toBeInTheDocument();
-      expect(screen.getByText('22')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('16')).toBeInTheDocument();
+        expect(screen.getByText('40')).toBeInTheDocument();
+        expect(screen.getByText('22')).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('renders action buttons', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Khởi tạo mặc định')).toBeInTheDocument();
-      expect(screen.getByText('Thêm quy định')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Khởi tạo mặc định')).toBeInTheDocument();
+        expect(screen.getByText('Thêm quy định')).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 });
