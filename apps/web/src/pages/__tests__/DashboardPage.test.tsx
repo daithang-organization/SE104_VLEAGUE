@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
 const mockUseAuth = vi.hoisted(() =>
@@ -28,6 +28,8 @@ const mockSeasonApi = vi.hoisted(() => ({
 }));
 const mockStandingsApi = vi.hoisted(() => ({
   apiGetStandings: vi.fn().mockResolvedValue([]),
+  apiGetTopScorers: vi.fn().mockResolvedValue([]),
+  apiGetCardStats: vi.fn().mockResolvedValue([]),
 }));
 const mockMatchApi = vi.hoisted(() => ({
   apiGetMatches: vi.fn().mockResolvedValue({ data: [], total: 8 }),
@@ -51,12 +53,21 @@ function renderPage() {
   );
 }
 
+/* Wait for all mocked API calls (Promise.allSettled) to flush */
+async function waitForAsyncEffects() {
+  await waitFor(() => {
+    expect(mockTeamApi.apiGetTeams).toHaveBeenCalled();
+  });
+}
+
 describe('DashboardPage', () => {
   beforeEach(() => vi.clearAllMocks());
+  afterEach(() => cleanup());
 
-  it('renders the Dashboard title', () => {
+  it('renders the Dashboard title', async () => {
     renderPage();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    await waitForAsyncEffects();
   });
 
   it('renders stat cards', async () => {
