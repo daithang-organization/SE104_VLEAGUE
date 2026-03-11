@@ -11,6 +11,8 @@ import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
@@ -36,6 +38,18 @@ export class NotificationController {
     description:
       'Lấy thông báo của người dùng hiện tại (bao gồm thông báo chung)',
   })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Trang (mặc định: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Số lượng mỗi trang (mặc định: 20)',
+  })
   @ApiOkResponse({ description: 'Danh sách thông báo (phân trang)' })
   getNotifications(
     @Req() req: { user: { id: string } },
@@ -59,6 +73,7 @@ export class NotificationController {
   @ApiOperation({
     summary: 'Đánh dấu đã đọc thông báo',
   })
+  @ApiParam({ name: 'id', type: String, description: 'ID thông báo (UUID)' })
   markAsRead(@Param('id') id: string, @Req() req: { user: { id: string } }) {
     return this.notificationService.markAsRead(id, req.user.id);
   }
