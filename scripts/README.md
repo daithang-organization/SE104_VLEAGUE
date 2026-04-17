@@ -18,6 +18,7 @@
 ## 🎯 Tổng quan
 
 Thư mục `scripts/` chứa các script tiện ích giúp:
+
 - Tự động hóa các tác vụ lặp đi lặp lại
 - Setup môi trường development
 - Build và deploy
@@ -32,13 +33,13 @@ Thư mục `scripts/` chứa các script tiện ích giúp:
 
 ### Scripts dự kiến
 
-| Script | Mô tả | Trạng thái |
-|--------|-------|------------|
-| `setup.sh` | Cài đặt môi trường development | 🔜 Planned |
-| `reset-db.sh` | Reset database về trạng thái ban đầu | 🔜 Planned |
-| `seed-data.sh` | Seed dữ liệu mẫu | 🔜 Planned |
-| `backup-db.sh` | Backup database | 🔜 Planned |
-| `generate-api-docs.sh` | Generate API documentation | 🔜 Planned |
+| Script                 | Mô tả                                | Trạng thái |
+| ---------------------- | ------------------------------------ | ---------- |
+| `setup.sh`             | Cài đặt môi trường development       | 🔜 Planned |
+| `reset-db.sh`          | Reset database về trạng thái ban đầu | 🔜 Planned |
+| `seed-data.sh`         | Seed dữ liệu mẫu                     | 🔜 Planned |
+| `backup-db.sh`         | Backup database                      | 🔜 Planned |
+| `generate-api-docs.sh` | Generate API documentation           | 🔜 Planned |
 
 ---
 
@@ -104,9 +105,9 @@ log_error() {
 # Main
 main() {
     log_info "Starting script..."
-    
+
     # Your code here
-    
+
     log_info "Done!"
 }
 
@@ -159,11 +160,11 @@ function Main {
         Show-Help
         return
     }
-    
+
     Write-Info "Starting script..."
-    
+
     # Your code here
-    
+
     Write-Info "Done!"
 }
 
@@ -193,21 +194,25 @@ scripts/
 ## 📝 Quy tắc viết Script
 
 ### 1. Naming Convention
+
 - Sử dụng `kebab-case` cho tên file
 - Đuôi `.sh` cho Bash, `.ps1` cho PowerShell
 - Tên mô tả rõ chức năng
 
 ### 2. Documentation
+
 - Thêm header comment với mô tả
 - Thêm help option (-h, --help)
 - Comment cho các đoạn code phức tạp
 
 ### 3. Error Handling
+
 - Sử dụng `set -e` trong Bash
 - Catch errors và hiển thị message rõ ràng
 - Exit với code phù hợp (0 = success, >0 = error)
 
 ### 4. Logging
+
 - Sử dụng colors để phân biệt log levels
 - INFO (green), WARN (yellow), ERROR (red)
 
