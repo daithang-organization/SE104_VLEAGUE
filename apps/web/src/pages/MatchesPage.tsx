@@ -1,4 +1,4 @@
-import { EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -18,7 +18,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -219,7 +219,7 @@ export default function MatchesPage() {
       message.success(t('matches.scoreUpdated'));
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
-      fetchMatches(selectedSeasonId);
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam);
     } catch (_err) {
       message.error(t('matches.scoreUpdateError'));
     } finally {
@@ -236,7 +236,7 @@ export default function MatchesPage() {
         t('matches.statusChanged', { status: STATUS_MAP[newStatus]?.label ?? newStatus }),
       );
       viewDetail(detailMatch.id);
-      fetchMatches(selectedSeasonId);
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam);
     } catch (err: unknown) {
       const msg =
         err &&
@@ -279,7 +279,7 @@ export default function MatchesPage() {
         message.success(t('matches.eventSuccess', { count: successCount }));
         setEventModalOpen(false);
         viewDetail(detailMatch.id);
-        fetchMatches(selectedSeasonId);
+        loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam);
       }
     } catch (_err) {
       message.error(t('matches.eventAddError'));
