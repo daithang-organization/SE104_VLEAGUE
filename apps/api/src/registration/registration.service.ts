@@ -188,7 +188,8 @@ export class RegistrationService {
     // Build where clause
     const where: Record<string, unknown> = {};
     if (pagination?.search) {
-      console.log(`🔍 Searching for player: "${pagination.search}"`);
+      const safeSearchForLog = pagination.search.replace(/[\r\n]+/g, ' ');
+      console.log(`🔍 Searching for player: "${safeSearchForLog}"`);
       where.fullName = { contains: pagination.search, mode: 'insensitive' };
     }
     if (pagination?.position) {
