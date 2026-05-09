@@ -54,13 +54,15 @@ describe('PlayersController', () => {
 
   describe('getPlayers', () => {
     it('should return paginated players', async () => {
-      const result = await controller.getPlayers(
-        { page: 1, limit: 10 } as any,
-        'hai',
-        'MF',
-        'Việt Nam',
-        'team-1',
-      );
+      const query = {
+        page: 1,
+        limit: 10,
+        search: 'hai',
+        position: 'MF',
+        nationality: 'Việt Nam',
+        teamId: 'team-1',
+      };
+      const result = await controller.getPlayers(query as any);
 
       expect(result).toEqual(mockPaginated);
       expect(service.listPlayers).toHaveBeenCalledWith({
