@@ -70,8 +70,8 @@ export default function TeamDetailPage() {
 
   // Merge home + away matches, sort by kickoff desc
   const allMatches = [
-    ...team.homeMatches.map((m) => ({ ...m, side: 'home' as const })),
-    ...team.awayMatches.map((m) => ({ ...m, side: 'away' as const })),
+    ...(team.homeMatches || []).map((m) => ({ ...m, side: 'home' as const })),
+    ...(team.awayMatches || []).map((m) => ({ ...m, side: 'away' as const })),
   ].sort((a, b) => {
     if (!a.kickoffAt || !b.kickoffAt) return 0;
     return new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
@@ -93,21 +93,21 @@ export default function TeamDetailPage() {
       dataIndex: 'jerseyNumber',
       key: 'jerseyNumber',
       width: 80,
-      sorter: (a: TeamDetail['teamPlayers'][0], b: TeamDetail['teamPlayers'][0]) =>
+      sorter: (a: TeamDetail['roster'][0], b: TeamDetail['roster'][0]) =>
         (a.jerseyNumber ?? 99) - (b.jerseyNumber ?? 99),
       render: (v: number | null) => v ?? '—',
     },
     {
       title: t('teamDetail.rosterColName'),
       key: 'fullName',
-      render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => (
+      render: (_: unknown, r: TeamDetail['roster'][0]) => (
         <a onClick={() => navigate(`/players/${r.player.id}`)}>{r.player.fullName}</a>
       ),
     },
     {
       title: t('teamDetail.rosterColPosition'),
       key: 'position',
-      render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => {
+      render: (_: unknown, r: TeamDetail['roster'][0]) => {
         const p = POSITION_MAP[r.player.position];
         return <Tag color={p?.color}>{p?.label ?? r.player.position}</Tag>;
       },
@@ -115,12 +115,12 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColNationality'),
       key: 'nationality',
-      render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => r.player.nationality,
+      render: (_: unknown, r: TeamDetail['roster'][0]) => r.player.nationality,
     },
     {
       title: t('teamDetail.rosterColType'),
       key: 'playerType',
-      render: (_: unknown, r: TeamDetail['teamPlayers'][0]) => (
+      render: (_: unknown, r: TeamDetail['roster'][0]) => (
         <Tag color={r.player.playerType === 'FOREIGN' ? 'purple' : 'cyan'}>
           {t(`playerType.${r.player.playerType}`)}
         </Tag>
@@ -180,7 +180,7 @@ export default function TeamDetailPage() {
     },
   ];
 
-  const currentStanding = team.standings.length > 0 ? team.standings[0] : null;
+  const currentStanding = (team.standings || []).length > 0 ? team.standings[0] : null;
 
   return (
     <div>
@@ -208,7 +208,7 @@ export default function TeamDetailPage() {
           <Card size="small">
             <Statistic
               title={t('teamDetail.statPlayers')}
-              value={team.teamPlayers.length}
+              value={(team.roster || []).length}
               prefix={<TeamOutlined />}
             />
           </Card>
@@ -294,10 +294,10 @@ export default function TeamDetailPage() {
           },
           {
             key: 'roster',
-            label: t('teamDetail.tabRoster', { count: team.teamPlayers.length }),
+            label: t('teamDetail.tabRoster', { count: (team.roster || []).length }),
             children: (
               <Table
-                dataSource={team.teamPlayers}
+                dataSource={team.roster || []}
                 columns={rosterColumns}
                 rowKey="id"
                 pagination={false}

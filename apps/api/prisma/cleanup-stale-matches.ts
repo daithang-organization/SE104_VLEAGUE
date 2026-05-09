@@ -8,28 +8,43 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Find matches with no stadium and no kickoff (stale)
-  const stale = await prisma.match.findMany({
-    where: { stadiumId: null, kickoffAt: null },
-  });
-  console.log(`Found ${stale.length} stale matches`);
+  console.log('🗑️  Cleaning up stale seasons and data...');
 
-  for (const m of stale) {
-    console.log(
-      `  Deleting ${m.id} (seasonId=${m.seasonId}, round=${m.roundNo})`,
-    );
-    await prisma.match.delete({ where: { id: m.id } });
+  // 1. Find the season we want to keep
+  const keepSeason = await prisma.season.findUnique({
+    where: { name: 'V.League 2024-25' },
+  });
+
+  if (!keepSeason) {
+    console.error('❌ Could not find "V.League 2024-25" season to keep.');
+    return;
   }
 
-  const remaining = await prisma.match.count();
-  console.log(`\nRemaining matches: ${remaining}`);
+  console.log(`✅ Keeping season: ${keepSeason.name} (${keepSeason.id})`);
+
+  // 2. Delete all other seasons (cascading will handle matches, etc.)
+  const deleted = await prisma.season.deleteMany({
+    where: {
+      id: { not: keepSeason.id },
+    },
+  });
+
+  console.log(`✅ Deleted ${deleted.count} other seasons.`);
+
+  // 3. Ensure "V.League 2024-25" is IN_PROGRESS
+  await prisma.season.update({
+    where: { id: keepSeason.id },
+    data: { status: 'IN_PROGRESS' },
+  });
+
+  console.log('✅ Set "V.League 2024-25" to IN_PROGRESS.');
 
   await prisma.$disconnect();
   await pool.end();
 }
 
 main().catch(async (e) => {
-  console.error(e);
+  console.error('❌ Cleanup failed:', e);
   await prisma.$disconnect();
   await pool.end();
   process.exit(1);

@@ -19,6 +19,7 @@ import {
   Modal,
   Select,
   Space,
+  Spin,
   Table,
   Tabs,
   Tag,
@@ -214,14 +215,15 @@ export default function SchedulePage() {
       key: 'score',
       width: 80,
       align: 'center',
-      render: (_, r) =>
-        r.homeScore != null && r.awayScore != null ? (
+      render: (_, r) => {
+        if (r.homeScore == null && r.awayScore == null)
+          return <span style={{ color: '#bbb' }}>vs</span>;
+        return (
           <strong>
-            {r.homeScore} – {r.awayScore}
+            {r.homeScore ?? 0} – {r.awayScore ?? 0}
           </strong>
-        ) : (
-          <span style={{ color: '#bbb' }}>vs</span>
-        ),
+        );
+      },
     },
     {
       title: t('schedule.colAway'),
@@ -418,21 +420,22 @@ export default function SchedulePage() {
       />
 
       {/* Rounds grouped by Collapse */}
-      {roundGroups.length === 0 && !loading ? (
-        <Flex justify="center" align="center" style={{ padding: 48, color: '#999' }}>
-          <Typography.Text type="secondary" style={{ fontSize: 15 }}>
-            {t('schedule.emptySchedule')}
-          </Typography.Text>
-        </Flex>
-      ) : (
-        <Collapse
-          items={collapseItems}
-          defaultActiveKey={roundGroups.length > 0 ? [`round-${roundGroups[0][0]}`] : []}
-          expandIconPosition="end"
-          style={{ background: 'transparent', border: 'none' }}
-          size="small"
-        />
-      )}
+      <Spin spinning={loading} tip={t('common.loading')}>
+        {roundGroups.length === 0 && !loading ? (
+          <Flex justify="center" align="center" style={{ padding: 48, color: '#999' }}>
+            <Typography.Text type="secondary" style={{ fontSize: 15 }}>
+              {t('schedule.emptySchedule')}
+            </Typography.Text>
+          </Flex>
+        ) : (
+          <Collapse
+            items={collapseItems}
+            expandIconPosition="end"
+            style={{ background: 'transparent', border: 'none' }}
+            size="small"
+          />
+        )}
+      </Spin>
 
       {/* Edit Match Modal */}
       <Modal

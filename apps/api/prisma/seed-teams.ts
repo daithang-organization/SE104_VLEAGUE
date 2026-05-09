@@ -9,27 +9,37 @@ const prisma = new PrismaClient({ adapter });
 
 // CLB → Sân vận động mapping (tên sân phải khớp với seed-stadiums.ts)
 const TEAM_STADIUM_MAP: Record<string, string> = {
-  'Hoàng Anh Gia Lai': 'Sân vận động Pleiku',
-  'Viettel FC': 'Sân vận động Hàng Đẫy',
-  'Hải Phòng FC': 'Sân vận động Lạch Tray',
-  'SHB Đà Nẵng': 'Sân vận động Hòa Xuân',
-  'Sông Lam Nghệ An': 'Sân vận động Vinh',
-  'Bình Định FC': 'Sân vận động Quy Nhơn',
-  'Nam Định FC': 'Sân vận động Thiên Trường',
-  'Thanh Hóa FC': 'Sân vận động Thanh Hóa',
+  'Thép Xanh Nam Định': 'Sân vận động Thiên Trường',
   'Hà Nội FC': 'Sân vận động Hàng Đẫy',
+  'Công An Hà Nội': 'Sân vận động Hàng Đẫy',
+  'Thể Công-Viettel': 'Sân vận động Mỹ Đình',
+  'Becamex Bình Dương': 'Sân vận động Gò Đậu',
+  'Hải Phòng FC': 'Sân vận động Lạch Tray',
+  'Đông Á Thanh Hóa': 'Sân vận động Thanh Hóa',
+  'LPBank Hoàng Anh Gia Lai': 'Sân vận động Pleiku',
   'TP.HCM FC': 'Sân vận động Thống Nhất',
+  'Sông Lam Nghệ An': 'Sân vận động Vinh',
+  'MerryLand Quy Nhơn Bình Định': 'Sân vận động Quy Nhơn',
+  'Quảng Nam FC': 'Sân vận động Tam Kỳ',
+  'Hồng Lĩnh Hà Tĩnh': 'Sân vận động Hà Tĩnh',
+  'SHB Đà Nẵng': 'Sân vận động Hòa Xuân',
 };
 
 const TEAMS = [
-  { name: 'Hoàng Anh Gia Lai', shortName: 'HAGL', city: 'Pleiku' },
-  { name: 'Viettel FC', shortName: 'VTL', city: 'Hà Nội' },
+  { name: 'Thép Xanh Nam Định', shortName: 'TXND', city: 'Nam Định' },
+  { name: 'Hà Nội FC', shortName: 'HN', city: 'Hà Nội' },
+  { name: 'Công An Hà Nội', shortName: 'CAHN', city: 'Hà Nội' },
+  { name: 'Thể Công-Viettel', shortName: 'TCVT', city: 'Hà Nội' },
+  { name: 'Becamex Bình Dương', shortName: 'BBD', city: 'Thủ Dầu Một' },
   { name: 'Hải Phòng FC', shortName: 'HP', city: 'Hải Phòng' },
-  { name: 'SHB Đà Nẵng', shortName: 'DNang', city: 'Đà Nẵng' },
+  { name: 'Đông Á Thanh Hóa', shortName: 'DATH', city: 'Thanh Hóa' },
+  { name: 'LPBank Hoàng Anh Gia Lai', shortName: 'HAGL', city: 'Pleiku' },
+  { name: 'TP.HCM FC', shortName: 'HCM', city: 'TP. Hồ Chí Minh' },
   { name: 'Sông Lam Nghệ An', shortName: 'SLNA', city: 'Vinh' },
-  { name: 'Bình Định FC', shortName: 'BD', city: 'Quy Nhơn' },
-  { name: 'Nam Định FC', shortName: 'ND', city: 'Nam Định' },
-  { name: 'Thanh Hóa FC', shortName: 'TH', city: 'Thanh Hóa' },
+  { name: 'MerryLand Quy Nhơn Bình Định', shortName: 'QNBD', city: 'Quy Nhơn' },
+  { name: 'Quảng Nam FC', shortName: 'QN', city: 'Tam Kỳ' },
+  { name: 'Hồng Lĩnh Hà Tĩnh', shortName: 'HLHT', city: 'Hà Tĩnh' },
+  { name: 'SHB Đà Nẵng', shortName: 'ĐN', city: 'Đà Nẵng' },
 ];
 
 async function main() {

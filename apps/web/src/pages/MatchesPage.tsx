@@ -68,72 +68,117 @@ export default function MatchesPage() {
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
 
-  // Fetch seasons
+  // Initial fetch seasons
   useEffect(() => {
-    apiGetSeasons().then((data) => {
-      setSeasons(data);
-      if (data.length > 0) setSelectedSeasonId(data[0].id);
-    });
+    apiGetSeasons()
+      .then((data) => {
+        setSeasons(data);
+        if (data.length > 0) {
+          const active = data.find((s) => s.status === 'IN_PROGRESS' || s.status === 'UPCOMING');
+          const initialSeasonId = active ? active.id : data[0].id;
+          setSelectedSeasonId(initialSeasonId);
+          // Initial matches fetch
+          loadMatches(initialSeasonId);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
   }, []);
 
-  const fetchMatches = useCallback(async () => {
+  const loadMatches = async (
+    seasonId?: string,
+    search?: string,
+    status?: string,
+    teamId?: string,
+  ) => {
     setLoading(true);
     try {
-      const res = await apiGetMatches(selectedSeasonId, 1, 200);
-      setMatches(res.data);
+      // Use 1000 limit to ensure we get all matches for local grouping
+      const res = await apiGetMatches(seasonId, 1, 1000);
+      let data = res.data;
+
+      // Local filtering (backend only supports seasonId currently in this service)
+      if (search) {
+        const q = search.toLowerCase().trim();
+        data = data.filter(
+          (m) =>
+            m.homeTeam?.name?.toLowerCase().includes(q) ||
+            m.awayTeam?.name?.toLowerCase().includes(q),
+        );
+      }
+      if (status) {
+        data = data.filter((m) => m.status === status);
+      }
+      if (teamId) {
+        data = data.filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId);
+      }
+
+      setMatches(data);
     } catch (_err) {
-      message.error(t('matches.loadError'));
+      // Prevent spamming toasts by checking if it's already visible or just using a flag
+      message.error(t('matches.loadError'), 3);
     } finally {
       setLoading(false);
     }
-  }, [selectedSeasonId]);
+  };
 
-  useEffect(() => {
-    fetchMatches();
-  }, [fetchMatches]);
+  const onSearch = (value: string) => {
+    setSearchText(value);
+    loadMatches(selectedSeasonId, value, filterStatus, filterTeam);
+  };
 
-  // ── Group matches by round, filter by search + status + team ──
-  const filteredAndGrouped = useMemo(() => {
-    const q = searchText.toLowerCase().trim();
-    let filtered = matches;
-    if (q) {
-      filtered = filtered.filter(
-        (m) =>
-          m.homeTeam?.name?.toLowerCase().includes(q) ||
-          m.awayTeam?.name?.toLowerCase().includes(q),
-      );
-    }
-    if (filterStatus) {
-      filtered = filtered.filter((m) => m.status === filterStatus);
-    }
-    if (filterTeam) {
-      filtered = filtered.filter((m) => m.homeTeamId === filterTeam || m.awayTeamId === filterTeam);
-    }
+  const onStatusChange = (val: string) => {
+    setFilterStatus(val);
+    loadMatches(selectedSeasonId, searchText, val, filterTeam);
+  };
 
+  const onTeamChange = (val: string) => {
+    setFilterTeam(val);
+    loadMatches(selectedSeasonId, searchText, filterStatus, val);
+  };
+
+  const onSeasonChange = (val: string) => {
+    setSelectedSeasonId(val);
+    loadMatches(val, searchText, filterStatus, filterTeam);
+  };
+
+  // ── Group matches by round ──
+  const availableTeams = useMemo(() => {
+    const teamMap = new Map<string, string>();
+    // We want to see all teams in the filter, so we use the full list of matches
+    matches.forEach((match) => {
+      if (match.homeTeam) teamMap.set(match.homeTeamId, match.homeTeam.name);
+      if (match.awayTeam) teamMap.set(match.awayTeamId, match.awayTeam.name);
+    });
+    return [...teamMap.entries()].map(([id, name]) => ({ value: id, label: name }));
+  }, [matches]);
+
+  // Use roundGroups for the collapse view
+  const roundGroups = useMemo(() => {
     const grouped = new Map<number, Match[]>();
-    for (const m of filtered) {
-      const round = m.roundNo ?? 0;
+    for (const match of matches) {
+      const round = match.roundNo ?? 0;
       if (!grouped.has(round)) grouped.set(round, []);
-      grouped.get(round)!.push(m);
+      grouped.get(round)!.push(match);
     }
     return Array.from(grouped.entries()).sort(([a], [b]) => a - b);
-  }, [matches, searchText, filterStatus, filterTeam]);
+  }, [matches]);
 
-  // Find which rounds contain the search match to auto-open
+  // Find which rounds to open
   const activeKeys = useMemo(() => {
     if (searchText.trim()) {
-      return filteredAndGrouped.map(([roundNo]) => String(roundNo));
+      return roundGroups.map(([roundNo]) => String(roundNo));
     }
-    // By default open all rounds that have unfinished matches
     const keys: string[] = [];
-    for (const [roundNo, roundMatches] of filteredAndGrouped) {
+    for (const [roundNo, roundMatches] of roundGroups) {
       if (roundMatches.some((m) => m.status !== 'FINISHED')) {
         keys.push(String(roundNo));
-        if (keys.length >= 2) break; // Only auto-open first 2 unfinished rounds
+        if (keys.length >= 2) break;
       }
     }
-    return keys.length > 0 ? keys : filteredAndGrouped.slice(0, 1).map(([r]) => String(r));
-  }, [filteredAndGrouped, searchText]);
+    return keys.length > 0 ? keys : roundGroups.slice(0, 1).map(([r]) => String(r));
+  }, [roundGroups, searchText]);
 
   const loadRosters = async (match: Match) => {
     setRosterLoading(true);
@@ -174,7 +219,7 @@ export default function MatchesPage() {
       message.success(t('matches.scoreUpdated'));
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
-      fetchMatches();
+      fetchMatches(selectedSeasonId);
     } catch (_err) {
       message.error(t('matches.scoreUpdateError'));
     } finally {
@@ -191,7 +236,7 @@ export default function MatchesPage() {
         t('matches.statusChanged', { status: STATUS_MAP[newStatus]?.label ?? newStatus }),
       );
       viewDetail(detailMatch.id);
-      fetchMatches();
+      fetchMatches(selectedSeasonId);
     } catch (err: unknown) {
       const msg =
         err &&
@@ -234,7 +279,7 @@ export default function MatchesPage() {
         message.success(t('matches.eventSuccess', { count: successCount }));
         setEventModalOpen(false);
         viewDetail(detailMatch.id);
-        fetchMatches();
+        fetchMatches(selectedSeasonId);
       }
     } catch (_err) {
       message.error(t('matches.eventAddError'));
@@ -280,14 +325,15 @@ export default function MatchesPage() {
       key: 'score',
       width: 100,
       align: 'center',
-      render: (_, r) =>
-        r.homeScore != null && r.awayScore != null ? (
+      render: (_, r) => {
+        if (r.homeScore == null && r.awayScore == null)
+          return <span style={{ color: '#bbb' }}>— : —</span>;
+        return (
           <strong style={{ fontSize: 15 }}>
-            {r.homeScore} – {r.awayScore}
+            {r.homeScore ?? 0} – {r.awayScore ?? 0}
           </strong>
-        ) : (
-          <span style={{ color: '#bbb' }}>— : —</span>
-        ),
+        );
+      },
     },
     {
       title: t('matches.colAway'),
@@ -364,11 +410,11 @@ export default function MatchesPage() {
   ];
 
   // ── Build Collapse items ──
-  const collapseItems = filteredAndGrouped.map(([roundNo, roundMatches]) => {
+  const collapseItems = roundGroups.map(([roundNo, roundMatches]) => {
     const finishedCount = roundMatches.filter((m) => m.status === 'FINISHED').length;
     const allFinished = finishedCount === roundMatches.length;
-    const numRounds = matches.length > 0 ? Math.max(...matches.map((m) => m.roundNo)) / 2 : 9;
-    const isLeg2 = roundNo > numRounds;
+    const maxRound = matches.length > 0 ? Math.max(...matches.map((m) => m.roundNo)) : 26;
+    const isLeg2 = roundNo > maxRound / 2;
 
     return {
       key: String(roundNo),
@@ -404,7 +450,7 @@ export default function MatchesPage() {
           rowKey="id"
           pagination={false}
           size="small"
-          showHeader={roundNo === filteredAndGrouped[0]?.[0]}
+          showHeader={roundNo === roundGroups[0]?.[0]}
         />
       ),
     };
@@ -450,17 +496,16 @@ export default function MatchesPage() {
           {t('matches.title')}
         </Typography.Title>
         <Space wrap>
-          <Input
-            prefix={<SearchOutlined />}
+          <Input.Search
             placeholder={t('matches.searchPlaceholder')}
             allowClear
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 180 }}
+            onSearch={onSearch}
+            style={{ width: 220 }}
+            loading={loading}
           />
           <Select
             value={selectedSeasonId}
-            onChange={setSelectedSeasonId}
+            onChange={onSeasonChange}
             style={{ width: 200 }}
             placeholder={t('matches.seasonPlaceholder')}
             allowClear
@@ -471,7 +516,7 @@ export default function MatchesPage() {
           />
           <Select
             value={filterStatus}
-            onChange={setFilterStatus}
+            onChange={onStatusChange}
             style={{ width: 140 }}
             placeholder={t('matches.statusPlaceholder')}
             allowClear
@@ -482,27 +527,20 @@ export default function MatchesPage() {
           />
           <Select
             value={filterTeam}
-            onChange={setFilterTeam}
+            onChange={onTeamChange}
             style={{ width: 180 }}
             placeholder={t('matches.teamFilterPlaceholder')}
             allowClear
             showSearch
             optionFilterProp="label"
-            options={(() => {
-              const teamMap = new Map<string, string>();
-              matches.forEach((m) => {
-                if (m.homeTeam) teamMap.set(m.homeTeamId, m.homeTeam.name);
-                if (m.awayTeam) teamMap.set(m.awayTeamId, m.awayTeam.name);
-              });
-              return [...teamMap.entries()].map(([id, name]) => ({ value: id, label: name }));
-            })()}
+            options={availableTeams}
           />
         </Space>
       </Flex>
 
-      {loading ? (
+      {loading && matches.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>{t('common.loading')}</div>
-      ) : filteredAndGrouped.length === 0 ? (
+      ) : roundGroups.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
           {searchText ? t('matches.noSearchResult', { query: searchText }) : t('matches.noMatches')}
         </div>

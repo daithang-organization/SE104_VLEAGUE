@@ -1,10 +1,4 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -74,25 +68,42 @@ export default function PlayersPage() {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
 
-  const fetchPlayers = useCallback(async (page = 1, limit = 20, searchQuery?: string) => {
-    setLoading(true);
-    try {
-      const res = await apiGetPlayers(page, limit, { search: searchQuery || undefined });
-      setPlayers(res.data);
-      setPagination({ page: res.page, limit: res.limit, total: res.total });
-    } catch (_err) {
-      message.error(t('players.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchPlayers = useCallback(
+    async (page = 1, limit = 20, searchQuery?: string) => {
+      setLoading(true);
+      try {
+        const res = await apiGetPlayers(page, limit, { search: searchQuery || undefined });
+        setPlayers(res.data);
+        setPagination((prev) => {
+          if (prev.page === res.page && prev.limit === res.limit && prev.total === res.total) {
+            return prev;
+          }
+          return { ...prev, total: res.total, page: res.page, limit: res.limit };
+        });
+      } catch (_err) {
+        message.error(t('players.loadError'), 2);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
-    fetchPlayers();
+    fetchPlayers(pagination.page, pagination.limit, search);
+  }, [fetchPlayers, pagination.limit, pagination.page, search]);
+
+  useEffect(() => {
     apiGetTeams()
       .then((res) => setTeams(res.data))
       .catch(() => {});
-  }, [fetchPlayers]);
+  }, []);
+
+  const onSearch = (value: string) => {
+    const cleanValue = value.trim();
+    setSearch(cleanValue);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
 
   const openCreateModal = () => {
     setEditingPlayer(null);
@@ -112,7 +123,7 @@ export default function PlayersPage() {
       birthPlace: player.birthPlace ?? '',
       heightCm: player.heightCm ?? undefined,
       weightKg: player.weightKg ?? undefined,
-      teamId: player.teamPlayers?.[0]?.team?.id ?? undefined,
+      teamId: (player.roster || [])[0]?.team?.id ?? undefined,
     });
     setModalOpen(true);
   };
@@ -143,10 +154,20 @@ export default function PlayersPage() {
       }
 
       setModalOpen(false);
-      fetchPlayers();
+      fetchPlayers(pagination.page, pagination.limit, search);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error(t('players.saveError'));
+
+      // Try to extract backend error message
+      let errorMsg = t('players.saveError');
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response: { data: { message: string | string[] } } };
+        const backendMsg = axiosError.response?.data?.message;
+        if (backendMsg) {
+          errorMsg = Array.isArray(backendMsg) ? backendMsg[0] : backendMsg;
+        }
+      }
+      message.error(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -156,24 +177,18 @@ export default function PlayersPage() {
     try {
       await apiDeletePlayer(id);
       message.success(t('players.deleteSuccess'));
-      fetchPlayers();
+      fetchPlayers(pagination.page, pagination.limit, search);
     } catch (_err) {
       message.error(t('players.deleteError'));
     }
   };
-
-  const filteredPlayers = players.filter(
-    (p) =>
-      p.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      p.nationality.toLowerCase().includes(search.toLowerCase()),
-  );
 
   const columns: ColumnsType<Player> = [
     {
       title: '#',
       key: 'index',
       width: 60,
-      render: (_, __, i) => i + 1,
+      render: (_, __, i) => (pagination.page - 1) * pagination.limit + i + 1,
     },
     {
       title: t('players.colFullName'),
@@ -188,7 +203,7 @@ export default function PlayersPage() {
       key: 'club',
       width: 180,
       render: (_, record) => {
-        const tp = record.teamPlayers?.[0];
+        const tp = record.roster?.[0];
         if (!tp?.team) return <span style={{ color: '#ccc' }}>{t('players.colNoClub')}</span>;
         const team = tp.team;
         return (
@@ -207,12 +222,12 @@ export default function PlayersPage() {
       filters: (() => {
         const clubs = new Map<string, string>();
         players.forEach((p) => {
-          const tp = p.teamPlayers?.[0];
+          const tp = p.roster?.[0];
           if (tp?.team) clubs.set(tp.team.id, tp.team.name);
         });
         return [...clubs.entries()].map(([id, name]) => ({ text: name, value: id }));
       })(),
-      onFilter: (value, record) => record.teamPlayers?.[0]?.team?.id === value,
+      onFilter: (value, record) => record.roster?.[0]?.team?.id === value,
     },
     {
       title: t('players.colDob'),
@@ -318,15 +333,12 @@ export default function PlayersPage() {
           {t('players.title')}
         </Typography.Title>
         <Space>
-          <Input
+          <Input.Search
             placeholder={t('players.searchPlaceholder')}
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onPressEnter={() => fetchPlayers(1, pagination.limit, search)}
+            onSearch={onSearch}
             style={{ width: 300 }}
             allowClear
-            onClear={() => fetchPlayers(1, pagination.limit)}
+            loading={loading}
           />
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -336,12 +348,12 @@ export default function PlayersPage() {
         </Space>
       </div>
 
-      {loading && filteredPlayers.length === 0 ? (
+      {loading && players.length === 0 ? (
         <TableSkeleton rows={8} />
       ) : (
         <Table
           columns={columns}
-          dataSource={filteredPlayers}
+          dataSource={players}
           rowKey="id"
           loading={loading}
           scroll={{ x: 1000 }}
@@ -351,7 +363,9 @@ export default function PlayersPage() {
             total: pagination.total,
             showSizeChanger: true,
             showTotal: (total) => t('players.totalCount', { total }),
-            onChange: (page, pageSize) => fetchPlayers(page, pageSize, search),
+            onChange: (page, pageSize) => {
+              setPagination((prev) => ({ ...prev, page, limit: pageSize }));
+            },
           }}
           size="middle"
           locale={{ emptyText: t('common.noData') }}

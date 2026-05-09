@@ -19,12 +19,20 @@ export class UpdateStadiumDto {
   city?: string;
 
   @ApiPropertyOptional({
+    description: 'Địa chỉ',
+    example: 'Đường Lê Đức Thọ, Nam Từ Liêm',
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({
     description: 'Sức chứa',
     example: 40000,
-    minimum: 1000,
+    minimum: 0,
   })
   @IsOptional()
   @IsInt()
-  @Min(1000)
+  @Min(0)
   capacity?: number;
 }

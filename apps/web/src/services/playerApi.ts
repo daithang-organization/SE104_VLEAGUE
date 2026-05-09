@@ -20,7 +20,7 @@ export type Player = {
   weightKg?: number | null;
   createdAt: string;
   updatedAt: string;
-  teamPlayers?: Array<{
+  roster?: Array<{
     team: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
   }>;
 };

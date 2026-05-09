@@ -22,7 +22,11 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
-import { CreatePlayerDto, UpdatePlayerDto } from './dto/player.dto';
+import {
+  CreatePlayerDto,
+  ListPlayersQueryDto,
+  UpdatePlayerDto,
+} from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
 @ApiTags('Players')
@@ -37,26 +41,8 @@ export class PlayersController {
       'Trả về danh sách cầu thủ có hỗ trợ phân trang và tìm kiếm (search, position, nationality, teamId)',
   })
   @ApiOkResponse({ description: 'Danh sách cầu thủ (phân trang)' })
-  async getPlayers(
-    @Query() pagination: PaginationQueryDto,
-    @Query('search') search?: string,
-    @Query('position') position?: string,
-    @Query('nationality') nationality?: string,
-    @Query('teamId') teamId?: string,
-    @Query('playerType') playerType?: string,
-    @Query('minAge') minAge?: string,
-    @Query('maxAge') maxAge?: string,
-  ) {
-    return await this.reg.listPlayers({
-      ...pagination,
-      search,
-      position,
-      nationality,
-      teamId,
-      playerType,
-      minAge: minAge ? Number(minAge) : undefined,
-      maxAge: maxAge ? Number(maxAge) : undefined,
-    });
+  async getPlayers(@Query() query: ListPlayersQueryDto) {
+    return await this.reg.listPlayers(query);
   }
 
   @Get(':id')
