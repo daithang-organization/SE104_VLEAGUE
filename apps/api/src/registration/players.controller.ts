@@ -21,7 +21,6 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
-import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import {
   CreatePlayerDto,
   ListPlayersQueryDto,

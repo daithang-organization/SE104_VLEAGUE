@@ -23,7 +23,6 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
-import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { AuditLogInterceptor } from '../common/interceptors/audit-log.interceptor';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { FindAllMatchesQueryDto } from './dto/find-all-matches-query.dto';
