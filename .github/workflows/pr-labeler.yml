@@ -16,7 +16,7 @@ jobs:
       # Label based on PR title (Conventional Commits)
       # ========================================
       - name: Label based on PR title
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = context.payload.pull_request.title || "";
@@ -67,7 +67,7 @@ jobs:
       # Label based on changed files
       # ========================================
       - name: Label based on changed files
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { data: files } = await github.rest.pulls.listFiles({
@@ -108,7 +108,7 @@ jobs:
       # Label based on PR size
       # ========================================
       - name: Label based on PR size
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { data: pr } = await github.rest.pulls.get({
