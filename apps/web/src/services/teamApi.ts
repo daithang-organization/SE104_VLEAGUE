@@ -15,7 +15,7 @@ export type Team = {
 };
 
 export type TeamDetail = Team & {
-  teamPlayers: {
+  roster: {
     id: string;
     jerseyNumber: number | null;
     player: {

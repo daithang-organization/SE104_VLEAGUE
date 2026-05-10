@@ -10,11 +10,15 @@
     "test": "pnpm --recursive run test",
     "lint": "pnpm --recursive run lint",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "seed:real": "pnpm --filter api exec tsx apps/api/prisma/setup-vleague-2024.ts",
+    "db:seed": "pnpm --filter api exec prisma db seed",
+    "repair:users": "pnpm --filter api exec tsx apps/api/prisma/repair-users.ts"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
+  "packageManager": "pnpm@9.15.4",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",

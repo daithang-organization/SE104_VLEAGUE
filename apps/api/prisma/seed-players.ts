@@ -143,12 +143,12 @@ function randomDob(): Date {
   return new Date(year, month, day);
 }
 
-// Each team gets: 2 GK, 5 DF, 5 MF, 3 FW (domestic) + 3 foreign
+// Each team gets: 3 GK, 8 DF, 10 MF, 5 FW (domestic) + 3 foreign = 29 players total
 const SQUAD_TEMPLATE: { position: PlayerPosition; count: number }[] = [
-  { position: PlayerPosition.GK, count: 2 },
-  { position: PlayerPosition.DF, count: 5 },
-  { position: PlayerPosition.MF, count: 5 },
-  { position: PlayerPosition.FW, count: 3 },
+  { position: PlayerPosition.GK, count: 3 },
+  { position: PlayerPosition.DF, count: 8 },
+  { position: PlayerPosition.MF, count: 10 },
+  { position: PlayerPosition.FW, count: 5 },
 ];
 
 async function main() {

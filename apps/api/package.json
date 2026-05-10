@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed.ts"
   },
   "scripts": {
     "postinstall": "prisma generate",
@@ -23,7 +23,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "db:seed": "prisma db seed"
+    "db:seed": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed.ts",
+    "seed:real": "node /app/node_modules/tsx/dist/cli.mjs prisma/setup-vleague-2024.ts"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",

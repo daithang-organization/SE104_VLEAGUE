@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -10,6 +11,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 
 export enum PlayerPosition {
   GK = 'GK', // Goalkeeper
@@ -190,6 +192,50 @@ export class UpdatePlayerDto {
   @IsOptional()
   @IsUUID()
   teamId?: string;
+}
+
+export class ListPlayersQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ description: 'Tìm kiếm theo tên' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Lọc theo vị trí', enum: PlayerPosition })
+  @IsOptional()
+  @IsEnum(PlayerPosition)
+  position?: PlayerPosition;
+
+  @ApiPropertyOptional({ description: 'Lọc theo quốc tịch' })
+  @IsOptional()
+  @IsString()
+  nationality?: string;
+
+  @ApiPropertyOptional({ description: 'Lọc theo đội bóng', format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  teamId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Lọc theo loại cầu thủ',
+    enum: PlayerType,
+  })
+  @IsOptional()
+  @IsEnum(PlayerType)
+  playerType?: PlayerType;
+
+  @ApiPropertyOptional({ description: 'Tuổi tối thiểu' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  minAge?: number;
+
+  @ApiPropertyOptional({ description: 'Tuổi tối đa' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  maxAge?: number;
 }
 
 export class PlayerResponseDto {

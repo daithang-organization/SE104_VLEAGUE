@@ -67,17 +67,17 @@
 
 ### A. Import/Seed dữ liệu thực tế (ưu tiên cao)
 
-| #   | Công việc                       | Chi tiết                                                             |
-| --- | ------------------------------- | -------------------------------------------------------------------- |
-| A1  | Seed 14 đội V.League thực tế    | Tên, viết tắt, logo, thành phố, sân nhà                              |
-| A2  | Seed sân vận động thực tế       | 14 sân (tên, địa chỉ, sức chứa, thành phố)                           |
-| A3  | Seed cầu thủ thực tế            | ~300–400 cầu thủ (tên, ngày sinh, quốc tịch, vị trí, loại nội/ngoại) |
-| A4  | Gán cầu thủ vào roster từng đội | Team-player assignments + số áo                                      |
-| A5  | Tạo mùa giải V.League thực tế   | VD: V.League 2024-25, quy định mùa giải                              |
-| A6  | Đăng ký 14 đội vào mùa giải     | Season-team registrations + approve                                  |
-| A7  | Tạo lịch thi đấu (26 vòng)      | Generate schedule cho 14 đội                                         |
-| A8  | Nhập kết quả trận đấu mẫu       | Ít nhất 5–10 vòng đấu đầu để test bảng xếp hạng                      |
-| A9  | Nhập sự kiện trận đấu mẫu       | Bàn thắng, thẻ, thay người cho các trận đã có kết quả                |
+| #   | Công việc                       | Chi tiết                                                             | Trạng thái |
+| --- | ------------------------------- | -------------------------------------------------------------------- | ---------- |
+| A1  | Seed 14 đội V.League thực tế    | Tên, viết tắt, logo, thành phố, sân nhà                              | Done       |
+| A2  | Seed sân vận động thực tế       | 14 sân (tên, địa chỉ, sức chứa, thành phố)                           | Done       |
+| A3  | Seed cầu thủ thực tế            | ~300–400 cầu thủ (tên, ngày sinh, quốc tịch, vị trí, loại nội/ngoại) | Done       |
+| A4  | Gán cầu thủ vào roster từng đội | Team-player assignments + số áo                                      | Done       |
+| A5  | Tạo mùa giải V.League thực tế   | VD: V.League 2024-25, quy định mùa giải                              | Done       |
+| A6  | Đăng ký 14 đội vào mùa giải     | Season-team registrations + approve                                  | Done       |
+| A7  | Tạo lịch thi đấu (26 vòng)      | Generate schedule cho 14 đội                                         | Done       |
+| A8  | Nhập kết quả trận đấu mẫu       | Ít nhất 5–10 vòng đấu đầu để test bảng xếp hạng                      | Done       |
+| A9  | Nhập sự kiện trận đấu mẫu       | Bàn thắng, thẻ, thay người cho các trận đã có kết quả                | Done       |
 
 ### B. Kiểm thử đầy đủ (End-to-End Testing)
 
@@ -98,7 +98,7 @@
 
 | #   | Công việc                                 | Chi tiết                            | Độ ưu tiên |
 | --- | ----------------------------------------- | ----------------------------------- | ---------- |
-| E1  | Viết script seed dữ liệu V.League thực tế | Script tự động seed full data       | Cao        |
+| E1  | Viết script seed dữ liệu V.League thực tế | Script tự động seed full data       | Done       |
 | E2  | Cập nhật README hướng dẫn demo            | Video/hình ảnh demo, hướng dẫn chạy | TB         |
 | E3  | Viết tài liệu test report                 | Báo cáo kiểm thử, test cases        | Cao        |
 | E4  | Production deployment guide               | Hướng dẫn deploy lên VPS/cloud      | Thấp       |

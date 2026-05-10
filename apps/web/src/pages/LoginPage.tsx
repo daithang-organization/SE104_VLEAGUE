@@ -1,6 +1,6 @@
 import { FacebookOutlined, GoogleOutlined } from '@ant-design/icons';
 import { Button, Card, Checkbox, Divider, Form, Input, message, Space, Typography } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -15,17 +15,17 @@ export default function LoginPage() {
 
   // If already authenticated, redirect to intended page
   const from = (location.state as { from?: string })?.from || '/';
-  if (isAuthed) {
-    nav(from, { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthed) {
+      nav(from, { replace: true });
+    }
+  }, [from, isAuthed, nav]);
 
   const onFinish = async (values: { email: string; password: string; rememberMe?: boolean }) => {
     setLoading(true);
     try {
       await login(values.email, values.password, values.rememberMe);
       message.success(t('login.success'));
-      nav(from, { replace: true });
     } catch (err: unknown) {
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -35,6 +35,8 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (isAuthed) return null;
 
   const handleGoogleLogin = () => {
     window.location.href = getGoogleAuthUrl();
@@ -83,7 +85,7 @@ export default function LoginPage() {
 
         <Divider plain>{t('login.divider')}</Divider>
 
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
           <Button icon={<GoogleOutlined />} block onClick={handleGoogleLogin}>
             {t('login.googleBtn')}
           </Button>
@@ -98,7 +100,7 @@ export default function LoginPage() {
         </Space>
 
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <Space direction="vertical">
+          <Space orientation="vertical">
             <span>
               {t('login.noAccount')} <Link to="/register">{t('login.registerLink')}</Link>
             </span>

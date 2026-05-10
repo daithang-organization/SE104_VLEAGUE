@@ -73,17 +73,7 @@ export class StadiumController {
     summary: 'Tạo sân vận động mới',
     description: 'Chỉ ADMIN có quyền tạo',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['name', 'city'],
-      properties: {
-        name: { type: 'string', example: 'Sân Mỹ Đình' },
-        city: { type: 'string', example: 'Hà Nội' },
-        capacity: { type: 'integer', example: 40000 },
-      },
-    },
-  })
+  @ApiBody({ type: CreateStadiumDto })
   @ApiOkResponse({ description: 'Sân vận động đã được tạo' })
   @ApiConflictResponse({ description: 'Tên sân vận động đã tồn tại' })
   @ApiUnauthorizedResponse({ description: 'Chưa đăng nhập' })
@@ -101,6 +91,7 @@ export class StadiumController {
     description: 'Chỉ ADMIN có quyền cập nhật',
   })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiBody({ type: UpdateStadiumDto })
   @ApiOkResponse({ description: 'Sân vận động đã được cập nhật' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy sân vận động' })
   @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
