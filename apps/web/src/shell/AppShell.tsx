@@ -27,8 +27,48 @@ import NotificationBell from '../components/NotificationBell';
 import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import { useTheme } from './ThemeContext';
 import { MENU } from './menu';
+import dashboardIcon from '../assets/menu-icons/dashboard_icon.png';
+import seasonIcon from '../assets/menu-icons/season_icon.png';
+import teamIcon from '../assets/menu-icons/team_icon.png';
+import stadiumIcon from '../assets/menu-icons/stadium_icon.png';
+import playerIcon from '../assets/menu-icons/player_icon.png';
+import calendarIcon from '../assets/menu-icons/calendar_icon.png';
+import resultIcon from '../assets/menu-icons/result_icon.png';
+import rankIcon from '../assets/menu-icons/rank_icon.png';
+import headToHeadIcon from '../assets/menu-icons/1v1_icon.png';
+import reportIcon from '../assets/menu-icons/report_icon.png';
+import rulesIcon from '../assets/menu-icons/rules_icon.png';
+import roleIcon from '../assets/menu-icons/role_icon.png';
 
 const { Sider, Header, Content } = Layout;
+
+const menuIconByKey: Record<string, string> = {
+  dashboard: dashboardIcon,
+  seasons: seasonIcon,
+  teams: teamIcon,
+  stadiums: stadiumIcon,
+  players: playerIcon,
+  schedule: calendarIcon,
+  matches: resultIcon,
+  standings: rankIcon,
+  'head-to-head': headToHeadIcon,
+  reports: reportIcon,
+  regulations: rulesIcon,
+  users: roleIcon,
+};
+
+function MenuIcon({ src }: { src: string }) {
+  return (
+    <span
+      className="sidebar-menu-icon"
+      aria-hidden="true"
+      style={{
+        WebkitMask: `url(${src}) center / contain no-repeat`,
+        mask: `url(${src}) center / contain no-repeat`,
+      }}
+    />
+  );
+}
 
 export default function AppShell() {
   const { user, logout } = useAuth();
@@ -90,6 +130,7 @@ export default function AppShell() {
     const role = user?.role;
     return MENU.filter((m) => !m.roles || (role && m.roles.includes(role))).map((m) => ({
       key: m.key,
+      icon: menuIconByKey[m.key] ? <MenuIcon src={menuIconByKey[m.key]} /> : undefined,
       label: t(m.labelKey),
     }));
   }, [user, t]);
@@ -163,6 +204,25 @@ export default function AppShell() {
             style={{ height: '50px', objectFit: 'contain' }}
           />
         </div>
+        <style>{`
+          .sidebar-menu-icon {
+            width: 22px;
+            height: 22px;
+            display: inline-block;
+            vertical-align: middle;
+            background: currentColor;
+            opacity: 0.92;
+          }
+
+          .ant-layout-sider:not(.ant-layout-sider-collapsed) .sidebar-menu-icon {
+            margin-inline-end: 12px;
+          }
+
+          .ant-layout-sider-collapsed .sidebar-menu-icon {
+            width: 30px;
+            height: 30px;
+          }
+        `}</style>
         <Menu
           theme={isDark ? 'dark' : 'light'}
           mode="inline"
