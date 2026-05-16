@@ -304,6 +304,30 @@ export default function DashboardPage() {
           opacity: 1;
         }
 
+        :root[data-theme='light'] .stat-card {
+          background: var(--primary);
+        }
+
+        :root[data-theme='light'] .stat-card::before {
+          background: conic-gradient(
+            transparent,
+            transparent,
+            transparent,
+            #ffffff
+          );
+        }
+
+        :root[data-theme='light'] .stat-card::after {
+          background: var(--primary);
+        }
+
+        :root[data-theme='light'] .stat-card .ant-statistic-title,
+        :root[data-theme='light'] .stat-card .ant-statistic-content,
+        :root[data-theme='light'] .stat-card .ant-statistic-content-prefix,
+        :root[data-theme='light'] .stat-card .ant-statistic-content-value {
+          color: #ffffff !important;
+        }
+
         /* Keyframe xoay Aura */
         @keyframes spin-aura {
           0% { transform: rotate(0deg); }

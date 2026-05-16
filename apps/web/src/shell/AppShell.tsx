@@ -141,11 +141,17 @@ export default function AppShell() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible>
+      <Sider
+        collapsible
+        style={{
+          background: 'var(--sidebar-bg)',
+          borderRight: `1px solid var(--sidebar-border)`,
+        }}
+      >
         <div
           style={{
             padding: 16,
-            color: 'white',
+            color: 'var(--text-main)',
             fontWeight: 'bold',
             fontSize: 18,
             textAlign: 'center',
@@ -158,7 +164,7 @@ export default function AppShell() {
           />
         </div>
         <Menu
-          theme="dark"
+          theme={isDark ? 'dark' : 'light'}
           mode="inline"
           items={menuItems}
           selectedKeys={[selectedKey]}
@@ -209,7 +215,7 @@ export default function AppShell() {
               isDark ? (
                 <BulbFilled style={{ color: '#fadb14' }} />
               ) : (
-                <BulbOutlined style={{ color: 'white' }} />
+                <BulbOutlined style={{ color: 'var(--text-main)' }} />
               )
             }
             onClick={toggleTheme}
@@ -219,11 +225,11 @@ export default function AppShell() {
           {/* Language Toggle */}
           <Button
             type="text"
-            icon={<GlobalOutlined style={{ color: isDark ? 'white' : 'inherit' }} />}
+            icon={<GlobalOutlined style={{ color: 'var(--text-main)' }} />}
             onClick={toggleLang}
             title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
           >
-            <span style={{ color: isDark ? 'white' : 'inherit', fontSize: 12, marginLeft: 4 }}>
+            <span style={{ color: 'var(--text-main)', fontSize: 12, marginLeft: 4 }}>
               {i18n.language === 'vi' ? 'VI' : 'EN'}
             </span>
           </Button>
@@ -232,7 +238,7 @@ export default function AppShell() {
           <NotificationBell />
 
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <Button type="text" style={{ color: isDark ? 'white' : 'inherit' }}>
+            <Button type="text" style={{ color: 'var(--text-main)' }}>
               <Space>
                 <UserOutlined />
                 {user?.email}
