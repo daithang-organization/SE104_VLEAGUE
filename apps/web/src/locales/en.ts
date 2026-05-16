@@ -24,6 +24,13 @@ const en = {
     coaches: 'Coaches',
   },
 
+  auth: {
+    profile: 'View profile',
+    changePassword: 'Change password',
+    logout: 'Log out',
+    loggedOut: 'Logged out',
+  },
+
   common: {
     save: 'Save',
     create: 'Create',
@@ -163,7 +170,7 @@ const en = {
     statMatches: 'Matches',
     statSeasons: 'Seasons',
     inProgress: 'In progress',
-    seasonProgress: '{{percent}}% of season',
+    seasonProgress: '{percent}% of season',
     quickActions: '⚡ Quick Actions',
     btnSeason: 'Season',
     btnTeam: 'Teams',

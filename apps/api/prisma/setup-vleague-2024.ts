@@ -82,7 +82,9 @@ async function main() {
   });
 
   if (teams.length < 14) {
-    console.warn(`⚠️ Only found ${teams.length}/14 real teams. Check naming.`);
+    throw new Error(
+      `Only found ${teams.length}/14 real teams. Run seed-stadiums.ts, seed-teams.ts, and seed-players.ts before setup-vleague-2024.ts.`,
+    );
   }
 
   for (const team of teams) {
@@ -222,6 +224,12 @@ async function main() {
 
       for (let i = 0; i < homeScore; i++) {
         const p = homePlayers[Math.floor(Math.random() * homePlayers.length)];
+        if (!p) {
+          console.warn(
+            `  ⚠️ Skipping home goal event for match ${m.id}: no active players in roster`,
+          );
+          continue;
+        }
         await prisma.matchEvent.create({
           data: {
             matchId: m.id,
@@ -234,6 +242,12 @@ async function main() {
       }
       for (let i = 0; i < awayScore; i++) {
         const p = awayPlayers[Math.floor(Math.random() * awayPlayers.length)];
+        if (!p) {
+          console.warn(
+            `  ⚠️ Skipping away goal event for match ${m.id}: no active players in roster`,
+          );
+          continue;
+        }
         await prisma.matchEvent.create({
           data: {
             matchId: m.id,

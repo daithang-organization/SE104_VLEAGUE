@@ -324,9 +324,11 @@ export default function MatchesPage() {
       align: 'center',
       render: (_, r) => {
         if (r.homeScore == null && r.awayScore == null)
-          return <span style={{ color: '#bbb' }}>— : —</span>;
+          return <span style={{ color: '#bbb', whiteSpace: 'nowrap' }}>— : —</span>;
         return (
-          <strong style={{ fontSize: 15 }}>
+          <strong
+            style={{ display: 'inline-block', minWidth: 48, fontSize: 15, whiteSpace: 'nowrap' }}
+          >
             {r.homeScore ?? 0} – {r.awayScore ?? 0}
           </strong>
         );

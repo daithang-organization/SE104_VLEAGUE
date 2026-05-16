@@ -140,6 +140,22 @@ export default function StandingsPage() {
         .standings-relegation td {
           background: #fff1f0 !important;
         }
+        :root[data-theme='dark'] .standings-afc-cl {
+          background: rgba(22, 163, 74, 0.2) !important;
+          border-left: 4px solid #22c55e !important;
+        }
+        :root[data-theme='dark'] .standings-afc-cl td {
+          background: rgba(22, 163, 74, 0.2) !important;
+          color: rgba(255, 255, 255, 0.92) !important;
+        }
+        :root[data-theme='dark'] .standings-relegation {
+          background: rgba(220, 38, 38, 0.22) !important;
+          border-left: 4px solid #ef4444 !important;
+        }
+        :root[data-theme='dark'] .standings-relegation td {
+          background: rgba(220, 38, 38, 0.22) !important;
+          color: rgba(255, 255, 255, 0.92) !important;
+        }
       `}</style>
 
       {loading && standings.length === 0 ? (

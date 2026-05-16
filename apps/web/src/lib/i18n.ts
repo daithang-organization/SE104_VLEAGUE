@@ -15,6 +15,8 @@ i18n
     fallbackLng: 'vi',
     interpolation: {
       escapeValue: false, // React already escapes
+      prefix: '{',
+      suffix: '}',
     },
     detection: {
       order: ['localStorage', 'navigator'],
