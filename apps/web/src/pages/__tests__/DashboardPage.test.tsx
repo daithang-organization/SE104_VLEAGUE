@@ -23,8 +23,15 @@ const mockScheduleApi = vi.hoisted(() => ({
   apiGetSchedule: vi.fn().mockResolvedValue({ matches: [] }),
 }));
 const mockSeasonApi = vi.hoisted(() => ({
-  apiGetSeasons: vi.fn().mockResolvedValue([{ id: 's1', name: 'V.League 2025' }]),
-  apiGetCurrentSeason: vi.fn().mockResolvedValue(null),
+  apiGetSeasons: vi.fn().mockResolvedValue([
+    {
+      id: 's1',
+      name: 'V.League 2025',
+      startDate: '2000-01-01',
+      endDate: '2099-12-31',
+      status: 'IN_PROGRESS',
+    },
+  ]),
 }));
 const mockStandingsApi = vi.hoisted(() => ({
   apiGetStandings: vi.fn().mockResolvedValue([]),
@@ -110,7 +117,6 @@ describe('DashboardPage', () => {
       expect(mockSeasonApi.apiGetSeasons).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetStandings).toHaveBeenCalled();
       expect(mockMatchApi.apiGetMatches).toHaveBeenCalled();
-      expect(mockSeasonApi.apiGetCurrentSeason).toHaveBeenCalled();
     });
   });
 
