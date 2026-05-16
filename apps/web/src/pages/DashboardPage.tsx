@@ -31,7 +31,7 @@ import { CardSkeleton } from '../components';
 import { apiGetMatches, type Match } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule, type ScheduleMatch } from '../services/scheduleApi';
-import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetCardStats,
   apiGetStandings,
@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const [upcoming, setUpcoming] = useState<ScheduleMatch[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
+  const [seasonProgress, setSeasonProgress] = useState<number | null>(null);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [cardStats, setCardStats] = useState<CardStat[]>([]);
   const [goalsPerRound, setGoalsPerRound] = useState<{ round: string; goals: number }[]>([]);
@@ -86,7 +87,6 @@ export default function DashboardPage() {
           seasons,
           standingsData,
           matchesData,
-          curSeason,
           scorersData,
           cardStatsData,
         ] = await Promise.allSettled([
@@ -96,7 +96,6 @@ export default function DashboardPage() {
           apiGetSeasons(),
           apiGetStandings(),
           apiGetMatches(undefined, 1, 100),
-          apiGetCurrentSeason(),
           apiGetTopScorers(undefined, 5),
           apiGetCardStats(undefined, 5),
         ]);
@@ -132,8 +131,44 @@ export default function DashboardPage() {
           setRecentResults(finished);
         }
 
-        if (curSeason.status === 'fulfilled') {
-          setCurrentSeason(curSeason.value);
+        const dashboardSeason =
+          seasons.status === 'fulfilled'
+            ? (seasons.value.find((season) => {
+                if (!season.startDate || !season.endDate) return false;
+                const start = dayjs(season.startDate).startOf('day').valueOf();
+                const end = dayjs(season.endDate).endOf('day').valueOf();
+                const now = dayjs().valueOf();
+                return now >= start && now <= end;
+              }) ??
+              seasons.value.find((season) => season.status === 'IN_PROGRESS') ??
+              seasons.value
+                .filter((season) => season.startDate)
+                .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
+              null)
+            : null;
+        setCurrentSeason(dashboardSeason);
+
+        if (dashboardSeason) {
+          const seasonMatches = await apiGetMatches(dashboardSeason.id, 1, 1000);
+          const teamIds = new Set<string>();
+          let finishedMatches = 0;
+
+          seasonMatches.data.forEach((match) => {
+            teamIds.add(match.homeTeamId);
+            teamIds.add(match.awayTeamId);
+            if (match.status === 'FINISHED') finishedMatches++;
+          });
+
+          const roundRobinFixtures = teamIds.size > 1 ? teamIds.size * (teamIds.size - 1) : 0;
+          const totalSeasonMatches =
+            seasonMatches.total || seasonMatches.data.length || roundRobinFixtures;
+          setSeasonProgress(
+            totalSeasonMatches > 0
+              ? Math.min(100, Math.round((finishedMatches / totalSeasonMatches) * 100))
+              : 0,
+          );
+        } else {
+          setSeasonProgress(null);
         }
 
         if (scorersData.status === 'fulfilled') {
@@ -233,16 +268,6 @@ export default function DashboardPage() {
       render: (v: string | null) => (v ? dayjs(v).format('DD/MM') : '—'),
     },
   ];
-
-  const seasonProgress = (() => {
-    if (!currentSeason?.startDate || !currentSeason?.endDate) return null;
-    const start = dayjs(currentSeason.startDate);
-    const end = dayjs(currentSeason.endDate);
-    const now = dayjs();
-    const total = end.diff(start, 'day');
-    const elapsed = now.diff(start, 'day');
-    return total > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / total) * 100))) : 0;
-  })();
 
   return (
     <div>

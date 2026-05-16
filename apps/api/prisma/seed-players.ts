@@ -170,6 +170,16 @@ async function main() {
   for (const team of teams) {
     console.log(`\n🔵 ${team.name}`);
 
+    const activeRosterCount = await prisma.teamPlayer.count({
+      where: { teamId: team.id, leftAt: null },
+    });
+    if (activeRosterCount >= 18) {
+      console.log(
+        `  ⏭️  Skipped (${activeRosterCount} active roster entries already exist)`,
+      );
+      continue;
+    }
+
     const players: {
       id: string;
       fullName: string;
