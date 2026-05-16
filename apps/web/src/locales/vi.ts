@@ -186,7 +186,7 @@ const vi = {
     statMatches: 'Trận đấu',
     statSeasons: 'Mùa giải',
     inProgress: 'Đang diễn ra',
-    seasonProgress: '{{percent}}% mùa giải',
+    seasonProgress: '{percent}% mùa giải',
     quickActions: '⚡ Thao tác nhanh',
     btnSeason: 'Mùa giải',
     btnTeam: 'Đội bóng',
