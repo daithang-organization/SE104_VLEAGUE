@@ -70,10 +70,12 @@ export default function MatchesPage() {
 
   // Fetch seasons
   useEffect(() => {
-    apiGetSeasons().then((data) => {
-      setSeasons(data);
-      if (data.length > 0) setSelectedSeasonId(data[0].id);
-    });
+    apiGetSeasons()
+      .then((data) => {
+        setSeasons(data);
+        if (data.length > 0) setSelectedSeasonId(data[0].id);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const fetchMatches = useCallback(async () => {
@@ -86,7 +88,7 @@ export default function MatchesPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSeasonId]);
+  }, [selectedSeasonId, t]);
 
   useEffect(() => {
     fetchMatches();
