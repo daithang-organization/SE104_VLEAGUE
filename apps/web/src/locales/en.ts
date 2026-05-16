@@ -24,6 +24,13 @@ const en = {
     coaches: 'Coaches',
   },
 
+  auth: {
+    profile: 'View profile',
+    changePassword: 'Change password',
+    logout: 'Log out',
+    loggedOut: 'Logged out',
+  },
+
   common: {
     save: 'Save',
     create: 'Create',

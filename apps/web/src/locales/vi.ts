@@ -34,6 +34,13 @@ const vi = {
     coaches: 'Huấn luyện viên',
   },
 
+  auth: {
+    profile: 'View profile',
+    changePassword: 'Change password',
+    logout: 'Log out',
+    loggedOut: 'Logged out',
+  },
+
   common: {
     save: 'Lưu',
     create: 'Tạo',
