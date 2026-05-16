@@ -42,6 +42,9 @@ import {
 } from '../services/standingsApi';
 import { apiGetTeams } from '../services/teamApi';
 
+// MÃ MÀU ĐỎ CHỦ ĐẠO MỚI
+const THEME_RED = '#E32221';
+
 type RecentResult = {
   id: string;
   roundNo: number;
@@ -117,7 +120,6 @@ export default function DashboardPage() {
           setUpcoming(upcomingMatches);
         }
 
-        // Recent finished results
         if (matchesData.status === 'fulfilled') {
           const finished = matchesData.value.data
             .filter((m) => m.status === 'FINISHED')
@@ -142,7 +144,6 @@ export default function DashboardPage() {
           setCardStats(cardStatsData.value.slice(0, 5));
         }
 
-        // Calculate goals per round from finished matches
         if (matchesData.status === 'fulfilled') {
           const finished = matchesData.value.data.filter((m: Match) => m.status === 'FINISHED');
           const roundGoals = new Map<number, number>();
@@ -168,7 +169,7 @@ export default function DashboardPage() {
     };
 
     load();
-  }, []);
+  }, [t]);
 
   const standingsCols: ColumnsType<TeamStanding> = [
     { title: t('dashboard.standingsColRank'), dataIndex: 'position', width: 50 },
@@ -199,7 +200,8 @@ export default function DashboardPage() {
       title: t('dashboard.upcomingColStatus'),
       dataIndex: 'status',
       width: 110,
-      render: (s: string) => <Tag color={s === 'PUBLISHED' ? 'blue' : 'default'}>{s}</Tag>,
+      // Đổi tag PUBLISHED sang màu đỏ
+      render: (s: string) => <Tag color={s === 'PUBLISHED' ? 'red' : 'default'}>{s}</Tag>,
     },
   ];
 
@@ -216,7 +218,8 @@ export default function DashboardPage() {
       render: (_, r) => (
         <span>
           <strong>{r.homeTeam.name}</strong>
-          <Tag color="blue" style={{ margin: '0 6px' }}>
+          {/* Đổi tag tỷ số sang màu đỏ */}
+          <Tag color="red" style={{ margin: '0 6px' }}>
             {r.homeScore ?? 0} – {r.awayScore ?? 0}
           </Tag>
           <strong>{r.awayTeam.name}</strong>
@@ -231,7 +234,6 @@ export default function DashboardPage() {
     },
   ];
 
-  // Calculate season progress
   const seasonProgress = (() => {
     if (!currentSeason?.startDate || !currentSeason?.endDate) return null;
     const start = dayjs(currentSeason.startDate);
@@ -244,6 +246,95 @@ export default function DashboardPage() {
 
   return (
     <div>
+      {/* Thêm chút CSS trực tiếp cho các hiệu ứng hover mượt mà */}
+      <style>{`
+        /* Khung Card chính */
+        .stat-card {
+          position: relative;
+          background: #152238; /* Phải set cứng màu nền để trùng với màu box bên dưới */
+          border: none !important;
+          border-radius: 8px;
+          overflow: hidden;
+          transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Lúc di chuột vẫn nhấc nhẹ cái box lên */
+        .stat-card:hover {
+          transform: translateY(-5px);
+        }
+
+        /* TẠO AURA QUAY (conic-gradient) NẰM LỚP DƯỚI CÙNG */
+        .stat-card::before {
+          content: "";
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: conic-gradient(
+            transparent,
+            transparent,
+            transparent,
+            #E32221
+          );
+          animation: spin-aura 0.75s linear infinite;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          z-index: 0;
+        }
+
+        /* Lớp giả ở giữa (nhỏ hơn thẻ 1 tí) che đi phần ruột của Aura, chỉ để hở 2px viền */
+        .stat-card::after {
+          content: "";
+          position: absolute;
+          inset: 3px; /* 2px này chính là độ dày của cái vòng Aura */
+          background: #152238; /* Cùng màu nền box để tàng hình */
+          border-radius: 6px;
+          z-index: 1;
+        }
+
+        /* Kéo ruột của Ant Design Card lên lớp trên cùng để không bị che */
+        .stat-card .ant-card-body {
+          position: relative;
+          z-index: 2;
+        }
+
+        /* Khi hover thì hiện Aura ra */
+        .stat-card:hover::before {
+          opacity: 1;
+        }
+
+        :root[data-theme='light'] .stat-card {
+          background: var(--primary);
+        }
+
+        :root[data-theme='light'] .stat-card::before {
+          background: conic-gradient(
+            transparent,
+            transparent,
+            transparent,
+            #ffffff
+          );
+        }
+
+        :root[data-theme='light'] .stat-card::after {
+          background: var(--primary);
+        }
+
+        :root[data-theme='light'] .stat-card .ant-statistic-title,
+        :root[data-theme='light'] .stat-card .ant-statistic-content,
+        :root[data-theme='light'] .stat-card .ant-statistic-content-prefix,
+        :root[data-theme='light'] .stat-card .ant-statistic-content-value {
+          color: #ffffff !important;
+        }
+
+        /* Keyframe xoay Aura */
+        @keyframes spin-aura {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+      }
+      `}</style>
+
       <Typography.Title level={3}>{t('dashboard.title')}</Typography.Title>
       <Typography.Paragraph type="secondary">{t('dashboard.welcome')}</Typography.Paragraph>
 
@@ -265,62 +356,70 @@ export default function DashboardPage() {
         <>
           <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
             <Col xs={12} sm={6}>
-              <Card loading={loading}>
+              <Card loading={loading} hoverable className="stat-card">
                 <Statistic
                   title={t('dashboard.statTeams')}
                   value={stats.teams}
                   prefix={<TeamOutlined />}
-                  styles={{ content: { color: '#1890ff' } }}
+                  styles={{ content: { color: THEME_RED, fontWeight: 'bold' } }}
                 />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card loading={loading}>
+              <Card loading={loading} hoverable className="stat-card">
                 <Statistic
                   title={t('dashboard.statPlayers')}
                   value={stats.players}
                   prefix={<UserOutlined />}
-                  styles={{ content: { color: '#52c41a' } }}
+                  styles={{ content: { color: '#fa8c16', fontWeight: 'bold' } }}
                 />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card loading={loading}>
+              <Card loading={loading} hoverable className="stat-card">
                 <Statistic
                   title={t('dashboard.statMatches')}
                   value={stats.matches}
                   prefix={<CalendarOutlined />}
-                  styles={{ content: { color: '#faad14' } }}
+                  styles={{ content: { color: THEME_RED, fontWeight: 'bold' } }}
                 />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card loading={loading}>
+              <Card loading={loading} hoverable className="stat-card">
                 <Statistic
                   title={t('dashboard.statSeasons')}
                   value={stats.seasons}
                   prefix={<TrophyOutlined />}
-                  styles={{ content: { color: '#eb2f96' } }}
+                  styles={{ content: { color: '#eb2f96', fontWeight: 'bold' } }}
                 />
               </Card>
             </Col>
           </Row>
 
-          {/* Current season + Quick actions row */}
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             {currentSeason && (
               <Col xs={24} md={isAdmin ? 16 : 24}>
-                <Card size="small" loading={loading}>
+                <Card
+                  size="small"
+                  loading={loading}
+                  style={{ borderTop: `3px solid ${THEME_RED}` }}
+                >
                   <Space direction="vertical" style={{ width: '100%' }}>
                     <Space>
-                      <Badge status="processing" />
+                      <Badge color={THEME_RED} />
                       <Typography.Text strong>{currentSeason.name}</Typography.Text>
-                      <Tag color="green">{t('dashboard.inProgress')}</Tag>
+                      <Tag color="red">{t('dashboard.inProgress')}</Tag>
                     </Space>
                     {seasonProgress !== null && (
                       <Progress
                         percent={seasonProgress}
                         size="small"
+                        strokeColor={{
+                          '0%': '#52c41a', // Bắt đầu: Xanh lá cây mướt mắt
+                          '50%': '#faad14', // Giữa mùa: Chuyển sang vàng cam cho mượt
+                          '100%': '#E32221', // Cuối mùa: Đỏ rực VLeague
+                        }}
                         format={(p) => t('dashboard.seasonProgress', { percent: p })}
                       />
                     )}
@@ -373,7 +472,7 @@ export default function DashboardPage() {
 
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={24} md={12}>
-              <Card title={t('dashboard.standingsTitle')} size="small">
+              <Card title={t('dashboard.standingsTitle')} size="small" hoverable>
                 <Table
                   columns={standingsCols}
                   dataSource={standings}
@@ -386,7 +485,7 @@ export default function DashboardPage() {
               </Card>
             </Col>
             <Col xs={24} md={12}>
-              <Card title={t('dashboard.upcomingTitle')} size="small">
+              <Card title={t('dashboard.upcomingTitle')} size="small" hoverable>
                 <Table
                   columns={upcomingCols}
                   dataSource={upcoming}
@@ -400,10 +499,9 @@ export default function DashboardPage() {
             </Col>
           </Row>
 
-          {/* Recent results + Top scorers */}
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={24} md={14}>
-              <Card title={t('dashboard.recentTitle')} size="small">
+              <Card title={t('dashboard.recentTitle')} size="small" hoverable>
                 <Table
                   columns={recentCols}
                   dataSource={recentResults}
@@ -416,7 +514,7 @@ export default function DashboardPage() {
               </Card>
             </Col>
             <Col xs={24} md={10}>
-              <Card title={`🏅 ${t('dashboard.topScorersTitle')}`} size="small">
+              <Card title={`🏅 ${t('dashboard.topScorersTitle')}`} size="small" hoverable>
                 <Table
                   dataSource={topScorers}
                   rowKey="playerId"
@@ -442,7 +540,7 @@ export default function DashboardPage() {
                       dataIndex: 'goals',
                       width: 50,
                       align: 'center',
-                      render: (v: number) => <strong style={{ color: '#1890ff' }}>{v}</strong>,
+                      render: (v: number) => <strong style={{ color: THEME_RED }}>{v}</strong>,
                     },
                   ]}
                 />
@@ -450,14 +548,12 @@ export default function DashboardPage() {
             </Col>
           </Row>
 
-          {/* Team Form (last 5 matches) */}
           {standings.length > 0 && recentResults.length > 0 && (
             <Row gutter={[16, 16]}>
               <Col xs={24}>
-                <Card title={`📊 ${t('dashboard.teamFormTitle')}`} size="small">
+                <Card title={`📊 ${t('dashboard.teamFormTitle')}`} size="small" hoverable>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
                     {standings.map((team) => {
-                      // Derive form from recent results for this team
                       const teamResults = recentResults
                         .filter(
                           (r) =>
@@ -483,7 +579,7 @@ export default function DashboardPage() {
                             gap: 8,
                             padding: '6px 12px',
                             borderRadius: 8,
-                            background: 'var(--ant-color-fill-quaternary, #fafafa)',
+                            background: 'var(--ant-color-fill-quaternary)', // Chỉ giữ lại biến màu linh hoạt của Antd
                             minWidth: 200,
                           }}
                         >
@@ -506,9 +602,9 @@ export default function DashboardPage() {
                                   color: '#fff',
                                   background:
                                     result === 'W'
-                                      ? '#52c41a'
+                                      ? '#52c41a' // Thắng giữ màu xanh lá
                                       : result === 'L'
-                                        ? '#ff4d4f'
+                                        ? THEME_RED // Thua cho màu đỏ
                                         : '#8c8c8c',
                                 }}
                               >
@@ -539,18 +635,30 @@ export default function DashboardPage() {
             </Row>
           )}
 
-          {/* Goals per round chart + Card stats */}
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             {goalsPerRound.length > 0 && (
               <Col xs={24} md={14}>
-                <Card title={`⚽ ${t('dashboard.goalsPerRoundTitle')}`} size="small">
+                <Card title={`⚽ ${t('dashboard.goalsPerRoundTitle')}`} size="small" hoverable>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={goalsPerRound}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="round" fontSize={12} />
-                      <YAxis allowDecimals={false} fontSize={12} />
-                      <Tooltip />
-                      <Bar dataKey="goals" fill="#1890ff" radius={[4, 4, 0, 0]} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="round" fontSize={12} axisLine={false} tickLine={false} />
+                      <YAxis
+                        allowDecimals={false}
+                        fontSize={12}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(227, 34, 33, 0.1)' }}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          border: 'none',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        }}
+                      />
+                      {/* Đổi màu cột sang đỏ */}
+                      <Bar dataKey="goals" fill={THEME_RED} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Card>
@@ -558,7 +666,7 @@ export default function DashboardPage() {
             )}
             {cardStats.length > 0 && (
               <Col xs={24} md={goalsPerRound.length > 0 ? 10 : 24}>
-                <Card title={`🟨 ${t('dashboard.cardStatsTitle')}`} size="small">
+                <Card title={`🟨 ${t('dashboard.cardStatsTitle')}`} size="small" hoverable>
                   <Table
                     dataSource={cardStats}
                     rowKey="playerId"
@@ -585,7 +693,7 @@ export default function DashboardPage() {
                         dataIndex: 'redCards',
                         width: 50,
                         align: 'center' as const,
-                        render: (v: number) => <strong style={{ color: '#ff4d4f' }}>{v}</strong>,
+                        render: (v: number) => <strong style={{ color: THEME_RED }}>{v}</strong>,
                       },
                     ]}
                   />

@@ -18,7 +18,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -68,6 +68,41 @@ export default function MatchesPage() {
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
 
+  const loadMatches = useCallback(
+    async (seasonId?: string, search?: string, status?: string, teamId?: string) => {
+      setLoading(true);
+      try {
+        // Use 1000 limit to ensure we get all matches for local grouping
+        const res = await apiGetMatches(seasonId, 1, 1000);
+        let data = res.data;
+
+        // Local filtering (backend only supports seasonId currently in this service)
+        if (search) {
+          const q = search.toLowerCase().trim();
+          data = data.filter(
+            (m) =>
+              m.homeTeam?.name?.toLowerCase().includes(q) ||
+              m.awayTeam?.name?.toLowerCase().includes(q),
+          );
+        }
+        if (status) {
+          data = data.filter((m) => m.status === status);
+        }
+        if (teamId) {
+          data = data.filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId);
+        }
+
+        setMatches(data);
+      } catch (_err) {
+        // Prevent spamming toasts by checking if it's already visible or just using a flag
+        message.error(t('matches.loadError'), 3);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
+
   // Initial fetch seasons
   useEffect(() => {
     apiGetSeasons()
@@ -77,51 +112,13 @@ export default function MatchesPage() {
           const active = data.find((s) => s.status === 'IN_PROGRESS' || s.status === 'UPCOMING');
           const initialSeasonId = active ? active.id : data[0].id;
           setSelectedSeasonId(initialSeasonId);
-          // Initial matches fetch
           loadMatches(initialSeasonId);
         } else {
           setLoading(false);
         }
       })
       .catch(() => setLoading(false));
-  }, []);
-
-  const loadMatches = async (
-    seasonId?: string,
-    search?: string,
-    status?: string,
-    teamId?: string,
-  ) => {
-    setLoading(true);
-    try {
-      // Use 1000 limit to ensure we get all matches for local grouping
-      const res = await apiGetMatches(seasonId, 1, 1000);
-      let data = res.data;
-
-      // Local filtering (backend only supports seasonId currently in this service)
-      if (search) {
-        const q = search.toLowerCase().trim();
-        data = data.filter(
-          (m) =>
-            m.homeTeam?.name?.toLowerCase().includes(q) ||
-            m.awayTeam?.name?.toLowerCase().includes(q),
-        );
-      }
-      if (status) {
-        data = data.filter((m) => m.status === status);
-      }
-      if (teamId) {
-        data = data.filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId);
-      }
-
-      setMatches(data);
-    } catch (_err) {
-      // Prevent spamming toasts by checking if it's already visible or just using a flag
-      message.error(t('matches.loadError'), 3);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadMatches]);
 
   const onSearch = (value: string) => {
     setSearchText(value);

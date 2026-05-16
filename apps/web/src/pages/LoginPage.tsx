@@ -47,7 +47,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 16 }}>
+    <div
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        minHeight: '100vh',
+        padding: 16,
+        background: 'var(--bg)',
+      }}
+    >
       <Card style={{ width: 380 }}>
         <Typography.Title level={4} style={{ marginTop: 0, textAlign: 'center' }}>
           {t('login.title')}

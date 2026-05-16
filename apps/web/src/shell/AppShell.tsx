@@ -141,20 +141,30 @@ export default function AppShell() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible>
+      <Sider
+        collapsible
+        style={{
+          background: 'var(--sidebar-bg)',
+          borderRight: `1px solid var(--sidebar-border)`,
+        }}
+      >
         <div
           style={{
             padding: 16,
-            color: 'white',
+            color: 'var(--text-main)',
             fontWeight: 'bold',
             fontSize: 18,
             textAlign: 'center',
           }}
         >
-          VLeague
+          <img
+            src="/V.League_1_2025-26_logo.svg.png"
+            alt="VLeague Logo"
+            style={{ height: '50px', objectFit: 'contain' }}
+          />
         </div>
         <Menu
-          theme="dark"
+          theme={isDark ? 'dark' : 'light'}
           mode="inline"
           items={menuItems}
           selectedKeys={[selectedKey]}
@@ -162,15 +172,20 @@ export default function AppShell() {
         />
       </Sider>
 
-      <Layout>
+      {/* Xóa màu cứng ở Layout con này để nó ăn màu cấu hình tổng */}
+      <Layout style={{ background: 'transparent' }}>
         <Header
           style={{
             display: 'flex',
             justifyContent: 'flex-end',
             alignItems: 'center',
-            gap: 16,
+            height: '40px', // Giả sử ông muốn hẹp hẳn xuống 48px
+            lineHeight: '40px', // QUAN TRỌNG: Phải khớp với height để không bị khuyết
             padding: '0 24px',
-            background: isDark ? '#141414' : '#001529',
+            background: 'transparent',
+            borderBottom: isDark
+              ? '1px solid rgba(255,255,255,0.05)'
+              : '1px solid rgba(0,0,0,0.05)',
           }}
         >
           {/* Global Search */}
@@ -178,10 +193,15 @@ export default function AppShell() {
             options={searchOptions}
             onSearch={onSearch}
             onSelect={onSelectSearch}
-            style={{ width: 280 }}
+            style={{
+              flex: '0 1 280px', // Cho phép co lại nhưng không vượt quá 280px
+              //marginRight: 'auto', // Đẩy các icon sang bên phải nếu muốn ô tìm kiếm nằm trái
+              marginLeft: 16,
+            }}
             allowClear
           >
             <Input
+              size="small" // Dùng size nhỏ để khớp với navbar hẹp
               prefix={searchLoading ? <Spin size="small" /> : <SearchOutlined />}
               placeholder={t('common.search')}
               style={{ borderRadius: 20 }}
@@ -195,7 +215,7 @@ export default function AppShell() {
               isDark ? (
                 <BulbFilled style={{ color: '#fadb14' }} />
               ) : (
-                <BulbOutlined style={{ color: 'white' }} />
+                <BulbOutlined style={{ color: 'var(--text-main)' }} />
               )
             }
             onClick={toggleTheme}
@@ -205,11 +225,11 @@ export default function AppShell() {
           {/* Language Toggle */}
           <Button
             type="text"
-            icon={<GlobalOutlined style={{ color: 'white' }} />}
+            icon={<GlobalOutlined style={{ color: 'var(--text-main)' }} />}
             onClick={toggleLang}
             title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
           >
-            <span style={{ color: 'white', fontSize: 12, marginLeft: 4 }}>
+            <span style={{ color: 'var(--text-main)', fontSize: 12, marginLeft: 4 }}>
               {i18n.language === 'vi' ? 'VI' : 'EN'}
             </span>
           </Button>
@@ -218,7 +238,7 @@ export default function AppShell() {
           <NotificationBell />
 
           <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-            <Button type="text" style={{ color: 'white' }}>
+            <Button type="text" style={{ color: 'var(--text-main)' }}>
               <Space>
                 <UserOutlined />
                 {user?.email}
@@ -227,8 +247,30 @@ export default function AppShell() {
           </Dropdown>
         </Header>
 
-        <Content style={{ padding: 24, background: isDark ? '#1a1a1a' : '#f5f5f5', minHeight: 0 }}>
-          <Outlet />
+        {/* SỬA Ở ĐÂY: Chuyển background thành transparent để nhìn xuyên thấu xuống màu xanh Navy */}
+        <Content style={{ padding: 24, background: 'transparent', minHeight: 0 }}>
+          {/* 1. ĐỊNH NGHĨA HIỆU ỨNG FADE-IN & SLIDE-UP */}
+          <style>{`
+            @keyframes pageTransition {
+              from {
+                opacity: 0;
+                transform: translateY(15px); /* Trượt nhẹ từ dưới lên 15px */
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            .page-animate {
+              animation: pageTransition 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+              height: 100%;
+            }
+          `}</style>
+
+          {/* 2. BỌC OUTLET VÀ GẮN KEY LOCATION */}
+          <div key={location.pathname} className="page-animate">
+            <Outlet />
+          </div>
         </Content>
       </Layout>
     </Layout>

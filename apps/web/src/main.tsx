@@ -5,18 +5,19 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
+import './index.css';
 import './lib/i18n'; // Initialize i18n (side-effect)
 import { initSentry } from './lib/sentry';
-import { ThemeProvider, useAntdAlgorithm } from './shell/ThemeContext';
+import { ThemeProvider, useAntdThemeConfig } from './shell/ThemeContext';
 
 // Initialize Sentry before rendering (no-op when VITE_SENTRY_DSN is unset)
 initSentry();
 
 /** Inner component so useAntdAlgorithm() has access to ThemeProvider */
 function Root() {
-  const algorithm = useAntdAlgorithm();
+  const themeConfig = useAntdThemeConfig();
   return (
-    <ConfigProvider theme={{ algorithm }}>
+    <ConfigProvider theme={themeConfig}>
       <AuthProvider>
         <BrowserRouter>
           <App />
