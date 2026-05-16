@@ -73,13 +73,15 @@ describe('MatchController', () => {
 
   describe('findAll', () => {
     it('should return paginated matches', async () => {
-      const result = await controller.findAll(
-        'season-1',
-        { page: 1, limit: 10 } as any,
-        '1',
-        'DRAFT',
-        'team-1',
-      );
+      const query = {
+        seasonId: 'season-1',
+        page: 1,
+        limit: 10,
+        round: 1,
+        status: 'DRAFT',
+        teamId: 'team-1',
+      };
+      const result = await controller.findAll(query as any);
 
       expect(result).toEqual(mockPaginated);
       expect(service.findAll).toHaveBeenCalledWith('season-1', {
@@ -92,19 +94,12 @@ describe('MatchController', () => {
     });
 
     it('should handle undefined round', async () => {
-      await controller.findAll(
-        'season-1',
-        {} as any,
-        undefined,
-        undefined,
-        undefined,
-      );
+      const query = {
+        seasonId: 'season-1',
+      };
+      await controller.findAll(query as any);
 
-      expect(service.findAll).toHaveBeenCalledWith('season-1', {
-        round: undefined,
-        status: undefined,
-        teamId: undefined,
-      });
+      expect(service.findAll).toHaveBeenCalledWith('season-1', {});
     });
   });
 

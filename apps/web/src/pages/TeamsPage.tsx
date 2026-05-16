@@ -62,7 +62,7 @@ export default function TeamsPage() {
     setLoading(true);
     try {
       const res = await apiGetTeams();
-      setTeams(res.data);
+      setTeams(res?.data || []);
     } catch (_err) {
       message.error(t('teams.loadError'));
     } finally {
@@ -73,7 +73,7 @@ export default function TeamsPage() {
   const fetchStadiums = useCallback(async () => {
     try {
       const data = await apiGetStadiums();
-      setStadiums(data);
+      setStadiums(data || []);
     } catch (_err) {
       // Stadiums may fail to load, that's ok
     }
@@ -147,7 +147,9 @@ export default function TeamsPage() {
     }
   };
 
-  const filteredTeams = teams.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredTeams = (teams || []).filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   const columns: ColumnsType<Team> = [
     {

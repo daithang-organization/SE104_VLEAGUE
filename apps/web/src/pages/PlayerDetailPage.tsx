@@ -71,7 +71,7 @@ type PlayerDetail = {
   birthPlace?: string | null;
   heightCm?: number | null;
   weightKg?: number | null;
-  teamPlayers: TeamHistory[];
+  roster: TeamHistory[];
   matchEvents: MatchEvent[];
 };
 
@@ -136,14 +136,16 @@ export default function PlayerDetailPage() {
     );
   }
 
-  const currentTeam = player.teamPlayers.find((tp) => !tp.leftAt);
+  const currentTeam = (player.roster || []).find((tp) => !tp.leftAt);
   const pos = POSITION_MAP[player.position];
 
   // Stats
-  const goals = player.matchEvents.filter((e) => e.type === 'GOAL' || e.type === 'PENALTY').length;
-  const ownGoals = player.matchEvents.filter((e) => e.type === 'OWN_GOAL').length;
-  const yellowCards = player.matchEvents.filter((e) => e.type === 'YELLOW_CARD').length;
-  const redCards = player.matchEvents.filter((e) => e.type === 'RED_CARD').length;
+  const goals = (player.matchEvents || []).filter(
+    (e) => e.type === 'GOAL' || e.type === 'PENALTY',
+  ).length;
+  const ownGoals = (player.matchEvents || []).filter((e) => e.type === 'OWN_GOAL').length;
+  const yellowCards = (player.matchEvents || []).filter((e) => e.type === 'YELLOW_CARD').length;
+  const redCards = (player.matchEvents || []).filter((e) => e.type === 'RED_CARD').length;
 
   const age = new Date().getFullYear() - new Date(player.dob).getFullYear();
 
@@ -251,7 +253,7 @@ export default function PlayerDetailPage() {
         <Col xs={24} md={12}>
           <Card title={t('playerDetail.teamHistoryTitle')} size="small">
             <Table
-              dataSource={player.teamPlayers}
+              dataSource={player.roster || []}
               rowKey="id"
               pagination={false}
               size="small"
@@ -292,10 +294,10 @@ export default function PlayerDetailPage() {
       </Row>
 
       {/* Match Events Timeline */}
-      {player.matchEvents.length > 0 && (
+      {(player.matchEvents || []).length > 0 && (
         <Card title={t('playerDetail.eventsTitle')} size="small" style={{ marginTop: 16 }}>
           <Timeline
-            items={player.matchEvents.slice(0, 30).map((evt) => ({
+            items={(player.matchEvents || []).slice(0, 30).map((evt) => ({
               color:
                 evt.type === 'GOAL' || evt.type === 'PENALTY'
                   ? 'green'

@@ -1,0 +1,260 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1280" viewBox="0 0 1900 1280">
+  <defs>
+    <pattern id="smallGrid" width="14" height="14" patternUnits="userSpaceOnUse">
+      <path d="M 14 0 L 0 0 0 14" fill="none" stroke="#eef2f7" stroke-width="1"/>
+    </pattern>
+    <pattern id="grid" width="70" height="70" patternUnits="userSpaceOnUse">
+      <rect width="70" height="70" fill="url(#smallGrid)"/>
+      <path d="M 70 0 L 0 0 0 70" fill="none" stroke="#d8dee9" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#111827"/>
+    </marker>
+    <style>
+      .page-title { font: 700 30px "Times New Roman", serif; fill: #111827; }
+      .subtitle { font: 16px Arial, sans-serif; fill: #374151; }
+      .group-title { font: 700 18px Arial, sans-serif; fill: #111827; }
+      .box { fill: #ffffff; stroke: #111827; stroke-width: 2; rx: 0; }
+      .main { fill: #f8fafc; stroke-width: 2.4; }
+      .public { fill: #ecfeff; }
+      .auth { fill: #fff7ed; }
+      .admin { fill: #f5f3ff; }
+      .detail { fill: #f0fdf4; }
+      .account { fill: #eff6ff; }
+      .fallback { fill: #fff1f2; }
+      .label { font: 700 16px Arial, sans-serif; fill: #111827; text-anchor: middle; dominant-baseline: middle; }
+      .route { font: 12px Arial, sans-serif; fill: #4b5563; text-anchor: middle; }
+      .hint { font: 12px Arial, sans-serif; fill: #6b7280; text-anchor: middle; }
+      .edge { fill: none; stroke: #111827; stroke-width: 2; marker-end: url(#arrow); }
+      .bus { fill: none; stroke: #111827; stroke-width: 2; }
+      .soft { fill: none; stroke: #4b5563; stroke-width: 1.7; stroke-dasharray: 7 5; marker-end: url(#arrow); }
+      .group { fill: rgba(255,255,255,.55); stroke: #94a3b8; stroke-width: 1.4; }
+    </style>
+  </defs>
+
+  <rect width="1900" height="1280" fill="url(#grid)"/>
+
+  <text x="950" y="42" class="page-title" text-anchor="middle">Sơ đồ liên kết các màn hình - VLeague</text>
+  <text x="950" y="70" class="subtitle" text-anchor="middle">Ký hiệu theo tài liệu thiết kế giao diện: khung là màn hình, mũi tên là hướng chuyển điều khiển</text>
+
+  <!-- Entry level -->
+  <rect x="835" y="105" width="230" height="70" class="box main"/>
+  <text x="950" y="132" class="label">Màn hình khởi đầu</text>
+  <text x="950" y="156" class="route">Người dùng truy cập</text>
+
+  <rect x="420" y="235" width="210" height="68" class="box auth"/>
+  <text x="525" y="261" class="label">Đăng nhập</text>
+  <text x="525" y="284" class="route">/login</text>
+
+  <rect x="835" y="235" width="230" height="68" class="box public"/>
+  <text x="950" y="261" class="label">Trang công khai</text>
+  <text x="950" y="284" class="route">PublicLayout</text>
+
+  <rect x="1270" y="235" width="210" height="68" class="box fallback"/>
+  <text x="1375" y="261" class="label">Không tìm thấy</text>
+  <text x="1375" y="284" class="route">404 / *</text>
+
+  <path d="M950 175 V205 H525 V235" class="edge"/>
+  <path d="M950 175 V235" class="edge"/>
+  <path d="M950 175 V205 H1375 V235" class="edge"/>
+
+  <!-- Auth screens -->
+  <text x="295" y="368" class="group-title">Nhóm xác thực</text>
+  <rect x="75" y="390" width="155" height="62" class="box auth"/>
+  <text x="152.5" y="414" class="label">Đăng ký</text>
+  <text x="152.5" y="436" class="route">/register</text>
+
+  <rect x="260" y="390" width="155" height="62" class="box auth"/>
+  <text x="337.5" y="414" class="label">Xác thực email</text>
+  <text x="337.5" y="436" class="route">/verify-email</text>
+
+  <rect x="445" y="390" width="155" height="62" class="box auth"/>
+  <text x="522.5" y="414" class="label">Quên mật khẩu</text>
+  <text x="522.5" y="436" class="route">/forgot-password</text>
+
+  <rect x="630" y="390" width="155" height="62" class="box auth"/>
+  <text x="707.5" y="414" class="label">Đặt lại MK</text>
+  <text x="707.5" y="436" class="route">/reset-password</text>
+
+  <rect x="815" y="390" width="155" height="62" class="box auth"/>
+  <text x="892.5" y="414" class="label">OAuth</text>
+  <text x="892.5" y="436" class="route">/auth/oauth-callback</text>
+
+  <path d="M525 303 V340 H152.5 V390" class="edge"/>
+  <path d="M525 303 V340 H337.5 V390" class="edge"/>
+  <path d="M525 303 V340 H522.5 V390" class="edge"/>
+  <path d="M522.5 452 V480 H707.5 V452" class="edge"/>
+  <path d="M525 303 V340 H892.5 V390" class="edge"/>
+
+  <!-- Public screens -->
+  <text x="1235" y="368" class="group-title">Nhóm màn hình công khai</text>
+  <rect x="1090" y="390" width="175" height="62" class="box public"/>
+  <text x="1177.5" y="414" class="label">BXH công khai</text>
+  <text x="1177.5" y="436" class="route">/public/standings</text>
+
+  <rect x="1300" y="390" width="175" height="62" class="box public"/>
+  <text x="1387.5" y="414" class="label">Lịch công khai</text>
+  <text x="1387.5" y="436" class="route">/public/schedule</text>
+
+  <rect x="1510" y="390" width="175" height="62" class="box public"/>
+  <text x="1597.5" y="414" class="label">Kết quả công khai</text>
+  <text x="1597.5" y="436" class="route">/public/results</text>
+
+  <path d="M950 303 V340 H1177.5 V390" class="edge"/>
+  <path d="M950 303 V340 H1387.5 V390" class="edge"/>
+  <path d="M950 303 V340 H1597.5 V390" class="edge"/>
+  <path d="M950 303 C850 340 700 330 630 303" class="soft"/>
+
+  <!-- Dashboard -->
+  <rect x="835" y="545" width="230" height="76" class="box main"/>
+  <text x="950" y="575" class="label">Dashboard / Trang chủ</text>
+  <text x="950" y="600" class="route">/</text>
+
+  <path d="M525 303 C620 425 745 505 835 583" class="edge"/>
+  <path d="M892.5 452 C900 485 920 515 950 545" class="edge"/>
+
+  <!-- Shell utilities -->
+  <rect x="480" y="555" width="170" height="58" class="box account"/>
+  <text x="565" y="577" class="label">Tìm kiếm</text>
+  <text x="565" y="598" class="route">Header Search</text>
+
+  <rect x="1250" y="555" width="170" height="58" class="box account"/>
+  <text x="1335" y="577" class="label">Thông báo</text>
+  <text x="1335" y="598" class="route">NotificationBell</text>
+
+  <rect x="1455" y="555" width="170" height="58" class="box account"/>
+  <text x="1540" y="577" class="label">Tài khoản</text>
+  <text x="1540" y="598" class="route">User menu</text>
+
+  <path d="M835 583 H650" class="edge"/>
+  <path d="M1065 583 H1250" class="edge"/>
+  <path d="M1065 583 H1455" class="edge"/>
+
+  <!-- Main menu bus -->
+  <text x="950" y="698" class="group-title" text-anchor="middle">Menu chức năng sau đăng nhập</text>
+  <path d="M950 621 V675" class="bus"/>
+  <path d="M140 675 H1760" class="bus"/>
+
+  <!-- Row 1 functions -->
+  <rect x="65" y="725" width="150" height="64" class="box admin"/>
+  <text x="140" y="749" class="label">Mùa giải</text>
+  <text x="140" y="772" class="route">/seasons</text>
+
+  <rect x="245" y="725" width="150" height="64" class="box main"/>
+  <text x="320" y="749" class="label">Đội bóng</text>
+  <text x="320" y="772" class="route">/teams</text>
+
+  <rect x="425" y="725" width="150" height="64" class="box admin"/>
+  <text x="500" y="749" class="label">Sân vận động</text>
+  <text x="500" y="772" class="route">/stadiums</text>
+
+  <rect x="605" y="725" width="150" height="64" class="box main"/>
+  <text x="680" y="749" class="label">Cầu thủ</text>
+  <text x="680" y="772" class="route">/players</text>
+
+  <rect x="785" y="725" width="150" height="64" class="box main"/>
+  <text x="860" y="749" class="label">Lịch thi đấu</text>
+  <text x="860" y="772" class="route">/schedule</text>
+
+  <rect x="965" y="725" width="150" height="64" class="box main"/>
+  <text x="1040" y="749" class="label">Trận đấu</text>
+  <text x="1040" y="772" class="route">/matches</text>
+
+  <rect x="1145" y="725" width="150" height="64" class="box main"/>
+  <text x="1220" y="749" class="label">Bảng xếp hạng</text>
+  <text x="1220" y="772" class="route">/standings</text>
+
+  <rect x="1325" y="725" width="150" height="64" class="box main"/>
+  <text x="1400" y="749" class="label">Đối đầu</text>
+  <text x="1400" y="772" class="route">/head-to-head</text>
+
+  <rect x="1505" y="725" width="150" height="64" class="box main"/>
+  <text x="1580" y="749" class="label">Báo cáo</text>
+  <text x="1580" y="772" class="route">/reports</text>
+
+  <rect x="1685" y="725" width="150" height="64" class="box admin"/>
+  <text x="1760" y="749" class="label">Người dùng</text>
+  <text x="1760" y="772" class="route">/users</text>
+
+  <rect x="65" y="865" width="150" height="64" class="box admin"/>
+  <text x="140" y="889" class="label">Quy định</text>
+  <text x="140" y="912" class="route">/regulations</text>
+
+  <path d="M140 675 V725" class="edge"/>
+  <path d="M320 675 V725" class="edge"/>
+  <path d="M500 675 V725" class="edge"/>
+  <path d="M680 675 V725" class="edge"/>
+  <path d="M860 675 V725" class="edge"/>
+  <path d="M1040 675 V725" class="edge"/>
+  <path d="M1220 675 V725" class="edge"/>
+  <path d="M1400 675 V725" class="edge"/>
+  <path d="M1580 675 V725" class="edge"/>
+  <path d="M1760 675 V725" class="edge"/>
+  <path d="M140 789 V865" class="edge"/>
+
+  <!-- Detail screens -->
+  <text x="690" y="1012" class="group-title" text-anchor="middle">Các màn hình chi tiết</text>
+
+  <rect x="245" y="1045" width="150" height="64" class="box detail"/>
+  <text x="320" y="1069" class="label">Chi tiết đội</text>
+  <text x="320" y="1092" class="route">/teams/:id</text>
+
+  <rect x="425" y="1045" width="150" height="64" class="box detail"/>
+  <text x="500" y="1069" class="label">Chi tiết sân</text>
+  <text x="500" y="1092" class="route">/stadiums/:id</text>
+
+  <rect x="605" y="1045" width="150" height="64" class="box detail"/>
+  <text x="680" y="1069" class="label">Chi tiết cầu thủ</text>
+  <text x="680" y="1092" class="route">/players/:id</text>
+
+  <rect x="965" y="1045" width="150" height="64" class="box detail"/>
+  <text x="1040" y="1069" class="label">Chi tiết trận</text>
+  <text x="1040" y="1092" class="route">/matches/:id</text>
+
+  <path d="M320 789 V1045" class="edge"/>
+  <path d="M500 789 V1045" class="edge"/>
+  <path d="M680 789 V1045" class="edge"/>
+  <path d="M1040 789 V1045" class="edge"/>
+  <path d="M395 1077 H605" class="soft"/>
+  <path d="M575 1077 C710 1135 875 1135 965 1077" class="soft"/>
+  <path d="M755 1077 H965" class="soft"/>
+
+  <!-- Business flow -->
+  <text x="1160" y="870" class="group-title" text-anchor="middle">Luồng nghiệp vụ nổi bật</text>
+  <path d="M140 789 C260 835 610 840 860 789" class="soft"/>
+  <path d="M860 789 H965" class="soft"/>
+  <path d="M1040 789 C1085 835 1145 835 1220 789" class="soft"/>
+  <path d="M1040 789 C1190 875 1430 875 1580 789" class="soft"/>
+  <path d="M140 929 C200 965 260 965 320 789" class="soft"/>
+
+  <!-- Account screens -->
+  <text x="1540" y="1012" class="group-title" text-anchor="middle">Tài khoản cá nhân</text>
+
+  <rect x="1465" y="1045" width="150" height="64" class="box account"/>
+  <text x="1540" y="1069" class="label">Hồ sơ</text>
+  <text x="1540" y="1092" class="route">/profile</text>
+
+  <rect x="1285" y="1160" width="150" height="64" class="box account"/>
+  <text x="1360" y="1184" class="label">Đổi mật khẩu</text>
+  <text x="1360" y="1207" class="route">/change-password</text>
+
+  <rect x="1645" y="1160" width="150" height="64" class="box account"/>
+  <text x="1720" y="1184" class="label">Phiên đăng nhập</text>
+  <text x="1720" y="1207" class="route">/sessions</text>
+
+  <path d="M1540 613 V1045" class="edge"/>
+  <path d="M1540 1109 L1360 1160" class="edge"/>
+  <path d="M1540 1109 L1720 1160" class="edge"/>
+
+  <!-- Search and notification shortcuts kept near the bottom as notes -->
+  <path d="M565 613 C535 760 510 915 320 1045" class="soft"/>
+  <path d="M565 613 C640 790 710 900 680 1045" class="soft"/>
+  <path d="M565 613 C750 780 940 900 1040 1045" class="soft"/>
+  <path d="M565 613 C810 735 1120 860 500 1045" class="soft"/>
+  <path d="M1335 613 C1275 770 1130 900 1040 1045" class="soft"/>
+
+  <!-- Legend -->
+  <rect x="70" y="1185" width="900" height="54" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="92" y="1207" class="subtitle">Ghi chú: đường liền là chuyển màn hình trực tiếp; đường đứt là liên kết chéo, tìm kiếm, thông báo hoặc phụ thuộc nghiệp vụ.</text>
+  <text x="92" y="1230" class="subtitle">Các màn hình tô tím là chức năng ADMIN; xanh lá là màn hình chi tiết; xanh dương là màn hình tài khoản.</text>
+</svg>

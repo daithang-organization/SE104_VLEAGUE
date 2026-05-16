@@ -188,6 +188,8 @@ export class RegistrationService {
     // Build where clause
     const where: Record<string, unknown> = {};
     if (pagination?.search) {
+      const safeSearchForLog = pagination.search.replace(/[\r\n]+/g, ' ');
+      console.log(`🔍 Searching for player: "${safeSearchForLog}"`);
       where.fullName = { contains: pagination.search, mode: 'insensitive' };
     }
     if (pagination?.position) {
@@ -340,8 +342,8 @@ export class RegistrationService {
         fullName: dto.fullName,
         dob,
         nationality: dto.nationality,
-        position: dto.position as never,
-        playerType: (dto.playerType ?? 'DOMESTIC') as never,
+        position: dto.position as any,
+        playerType: (dto.playerType ?? 'DOMESTIC') as any,
         birthPlace: dto.birthPlace,
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
@@ -350,12 +352,21 @@ export class RegistrationService {
 
     // Assign to team if teamId provided
     if (dto.teamId) {
-      await this.prisma.teamPlayer.create({
-        data: {
-          teamId: dto.teamId,
-          playerId: player.id,
-        },
-      });
+      try {
+        await this.prisma.teamPlayer.create({
+          data: {
+            teamId: dto.teamId,
+            playerId: player.id,
+          },
+        });
+      } catch (error) {
+        // If team assignment fails, we still created the player,
+        // but we should probably warn or throw to maintain atomicity
+        console.error('Failed to assign player to team:', error);
+        throw new BadRequestException(
+          'Không thể gán cầu thủ vào đội bóng. Vui lòng kiểm tra lại ID đội.',
+        );
+      }
     }
 
     return player;
