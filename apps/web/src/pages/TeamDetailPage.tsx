@@ -23,6 +23,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import type { ColumnsType } from 'antd/es/table';
 import { ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
@@ -128,12 +129,32 @@ export default function TeamDetailPage() {
     return { label: t('teamDetail.matchResultDraw'), color: 'orange' };
   };
 
-  const rosterColumns = [
+  const roster = team.roster || [];
+  const buildFilters = <T,>(
+    items: T[],
+    getValue: (item: T) => string | number | null | undefined,
+  ) =>
+    Array.from(
+      new Set(
+        items
+          .map(getValue)
+          .filter(
+            (value): value is string | number =>
+              value !== null && value !== undefined && value !== '',
+          ),
+      ),
+    )
+      .sort((a, b) => String(a).localeCompare(String(b), 'vi', { numeric: true }))
+      .map((value) => ({ text: String(value), value }));
+
+  const rosterColumns: ColumnsType<TeamDetail['roster'][0]> = [
     {
       title: t('teamDetail.rosterColJersey'),
       dataIndex: 'jerseyNumber',
       key: 'jerseyNumber',
       width: 80,
+      filters: buildFilters(roster, (r) => r.jerseyNumber),
+      onFilter: (value, record) => record.jerseyNumber === Number(value),
       sorter: (a: TeamDetail['roster'][0], b: TeamDetail['roster'][0]) =>
         (a.jerseyNumber ?? 99) - (b.jerseyNumber ?? 99),
       render: (v: number | null) => v ?? '—',
@@ -141,6 +162,8 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColName'),
       key: 'fullName',
+      filters: buildFilters(roster, (r) => r.player.fullName),
+      onFilter: (value, record) => record.player.fullName === value,
       render: (_: unknown, r: TeamDetail['roster'][0]) => (
         <a onClick={() => navigate(`/players/${r.player.id}`)}>{r.player.fullName}</a>
       ),
@@ -148,6 +171,14 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColPosition'),
       key: 'position',
+      filters: buildFilters(roster, (r) => {
+        const p = POSITION_MAP[r.player.position];
+        return p?.label ?? r.player.position;
+      }),
+      onFilter: (value, record) => {
+        const p = POSITION_MAP[record.player.position];
+        return (p?.label ?? record.player.position) === value;
+      },
       render: (_: unknown, r: TeamDetail['roster'][0]) => {
         const p = POSITION_MAP[r.player.position];
         return <Tag color={p?.color}>{p?.label ?? r.player.position}</Tag>;
@@ -156,11 +187,15 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColNationality'),
       key: 'nationality',
+      filters: buildFilters(roster, (r) => r.player.nationality),
+      onFilter: (value, record) => record.player.nationality === value,
       render: (_: unknown, r: TeamDetail['roster'][0]) => r.player.nationality,
     },
     {
       title: t('teamDetail.rosterColType'),
       key: 'playerType',
+      filters: buildFilters(roster, (r) => t(`playerType.${r.player.playerType}`)),
+      onFilter: (value, record) => t(`playerType.${record.player.playerType}`) === value,
       render: (_: unknown, r: TeamDetail['roster'][0]) => (
         <Tag color={r.player.playerType === 'FOREIGN' ? 'purple' : 'cyan'}>
           {t(`playerType.${r.player.playerType}`)}
@@ -344,7 +379,7 @@ export default function TeamDetailPage() {
             label: t('teamDetail.tabRoster', { count: (team.roster || []).length }),
             children: (
               <Table
-                dataSource={team.roster || []}
+                dataSource={roster}
                 columns={rosterColumns}
                 rowKey="id"
                 pagination={false}

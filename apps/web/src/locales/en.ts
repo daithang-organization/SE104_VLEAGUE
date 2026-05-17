@@ -794,11 +794,13 @@ const en = {
     title: 'Reports & Statistics',
     loadError: 'Failed to load report data',
     exportScorersPdf: 'PDF Top Scorers',
+    exportAssistsPdf: 'PDF Top Assists',
     exportTeamStatsPdf: 'PDF Team Stats',
     exportCardStatsPdf: 'PDF Card Stats',
     exportError: 'PDF export error',
     pdfExportDate: 'Export date: {date}',
     tabScorers: '🏆 Top Scorers',
+    tabAssists: 'Top Assists',
     tabCards: '🟨 Card Stats',
     tabTeamStats: '📊 Team Stats',
     tabCharts: '📈 Charts',
@@ -811,6 +813,13 @@ const en = {
     colGoals: 'Goals',
     empty: 'No goal data yet',
   },
+  topAssistsTab: {
+    colRank: '#',
+    colPlayer: 'Player',
+    colTeam: 'Team',
+    colAssists: 'Assists',
+    empty: 'No assist data yet',
+  },
 
   cardStatsTab: {
     colRank: '#',
@@ -819,6 +828,10 @@ const en = {
     colYellowCards: 'Yellow Cards',
     colRedCards: 'Red Cards',
     colTotal: 'Total',
+    yellowTitle: 'Yellow cards',
+    redTitle: 'Red cards',
+    emptyYellow: 'No yellow card data yet',
+    emptyRed: 'No red card data yet',
     empty: 'No card data yet',
   },
 

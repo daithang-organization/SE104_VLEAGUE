@@ -47,6 +47,17 @@ describe('StandingsController', () => {
     },
   ];
 
+  const mockTopAssists = [
+    {
+      position: 1,
+      playerId: 'player-2',
+      playerName: 'Assist Player',
+      teamId: 'team-1',
+      teamName: 'HÃ  Ná»™i FC',
+      assists: 8,
+    },
+  ];
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [CacheModule.register()],
@@ -57,6 +68,7 @@ describe('StandingsController', () => {
           useValue: {
             getStandings: jest.fn().mockResolvedValue(mockStandings),
             getTopScorers: jest.fn().mockResolvedValue(mockTopScorers),
+            getTopAssists: jest.fn().mockResolvedValue(mockTopAssists),
           },
         },
       ],
@@ -98,6 +110,21 @@ describe('StandingsController', () => {
       await controller.getTopScorers('season-1', 5);
 
       expect(service.getTopScorers).toHaveBeenCalledWith('season-1', 5);
+    });
+  });
+
+  describe('getTopAssists', () => {
+    it('should return top assists with default limit', async () => {
+      const result = await controller.getTopAssists();
+
+      expect(result).toEqual(mockTopAssists);
+      expect(service.getTopAssists).toHaveBeenCalledWith(undefined, 10);
+    });
+
+    it('should return top assists with custom limit', async () => {
+      await controller.getTopAssists('season-1', 5);
+
+      expect(service.getTopAssists).toHaveBeenCalledWith('season-1', 5);
     });
   });
 

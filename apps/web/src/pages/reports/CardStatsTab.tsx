@@ -1,4 +1,4 @@
-import { Flex, Space, Table } from 'antd';
+import { Flex, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import ExportButton from '../../components/ExportButton';
@@ -12,16 +12,34 @@ interface Props {
 export default function CardStatsTab({ data, loading }: Props) {
   const { t } = useTranslation();
 
-  const cardColumns: ColumnsType<CardStat> = [
-    { title: t('cardStatsTab.colRank'), dataIndex: 'position', width: 50, align: 'center' },
+  const yellowCardData = data
+    .filter((item) => item.yellowCards > 0)
+    .sort((a, b) => b.yellowCards - a.yellowCards);
+  const redCardData = data
+    .filter((item) => item.redCards > 0)
+    .sort((a, b) => b.redCards - a.redCards);
+
+  const buildCardColumns = (
+    cardType: 'yellowCards' | 'redCards',
+    color: string,
+  ): ColumnsType<CardStat> => [
+    {
+      title: t('cardStatsTab.colRank'),
+      width: 50,
+      align: 'center',
+      render: (_value, _record, index) => index + 1,
+    },
     { title: t('cardStatsTab.colPlayer'), dataIndex: 'playerName', ellipsis: true },
     { title: t('cardStatsTab.colTeam'), dataIndex: 'teamName', ellipsis: true },
     {
-      title: t('cardStatsTab.colYellowCards'),
-      dataIndex: 'yellowCards',
+      title:
+        cardType === 'yellowCards'
+          ? t('cardStatsTab.colYellowCards')
+          : t('cardStatsTab.colRedCards'),
+      dataIndex: cardType,
       width: 100,
       align: 'center',
-      sorter: (a, b) => a.yellowCards - b.yellowCards,
+      sorter: (a, b) => a[cardType] - b[cardType],
       render: (v: number) =>
         v > 0 ? (
           <Space size={4}>
@@ -30,47 +48,15 @@ export default function CardStatsTab({ data, loading }: Props) {
                 display: 'inline-block',
                 width: 12,
                 height: 16,
-                background: '#fadb14',
+                background: color,
                 borderRadius: 2,
               }}
             />
             {v}
           </Space>
         ) : (
-          '–'
+          '-'
         ),
-    },
-    {
-      title: t('cardStatsTab.colRedCards'),
-      dataIndex: 'redCards',
-      width: 100,
-      align: 'center',
-      sorter: (a, b) => a.redCards - b.redCards,
-      render: (v: number) =>
-        v > 0 ? (
-          <Space size={4}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 12,
-                height: 16,
-                background: '#f5222d',
-                borderRadius: 2,
-              }}
-            />
-            {v}
-          </Space>
-        ) : (
-          '–'
-        ),
-    },
-    {
-      title: t('cardStatsTab.colTotal'),
-      dataIndex: 'totalCards',
-      width: 80,
-      align: 'center',
-      sorter: (a, b) => a.totalCards - b.totalCards,
-      render: (v: number) => <strong>{v}</strong>,
     },
   ];
 
@@ -90,15 +76,32 @@ export default function CardStatsTab({ data, loading }: Props) {
           filename="the-phat"
         />
       </Flex>
-      <Table
-        rowKey="playerId"
-        columns={cardColumns}
-        dataSource={data}
-        loading={loading}
-        pagination={false}
-        size="middle"
-        locale={{ emptyText: t('cardStatsTab.empty') }}
-      />
+      <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        <div>
+          <Typography.Title level={5}>{t('cardStatsTab.yellowTitle')}</Typography.Title>
+          <Table
+            rowKey="playerId"
+            columns={buildCardColumns('yellowCards', '#fadb14')}
+            dataSource={yellowCardData}
+            loading={loading}
+            pagination={false}
+            size="middle"
+            locale={{ emptyText: t('cardStatsTab.emptyYellow') }}
+          />
+        </div>
+        <div>
+          <Typography.Title level={5}>{t('cardStatsTab.redTitle')}</Typography.Title>
+          <Table
+            rowKey="playerId"
+            columns={buildCardColumns('redCards', '#f5222d')}
+            dataSource={redCardData}
+            loading={loading}
+            pagination={false}
+            size="middle"
+            locale={{ emptyText: t('cardStatsTab.emptyRed') }}
+          />
+        </div>
+      </Space>
     </>
   );
 }

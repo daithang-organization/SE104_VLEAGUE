@@ -105,6 +105,47 @@ export class StandingsController {
     return this.standingsService.getTopScorers(seasonId, limit ?? 10);
   }
 
+  @Get('top-assists')
+  @ApiOperation({
+    summary: 'Lấy danh sách kiến tạo',
+    description: 'Trả về danh sách cầu thủ kiến tạo nhiều nhất',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: 'integer',
+    description: 'Số lượng cầu thủ (mặc định: 10)',
+  })
+  @ApiOkResponse({
+    description: 'Danh sách kiến tạo',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          position: { type: 'integer', example: 1 },
+          playerId: { type: 'string', format: 'uuid' },
+          playerName: { type: 'string', example: 'Nguyễn Quang Hải' },
+          teamId: { type: 'string', format: 'uuid' },
+          teamName: { type: 'string', example: 'Hà Nội FC' },
+          assists: { type: 'integer', example: 8 },
+        },
+      },
+    },
+  })
+  getTopAssists(
+    @Query('seasonId') seasonId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.standingsService.getTopAssists(seasonId, limit ?? 10);
+  }
+
   @Get('card-stats')
   @ApiOperation({
     summary: 'Thống kê thẻ phạt',
@@ -200,6 +241,30 @@ export class StandingsController {
     res
       .set('Content-Type', 'text/csv; charset=utf-8')
       .set('Content-Disposition', 'attachment; filename="top-scorers.csv"')
+      .send(csv);
+  }
+
+  @Get('export/top-assists')
+  @ApiOperation({
+    summary: 'Export kiến tạo ra CSV',
+    description: 'Tải xuống danh sách kiến tạo dưới dạng file CSV',
+  })
+  @ApiProduces('text/csv')
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
+  async exportTopAssistsCsv(
+    @Res() res: Response,
+    @Query('seasonId') seasonId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const data = await this.standingsService.getTopAssists(
+      seasonId,
+      limit ?? 50,
+    );
+    const csv = toCsv(data);
+    res
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', 'attachment; filename="top-assists.csv"')
       .send(csv);
   }
 

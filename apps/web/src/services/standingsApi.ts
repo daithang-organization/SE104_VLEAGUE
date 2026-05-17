@@ -24,6 +24,15 @@ export type TopScorer = {
   goals: number;
 };
 
+export type TopAssist = {
+  position: number;
+  playerId: string;
+  playerName: string;
+  teamId: string;
+  teamName: string;
+  assists: number;
+};
+
 // ─────────── API calls ───────────
 export function apiGetStandings(seasonId?: string) {
   const params = seasonId ? `?seasonId=${seasonId}` : '';
@@ -36,6 +45,14 @@ export function apiGetTopScorers(seasonId?: string, limit?: number) {
   if (limit) queryParts.push(`limit=${limit}`);
   const query = queryParts.length ? `?${queryParts.join('&')}` : '';
   return api.get<TopScorer[]>(`/standings/top-scorers${query}`).then((res) => res.data);
+}
+
+export function apiGetTopAssists(seasonId?: string, limit?: number) {
+  const queryParts: string[] = [];
+  if (seasonId) queryParts.push(`seasonId=${seasonId}`);
+  if (limit) queryParts.push(`limit=${limit}`);
+  const query = queryParts.length ? `?${queryParts.join('&')}` : '';
+  return api.get<TopAssist[]>(`/standings/top-assists${query}`).then((res) => res.data);
 }
 
 // ─────────── Card Stats ───────────
