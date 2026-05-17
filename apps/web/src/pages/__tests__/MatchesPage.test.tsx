@@ -22,9 +22,9 @@ const mockMatchApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't1',
         awayTeamId: 't2',
-        homeTeam: { name: 'Hà Nội FC' },
-        awayTeam: { name: 'Hải Phòng FC' },
-        stadium: { name: 'Hàng Đẫy' },
+        homeTeam: { name: 'Ha Noi FC' },
+        awayTeam: { name: 'Hai Phong FC' },
+        stadium: { name: 'Hang Day' },
         homeScore: 2,
         awayScore: 1,
         status: 'FINISHED',
@@ -37,7 +37,7 @@ const mockMatchApi = vi.hoisted(() => ({
         homeTeamId: 't3',
         awayTeamId: 't4',
         homeTeam: { name: 'HAGL' },
-        awayTeam: { name: 'Bình Dương' },
+        awayTeam: { name: 'Binh Duong' },
         stadium: { name: 'Pleiku' },
         homeScore: null,
         awayScore: null,
@@ -100,8 +100,8 @@ describe('MatchesPage', () => {
     renderPage();
     await waitFor(
       () => {
-        expect(screen.getByText('Hà Nội FC')).toBeInTheDocument();
-        expect(screen.getByText('Hải Phòng FC')).toBeInTheDocument();
+        expect(screen.getByText('Ha Noi FC')).toBeInTheDocument();
+        expect(screen.getByText('Hai Phong FC')).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
@@ -111,7 +111,7 @@ describe('MatchesPage', () => {
     renderPage();
     await waitFor(
       () => {
-        expect(screen.getByText(/2 – 1/)).toBeInTheDocument();
+        expect(screen.getByText(/2 - 1/)).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
