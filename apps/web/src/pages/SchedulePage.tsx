@@ -1,17 +1,17 @@
 import {
   CalendarOutlined,
   EditOutlined,
+  LeftOutlined,
   ReloadOutlined,
+  RightOutlined,
   SendOutlined,
   ThunderboltOutlined,
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
 import {
-  Badge,
   Button,
   Card,
-  Collapse,
   DatePicker,
   Flex,
   Form,
@@ -54,6 +54,7 @@ export default function SchedulePage() {
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [activeLeg, setActiveLeg] = useState<string>('all');
+  const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
 
   // Edit modal
   const [editingMatch, setEditingMatch] = useState<ScheduleMatch | null>(null);
@@ -185,6 +186,28 @@ export default function SchedulePage() {
     return [...map.entries()].sort(([a], [b]) => a - b);
   }, [filteredMatches]);
 
+  useEffect(() => {
+    if (roundGroups.length === 0) {
+      setActiveRoundNo(undefined);
+      return;
+    }
+    if (!activeRoundNo || !roundGroups.some(([roundNo]) => roundNo === activeRoundNo)) {
+      setActiveRoundNo(roundGroups[0][0]);
+    }
+  }, [activeRoundNo, roundGroups]);
+
+  const activeRoundIndex = roundGroups.findIndex(([roundNo]) => roundNo === activeRoundNo);
+  const activeRound = activeRoundIndex >= 0 ? roundGroups[activeRoundIndex] : undefined;
+  const activeRoundMatches = activeRound?.[1] ?? [];
+  const activeRoundDates = activeRoundMatches
+    .filter((m) => m.kickoffAt)
+    .map((m) => dayjs(m.kickoffAt!));
+  const activeRoundDateLabel =
+    activeRoundDates.length > 0
+      ? activeRoundDates.reduce((a, b) => (a.isBefore(b) ? a : b)).format('DD/MM/YYYY')
+      : '';
+  const activeRoundFinishedCount = activeRoundMatches.filter((m) => m.status === 'FINISHED').length;
+
   // Stats
   const totalMatches = matches.length;
   const draftCount = matches.filter((m) => m.status === 'DRAFT').length;
@@ -195,6 +218,7 @@ export default function SchedulePage() {
       title: t('schedule.colLeg'),
       dataIndex: 'leg',
       width: 80,
+      align: 'center',
       render: (leg: number) => (
         <Tag color={leg === 1 ? 'blue' : 'volcano'} style={{ margin: 0 }}>
           {leg === 1 ? t('common.leg1') : t('common.leg2')}
@@ -205,27 +229,20 @@ export default function SchedulePage() {
       title: t('schedule.colHome'),
       key: 'home',
       width: '20%',
+      align: 'center',
       render: (_, r) => {
-        const logoUrl = getTeamLogoUrl(r.homeTeam);
         const teamName = r.homeTeam?.name || r.homeTeamId.slice(0, 8);
         return (
           <strong
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'flex-end',
+              justifyContent: 'center',
               gap: 6,
               whiteSpace: 'nowrap',
             }}
           >
             {teamName}
-            {logoUrl && (
-              <img
-                src={logoUrl}
-                alt={`${teamName} logo`}
-                style={{ width: 22, height: 22, objectFit: 'contain', flex: '0 0 auto' }}
-              />
-            )}
           </strong>
         );
       },
@@ -233,15 +250,39 @@ export default function SchedulePage() {
     {
       title: t('schedule.colScore'),
       key: 'score',
-      width: 80,
+      width: 110,
       align: 'center',
       render: (_, r) => {
-        if (r.homeScore == null && r.awayScore == null)
-          return <span style={{ color: '#bbb' }}>vs</span>;
+        const homeLogoUrl = getTeamLogoUrl(r.homeTeam);
+        const awayLogoUrl = getTeamLogoUrl(r.awayTeam);
+        const score =
+          r.homeScore == null && r.awayScore == null
+            ? 'vs'
+            : `${r.homeScore ?? 0} - ${r.awayScore ?? 0}`;
+        const scoreColor = r.homeScore == null && r.awayScore == null ? '#bbb' : undefined;
+        const homeTeamName = r.homeTeam?.name || r.homeTeamId.slice(0, 8);
+        const awayTeamName = r.awayTeam?.name || r.awayTeamId.slice(0, 8);
+
         return (
-          <strong>
-            {r.homeScore ?? 0} – {r.awayScore ?? 0}
-          </strong>
+          <Flex align="center" justify="center" gap={10} style={{ whiteSpace: 'nowrap' }}>
+            {homeLogoUrl && (
+              <img
+                src={homeLogoUrl}
+                alt={`${homeTeamName} logo`}
+                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            <strong style={{ minWidth: 48, textAlign: 'center', color: scoreColor }}>
+              {score}
+            </strong>
+            {awayLogoUrl && (
+              <img
+                src={awayLogoUrl}
+                alt={`${awayTeamName} logo`}
+                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+          </Flex>
         );
       },
     },
@@ -249,18 +290,19 @@ export default function SchedulePage() {
       title: t('schedule.colAway'),
       key: 'away',
       width: '22%',
+      align: 'center',
       render: (_, r) => {
-        const logoUrl = getTeamLogoUrl(r.awayTeam);
         const teamName = r.awayTeam?.name || r.awayTeamId.slice(0, 8);
         return (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-            {logoUrl && (
-              <img
-                src={logoUrl}
-                alt={`${teamName} logo`}
-                style={{ width: 22, height: 22, objectFit: 'contain', flex: '0 0 auto' }}
-              />
-            )}
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+            }}
+          >
             {teamName}
           </span>
         );
@@ -269,6 +311,7 @@ export default function SchedulePage() {
     {
       title: t('schedule.colStadium'),
       key: 'stadium',
+      align: 'center',
       render: (_, r) =>
         r.stadium?.name ? (
           <span style={{ fontSize: 13 }}>{r.stadium.name}</span>
@@ -280,9 +323,10 @@ export default function SchedulePage() {
       title: t('schedule.colKickoff'),
       dataIndex: 'kickoffAt',
       width: 150,
+      align: 'center',
       render: (v: string | null) =>
         v ? (
-          <Flex align="center" gap={4}>
+          <Flex align="center" justify="center" gap={4}>
             <CalendarOutlined style={{ color: '#1677ff', fontSize: 12 }} />
             <span style={{ fontSize: 13 }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</span>
           </Flex>
@@ -294,6 +338,7 @@ export default function SchedulePage() {
       title: t('schedule.colStatus'),
       dataIndex: 'status',
       width: 90,
+      align: 'center',
       render: (status: string) => {
         const s = STATUS_MAP[status] ?? { label: status, color: 'default' };
         return <Tag color={s.color}>{s.label}</Tag>;
@@ -305,6 +350,7 @@ export default function SchedulePage() {
             title: '',
             key: 'actions',
             width: 40,
+            align: 'center',
             render: (_: unknown, r: ScheduleMatch) => (
               <Tooltip title={t('schedule.editTooltip')}>
                 <Button
@@ -322,62 +368,6 @@ export default function SchedulePage() {
         ]
       : []),
   ];
-
-  // Build Collapse items for each round
-  const collapseItems = roundGroups.map(([roundNo, roundMatches]) => {
-    // Get date range for the round
-    const dates = roundMatches.filter((m) => m.kickoffAt).map((m) => dayjs(m.kickoffAt!));
-    const dateLabel =
-      dates.length > 0 ? dates.reduce((a, b) => (a.isBefore(b) ? a : b)).format('DD/MM/YYYY') : '';
-
-    const finishedCount = roundMatches.filter((m) => m.status === 'FINISHED').length;
-    const allFinished = finishedCount === roundMatches.length;
-
-    return {
-      key: `round-${roundNo}`,
-      label: (
-        <Flex align="center" gap={12} style={{ width: '100%' }}>
-          <Badge
-            count={`V${roundNo}`}
-            style={{
-              backgroundColor: allFinished ? '#52c41a' : '#1677ff',
-              fontWeight: 600,
-              fontSize: 13,
-              minWidth: 36,
-            }}
-          />
-          <Typography.Text strong style={{ fontSize: 15 }}>
-            {t('schedule.roundLabel', { round: roundNo })}
-          </Typography.Text>
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            {t('schedule.roundMatches', { count: roundMatches.length })}
-            {dateLabel ? ` · ${dateLabel}` : ''}
-          </Typography.Text>
-          {allFinished && (
-            <Tag color="green" style={{ marginLeft: 'auto' }}>
-              {t('schedule.roundFinished')}
-            </Tag>
-          )}
-          {finishedCount > 0 && !allFinished && (
-            <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>
-              {t('schedule.roundProgress', { finished: finishedCount, total: roundMatches.length })}
-            </Typography.Text>
-          )}
-        </Flex>
-      ),
-      children: (
-        <Table
-          columns={roundColumns}
-          dataSource={roundMatches}
-          rowKey="id"
-          pagination={false}
-          size="small"
-          showHeader={false}
-          style={{ margin: -12 }}
-        />
-      ),
-    };
-  });
 
   return (
     <Card>
@@ -452,7 +442,7 @@ export default function SchedulePage() {
         style={{ marginBottom: 12 }}
       />
 
-      {/* Rounds grouped by Collapse */}
+      {/* Round navigator */}
       <Spin spinning={loading} tip={t('common.loading')}>
         {roundGroups.length === 0 && !loading ? (
           <Flex justify="center" align="center" style={{ padding: 48, color: '#999' }}>
@@ -461,12 +451,46 @@ export default function SchedulePage() {
             </Typography.Text>
           </Flex>
         ) : (
-          <Collapse
-            items={collapseItems}
-            expandIconPosition="end"
-            style={{ background: 'transparent', border: 'none' }}
-            size="small"
-          />
+          <div>
+            <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
+              <Button
+                shape="circle"
+                size="large"
+                icon={<LeftOutlined />}
+                disabled={activeRoundIndex <= 0}
+                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
+              />
+              <div style={{ minWidth: 220, textAlign: 'center' }}>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  {activeRound
+                    ? t('schedule.roundLabel', { round: activeRound[0] })
+                    : t('schedule.title')}
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  {activeRound
+                    ? `${t('schedule.roundMatches', { count: activeRoundMatches.length })}${
+                        activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
+                      } · ${activeRoundFinishedCount}/${activeRoundMatches.length} xong`
+                    : ''}
+                </Typography.Text>
+              </div>
+              <Button
+                shape="circle"
+                size="large"
+                icon={<RightOutlined />}
+                disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
+                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
+              />
+            </Flex>
+            <Table
+              columns={roundColumns}
+              dataSource={activeRoundMatches}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              showHeader={false}
+            />
+          </div>
         )}
       </Spin>
 

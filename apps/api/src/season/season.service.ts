@@ -15,6 +15,22 @@ const SEASON_STATUS_TRANSITIONS: Record<string, string[]> = {
   COMPLETED: [],
 };
 
+function assertValidSeasonDateRange(
+  startDate?: Date | string,
+  endDate?: Date | string,
+) {
+  if (!startDate || !endDate) return;
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+
+  if (start.getTime() > end.getTime()) {
+    throw new BadRequestException('Ngày bắt đầu không được sau ngày kết thúc');
+  }
+}
+
 @Injectable()
 export class SeasonService {
   constructor(private prisma: PrismaService) {}
@@ -50,6 +66,8 @@ export class SeasonService {
   }
 
   async create(dto: CreateSeasonDto): Promise<Season> {
+    assertValidSeasonDateRange(dto.startDate, dto.endDate);
+
     try {
       return await this.prisma.season.create({
         data: {
@@ -74,7 +92,11 @@ export class SeasonService {
 
   async update(id: string, dto: UpdateSeasonDto): Promise<Season> {
     // Check exists
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+    assertValidSeasonDateRange(
+      dto.startDate ?? existing.startDate ?? undefined,
+      dto.endDate ?? existing.endDate ?? undefined,
+    );
 
     try {
       return await this.prisma.season.update({

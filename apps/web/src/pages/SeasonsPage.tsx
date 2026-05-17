@@ -334,6 +334,26 @@ export default function SeasonsPage() {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
+
+      if (
+        values.startDate &&
+        values.endDate &&
+        (values.startDate as dayjs.Dayjs).isAfter(values.endDate as dayjs.Dayjs, 'day')
+      ) {
+        form.setFields([
+          {
+            name: 'startDate',
+            errors: ['Ngày bắt đầu không được sau ngày kết thúc'],
+          },
+          {
+            name: 'endDate',
+            errors: ['Ngày kết thúc phải sau hoặc bằng ngày bắt đầu'],
+          },
+        ]);
+        message.error('Ngày bắt đầu không được sau ngày kết thúc');
+        return;
+      }
+
       setSaving(true);
 
       const payload: CreateSeasonPayload = {
@@ -354,7 +374,8 @@ export default function SeasonsPage() {
 
       setModalOpen(false);
       fetchSeasons();
-    } catch (_err) {
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'errorFields' in err) return;
       message.error(t('seasons.saveError'));
     } finally {
       setSaving(false);
