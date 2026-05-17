@@ -218,6 +218,67 @@ export class StandingsService {
   }
 
   /**
+   * Get top assists for a season
+   */
+  async getTopAssists(seasonId?: string, limit = 10) {
+    let targetSeasonId = seasonId;
+    if (!targetSeasonId) {
+      const currentSeason = await this.prisma.season.findFirst({
+        where: { status: 'IN_PROGRESS' },
+      });
+      targetSeasonId = currentSeason?.id;
+    }
+
+    const assistEvents = await this.prisma.matchEvent.findMany({
+      where: {
+        type: { in: ['GOAL', 'PENALTY'] },
+        match: {
+          seasonId: targetSeasonId,
+          status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        },
+        relatedPlayerId: { not: null },
+      },
+      include: {
+        relatedPlayer: { select: { id: true, fullName: true } },
+        team: { select: { id: true, name: true } },
+      },
+    });
+
+    const assistMap = new Map<
+      string,
+      {
+        playerId: string;
+        playerName: string;
+        teamId: string;
+        teamName: string;
+        assists: number;
+      }
+    >();
+
+    for (const event of assistEvents) {
+      if (!event.relatedPlayer || !event.team) continue;
+
+      const existing = assistMap.get(event.relatedPlayer.id);
+      if (existing) {
+        existing.assists++;
+      } else {
+        assistMap.set(event.relatedPlayer.id, {
+          playerId: event.relatedPlayer.id,
+          playerName: event.relatedPlayer.fullName,
+          teamId: event.team.id,
+          teamName: event.team.name,
+          assists: 1,
+        });
+      }
+    }
+
+    return Array.from(assistMap.values())
+      .sort((a, b) => b.assists - a.assists)
+      .slice(0, limit)
+      .map((assist, index) => ({ position: index + 1, ...assist }));
+  }
+
+  /**
    * Get card statistics per player for a season
    */
   async getCardStats(seasonId?: string, limit = 20) {

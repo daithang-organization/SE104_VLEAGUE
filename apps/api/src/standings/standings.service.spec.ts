@@ -174,4 +174,30 @@ describe('StandingsService', () => {
       expect(result[0].playerName).toBe('Nguyễn Quang Hải');
     });
   });
+
+  describe('getTopAssists', () => {
+    it('should return top assists', async () => {
+      jest
+        .spyOn(prisma.season, 'findFirst')
+        .mockResolvedValue({ id: 's1' } as any);
+      jest.spyOn(prisma.matchEvent, 'findMany').mockResolvedValue([
+        {
+          type: 'GOAL',
+          relatedPlayer: { id: 'p2', fullName: 'Assist Player' },
+          team: { id: 't1', name: 'HÃ  Ná»™i FC' },
+        },
+        {
+          type: 'PENALTY',
+          relatedPlayer: { id: 'p2', fullName: 'Assist Player' },
+          team: { id: 't1', name: 'HÃ  Ná»™i FC' },
+        },
+      ] as any);
+
+      const result = await service.getTopAssists();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].assists).toBe(2);
+      expect(result[0].playerName).toBe('Assist Player');
+    });
+  });
 });

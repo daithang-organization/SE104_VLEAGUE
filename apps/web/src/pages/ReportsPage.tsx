@@ -6,14 +6,17 @@ import { TableSkeleton } from '../components';
 import {
   apiGetCardStats,
   apiGetTeamStats,
+  apiGetTopAssists,
   apiGetTopScorers,
   type CardStat,
   type TeamStat,
+  type TopAssist,
   type TopScorer,
 } from '../services/standingsApi';
 import CardStatsTab from './reports/CardStatsTab';
 import ChartsTab from './reports/ChartsTab';
 import TeamStatsTab from './reports/TeamStatsTab';
+import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
 
 /* ────────── Dynamic PDF Export ────────── */
@@ -43,6 +46,7 @@ async function exportPdf(title: string, headers: string[], rows: string[][]) {
 export default function ReportsPage() {
   const { t } = useTranslation();
   const [scorers, setScorers] = useState<TopScorer[]>([]);
+  const [assists, setAssists] = useState<TopAssist[]>([]);
   const [cardStats, setCardStats] = useState<CardStat[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,15 +55,19 @@ export default function ReportsPage() {
   useEffect(() => {
     Promise.allSettled([
       apiGetTopScorers(undefined, 50),
+      apiGetTopAssists(undefined, 50),
       apiGetCardStats(undefined, 30),
       apiGetTeamStats(),
     ])
-      .then(([scorerRes, cardRes, teamRes]) => {
+      .then(([scorerRes, assistRes, cardRes, teamRes]) => {
         if (scorerRes.status === 'fulfilled') setScorers(scorerRes.value);
+        if (assistRes.status === 'fulfilled') setAssists(assistRes.value);
         if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
         if (teamRes.status === 'fulfilled') setTeamStats(teamRes.value);
-        const failed = [scorerRes, cardRes, teamRes].filter((r) => r.status === 'rejected');
-        if (failed.length === 3) setError(t('reports.loadError'));
+        const failed = [scorerRes, assistRes, cardRes, teamRes].filter(
+          (r) => r.status === 'rejected',
+        );
+        if (failed.length === 4) setError(t('reports.loadError'));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -92,6 +100,18 @@ export default function ReportsPage() {
           String(s.goalDifference),
           String(s.points),
         ]),
+      );
+    } catch (_err) {
+      message.error(t('reports.exportError'));
+    }
+  };
+
+  const handleExportAssistsPdf = async () => {
+    try {
+      await exportPdf(
+        'VLeague - Top kien tao',
+        ['#', 'Cau thu', 'Doi', 'Kien tao'],
+        assists.map((s) => [String(s.position), s.playerName, s.teamName, String(s.assists)]),
       );
     } catch (_err) {
       message.error(t('reports.exportError'));
@@ -134,6 +154,13 @@ export default function ReportsPage() {
           </Button>
           <Button
             icon={<DownloadOutlined />}
+            onClick={handleExportAssistsPdf}
+            disabled={assists.length === 0}
+          >
+            {t('reports.exportAssistsPdf')}
+          </Button>
+          <Button
+            icon={<DownloadOutlined />}
             onClick={handleExportTeamStatsPdf}
             disabled={teamStats.length === 0}
           >
@@ -159,6 +186,11 @@ export default function ReportsPage() {
               key: 'scorers',
               label: t('reports.tabScorers'),
               children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
+            },
+            {
+              key: 'assists',
+              label: t('reports.tabAssists'),
+              children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
             },
             {
               key: 'cards',

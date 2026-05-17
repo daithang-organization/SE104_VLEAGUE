@@ -10,6 +10,7 @@ import {
   apiGetCardStats,
   apiGetStandings,
   apiGetTeamStats,
+  apiGetTopAssists,
   apiGetTopScorers,
 } from '../standingsApi';
 
@@ -42,6 +43,20 @@ describe('standingsApi', () => {
     mockApi.get.mockResolvedValue({ data: [] });
     await apiGetTopScorers();
     expect(mockApi.get).toHaveBeenCalledWith('/standings/top-scorers');
+  });
+
+  it('apiGetTopAssists calls GET /standings/top-assists with params', async () => {
+    const assists = [{ position: 1, playerName: 'Player A', assists: 8 }];
+    mockApi.get.mockResolvedValue({ data: assists });
+    const result = await apiGetTopAssists('s1', 5);
+    expect(mockApi.get).toHaveBeenCalledWith('/standings/top-assists?seasonId=s1&limit=5');
+    expect(result).toEqual(assists);
+  });
+
+  it('apiGetTopAssists without params', async () => {
+    mockApi.get.mockResolvedValue({ data: [] });
+    await apiGetTopAssists();
+    expect(mockApi.get).toHaveBeenCalledWith('/standings/top-assists');
   });
 
   it('apiGetCardStats calls GET /standings/card-stats with params', async () => {

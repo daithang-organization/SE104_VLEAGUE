@@ -3,33 +3,38 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
 const mockStandingsApi = vi.hoisted(() => ({
-  apiGetTopScorers: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        playerId: 'p1',
-        playerName: 'Nguyễn Tiến Linh',
-        teamName: 'Bình Dương',
-        position: 1,
-        goals: 12,
-      },
-    ]),
+  apiGetTopScorers: vi.fn().mockResolvedValue([
+    {
+      playerId: 'p1',
+      playerName: 'Nguyễn Tiến Linh',
+      teamName: 'Bình Dương',
+      position: 1,
+      goals: 12,
+    },
+  ]),
+  apiGetTopAssists: vi.fn().mockResolvedValue([
+    {
+      playerId: 'p2',
+      playerName: 'Player Assist',
+      teamName: 'Ha Noi FC',
+      position: 1,
+      assists: 6,
+    },
+  ]),
   apiGetCardStats: vi.fn().mockResolvedValue([]),
-  apiGetTeamStats: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        teamName: 'Hà Nội FC',
-        played: 10,
-        won: 8,
-        drawn: 1,
-        lost: 1,
-        goalsFor: 20,
-        goalsAgainst: 5,
-        goalDifference: 15,
-        points: 25,
-      },
-    ]),
+  apiGetTeamStats: vi.fn().mockResolvedValue([
+    {
+      teamName: 'Hà Nội FC',
+      played: 10,
+      won: 8,
+      drawn: 1,
+      lost: 1,
+      goalsFor: 20,
+      goalsAgainst: 5,
+      goalDifference: 15,
+      points: 25,
+    },
+  ]),
 }));
 
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
@@ -65,6 +70,7 @@ describe('ReportsPage', () => {
     renderPage();
     await waitFor(() => {
       expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetTopAssists).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetCardStats).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalled();
     });

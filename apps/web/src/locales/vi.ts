@@ -828,11 +828,13 @@ const vi = {
     title: 'Báo cáo & Thống kê',
     loadError: 'Không thể tải dữ liệu báo cáo',
     exportScorersPdf: 'PDF Vua phá lưới',
+    exportAssistsPdf: 'PDF Kiến tạo',
     exportTeamStatsPdf: 'PDF Thống kê đội',
     exportCardStatsPdf: 'PDF Thẻ phạt',
     exportError: 'Lỗi xuất PDF',
     pdfExportDate: 'Ngày xuất: {date}',
     tabScorers: '🏆 Vua phá lưới',
+    tabAssists: 'Top kiến tạo',
     tabCards: '🟨 Thẻ phạt',
     tabTeamStats: '📊 Thống kê đội',
     tabCharts: '📈 Biểu đồ',
@@ -847,6 +849,14 @@ const vi = {
     empty: 'Chưa có dữ liệu bàn thắng',
   },
 
+  topAssistsTab: {
+    colRank: '#',
+    colPlayer: 'Cầu thủ',
+    colTeam: 'Đội',
+    colAssists: 'Kiến tạo',
+    empty: 'Chưa có dữ liệu kiến tạo',
+  },
+
   // ─── Card Stats Tab ───
   cardStatsTab: {
     colRank: '#',
@@ -855,6 +865,10 @@ const vi = {
     colYellowCards: 'Thẻ vàng',
     colRedCards: 'Thẻ đỏ',
     colTotal: 'Tổng',
+    yellowTitle: 'Bảng thẻ vàng',
+    redTitle: 'Bảng thẻ đỏ',
+    emptyYellow: 'Chưa có dữ liệu thẻ vàng',
+    emptyRed: 'Chưa có dữ liệu thẻ đỏ',
     empty: 'Chưa có dữ liệu thẻ phạt',
   },
 

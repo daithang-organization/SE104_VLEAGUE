@@ -1,6 +1,8 @@
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
+  LeftOutlined,
+  RightOutlined,
   TeamOutlined,
   TrophyOutlined,
 } from '@ant-design/icons';
@@ -18,9 +20,10 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import type { ColumnsType } from 'antd/es/table';
 import { ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
@@ -34,6 +37,7 @@ export default function TeamDetailPage() {
   const { t } = useTranslation();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeMatchRoundNo, setActiveMatchRoundNo] = useState<number | undefined>();
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +59,42 @@ export default function TeamDetailPage() {
     };
   }, [id]);
 
+  // Merge home + away matches, sort by kickoff desc
+  const allMatches = useMemo(
+    () =>
+      [
+        ...(team?.homeMatches || []).map((m) => ({ ...m, side: 'home' as const })),
+        ...(team?.awayMatches || []).map((m) => ({ ...m, side: 'away' as const })),
+      ].sort((a, b) => {
+        if (!a.kickoffAt || !b.kickoffAt) return 0;
+        return new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
+      }),
+    [team],
+  );
+
+  const matchRoundGroups = useMemo(() => {
+    const map = new Map<number, typeof allMatches>();
+    for (const match of allMatches) {
+      const list = map.get(match.roundNo) ?? [];
+      list.push(match);
+      map.set(match.roundNo, list);
+    }
+    return [...map.entries()].sort(([a], [b]) => a - b);
+  }, [allMatches]);
+
+  useEffect(() => {
+    if (matchRoundGroups.length === 0) {
+      setActiveMatchRoundNo(undefined);
+      return;
+    }
+    if (
+      !activeMatchRoundNo ||
+      !matchRoundGroups.some(([roundNo]) => roundNo === activeMatchRoundNo)
+    ) {
+      setActiveMatchRoundNo(matchRoundGroups[0][0]);
+    }
+  }, [activeMatchRoundNo, matchRoundGroups]);
+
   if (loading) {
     return <ProfileSkeleton />;
   }
@@ -68,14 +108,16 @@ export default function TeamDetailPage() {
     );
   }
 
-  // Merge home + away matches, sort by kickoff desc
-  const allMatches = [
-    ...(team.homeMatches || []).map((m) => ({ ...m, side: 'home' as const })),
-    ...(team.awayMatches || []).map((m) => ({ ...m, side: 'away' as const })),
-  ].sort((a, b) => {
-    if (!a.kickoffAt || !b.kickoffAt) return 0;
-    return new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
-  });
+  const activeMatchRoundIndex = matchRoundGroups.findIndex(
+    ([roundNo]) => roundNo === activeMatchRoundNo,
+  );
+  const activeMatchRound =
+    activeMatchRoundIndex >= 0 ? matchRoundGroups[activeMatchRoundIndex] : undefined;
+  const activeRoundMatches = activeMatchRound?.[1] ?? [];
+  const activeRoundDateLabel =
+    activeRoundMatches.length > 0 && activeRoundMatches[0].kickoffAt
+      ? new Date(activeRoundMatches[0].kickoffAt).toLocaleDateString('vi-VN')
+      : '';
 
   const getMatchResult = (m: (typeof allMatches)[0]) => {
     if (m.homeScore == null || m.awayScore == null) return null;
@@ -87,12 +129,32 @@ export default function TeamDetailPage() {
     return { label: t('teamDetail.matchResultDraw'), color: 'orange' };
   };
 
-  const rosterColumns = [
+  const roster = team.roster || [];
+  const buildFilters = <T,>(
+    items: T[],
+    getValue: (item: T) => string | number | null | undefined,
+  ) =>
+    Array.from(
+      new Set(
+        items
+          .map(getValue)
+          .filter(
+            (value): value is string | number =>
+              value !== null && value !== undefined && value !== '',
+          ),
+      ),
+    )
+      .sort((a, b) => String(a).localeCompare(String(b), 'vi', { numeric: true }))
+      .map((value) => ({ text: String(value), value }));
+
+  const rosterColumns: ColumnsType<TeamDetail['roster'][0]> = [
     {
       title: t('teamDetail.rosterColJersey'),
       dataIndex: 'jerseyNumber',
       key: 'jerseyNumber',
       width: 80,
+      filters: buildFilters(roster, (r) => r.jerseyNumber),
+      onFilter: (value, record) => record.jerseyNumber === Number(value),
       sorter: (a: TeamDetail['roster'][0], b: TeamDetail['roster'][0]) =>
         (a.jerseyNumber ?? 99) - (b.jerseyNumber ?? 99),
       render: (v: number | null) => v ?? '—',
@@ -100,6 +162,8 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColName'),
       key: 'fullName',
+      filters: buildFilters(roster, (r) => r.player.fullName),
+      onFilter: (value, record) => record.player.fullName === value,
       render: (_: unknown, r: TeamDetail['roster'][0]) => (
         <a onClick={() => navigate(`/players/${r.player.id}`)}>{r.player.fullName}</a>
       ),
@@ -107,6 +171,14 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColPosition'),
       key: 'position',
+      filters: buildFilters(roster, (r) => {
+        const p = POSITION_MAP[r.player.position];
+        return p?.label ?? r.player.position;
+      }),
+      onFilter: (value, record) => {
+        const p = POSITION_MAP[record.player.position];
+        return (p?.label ?? record.player.position) === value;
+      },
       render: (_: unknown, r: TeamDetail['roster'][0]) => {
         const p = POSITION_MAP[r.player.position];
         return <Tag color={p?.color}>{p?.label ?? r.player.position}</Tag>;
@@ -115,11 +187,15 @@ export default function TeamDetailPage() {
     {
       title: t('teamDetail.rosterColNationality'),
       key: 'nationality',
+      filters: buildFilters(roster, (r) => r.player.nationality),
+      onFilter: (value, record) => record.player.nationality === value,
       render: (_: unknown, r: TeamDetail['roster'][0]) => r.player.nationality,
     },
     {
       title: t('teamDetail.rosterColType'),
       key: 'playerType',
+      filters: buildFilters(roster, (r) => t(`playerType.${r.player.playerType}`)),
+      onFilter: (value, record) => t(`playerType.${record.player.playerType}`) === value,
       render: (_: unknown, r: TeamDetail['roster'][0]) => (
         <Tag color={r.player.playerType === 'FOREIGN' ? 'purple' : 'cyan'}>
           {t(`playerType.${r.player.playerType}`)}
@@ -133,11 +209,13 @@ export default function TeamDetailPage() {
       title: t('teamDetail.matchColRound'),
       key: 'round',
       width: 80,
+      align: 'center' as const,
       render: (_: unknown, r: (typeof allMatches)[0]) => `V${r.roundNo}`,
     },
     {
       title: t('teamDetail.matchColOpponent'),
       key: 'opponent',
+      align: 'center' as const,
       render: (_: unknown, r: (typeof allMatches)[0]) => {
         const opponent = r.side === 'home' ? (r.awayTeam?.name ?? '—') : (r.homeTeam?.name ?? '—');
         const prefix =
@@ -149,6 +227,7 @@ export default function TeamDetailPage() {
       title: t('teamDetail.matchColScore'),
       key: 'score',
       width: 100,
+      align: 'center' as const,
       render: (_: unknown, r: (typeof allMatches)[0]) =>
         r.homeScore != null ? `${r.homeScore} - ${r.awayScore}` : '— : —',
     },
@@ -156,6 +235,7 @@ export default function TeamDetailPage() {
       title: t('teamDetail.matchColResult'),
       key: 'result',
       width: 80,
+      align: 'center' as const,
       render: (_: unknown, r: (typeof allMatches)[0]) => {
         const res = getMatchResult(r);
         return res ? <Tag color={res.color}>{res.label}</Tag> : '—';
@@ -166,6 +246,7 @@ export default function TeamDetailPage() {
       dataIndex: 'status',
       key: 'status',
       width: 120,
+      align: 'center' as const,
       render: (s: string) => {
         const st = STATUS_MAP[s];
         return <Tag color={st?.color}>{st?.label ?? s}</Tag>;
@@ -175,6 +256,7 @@ export default function TeamDetailPage() {
       title: t('teamDetail.matchColDate'),
       key: 'date',
       width: 120,
+      align: 'center' as const,
       render: (_: unknown, r: (typeof allMatches)[0]) =>
         r.kickoffAt ? new Date(r.kickoffAt).toLocaleDateString('vi-VN') : '—',
     },
@@ -297,7 +379,7 @@ export default function TeamDetailPage() {
             label: t('teamDetail.tabRoster', { count: (team.roster || []).length }),
             children: (
               <Table
-                dataSource={team.roster || []}
+                dataSource={roster}
                 columns={rosterColumns}
                 rowKey="id"
                 pagination={false}
@@ -309,13 +391,62 @@ export default function TeamDetailPage() {
             key: 'matches',
             label: t('teamDetail.tabMatches', { count: allMatches.length }),
             children: (
-              <Table
-                dataSource={allMatches}
-                columns={matchColumns}
-                rowKey="id"
-                pagination={{ pageSize: 10 }}
-                size="small"
-              />
+              <Card>
+                {matchRoundGroups.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+                    {t('common.noData')}
+                  </div>
+                ) : (
+                  <>
+                    <Space
+                      align="center"
+                      style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}
+                      size={18}
+                    >
+                      <Button
+                        shape="circle"
+                        size="large"
+                        icon={<LeftOutlined />}
+                        disabled={activeMatchRoundIndex <= 0}
+                        onClick={() =>
+                          setActiveMatchRoundNo(matchRoundGroups[activeMatchRoundIndex - 1][0])
+                        }
+                      />
+                      <div style={{ minWidth: 220, textAlign: 'center' }}>
+                        <Typography.Title level={4} style={{ margin: 0 }}>
+                          {activeMatchRound
+                            ? t('schedule.roundLabel', { round: activeMatchRound[0] })
+                            : t('teamDetail.tabMatches', { count: allMatches.length })}
+                        </Typography.Title>
+                        <Typography.Text type="secondary">
+                          {activeRoundDateLabel
+                            ? `${activeRoundMatches.length} trận · ${activeRoundDateLabel}`
+                            : `${activeRoundMatches.length} trận`}
+                        </Typography.Text>
+                      </div>
+                      <Button
+                        shape="circle"
+                        size="large"
+                        icon={<RightOutlined />}
+                        disabled={
+                          activeMatchRoundIndex < 0 ||
+                          activeMatchRoundIndex >= matchRoundGroups.length - 1
+                        }
+                        onClick={() =>
+                          setActiveMatchRoundNo(matchRoundGroups[activeMatchRoundIndex + 1][0])
+                        }
+                      />
+                    </Space>
+                    <Table
+                      dataSource={activeRoundMatches}
+                      columns={matchColumns}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                    />
+                  </>
+                )}
+              </Card>
             ),
           },
         ]}

@@ -5,6 +5,7 @@ import { apiGetSchedule, type ScheduleMatch } from '../../services/scheduleApi';
 import { apiGetSeasons, type Season } from '../../services/seasonApi';
 
 import { PUBLIC_STATUS_MAP as STATUS_MAP } from '../../utils/constants';
+import { getTeamLogoUrl } from '../../utils/teamLogos';
 
 const { Title, Text } = Typography;
 
@@ -82,7 +83,16 @@ export default function PublicSchedulePage() {
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <strong>{m.homeTeam?.name ?? '—'}</strong>
+                    <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {m.homeTeam?.name ?? '—'}
+                      {getTeamLogoUrl(m.homeTeam) && (
+                        <img
+                          src={getTeamLogoUrl(m.homeTeam)}
+                          alt={`${m.homeTeam?.name ?? 'Home team'} logo`}
+                          style={{ width: 22, height: 22, objectFit: 'contain' }}
+                        />
+                      )}
+                    </strong>
                     {m.homeScore != null && (
                       <span style={{ margin: '0 8px', fontSize: 16, fontWeight: 700 }}>
                         {m.homeScore} – {m.awayScore}
@@ -91,7 +101,16 @@ export default function PublicSchedulePage() {
                     {m.homeScore == null && (
                       <span style={{ margin: '0 8px', color: '#bbb' }}>vs</span>
                     )}
-                    <strong>{m.awayTeam?.name ?? '—'}</strong>
+                    <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {getTeamLogoUrl(m.awayTeam) && (
+                        <img
+                          src={getTeamLogoUrl(m.awayTeam)}
+                          alt={`${m.awayTeam?.name ?? 'Away team'} logo`}
+                          style={{ width: 22, height: 22, objectFit: 'contain' }}
+                        />
+                      )}
+                      {m.awayTeam?.name ?? '—'}
+                    </strong>
                   </div>
                   <Space size="small">
                     {m.stadium && (

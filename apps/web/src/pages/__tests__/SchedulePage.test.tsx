@@ -22,9 +22,9 @@ const mockScheduleApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't1',
         awayTeamId: 't2',
-        homeTeam: { name: 'Hà Nội FC', shortName: 'HN' },
-        awayTeam: { name: 'Hải Phòng FC', shortName: 'HP' },
-        stadium: { name: 'Hàng Đẫy', city: 'Hà Nội' },
+        homeTeam: { name: 'Ha Noi FC', shortName: 'HN' },
+        awayTeam: { name: 'Hai Phong FC', shortName: 'HP' },
+        stadium: { name: 'Hang Day', city: 'Ha Noi' },
         stadiumId: 's1',
         homeScore: null,
         awayScore: null,
@@ -33,8 +33,8 @@ const mockScheduleApi = vi.hoisted(() => ({
       },
     ],
   }),
-  apiGenerateSchedule: vi.fn().mockResolvedValue({ message: 'Đã tạo 20 trận' }),
-  apiPublishSchedule: vi.fn().mockResolvedValue({ message: 'Đã công bố 20 trận' }),
+  apiGenerateSchedule: vi.fn().mockResolvedValue({ message: 'Created 20 matches' }),
+  apiPublishSchedule: vi.fn().mockResolvedValue({ message: 'Published 20 matches' }),
 }));
 
 const mockSeasonApi = vi.hoisted(() => ({
@@ -44,7 +44,7 @@ const mockSeasonApi = vi.hoisted(() => ({
 }));
 
 const mockTeamApi = vi.hoisted(() => ({
-  apiGetStadiums: vi.fn().mockResolvedValue([{ id: 'st1', name: 'Hàng Đẫy', city: 'Hà Nội' }]),
+  apiGetStadiums: vi.fn().mockResolvedValue([{ id: 'st1', name: 'Hang Day', city: 'Ha Noi' }]),
 }));
 
 const mockMatchApi = vi.hoisted(() => ({
@@ -68,7 +68,7 @@ describe('SchedulePage', () => {
 
   it('renders the page title', () => {
     renderPage();
-    expect(screen.getByText('Lịch thi đấu')).toBeInTheDocument();
+    expect(screen.getAllByText('Lịch thi đấu')[0]).toBeInTheDocument();
   });
 
   it('calls apiGetSeasons on mount', async () => {

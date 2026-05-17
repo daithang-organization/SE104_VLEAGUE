@@ -5,6 +5,7 @@ import { apiGetMatches, type Match } from '../../services/matchApi';
 import { apiGetSeasons, type Season } from '../../services/seasonApi';
 
 import { STATUS_MAP } from '../../utils/constants';
+import { getTeamLogoUrl } from '../../utils/teamLogos';
 
 const { Title } = Typography;
 
@@ -49,7 +50,23 @@ export default function PublicResultsPage() {
     {
       title: 'Đội nhà',
       key: 'home',
-      render: (_: unknown, r: Match) => <strong>{r.homeTeam?.name ?? '—'}</strong>,
+      render: (_: unknown, r: Match) => {
+        const logoUrl = getTeamLogoUrl(r.homeTeam);
+        return (
+          <strong
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}
+          >
+            {r.homeTeam?.name ?? '—'}
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${r.homeTeam?.name ?? 'Home team'} logo`}
+                style={{ width: 22, height: 22, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+          </strong>
+        );
+      },
     },
     {
       title: 'Tỷ số',
@@ -65,7 +82,21 @@ export default function PublicResultsPage() {
     {
       title: 'Đội khách',
       key: 'away',
-      render: (_: unknown, r: Match) => <span>{r.awayTeam?.name ?? '—'}</span>,
+      render: (_: unknown, r: Match) => {
+        const logoUrl = getTeamLogoUrl(r.awayTeam);
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${r.awayTeam?.name ?? 'Away team'} logo`}
+                style={{ width: 22, height: 22, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            {r.awayTeam?.name ?? '—'}
+          </span>
+        );
+      },
     },
     {
       title: 'Sân',

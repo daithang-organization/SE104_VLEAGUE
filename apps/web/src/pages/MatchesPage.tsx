@@ -1,9 +1,13 @@
-import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+﻿import {
+  EditOutlined,
+  EyeOutlined,
+  LeftOutlined,
+  PlusOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
 import {
-  Badge,
   Button,
   Card,
-  Collapse,
   Descriptions,
   Flex,
   Input,
@@ -38,6 +42,7 @@ import {
 } from '../services/matchApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 export default function MatchesPage() {
   const { user } = useAuth();
@@ -50,6 +55,7 @@ export default function MatchesPage() {
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterTeam, setFilterTeam] = useState<string | undefined>();
+  const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
 
   // Detail modal
   const [detailMatch, setDetailMatch] = useState<Match | null>(null);
@@ -140,7 +146,7 @@ export default function MatchesPage() {
     loadMatches(val, searchText, filterStatus, filterTeam);
   };
 
-  // ── Group matches by round ──
+  // â”€â”€ Group matches by round â”€â”€
   const availableTeams = useMemo(() => {
     const teamMap = new Map<string, string>();
     // We want to see all teams in the filter, so we use the full list of matches
@@ -151,7 +157,7 @@ export default function MatchesPage() {
     return [...teamMap.entries()].map(([id, name]) => ({ value: id, label: name }));
   }, [matches]);
 
-  // Use roundGroups for the collapse view
+  // Use roundGroups for the round navigator
   const roundGroups = useMemo(() => {
     const grouped = new Map<number, Match[]>();
     for (const match of matches) {
@@ -162,20 +168,30 @@ export default function MatchesPage() {
     return Array.from(grouped.entries()).sort(([a], [b]) => a - b);
   }, [matches]);
 
-  // Find which rounds to open
-  const activeKeys = useMemo(() => {
-    if (searchText.trim()) {
-      return roundGroups.map(([roundNo]) => String(roundNo));
+  useEffect(() => {
+    if (roundGroups.length === 0) {
+      setActiveRoundNo(undefined);
+      return;
     }
-    const keys: string[] = [];
-    for (const [roundNo, roundMatches] of roundGroups) {
-      if (roundMatches.some((m) => m.status !== 'FINISHED')) {
-        keys.push(String(roundNo));
-        if (keys.length >= 2) break;
-      }
+    if (!activeRoundNo || !roundGroups.some(([roundNo]) => roundNo === activeRoundNo)) {
+      const firstPendingRound = roundGroups.find(([, roundMatches]) =>
+        roundMatches.some((m) => m.status !== 'FINISHED'),
+      );
+      setActiveRoundNo(firstPendingRound?.[0] ?? roundGroups[0][0]);
     }
-    return keys.length > 0 ? keys : roundGroups.slice(0, 1).map(([r]) => String(r));
-  }, [roundGroups, searchText]);
+  }, [activeRoundNo, roundGroups]);
+
+  const activeRoundIndex = roundGroups.findIndex(([roundNo]) => roundNo === activeRoundNo);
+  const activeRound = activeRoundIndex >= 0 ? roundGroups[activeRoundIndex] : undefined;
+  const activeRoundMatches = activeRound?.[1] ?? [];
+  const activeRoundFinishedCount = activeRoundMatches.filter((m) => m.status === 'FINISHED').length;
+  const activeRoundDates = activeRoundMatches
+    .filter((m) => m.kickoffAt)
+    .map((m) => dayjs(m.kickoffAt!));
+  const activeRoundDateLabel =
+    activeRoundDates.length > 0
+      ? activeRoundDates.reduce((a, b) => (a.isBefore(b) ? a : b)).format('DD/MM/YYYY')
+      : '';
 
   const loadRosters = async (match: Match) => {
     setRosterLoading(true);
@@ -207,7 +223,7 @@ export default function MatchesPage() {
     }
   };
 
-  // ── Score update ──
+  // â”€â”€ Score update â”€â”€
   const handleSaveScore = async (homeScore: number, awayScore: number) => {
     if (!detailMatch) return;
     try {
@@ -224,7 +240,7 @@ export default function MatchesPage() {
     }
   };
 
-  // ── Status update ──
+  // â”€â”€ Status update â”€â”€
   const handleStatusChange = async (newStatus: string) => {
     if (!detailMatch) return;
     try {
@@ -244,7 +260,7 @@ export default function MatchesPage() {
     }
   };
 
-  // ── Add events (batch) ──
+  // â”€â”€ Add events (batch) â”€â”€
   const handleAddEvent = async (teamSide: 'home' | 'away', events: EventFormRow[]) => {
     if (!detailMatch) return;
     try {
@@ -296,41 +312,53 @@ export default function MatchesPage() {
     return transitions[match.status] ?? [];
   };
 
-  // ── Per-round table columns ──
+  // Per-round table columns
   const roundColumns: ColumnsType<Match> = [
     {
       title: t('matches.colHome'),
       key: 'home',
       width: '22%',
+      align: 'center',
       render: (_, r) => (
-        <strong
-          style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
-        >
+        <strong style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
           {r.homeTeam?.name ?? '—'}
-          {r.homeTeam?.logoUrl && (
-            <img
-              src={r.homeTeam.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
-            />
-          )}
         </strong>
       ),
     },
     {
       title: t('matches.colScore'),
       key: 'score',
-      width: 100,
+      width: 120,
       align: 'center',
       render: (_, r) => {
-        if (r.homeScore == null && r.awayScore == null)
-          return <span style={{ color: '#bbb', whiteSpace: 'nowrap' }}>— : —</span>;
+        const homeLogoUrl = getTeamLogoUrl(r.homeTeam);
+        const awayLogoUrl = getTeamLogoUrl(r.awayTeam);
+        const score =
+          r.homeScore == null && r.awayScore == null
+            ? '— : —'
+            : `${r.homeScore ?? 0} - ${r.awayScore ?? 0}`;
+        const scoreColor = r.homeScore == null && r.awayScore == null ? '#bbb' : undefined;
+
         return (
-          <strong
-            style={{ display: 'inline-block', minWidth: 48, fontSize: 15, whiteSpace: 'nowrap' }}
-          >
-            {r.homeScore ?? 0} – {r.awayScore ?? 0}
-          </strong>
+          <Flex align="center" justify="center" gap={10} style={{ whiteSpace: 'nowrap' }}>
+            {homeLogoUrl && (
+              <img
+                src={homeLogoUrl}
+                alt={`${r.homeTeam?.name ?? 'Home team'} logo`}
+                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            <strong style={{ minWidth: 48, textAlign: 'center', fontSize: 15, color: scoreColor }}>
+              {score}
+            </strong>
+            {awayLogoUrl && (
+              <img
+                src={awayLogoUrl}
+                alt={`${r.awayTeam?.name ?? 'Away team'} logo`}
+                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+          </Flex>
         );
       },
     },
@@ -338,15 +366,9 @@ export default function MatchesPage() {
       title: t('matches.colAway'),
       key: 'away',
       width: '22%',
+      align: 'center',
       render: (_, r) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {r.awayTeam?.logoUrl && (
-            <img
-              src={r.awayTeam.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
-            />
-          )}
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           {r.awayTeam?.name ?? '—'}
         </span>
       ),
@@ -355,16 +377,18 @@ export default function MatchesPage() {
       title: t('matches.colStadium'),
       key: 'stadium',
       width: '20%',
+      align: 'center',
       render: (_, r) => <span style={{ color: '#666' }}>{r.stadium?.name ?? '—'}</span>,
     },
     {
       title: t('matches.colTime'),
       dataIndex: 'kickoffAt',
       width: 130,
+      align: 'center',
       render: (v: string | null) =>
         v ? (
           <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-            📅 {dayjs(v).format('DD/MM/YYYY HH:mm')}
+            {dayjs(v).format('DD/MM/YYYY HH:mm')}
           </span>
         ) : (
           '—'
@@ -374,6 +398,7 @@ export default function MatchesPage() {
       title: t('matches.colStatus'),
       dataIndex: 'status',
       width: 100,
+      align: 'center',
       render: (status: string) => {
         const s = STATUS_MAP[status] ?? { label: status, color: 'default' };
         return <Tag color={s.color}>{s.label}</Tag>;
@@ -383,6 +408,7 @@ export default function MatchesPage() {
       title: '',
       key: 'actions',
       width: 120,
+      align: 'center',
       render: (_, r) => (
         <Space size="small">
           <Button
@@ -407,54 +433,6 @@ export default function MatchesPage() {
       ),
     },
   ];
-
-  // ── Build Collapse items ──
-  const collapseItems = roundGroups.map(([roundNo, roundMatches]) => {
-    const finishedCount = roundMatches.filter((m) => m.status === 'FINISHED').length;
-    const allFinished = finishedCount === roundMatches.length;
-    const maxRound = matches.length > 0 ? Math.max(...matches.map((m) => m.roundNo)) : 26;
-    const isLeg2 = roundNo > maxRound / 2;
-
-    return {
-      key: String(roundNo),
-      label: (
-        <Flex align="center" gap={12}>
-          <Badge
-            count={`V${roundNo}`}
-            style={{
-              backgroundColor: allFinished ? '#52c41a' : '#1677ff',
-              fontWeight: 600,
-              fontSize: 13,
-            }}
-          />
-          <span style={{ fontWeight: 500 }}>
-            {t('matches.roundLabel', { round: roundNo })}{' '}
-            <Tag color={isLeg2 ? 'volcano' : 'blue'} style={{ marginLeft: 4 }}>
-              {isLeg2 ? t('common.leg2') : t('common.leg1')}
-            </Tag>
-          </span>
-          <span style={{ color: '#888', fontSize: 13 }}>
-            {t('matches.matchCount', {
-              count: roundMatches.length,
-              finished: finishedCount,
-              total: roundMatches.length,
-            })}
-          </span>
-        </Flex>
-      ),
-      children: (
-        <Table
-          columns={roundColumns}
-          dataSource={roundMatches}
-          rowKey="id"
-          pagination={false}
-          size="small"
-          showHeader={roundNo === roundGroups[0]?.[0]}
-        />
-      ),
-    };
-  });
-
   const renderEventTimeline = (events: MatchEvent[]) => {
     if (!events || events.length === 0) {
       return <Typography.Text type="secondary">{t('matches.noEvents')}</Typography.Text>;
@@ -462,7 +440,7 @@ export default function MatchesPage() {
     return (
       <Timeline
         items={events.map((e) => {
-          const meta = EVENT_TYPE_MAP[e.type] ?? { label: e.type, color: 'default', icon: '•' };
+          const meta = EVENT_TYPE_MAP[e.type] ?? { label: e.type, color: 'default', icon: 'â€¢' };
           return {
             color: meta.color,
             children: (
@@ -470,10 +448,10 @@ export default function MatchesPage() {
                 <strong>
                   {meta.icon} {e.minute}'
                 </strong>{' '}
-                — <Tag color={meta.color}>{meta.label}</Tag>
+                â€” <Tag color={meta.color}>{meta.label}</Tag>
                 {e.player && <span>{e.player.fullName}</span>}
                 {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
-                {e.note && <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>}
+                {e.note && <span style={{ color: '#888', marginLeft: 8 }}>â€” {e.note}</span>}
               </div>
             ),
           };
@@ -544,14 +522,48 @@ export default function MatchesPage() {
           {searchText ? t('matches.noSearchResult', { query: searchText }) : t('matches.noMatches')}
         </div>
       ) : (
-        <Collapse
-          defaultActiveKey={activeKeys}
-          items={collapseItems}
-          style={{ background: 'var(--ant-color-bg-container)' }}
-        />
+        <div>
+          <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
+            <Button
+              shape="circle"
+              size="large"
+              icon={<LeftOutlined />}
+              disabled={activeRoundIndex <= 0}
+              onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
+            />
+            <div style={{ minWidth: 240, textAlign: 'center' }}>
+              <Typography.Title level={4} style={{ margin: 0 }}>
+                {activeRound
+                  ? t('matches.roundLabel', { round: activeRound[0] })
+                  : t('matches.title')}
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                {activeRound
+                  ? `${activeRoundMatches.length} trận${
+                      activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
+                    } · ${activeRoundFinishedCount}/${activeRoundMatches.length} kết thúc`
+                  : ''}
+              </Typography.Text>
+            </div>
+            <Button
+              shape="circle"
+              size="large"
+              icon={<RightOutlined />}
+              disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
+              onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
+            />
+          </Flex>
+          <Table
+            columns={roundColumns}
+            dataSource={activeRoundMatches}
+            rowKey="id"
+            pagination={false}
+            size="small"
+          />
+        </div>
       )}
 
-      {/* ── Match Detail Modal ── */}
+      {/* â”€â”€ Match Detail Modal â”€â”€ */}
       <Modal
         title={t('matches.detailModalTitle')}
         open={!!detailMatch}
@@ -603,7 +615,7 @@ export default function MatchesPage() {
                 )
                 .sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
 
-              // Group events by player → { name, minutes[] }
+              // Group events by player â†’ { name, minutes[] }
               const groupByPlayer = (evts: MatchEvent[]) => {
                 const grouped = new Map<
                   string,
@@ -616,7 +628,7 @@ export default function MatchesPage() {
                     existing.minutes.push({ minute: g.minute, type: g.type });
                   } else {
                     grouped.set(pid, {
-                      name: g.player?.fullName ?? '—',
+                      name: g.player?.fullName ?? 'â€”',
                       minutes: [{ minute: g.minute, type: g.type }],
                     });
                   }
@@ -633,7 +645,7 @@ export default function MatchesPage() {
                         key={pid}
                         style={{ fontSize: 12, color: '#555', textAlign: align, lineHeight: 1.7 }}
                       >
-                        ⚽ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
+                        âš½ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
                         <span style={{ color: '#999' }}>
                           {minutes
                             .sort((a, b) => a.minute - b.minute)
@@ -668,7 +680,7 @@ export default function MatchesPage() {
                           .map((m, i) => (
                             <span key={i}>
                               {i > 0 && ', '}
-                              {m.type === 'RED_CARD' ? '🟥' : '🟨'}
+                              {m.type === 'RED_CARD' ? 'ðŸŸ¥' : 'ðŸŸ¨'}
                             </span>
                           ))}{' '}
                         <span style={{ fontWeight: 500 }}>{name}</span>{' '}
@@ -695,17 +707,17 @@ export default function MatchesPage() {
                 >
                   <Flex justify="center" align="flex-start" gap={24}>
                     <div style={{ textAlign: 'center', minWidth: 150, flex: 1 }}>
-                      {detailMatch.homeTeam?.logoUrl && (
+                      {getTeamLogoUrl(detailMatch.homeTeam) && (
                         <div style={{ marginBottom: 4 }}>
                           <img
-                            src={detailMatch.homeTeam.logoUrl}
-                            alt=""
+                            src={getTeamLogoUrl(detailMatch.homeTeam)}
+                            alt={`${detailMatch.homeTeam?.name ?? 'Home team'} logo`}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                           />
                         </div>
                       )}
                       <Typography.Text strong style={{ fontSize: 16 }}>
-                        {detailMatch.homeTeam?.name ?? '—'}
+                        {detailMatch.homeTeam?.name ?? 'â€”'}
                       </Typography.Text>
                       <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>
                         {t('matches.homeTeamLabel')}
@@ -715,7 +727,7 @@ export default function MatchesPage() {
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 80 }}>
                       <Typography.Title level={2} style={{ margin: 0 }}>
-                        {detailMatch.homeScore ?? '—'} : {detailMatch.awayScore ?? '—'}
+                        {detailMatch.homeScore ?? 'â€”'} : {detailMatch.awayScore ?? 'â€”'}
                       </Typography.Title>
                       <Tag
                         color={STATUS_MAP[detailMatch.status]?.color ?? 'default'}
@@ -725,17 +737,17 @@ export default function MatchesPage() {
                       </Tag>
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 150, flex: 1 }}>
-                      {detailMatch.awayTeam?.logoUrl && (
+                      {getTeamLogoUrl(detailMatch.awayTeam) && (
                         <div style={{ marginBottom: 4 }}>
                           <img
-                            src={detailMatch.awayTeam.logoUrl}
-                            alt=""
+                            src={getTeamLogoUrl(detailMatch.awayTeam)}
+                            alt={`${detailMatch.awayTeam?.name ?? 'Away team'} logo`}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                           />
                         </div>
                       )}
                       <Typography.Text strong style={{ fontSize: 16 }}>
-                        {detailMatch.awayTeam?.name ?? '—'}
+                        {detailMatch.awayTeam?.name ?? 'â€”'}
                       </Typography.Text>
                       <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>
                         {t('matches.awayTeamLabel')}
@@ -756,12 +768,12 @@ export default function MatchesPage() {
                 {detailMatch.leg === 1 ? t('common.leg1') : t('common.leg2')}
               </Descriptions.Item>
               <Descriptions.Item label={t('matches.stadiumDescLabel')}>
-                {detailMatch.stadium?.name ?? '—'}
+                {detailMatch.stadium?.name ?? 'â€”'}
               </Descriptions.Item>
               <Descriptions.Item label={t('matches.timeDescLabel')}>
                 {detailMatch.kickoffAt
                   ? dayjs(detailMatch.kickoffAt).format('DD/MM/YYYY HH:mm')
-                  : '—'}
+                  : 'â€”'}
               </Descriptions.Item>
             </Descriptions>
 
@@ -808,7 +820,7 @@ export default function MatchesPage() {
         )}
       </Modal>
 
-      {/* ── Score Edit Modal ── */}
+      {/* â”€â”€ Score Edit Modal â”€â”€ */}
       {detailMatch && (
         <ScoreEditModal
           open={scoreModalOpen}
@@ -822,7 +834,7 @@ export default function MatchesPage() {
         />
       )}
 
-      {/* ── Add Event Modal (Batch) ── */}
+      {/* â”€â”€ Add Event Modal (Batch) â”€â”€ */}
       {detailMatch && (
         <EventModal
           open={eventModalOpen}
