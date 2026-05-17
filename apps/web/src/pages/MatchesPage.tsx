@@ -38,6 +38,7 @@ import {
 } from '../services/matchApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 export default function MatchesPage() {
   const { user } = useAuth();
@@ -307,11 +308,11 @@ export default function MatchesPage() {
           style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
         >
           {r.homeTeam?.name ?? '—'}
-          {r.homeTeam?.logoUrl && (
+          {getTeamLogoUrl(r.homeTeam) && (
             <img
-              src={r.homeTeam.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
+              src={getTeamLogoUrl(r.homeTeam)}
+              alt={`${r.homeTeam?.name ?? 'Home team'} logo`}
+              style={{ width: 20, height: 20, objectFit: 'contain', flex: '0 0 auto' }}
             />
           )}
         </strong>
@@ -340,11 +341,11 @@ export default function MatchesPage() {
       width: '22%',
       render: (_, r) => (
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {r.awayTeam?.logoUrl && (
+          {getTeamLogoUrl(r.awayTeam) && (
             <img
-              src={r.awayTeam.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
+              src={getTeamLogoUrl(r.awayTeam)}
+              alt={`${r.awayTeam?.name ?? 'Away team'} logo`}
+              style={{ width: 20, height: 20, objectFit: 'contain', flex: '0 0 auto' }}
             />
           )}
           {r.awayTeam?.name ?? '—'}
@@ -695,11 +696,11 @@ export default function MatchesPage() {
                 >
                   <Flex justify="center" align="flex-start" gap={24}>
                     <div style={{ textAlign: 'center', minWidth: 150, flex: 1 }}>
-                      {detailMatch.homeTeam?.logoUrl && (
+                      {getTeamLogoUrl(detailMatch.homeTeam) && (
                         <div style={{ marginBottom: 4 }}>
                           <img
-                            src={detailMatch.homeTeam.logoUrl}
-                            alt=""
+                            src={getTeamLogoUrl(detailMatch.homeTeam)}
+                            alt={`${detailMatch.homeTeam?.name ?? 'Home team'} logo`}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                           />
                         </div>
@@ -725,11 +726,11 @@ export default function MatchesPage() {
                       </Tag>
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 150, flex: 1 }}>
-                      {detailMatch.awayTeam?.logoUrl && (
+                      {getTeamLogoUrl(detailMatch.awayTeam) && (
                         <div style={{ marginBottom: 4 }}>
                           <img
-                            src={detailMatch.awayTeam.logoUrl}
-                            alt=""
+                            src={getTeamLogoUrl(detailMatch.awayTeam)}
+                            alt={`${detailMatch.awayTeam?.name ?? 'Away team'} logo`}
                             style={{ width: 40, height: 40, objectFit: 'contain' }}
                           />
                         </div>

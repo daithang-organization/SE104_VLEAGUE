@@ -12,6 +12,7 @@ import {
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 // VLeague: top 2 qualify for AFC Champions League, bottom 2 get relegated
 const AFC_CL_COUNT = 2;
@@ -74,7 +75,25 @@ export default function StandingsPage() {
         return <strong>{pos}</strong>;
       },
     },
-    { title: t('standings.colTeam'), dataIndex: 'teamName' },
+    {
+      title: t('standings.colTeam'),
+      dataIndex: 'teamName',
+      render: (teamName: string) => {
+        const logoUrl = getTeamLogoUrl(teamName);
+        return (
+          <Flex align="center" gap={8}>
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${teamName} logo`}
+                style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            <strong>{teamName}</strong>
+          </Flex>
+        );
+      },
+    },
     { title: t('standings.colPlayed'), dataIndex: 'played', width: 60, align: 'center' },
     { title: t('standings.colWon'), dataIndex: 'won', width: 60, align: 'center' },
     { title: t('standings.colDrawn'), dataIndex: 'drawn', width: 60, align: 'center' },
@@ -103,7 +122,25 @@ export default function StandingsPage() {
       width: 50,
     },
     { title: t('standings.scorerColPlayer'), dataIndex: 'playerName' },
-    { title: t('standings.scorerColTeam'), dataIndex: 'teamName' },
+    {
+      title: t('standings.scorerColTeam'),
+      dataIndex: 'teamName',
+      render: (teamName: string) => {
+        const logoUrl = getTeamLogoUrl(teamName);
+        return (
+          <Flex align="center" gap={8}>
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${teamName} logo`}
+                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            <span>{teamName}</span>
+          </Flex>
+        );
+      },
+    },
     {
       title: t('standings.scorerColGoals'),
       dataIndex: 'goals',

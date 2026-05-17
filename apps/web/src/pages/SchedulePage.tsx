@@ -41,6 +41,7 @@ import {
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { STATUS_MAP } from '../utils/constants';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 export default function SchedulePage() {
   const { user } = useAuth();
@@ -204,11 +205,30 @@ export default function SchedulePage() {
       title: t('schedule.colHome'),
       key: 'home',
       width: '20%',
-      render: (_, r) => (
-        <strong style={{ whiteSpace: 'nowrap' }}>
-          {r.homeTeam?.name || r.homeTeamId.slice(0, 8)}
-        </strong>
-      ),
+      render: (_, r) => {
+        const logoUrl = getTeamLogoUrl(r.homeTeam);
+        const teamName = r.homeTeam?.name || r.homeTeamId.slice(0, 8);
+        return (
+          <strong
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 6,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {teamName}
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${teamName} logo`}
+                style={{ width: 22, height: 22, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+          </strong>
+        );
+      },
     },
     {
       title: t('schedule.colScore'),
@@ -229,9 +249,22 @@ export default function SchedulePage() {
       title: t('schedule.colAway'),
       key: 'away',
       width: '22%',
-      render: (_, r) => (
-        <span style={{ whiteSpace: 'nowrap' }}>{r.awayTeam?.name || r.awayTeamId.slice(0, 8)}</span>
-      ),
+      render: (_, r) => {
+        const logoUrl = getTeamLogoUrl(r.awayTeam);
+        const teamName = r.awayTeam?.name || r.awayTeamId.slice(0, 8);
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${teamName} logo`}
+                style={{ width: 22, height: 22, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            {teamName}
+          </span>
+        );
+      },
     },
     {
       title: t('schedule.colStadium'),

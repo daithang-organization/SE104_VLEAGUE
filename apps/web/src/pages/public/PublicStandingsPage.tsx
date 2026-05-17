@@ -2,6 +2,7 @@ import { Card, message, Select, Space, Table, Tag, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { apiGetSeasons, type Season } from '../../services/seasonApi';
 import { apiGetStandings, type TeamStanding } from '../../services/standingsApi';
+import { getTeamLogoUrl } from '../../utils/teamLogos';
 
 const { Title } = Typography;
 
@@ -53,7 +54,21 @@ export default function PublicStandingsPage() {
       title: 'Đội',
       dataIndex: 'teamName',
       key: 'team',
-      render: (v: string) => <strong>{v}</strong>,
+      render: (v: string) => {
+        const logoUrl = getTeamLogoUrl(v);
+        return (
+          <strong style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${v} logo`}
+                style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            {v}
+          </strong>
+        );
+      },
     },
     { title: 'Trận', dataIndex: 'played', width: 60, align: 'center' as const },
     {

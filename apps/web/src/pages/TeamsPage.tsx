@@ -38,6 +38,7 @@ import {
   type Stadium,
   type Team,
 } from '../services/teamApi';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const CAN_EDIT_ROLES = ['ADMIN'];
 
@@ -162,21 +163,24 @@ export default function TeamsPage() {
       title: t('teams.colName'),
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (name: string, record: Team) => (
-        <a
-          onClick={() => navigate(`/teams/${record.id}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-        >
-          {record.logoUrl && (
-            <img
-              src={record.logoUrl}
-              alt={name}
-              style={{ width: 28, height: 28, objectFit: 'contain', borderRadius: 4 }}
-            />
-          )}
-          {name}
-        </a>
-      ),
+      render: (name: string, record: Team) => {
+        const logoUrl = getTeamLogoUrl(record);
+        return (
+          <a
+            onClick={() => navigate(`/teams/${record.id}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${name} logo`}
+                style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            {name}
+          </a>
+        );
+      },
     },
     {
       title: t('teams.colShortName'),
