@@ -13,6 +13,7 @@ export interface TeamStanding {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+  recentForm: Array<'W' | 'D' | 'L'>;
 }
 
 @Injectable()
@@ -66,6 +67,8 @@ export class StandingsService {
         awayTeamId: true,
         homeScore: true,
         awayScore: true,
+        kickoffAt: true,
+        roundNo: true,
       },
     });
 
@@ -86,6 +89,7 @@ export class StandingsService {
         goalsAgainst: 0,
         goalDifference: 0,
         points: 0,
+        recentForm: [],
       });
     }
 
@@ -127,6 +131,32 @@ export class StandingsService {
         homeTeam.points += 1;
         awayTeam.points += 1;
       }
+    }
+
+    const recentMatches = [...matches].sort((a, b) => {
+      const dateDiff =
+        (b.kickoffAt?.getTime() ?? 0) - (a.kickoffAt?.getTime() ?? 0);
+      if (dateDiff !== 0) return dateDiff;
+      return b.roundNo - a.roundNo;
+    });
+
+    for (const match of recentMatches) {
+      const homeTeam = standingsMap.get(match.homeTeamId);
+      const awayTeam = standingsMap.get(match.awayTeamId);
+      if (!homeTeam || !awayTeam) continue;
+      if (homeTeam.recentForm.length >= 5 && awayTeam.recentForm.length >= 5) {
+        continue;
+      }
+
+      const homeScore = match.homeScore ?? 0;
+      const awayScore = match.awayScore ?? 0;
+      const homeResult =
+        homeScore > awayScore ? 'W' : homeScore < awayScore ? 'L' : 'D';
+      const awayResult =
+        awayScore > homeScore ? 'W' : awayScore < homeScore ? 'L' : 'D';
+
+      if (homeTeam.recentForm.length < 5) homeTeam.recentForm.push(homeResult);
+      if (awayTeam.recentForm.length < 5) awayTeam.recentForm.push(awayResult);
     }
 
     // Calculate goal difference
