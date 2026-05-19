@@ -52,8 +52,8 @@ type MatchSummary = {
   awayScore: number | null;
   status: string;
   kickoffAt: string | null;
-  homeTeam?: { id: string; name: string; shortName?: string | null };
-  awayTeam?: { id: string; name: string; shortName?: string | null };
+  homeTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
+  awayTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
   stadium?: { name: string } | null;
 };
 

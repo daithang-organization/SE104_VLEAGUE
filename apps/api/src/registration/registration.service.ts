@@ -88,19 +88,21 @@ export class RegistrationService {
         },
         homeMatches: {
           include: {
-            awayTeam: { select: { id: true, name: true, shortName: true } },
+            awayTeam: {
+              select: { id: true, name: true, shortName: true, logoUrl: true },
+            },
             stadium: { select: { name: true } },
           },
-          orderBy: { kickoffAt: 'desc' },
-          take: 10,
+          orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
         },
         awayMatches: {
           include: {
-            homeTeam: { select: { id: true, name: true, shortName: true } },
+            homeTeam: {
+              select: { id: true, name: true, shortName: true, logoUrl: true },
+            },
             stadium: { select: { name: true } },
           },
-          orderBy: { kickoffAt: 'desc' },
-          take: 10,
+          orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
         },
         standings: {
           include: {
