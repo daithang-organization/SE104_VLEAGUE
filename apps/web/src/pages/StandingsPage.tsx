@@ -17,6 +17,7 @@ import { getTeamLogoUrl } from '../utils/teamLogos';
 // VLeague: top 2 qualify for AFC Champions League, bottom 2 get relegated
 const AFC_CL_COUNT = 2;
 const RELEGATION_COUNT = 2;
+const FORM_SLOTS = 5;
 
 export default function StandingsPage() {
   const { t } = useTranslation();
@@ -57,6 +58,23 @@ export default function StandingsPage() {
   };
 
   const totalTeams = standings.length;
+
+  const renderRecentForm = (recentForm: TeamStanding['recentForm'] = []) => {
+    const slots = Array.from({ length: FORM_SLOTS }, (_, index) => recentForm[index]);
+    return (
+      <Flex gap={6} justify="center" className="standings-form-pool">
+        {slots.map((result, index) => (
+          <span
+            key={`${result ?? 'empty'}-${index}`}
+            className={`standings-form-box standings-form-${result?.toLowerCase() ?? 'empty'}`}
+            title={result ? t(`standings.form${result}`) : t('standings.formEmpty')}
+          >
+            {result === 'W' ? '✓' : result === 'D' ? '−' : result === 'L' ? '×' : ''}
+          </span>
+        ))}
+      </Flex>
+    );
+  };
 
   const standingsColumns: ColumnsType<TeamStanding> = [
     {
@@ -112,6 +130,13 @@ export default function StandingsPage() {
       width: 70,
       align: 'center',
       render: (pts: number) => <strong>{pts}</strong>,
+    },
+    {
+      title: t('standings.colLast5'),
+      dataIndex: 'recentForm',
+      width: 150,
+      align: 'center',
+      render: renderRecentForm,
     },
   ];
 
@@ -228,6 +253,7 @@ export default function StandingsPage() {
                   { title: t('standings.colGoalsAgainst'), key: 'goalsAgainst' },
                   { title: t('standings.colGoalDiff'), key: 'goalDifference' },
                   { title: t('standings.colPoints'), key: 'points' },
+                  { title: t('standings.colLast5'), key: 'recentForm' },
                 ]}
                 dataSource={standings as unknown as Record<string, unknown>[]}
                 filename="bang-xep-hang"

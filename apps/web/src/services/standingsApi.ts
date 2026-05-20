@@ -13,6 +13,7 @@ export type TeamStanding = {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+  recentForm: Array<'W' | 'D' | 'L'>;
 };
 
 export type TopScorer = {

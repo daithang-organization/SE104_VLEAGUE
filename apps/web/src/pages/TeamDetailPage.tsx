@@ -20,6 +20,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -28,6 +29,7 @@ import { ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
 import { POSITION_MAP, STATUS_MAP } from '../utils/constants';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const { Title } = Typography;
 
@@ -37,7 +39,7 @@ export default function TeamDetailPage() {
   const { t } = useTranslation();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeMatchRoundNo, setActiveMatchRoundNo] = useState<number | undefined>();
+  const [activeMatchMonthKey, setActiveMatchMonthKey] = useState<string | undefined>();
 
   useEffect(() => {
     if (!id) return;
@@ -59,41 +61,53 @@ export default function TeamDetailPage() {
     };
   }, [id]);
 
-  // Merge home + away matches, sort by kickoff desc
+  // Merge home + away matches, sort by kickoff date for the monthly team fixture view.
   const allMatches = useMemo(
     () =>
       [
         ...(team?.homeMatches || []).map((m) => ({ ...m, side: 'home' as const })),
         ...(team?.awayMatches || []).map((m) => ({ ...m, side: 'away' as const })),
       ].sort((a, b) => {
-        if (!a.kickoffAt || !b.kickoffAt) return 0;
-        return new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
+        if (!a.kickoffAt && !b.kickoffAt) return a.roundNo - b.roundNo;
+        if (!a.kickoffAt) return 1;
+        if (!b.kickoffAt) return -1;
+        return new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime();
       }),
     [team],
   );
 
-  const matchRoundGroups = useMemo(() => {
-    const map = new Map<number, typeof allMatches>();
+  const matchMonthGroups = useMemo(() => {
+    const map = new Map<string, typeof allMatches>();
     for (const match of allMatches) {
-      const list = map.get(match.roundNo) ?? [];
+      const key = match.kickoffAt ? dayjs(match.kickoffAt).format('YYYY-MM') : 'unscheduled';
+      const list = map.get(key) ?? [];
       list.push(match);
-      map.set(match.roundNo, list);
+      map.set(key, list);
     }
-    return [...map.entries()].sort(([a], [b]) => a - b);
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return a.localeCompare(b);
+    });
   }, [allMatches]);
 
   useEffect(() => {
-    if (matchRoundGroups.length === 0) {
-      setActiveMatchRoundNo(undefined);
+    if (matchMonthGroups.length === 0) {
+      setActiveMatchMonthKey(undefined);
       return;
     }
     if (
-      !activeMatchRoundNo ||
-      !matchRoundGroups.some(([roundNo]) => roundNo === activeMatchRoundNo)
+      !activeMatchMonthKey ||
+      !matchMonthGroups.some(([monthKey]) => monthKey === activeMatchMonthKey)
     ) {
-      setActiveMatchRoundNo(matchRoundGroups[0][0]);
+      const todayMonth = dayjs().format('YYYY-MM');
+      const currentMonth = matchMonthGroups.find(([monthKey]) => monthKey === todayMonth);
+      const nextMonth = matchMonthGroups.find(
+        ([monthKey]) => monthKey !== 'unscheduled' && monthKey >= todayMonth,
+      );
+      setActiveMatchMonthKey((currentMonth ?? nextMonth ?? matchMonthGroups[0])[0]);
     }
-  }, [activeMatchRoundNo, matchRoundGroups]);
+  }, [activeMatchMonthKey, matchMonthGroups]);
 
   if (loading) {
     return <ProfileSkeleton />;
@@ -108,25 +122,95 @@ export default function TeamDetailPage() {
     );
   }
 
-  const activeMatchRoundIndex = matchRoundGroups.findIndex(
-    ([roundNo]) => roundNo === activeMatchRoundNo,
+  const activeMatchMonthIndex = matchMonthGroups.findIndex(
+    ([monthKey]) => monthKey === activeMatchMonthKey,
   );
-  const activeMatchRound =
-    activeMatchRoundIndex >= 0 ? matchRoundGroups[activeMatchRoundIndex] : undefined;
-  const activeRoundMatches = activeMatchRound?.[1] ?? [];
-  const activeRoundDateLabel =
-    activeRoundMatches.length > 0 && activeRoundMatches[0].kickoffAt
-      ? new Date(activeRoundMatches[0].kickoffAt).toLocaleDateString('vi-VN')
-      : '';
+  const activeMatchMonth =
+    activeMatchMonthIndex >= 0 ? matchMonthGroups[activeMatchMonthIndex] : undefined;
+  const activeMonthMatches = activeMatchMonth?.[1] ?? [];
+  const activeMonthLabel =
+    activeMatchMonth?.[0] === 'unscheduled'
+      ? 'Chưa xếp lịch'
+      : activeMatchMonth?.[0]
+        ? `Tháng ${dayjs(`${activeMatchMonth[0]}-01`).format('M/YYYY')}`
+        : t('teamDetail.tabMatches', { count: allMatches.length });
 
-  const getMatchResult = (m: (typeof allMatches)[0]) => {
-    if (m.homeScore == null || m.awayScore == null) return null;
-    const isHome = m.side === 'home';
-    const ours = isHome ? m.homeScore : m.awayScore;
-    const theirs = isHome ? m.awayScore : m.homeScore;
-    if (ours > theirs) return { label: t('teamDetail.matchResultWin'), color: 'green' };
-    if (ours < theirs) return { label: t('teamDetail.matchResultLoss'), color: 'red' };
-    return { label: t('teamDetail.matchResultDraw'), color: 'orange' };
+  const formatMatchDateLabel = (kickoffAt: string | null) => {
+    if (!kickoffAt) return 'Chưa xếp lịch';
+    const date = dayjs(kickoffAt);
+    const weekday = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.day()];
+    return `${weekday}, ${date.format('D/M')}`;
+  };
+
+  const getTeamDisplay = (match: (typeof allMatches)[0], side: 'home' | 'away') => {
+    if (side === match.side) {
+      return {
+        id: team.id,
+        name: team.shortName || team.name,
+        logoUrl: getTeamLogoUrl(team),
+      };
+    }
+
+    const opponent = match.side === 'home' ? match.awayTeam : match.homeTeam;
+    return {
+      id: opponent?.id,
+      name: opponent?.shortName || opponent?.name || '—',
+      logoUrl: getTeamLogoUrl(opponent),
+    };
+  };
+
+  const renderTeamLogo = (displayTeam: ReturnType<typeof getTeamDisplay>) =>
+    displayTeam.logoUrl ? (
+      <img src={displayTeam.logoUrl} alt={displayTeam.name} className="team-match-logo" />
+    ) : (
+      <div className="team-match-logo team-match-logo-fallback">
+        {displayTeam.name.slice(0, 2).toUpperCase()}
+      </div>
+    );
+
+  const renderTeamFixture = (match: (typeof allMatches)[0]) => {
+    const leftTeam = getTeamDisplay(match, 'home');
+    const rightTeam = getTeamDisplay(match, 'away');
+    const hasScore = match.homeScore != null && match.awayScore != null;
+    const scoreText = hasScore
+      ? `${match.homeScore} - ${match.awayScore}`
+      : match.kickoffAt
+        ? dayjs(match.kickoffAt).format('HH:mm')
+        : 'vs';
+
+    return (
+      <div key={match.id} className="team-fixture-row">
+        <div className="team-fixture-meta">
+          <span className="team-fixture-round">Vòng {match.roundNo}</span>
+          <Tag color={STATUS_MAP[match.status]?.color}>
+            {STATUS_MAP[match.status]?.label ?? match.status}
+          </Tag>
+        </div>
+        <button
+          type="button"
+          className="team-fixture-team team-fixture-team-left"
+          onClick={() => leftTeam.id && navigate(`/teams/${leftTeam.id}`)}
+        >
+          <span>{leftTeam.name}</span>
+          {renderTeamLogo(leftTeam)}
+        </button>
+        <button
+          type="button"
+          className={`team-fixture-score${hasScore ? ' is-final' : ''}`}
+          onClick={() => navigate(`/matches/${match.id}`)}
+        >
+          {scoreText}
+        </button>
+        <button
+          type="button"
+          className="team-fixture-team team-fixture-team-right"
+          onClick={() => rightTeam.id && navigate(`/teams/${rightTeam.id}`)}
+        >
+          {renderTeamLogo(rightTeam)}
+          <span>{rightTeam.name}</span>
+        </button>
+      </div>
+    );
   };
 
   const roster = team.roster || [];
@@ -201,64 +285,6 @@ export default function TeamDetailPage() {
           {t(`playerType.${r.player.playerType}`)}
         </Tag>
       ),
-    },
-  ];
-
-  const matchColumns = [
-    {
-      title: t('teamDetail.matchColRound'),
-      key: 'round',
-      width: 80,
-      align: 'center' as const,
-      render: (_: unknown, r: (typeof allMatches)[0]) => `V${r.roundNo}`,
-    },
-    {
-      title: t('teamDetail.matchColOpponent'),
-      key: 'opponent',
-      align: 'center' as const,
-      render: (_: unknown, r: (typeof allMatches)[0]) => {
-        const opponent = r.side === 'home' ? (r.awayTeam?.name ?? '—') : (r.homeTeam?.name ?? '—');
-        const prefix =
-          r.side === 'home' ? t('teamDetail.matchSideHome') : t('teamDetail.matchSideAway');
-        return `${prefix} ${opponent}`;
-      },
-    },
-    {
-      title: t('teamDetail.matchColScore'),
-      key: 'score',
-      width: 100,
-      align: 'center' as const,
-      render: (_: unknown, r: (typeof allMatches)[0]) =>
-        r.homeScore != null ? `${r.homeScore} - ${r.awayScore}` : '— : —',
-    },
-    {
-      title: t('teamDetail.matchColResult'),
-      key: 'result',
-      width: 80,
-      align: 'center' as const,
-      render: (_: unknown, r: (typeof allMatches)[0]) => {
-        const res = getMatchResult(r);
-        return res ? <Tag color={res.color}>{res.label}</Tag> : '—';
-      },
-    },
-    {
-      title: t('teamDetail.matchColStatus'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      align: 'center' as const,
-      render: (s: string) => {
-        const st = STATUS_MAP[s];
-        return <Tag color={st?.color}>{st?.label ?? s}</Tag>;
-      },
-    },
-    {
-      title: t('teamDetail.matchColDate'),
-      key: 'date',
-      width: 120,
-      align: 'center' as const,
-      render: (_: unknown, r: (typeof allMatches)[0]) =>
-        r.kickoffAt ? new Date(r.kickoffAt).toLocaleDateString('vi-VN') : '—',
     },
   ];
 
@@ -391,8 +417,8 @@ export default function TeamDetailPage() {
             key: 'matches',
             label: t('teamDetail.tabMatches', { count: allMatches.length }),
             children: (
-              <Card>
-                {matchRoundGroups.length === 0 ? (
+              <Card className="team-fixtures-card">
+                {matchMonthGroups.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
                     {t('common.noData')}
                   </div>
@@ -407,21 +433,17 @@ export default function TeamDetailPage() {
                         shape="circle"
                         size="large"
                         icon={<LeftOutlined />}
-                        disabled={activeMatchRoundIndex <= 0}
+                        disabled={activeMatchMonthIndex <= 0}
                         onClick={() =>
-                          setActiveMatchRoundNo(matchRoundGroups[activeMatchRoundIndex - 1][0])
+                          setActiveMatchMonthKey(matchMonthGroups[activeMatchMonthIndex - 1][0])
                         }
                       />
                       <div style={{ minWidth: 220, textAlign: 'center' }}>
                         <Typography.Title level={4} style={{ margin: 0 }}>
-                          {activeMatchRound
-                            ? t('schedule.roundLabel', { round: activeMatchRound[0] })
-                            : t('teamDetail.tabMatches', { count: allMatches.length })}
+                          {activeMonthLabel}
                         </Typography.Title>
                         <Typography.Text type="secondary">
-                          {activeRoundDateLabel
-                            ? `${activeRoundMatches.length} trận · ${activeRoundDateLabel}`
-                            : `${activeRoundMatches.length} trận`}
+                          {`${activeMonthMatches.length} trận`}
                         </Typography.Text>
                       </div>
                       <Button
@@ -429,21 +451,34 @@ export default function TeamDetailPage() {
                         size="large"
                         icon={<RightOutlined />}
                         disabled={
-                          activeMatchRoundIndex < 0 ||
-                          activeMatchRoundIndex >= matchRoundGroups.length - 1
+                          activeMatchMonthIndex < 0 ||
+                          activeMatchMonthIndex >= matchMonthGroups.length - 1
                         }
                         onClick={() =>
-                          setActiveMatchRoundNo(matchRoundGroups[activeMatchRoundIndex + 1][0])
+                          setActiveMatchMonthKey(matchMonthGroups[activeMatchMonthIndex + 1][0])
                         }
                       />
                     </Space>
-                    <Table
-                      dataSource={activeRoundMatches}
-                      columns={matchColumns}
-                      rowKey="id"
-                      pagination={false}
-                      size="small"
-                    />
+                    <div className="team-fixtures-list">
+                      {activeMonthMatches.map((match, index) => {
+                        const previous = activeMonthMatches[index - 1];
+                        const showDate =
+                          index === 0 ||
+                          formatMatchDateLabel(previous.kickoffAt) !==
+                            formatMatchDateLabel(match.kickoffAt);
+
+                        return (
+                          <div key={match.id} className="team-fixture-day-group">
+                            {showDate && (
+                              <Typography.Title level={5} className="team-fixture-date">
+                                {formatMatchDateLabel(match.kickoffAt)}
+                              </Typography.Title>
+                            )}
+                            {renderTeamFixture(match)}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </>
                 )}
               </Card>

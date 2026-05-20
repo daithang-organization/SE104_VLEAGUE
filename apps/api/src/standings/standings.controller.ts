@@ -56,6 +56,11 @@ export class StandingsController {
           goalsAgainst: { type: 'integer', example: 8 },
           goalDifference: { type: 'integer', example: 12 },
           points: { type: 'integer', example: 23 },
+          recentForm: {
+            type: 'array',
+            items: { type: 'string', enum: ['W', 'D', 'L'] },
+            example: ['W', 'D', 'L', 'W', 'W'],
+          },
         },
       },
     },
