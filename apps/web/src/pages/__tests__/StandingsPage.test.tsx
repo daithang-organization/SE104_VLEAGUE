@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
@@ -34,17 +35,15 @@ const mockStandingsApi = vi.hoisted(() => ({
       points: 23,
     },
   ]),
-  apiGetTopScorers: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        playerId: 'p1',
-        playerName: 'Nguyễn Tiến Linh',
-        teamName: 'Bình Dương',
-        position: 1,
-        goals: 12,
-      },
-    ]),
+  apiGetTopScorers: vi.fn().mockResolvedValue([
+    {
+      playerId: 'p1',
+      playerName: 'Nguyễn Tiến Linh',
+      teamName: 'Bình Dương',
+      position: 1,
+      goals: 12,
+    },
+  ]),
 }));
 
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
@@ -58,7 +57,14 @@ vi.mock('../../components/ExportButton', () => ({
 import StandingsPage from '../StandingsPage';
 
 function renderPage() {
-  return render(<StandingsPage />);
+  return render(
+    <MemoryRouter initialEntries={['/standings']}>
+      <Routes>
+        <Route path="/standings" element={<StandingsPage />} />
+        <Route path="/teams/:id" element={<div>Team Detail Route</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 describe('StandingsPage', () => {
@@ -102,5 +108,22 @@ describe('StandingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Nguyễn Tiến Linh')).toBeInTheDocument();
     });
+  });
+
+  it('navigates to team detail when clicking a team in standings', async () => {
+    renderPage();
+
+    const teamButton = await waitFor(() => {
+      const button = screen
+        .getAllByRole('button')
+        .find((candidate) => candidate.textContent?.includes('FC'));
+
+      expect(button).toBeDefined();
+      return button;
+    });
+
+    fireEvent.click(teamButton!);
+
+    expect(screen.getByText('Team Detail Route')).toBeInTheDocument();
   });
 });

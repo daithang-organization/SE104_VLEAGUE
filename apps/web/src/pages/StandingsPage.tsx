@@ -3,6 +3,7 @@ import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'an
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { TableSkeleton } from '../components';
 import ExportButton from '../components/ExportButton';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
@@ -21,6 +22,7 @@ const FORM_SLOTS = 5;
 
 export default function StandingsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
@@ -96,10 +98,23 @@ export default function StandingsPage() {
     {
       title: t('standings.colTeam'),
       dataIndex: 'teamName',
-      render: (teamName: string) => {
+      render: (teamName: string, record) => {
         const logoUrl = getTeamLogoUrl(teamName);
         return (
-          <Flex align="center" gap={8}>
+          <Flex
+            align="center"
+            gap={8}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer', width: 'fit-content' }}
+            onClick={() => navigate(`/teams/${record.teamId}`)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                navigate(`/teams/${record.teamId}`);
+              }
+            }}
+          >
             {logoUrl && (
               <img
                 src={logoUrl}
@@ -107,7 +122,9 @@ export default function StandingsPage() {
                 style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
               />
             )}
-            <strong>{teamName}</strong>
+            <Typography.Link strong style={{ color: '#fff' }}>
+              {teamName}
+            </Typography.Link>
           </Flex>
         );
       },
