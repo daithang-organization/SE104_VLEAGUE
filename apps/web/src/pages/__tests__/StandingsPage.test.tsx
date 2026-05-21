@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /* ---------- hoisted mocks ---------- */
 const mockSeasonApi = vi.hoisted(() => ({
   apiGetSeasons: vi.fn().mockResolvedValue([{ id: 's1', name: 'V.League 2025' }]),
+  apiGetCurrentSeason: vi.fn().mockResolvedValue({ id: 's1', name: 'V.League 2025' }),
 }));
 const mockStandingsApi = vi.hoisted(() => ({
   apiGetStandings: vi.fn().mockResolvedValue([
@@ -45,9 +46,22 @@ const mockStandingsApi = vi.hoisted(() => ({
     },
   ]),
 }));
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+    loading: false,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+  })),
+);
 
+vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
+vi.mock('../../services/teamManagerApi', () => ({
+  apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
+}));
 
 // Mock ExportButton to simplify
 vi.mock('../../components/ExportButton', () => ({

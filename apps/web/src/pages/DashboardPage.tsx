@@ -187,8 +187,22 @@ function TeamManagerDashboard() {
     .sort((a, b) => b.roundNo - a.roundNo)
     .slice(0, 5);
 
-  const renderMatchName = (match: Match) =>
-    `${match.homeTeam?.name ?? '—'} vs ${match.awayTeam?.name ?? '—'}`;
+  const renderMiniRecentForm = (recentForm: TeamStanding['recentForm'] = []) => {
+    const slots = Array.from({ length: 5 }, (_, index) => recentForm[index]);
+    return (
+      <Space size={4}>
+        {slots.map((result, index) => (
+          <span
+            key={`${result ?? 'empty'}-${index}`}
+            className={`standings-form-box standings-form-${result?.toLowerCase() ?? 'empty'}`}
+            title={result ?? ''}
+          >
+            {result === 'W' ? '✓' : result === 'D' ? '−' : result === 'L' ? '×' : ''}
+          </span>
+        ))}
+      </Space>
+    );
+  };
 
   if (!selectedTeamId) {
     return (
@@ -307,6 +321,13 @@ function TeamManagerDashboard() {
                 { title: 'Đội', dataIndex: 'teamName' },
                 { title: 'Trận', dataIndex: 'played', width: 70 },
                 { title: 'Điểm', dataIndex: 'points', width: 70 },
+                {
+                  title: '5 trận gần nhất',
+                  dataIndex: 'recentForm',
+                  width: 140,
+                  align: 'center',
+                  render: renderMiniRecentForm,
+                },
               ]}
               dataSource={standingsWindow}
               rowKey="teamId"
@@ -324,7 +345,37 @@ function TeamManagerDashboard() {
             <Table
               columns={[
                 { title: 'Vòng', dataIndex: 'roundNo', width: 70, render: (v) => `V${v}` },
-                { title: 'Trận đấu', key: 'match', render: (_, r) => renderMatchName(r) },
+                {
+                  title: 'Trận đấu',
+                  key: 'match',
+                  render: (_, r) => (
+                    <div className="manager-upcoming-match">
+                      <span className="manager-upcoming-team manager-upcoming-team-left">
+                        {r.homeTeam?.name ?? '—'}
+                      </span>
+                      {r.homeTeam && getTeamLogoUrl(r.homeTeam) && (
+                        <img
+                          className="manager-upcoming-logo"
+                          src={getTeamLogoUrl(r.homeTeam)}
+                          alt={r.homeTeam.name}
+                        />
+                      )}
+                      <Typography.Text type="secondary" className="manager-upcoming-vs">
+                        vs
+                      </Typography.Text>
+                      {r.awayTeam && getTeamLogoUrl(r.awayTeam) && (
+                        <img
+                          className="manager-upcoming-logo"
+                          src={getTeamLogoUrl(r.awayTeam)}
+                          alt={r.awayTeam.name}
+                        />
+                      )}
+                      <span className="manager-upcoming-team manager-upcoming-team-right">
+                        {r.awayTeam?.name ?? '—'}
+                      </span>
+                    </div>
+                  ),
+                },
                 {
                   title: 'Thời gian',
                   dataIndex: 'kickoffAt',
@@ -404,6 +455,35 @@ function TeamManagerDashboard() {
       </Row>
 
       <style>{`
+        .manager-upcoming-match {
+          display: grid;
+          grid-template-columns: minmax(140px, 1fr) 28px 28px 28px minmax(140px, 1fr);
+          align-items: center;
+          column-gap: 8px;
+        }
+        .manager-upcoming-team {
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .manager-upcoming-team-left {
+          text-align: right;
+        }
+        .manager-upcoming-team-right {
+          text-align: left;
+        }
+        .manager-upcoming-logo {
+          width: 24px;
+          height: 24px;
+          object-fit: contain;
+          justify-self: center;
+          flex: 0 0 auto;
+        }
+        .manager-upcoming-vs {
+          justify-self: center;
+          font-weight: 700;
+        }
         .manager-home-team-row td {
           background: rgba(227, 34, 33, 0.18) !important;
           font-weight: 700;

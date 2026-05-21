@@ -4,15 +4,17 @@ import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { TableSkeleton } from '../components';
 import ExportButton from '../components/ExportButton';
-import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetStandings,
   apiGetTopScorers,
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
+import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
 // VLeague: top 2 qualify for AFC Champions League, bottom 2 get relegated
@@ -22,12 +24,14 @@ const FORM_SLOTS = 5;
 
 export default function StandingsPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string | undefined>();
+  const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     apiGetSeasons()
@@ -54,6 +58,29 @@ export default function StandingsPage() {
   useEffect(() => {
     fetchData(selectedSeason);
   }, [selectedSeason, fetchData]);
+
+  useEffect(() => {
+    if (user?.role !== 'TEAM_MANAGER') {
+      setManagerTeamId(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadAssignment = async () => {
+      try {
+        const seasonId = selectedSeason ?? (await apiGetCurrentSeason())?.id;
+        const assignment = seasonId ? await apiGetTeamManagerAssignment(seasonId) : null;
+        if (!cancelled) setManagerTeamId(assignment?.teamId ?? null);
+      } catch (_err) {
+        if (!cancelled) setManagerTeamId(null);
+      }
+    };
+
+    loadAssignment();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSeason, user?.role]);
 
   const handleSeasonChange = (value: string) => {
     setSelectedSeason(value || undefined);
@@ -83,16 +110,24 @@ export default function StandingsPage() {
       title: '#',
       dataIndex: 'position',
       width: 50,
-      render: (pos: number) => {
+      render: (pos: number, record) => {
+        const zoneClass =
+          pos <= AFC_CL_COUNT
+            ? 'standings-rank-afc-cl'
+            : totalTeams > 0 && pos > totalTeams - RELEGATION_COUNT
+              ? 'standings-rank-relegation'
+              : '';
+        const managerClass = record.teamId === managerTeamId ? ' standings-rank-manager' : '';
+
         if (pos === 1) {
           return (
-            <strong style={{ color: '#d4a017' }}>
+            <strong className={`standings-rank-cell ${zoneClass}${managerClass}`}>
               <CrownOutlined style={{ marginRight: 4 }} />
               {pos}
             </strong>
           );
         }
-        return <strong>{pos}</strong>;
+        return <strong className={`standings-rank-cell ${zoneClass}${managerClass}`}>{pos}</strong>;
       },
     },
     {
@@ -194,46 +229,52 @@ export default function StandingsPage() {
 
   // Row class for AFC CL / relegation zone
   const getRowClassName = (record: TeamStanding) => {
-    if (record.position <= AFC_CL_COUNT) return 'standings-afc-cl';
+    const classes: string[] = [];
+    if (record.position <= AFC_CL_COUNT) classes.push('standings-afc-cl');
     if (totalTeams > 0 && record.position > totalTeams - RELEGATION_COUNT) {
-      return 'standings-relegation';
+      classes.push('standings-relegation');
     }
-    return '';
+    if (record.teamId === managerTeamId) classes.push('standings-manager-team');
+    return classes.join(' ');
   };
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Inline styles for row highlighting */}
       <style>{`
-        .standings-afc-cl {
-          background: #f6ffed !important;
-          border-left: 4px solid #52c41a !important;
+        .standings-rank-cell {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 34px;
+          min-height: 28px;
+          padding: 2px 8px;
+          border-radius: 6px;
         }
-        .standings-afc-cl td {
-          background: #f6ffed !important;
+        .standings-rank-afc-cl {
+          background: rgba(82, 196, 26, 0.2);
+          color: #389e0d;
         }
-        .standings-relegation {
-          background: #fff1f0 !important;
-          border-left: 4px solid #ff4d4f !important;
+        .standings-rank-relegation {
+          background: rgba(255, 77, 79, 0.18);
+          color: #cf1322;
         }
-        .standings-relegation td {
-          background: #fff1f0 !important;
+        .standings-rank-manager {
+          box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.85), 0 0 18px rgba(250, 204, 21, 0.4);
         }
-        :root[data-theme='dark'] .standings-afc-cl {
-          background: rgba(22, 163, 74, 0.2) !important;
-          border-left: 4px solid #22c55e !important;
+        .standings-manager-team td {
+          background: rgba(250, 204, 21, 0.08) !important;
         }
-        :root[data-theme='dark'] .standings-afc-cl td {
-          background: rgba(22, 163, 74, 0.2) !important;
-          color: rgba(255, 255, 255, 0.92) !important;
+        :root[data-theme='dark'] .standings-rank-afc-cl {
+          background: rgba(22, 163, 74, 0.26);
+          color: #f8fafc;
         }
-        :root[data-theme='dark'] .standings-relegation {
-          background: rgba(220, 38, 38, 0.22) !important;
-          border-left: 4px solid #ef4444 !important;
+        :root[data-theme='dark'] .standings-rank-relegation {
+          background: rgba(220, 38, 38, 0.28);
+          color: #f8fafc;
         }
-        :root[data-theme='dark'] .standings-relegation td {
-          background: rgba(220, 38, 38, 0.22) !important;
-          color: rgba(255, 255, 255, 0.92) !important;
+        :root[data-theme='dark'] .standings-manager-team td {
+          background: rgba(250, 204, 21, 0.1) !important;
         }
       `}</style>
 
