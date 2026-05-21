@@ -95,6 +95,7 @@ model User {
 
   refreshTokens RefreshToken[]
   otpCodes      OtpCode[]
+  teamManagerAssignments TeamManagerAssignment[]
 
   @@index([roleId])
   @@map("users")
@@ -171,6 +172,7 @@ model Team {
   awayMatches  Match[]        @relation("AwayTeam")
   matchEvents  MatchEvent[]
   standings    Standing[]
+  managerAssignments TeamManagerAssignment[]
 
   @@map("teams")
 }
@@ -234,6 +236,7 @@ model Season {
   seasonTeams SeasonTeam[]
   regulations Regulation[]
   standings   Standing[]
+  managerAssignments TeamManagerAssignment[]
 
   @@map("seasons")
 }
@@ -387,6 +390,24 @@ model Standing {
   @@unique([seasonId, teamId])
   @@index([seasonId])
   @@map("standings")
+}
+
+model TeamManagerAssignment {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId   String @map("team_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, seasonId])
+  @@index([teamId])
+  @@index([seasonId])
+  @@map("team_manager_assignments")
 }
 
 // ─── Audit Log ──────────────────────────────────────────────

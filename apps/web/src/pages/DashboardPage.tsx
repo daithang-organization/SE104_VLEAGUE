@@ -40,7 +40,12 @@ import {
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
-import { apiGetTeams } from '../services/teamApi';
+import { apiGetTeam, apiGetTeams, type Team, type TeamDetail } from '../services/teamApi';
+import {
+  apiCreateTeamManagerAssignment,
+  apiGetTeamManagerAssignment,
+} from '../services/teamManagerApi';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 // MÃ MÀU ĐỎ CHỦ ĐẠO MỚI
 const THEME_RED = '#E32221';
@@ -54,6 +59,359 @@ type RecentResult = {
   awayScore: number | null;
   kickoffAt: string | null;
 };
+
+function getDashboardSeason(seasons: Season[]) {
+  return (
+    seasons.find((season) => {
+      if (!season.startDate || !season.endDate) return false;
+      const start = dayjs(season.startDate).startOf('day').valueOf();
+      const end = dayjs(season.endDate).endOf('day').valueOf();
+      const now = dayjs().valueOf();
+      return now >= start && now <= end;
+    }) ??
+    seasons.find((season) => season.status === 'IN_PROGRESS') ??
+    seasons
+      .filter((season) => season.startDate)
+      .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
+    null
+  );
+}
+
+function TeamManagerDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [team, setTeam] = useState<TeamDetail | null>(null);
+  const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
+  const [standings, setStandings] = useState<TeamStanding[]>([]);
+  const [teamMatches, setTeamMatches] = useState<Match[]>([]);
+  const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
+
+  useEffect(() => {
+    const loadBootstrap = async () => {
+      setLoading(true);
+      try {
+        const [teamsData, seasonsData] = await Promise.all([apiGetTeams(1, 100), apiGetSeasons()]);
+        const season = getDashboardSeason(seasonsData);
+        const assignment = season?.id ? await apiGetTeamManagerAssignment(season.id) : null;
+
+        setTeams(teamsData.data);
+        setCurrentSeason(season);
+        setSelectedTeamId(assignment?.teamId ?? null);
+      } catch (_err) {
+        message.error('Không tải được dữ liệu chọn đội bóng');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBootstrap();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTeamId || !currentSeason) {
+      setTeam(null);
+      setTeamMatches([]);
+      setStandings([]);
+      setTopScorers([]);
+      return;
+    }
+
+    const loadTeamDashboard = async () => {
+      setLoading(true);
+      try {
+        const [teamData, standingsData, matchesData, scorersData] = await Promise.all([
+          apiGetTeam(selectedTeamId),
+          apiGetStandings(currentSeason.id),
+          apiGetMatches(currentSeason.id, 1, 1000),
+          apiGetTopScorers(currentSeason.id, 100),
+        ]);
+
+        const matches = matchesData.data.filter(
+          (match) => match.homeTeamId === selectedTeamId || match.awayTeamId === selectedTeamId,
+        );
+
+        setTeam(teamData);
+        setTeamMatches(matches);
+        setStandings(standingsData);
+        setTopScorers(
+          scorersData
+            .filter((scorer) => scorer.teamId === selectedTeamId)
+            .sort((a, b) => b.goals - a.goals)
+            .slice(0, 5)
+            .map((scorer, index) => ({ ...scorer, position: index + 1 })),
+        );
+      } catch (_err) {
+        message.error('Không tải được dashboard đội bóng');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTeamDashboard();
+  }, [currentSeason, selectedTeamId]);
+
+  const handleSelectTeam = async (teamId: string) => {
+    if (!currentSeason?.id) return;
+
+    setLoading(true);
+    try {
+      const assignment = await apiCreateTeamManagerAssignment(currentSeason.id, teamId);
+      setSelectedTeamId(assignment.teamId);
+      message.success('Đã chọn CLB quản lý cho mùa giải này');
+    } catch (_err) {
+      message.error('Không thể chọn CLB. Tài khoản này có thể đã chọn CLB cho mùa giải.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedStanding = standings.find((standing) => standing.teamId === selectedTeamId);
+  const standingsWindow = selectedStanding
+    ? standings.slice(
+        Math.max(0, selectedStanding.position - 3),
+        Math.max(0, selectedStanding.position - 3) + 5,
+      )
+    : standings.slice(0, 5);
+  const latestFinishedRound = Math.max(
+    0,
+    ...teamMatches.filter((match) => match.status === 'FINISHED').map((match) => match.roundNo),
+  );
+  const currentRound = Math.max(latestFinishedRound, (selectedStanding?.played ?? 0) + 1);
+  const upcomingMatches = teamMatches
+    .filter((match) => match.status !== 'FINISHED' && match.roundNo > currentRound)
+    .sort((a, b) => a.roundNo - b.roundNo)
+    .slice(0, 5);
+  const recentResults = teamMatches
+    .filter((match) => match.status === 'FINISHED')
+    .sort((a, b) => b.roundNo - a.roundNo)
+    .slice(0, 5);
+
+  const renderMatchName = (match: Match) =>
+    `${match.homeTeam?.name ?? '—'} vs ${match.awayTeam?.name ?? '—'}`;
+
+  if (!selectedTeamId) {
+    return (
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div>
+          <Typography.Title level={3}>Chọn CLB quản lý</Typography.Title>
+          <Typography.Paragraph type="secondary">
+            Vui lòng chọn đội bóng của bạn để bắt đầu trang quản lý CLB.
+          </Typography.Paragraph>
+          <Typography.Text type="danger">
+            Lưu ý: Bạn chỉ được chọn một lần duy nhất và không thể thay đổi đến hết mùa giải.
+          </Typography.Text>
+        </div>
+
+        <Row gutter={[16, 16]}>
+          {teams.map((candidate) => {
+            const logoUrl = getTeamLogoUrl(candidate);
+            return (
+              <Col xs={12} sm={8} md={6} lg={4} key={candidate.id}>
+                <Card
+                  hoverable
+                  loading={loading}
+                  onClick={() => handleSelectTeam(candidate.id)}
+                  style={{ textAlign: 'center', minHeight: 188 }}
+                  styles={{
+                    body: {
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 14,
+                      minHeight: 188,
+                    },
+                  }}
+                >
+                  {logoUrl && (
+                    <img
+                      src={logoUrl}
+                      alt={`${candidate.name} logo`}
+                      style={{ width: 82, height: 82, objectFit: 'contain', flex: '0 0 auto' }}
+                    />
+                  )}
+                  <Typography.Text
+                    strong
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'center',
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {candidate.name}
+                  </Typography.Text>
+                </Card>
+              </Col>
+            );
+          })}
+        </Row>
+      </Space>
+    );
+  }
+
+  return (
+    <div>
+      <Typography.Title level={3}>
+        Chào mừng đến trang quản lý chính thức của CLB {team?.name ?? '...'}
+      </Typography.Title>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={8}>
+          <Card loading={loading} hoverable className="stat-card">
+            <Space align="center">
+              {team && getTeamLogoUrl(team) && (
+                <img
+                  src={getTeamLogoUrl(team)}
+                  alt={`${team.name} logo`}
+                  style={{ width: 48, height: 48, objectFit: 'contain' }}
+                />
+              )}
+              <Statistic title="Đội bóng" value={team?.name ?? '...'} />
+            </Space>
+          </Card>
+        </Col>
+        <Col xs={12} sm={8}>
+          <Card loading={loading} hoverable className="stat-card">
+            <Statistic
+              title="Cầu thủ"
+              value={team?.roster?.length ?? 0}
+              prefix={<UserOutlined />}
+              styles={{ content: { color: '#fa8c16', fontWeight: 'bold' } }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8}>
+          <Card loading={loading} hoverable className="stat-card">
+            <Statistic
+              title="Trận đấu"
+              value={teamMatches.length}
+              prefix={<CalendarOutlined />}
+              styles={{ content: { color: THEME_RED, fontWeight: 'bold' } }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={12}>
+          <Card
+            title={`🏆 Bảng xếp hạng (Thứ ${selectedStanding?.position ?? '—'} tại VLeague)`}
+            size="small"
+            hoverable
+          >
+            <Table
+              columns={[
+                { title: '#', dataIndex: 'position', width: 50 },
+                { title: 'Đội', dataIndex: 'teamName' },
+                { title: 'Trận', dataIndex: 'played', width: 70 },
+                { title: 'Điểm', dataIndex: 'points', width: 70 },
+              ]}
+              dataSource={standingsWindow}
+              rowKey="teamId"
+              loading={loading}
+              pagination={false}
+              size="small"
+              rowClassName={(record) =>
+                record.teamId === selectedTeamId ? 'manager-home-team-row' : ''
+              }
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card title="🧾 Trận đấu sắp tới" size="small" hoverable>
+            <Table
+              columns={[
+                { title: 'Vòng', dataIndex: 'roundNo', width: 70, render: (v) => `V${v}` },
+                { title: 'Trận đấu', key: 'match', render: (_, r) => renderMatchName(r) },
+                {
+                  title: 'Thời gian',
+                  dataIndex: 'kickoffAt',
+                  width: 140,
+                  render: (v) => (v ? dayjs(v).format('DD/MM HH:mm') : '—'),
+                },
+              ]}
+              dataSource={upcomingMatches}
+              rowKey="id"
+              loading={loading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có trận đấu sắp tới' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={14}>
+          <Card title="⚽ Kết quả gần đây" size="small" hoverable>
+            <Table
+              columns={[
+                { title: 'V', dataIndex: 'roundNo', width: 50, render: (v) => `V${v}` },
+                {
+                  title: 'Trận đấu',
+                  key: 'match',
+                  render: (_, r) => (
+                    <span>
+                      <strong>{r.homeTeam?.name ?? '—'}</strong>
+                      <Tag color="red" style={{ margin: '0 6px' }}>
+                        {r.homeScore ?? 0} - {r.awayScore ?? 0}
+                      </Tag>
+                      <strong>{r.awayTeam?.name ?? '—'}</strong>
+                    </span>
+                  ),
+                },
+                {
+                  title: 'Ngày',
+                  dataIndex: 'kickoffAt',
+                  width: 100,
+                  render: (v) => (v ? dayjs(v).format('DD/MM') : '—'),
+                },
+              ]}
+              dataSource={recentResults}
+              rowKey="id"
+              loading={loading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có kết quả gần đây' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={10}>
+          <Card title="🏅 Vua phá lưới (Top 5 CLB)" size="small" hoverable>
+            <Table
+              dataSource={topScorers}
+              rowKey="playerId"
+              loading={loading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Chưa có cầu thủ ghi bàn' }}
+              columns={[
+                { title: '#', dataIndex: 'position', width: 40 },
+                { title: 'Cầu thủ', dataIndex: 'playerName', ellipsis: true },
+                {
+                  title: '⚽',
+                  dataIndex: 'goals',
+                  width: 50,
+                  align: 'center',
+                  render: (v: number) => <strong style={{ color: THEME_RED }}>{v}</strong>,
+                },
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <style>{`
+        .manager-home-team-row td {
+          background: rgba(227, 34, 33, 0.18) !important;
+          font-weight: 700;
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -78,6 +436,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
+      if (user?.role === 'TEAM_MANAGER') {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const [
@@ -204,7 +567,7 @@ export default function DashboardPage() {
     };
 
     load();
-  }, [t]);
+  }, [t, user?.role]);
 
   const standingsCols: ColumnsType<TeamStanding> = [
     { title: t('dashboard.standingsColRank'), dataIndex: 'position', width: 50 },
@@ -268,6 +631,10 @@ export default function DashboardPage() {
       render: (v: string | null) => (v ? dayjs(v).format('DD/MM') : '—'),
     },
   ];
+
+  if (user?.role === 'TEAM_MANAGER') {
+    return <TeamManagerDashboard />;
+  }
 
   return (
     <div>
