@@ -18,6 +18,7 @@ import { SearchModule } from './search/search.module';
 import { SeasonModule } from './season/season.module';
 import { StadiumModule } from './stadium/stadium.module';
 import { StandingsModule } from './standings/standings.module';
+import { TeamManagerModule } from './team-manager/team-manager.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 
@@ -70,6 +71,7 @@ import { UsersModule } from './users/users.module';
     RegulationModule,
     UsersModule,
     UploadModule,
+    TeamManagerModule,
     // v1.2.0 modules
     SearchModule,
     AuditModule,

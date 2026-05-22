@@ -32,7 +32,9 @@ import {
   type CreatePlayerPayload,
   type Player,
 } from '../services/playerApi';
+import { apiGetCurrentSeason } from '../services/seasonApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
+import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
 
 const POSITION_LABELS: Record<string, string> = {
   GK: 'Thủ môn',
@@ -62,17 +64,53 @@ export default function PlayersPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
+  const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
   const [form] = Form.useForm();
 
+  const isTeamManager = user?.role === 'TEAM_MANAGER';
   const canEdit = useMemo(() => {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
+
+  useEffect(() => {
+    if (!isTeamManager) {
+      setManagerTeamId(null);
+      setManagerTeamLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    setManagerTeamLoaded(false);
+    const loadManagerTeam = async () => {
+      try {
+        const season = await apiGetCurrentSeason();
+        const assignment = season ? await apiGetTeamManagerAssignment(season.id) : null;
+        if (!cancelled) setManagerTeamId(assignment?.teamId ?? null);
+      } catch (_err) {
+        if (!cancelled) {
+          setManagerTeamId(null);
+          message.error('Không tải được CLB quản lý của tài khoản này');
+        }
+      } finally {
+        if (!cancelled) setManagerTeamLoaded(true);
+      }
+    };
+
+    loadManagerTeam();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeamManager]);
 
   const fetchPlayers = useCallback(
     async (page = 1, limit = 20, searchQuery?: string) => {
       setLoading(true);
       try {
-        const res = await apiGetPlayers(page, limit, { search: searchQuery || undefined });
+        const res = await apiGetPlayers(page, limit, {
+          search: searchQuery || undefined,
+          teamId: managerTeamId || undefined,
+        });
         setPlayers(res.data);
         setPagination((prev) => {
           if (prev.page === res.page && prev.limit === res.limit && prev.total === res.total) {
@@ -86,18 +124,39 @@ export default function PlayersPage() {
         setLoading(false);
       }
     },
-    [t],
+    [managerTeamId, t],
   );
 
   useEffect(() => {
+    if (isTeamManager && !managerTeamLoaded) return;
+    if (isTeamManager && !managerTeamId) {
+      setPlayers([]);
+      setPagination((prev) => ({ ...prev, total: 0 }));
+      setLoading(false);
+      return;
+    }
     fetchPlayers(pagination.page, pagination.limit, search);
-  }, [fetchPlayers, pagination.limit, pagination.page, search]);
+  }, [
+    fetchPlayers,
+    isTeamManager,
+    managerTeamId,
+    managerTeamLoaded,
+    pagination.limit,
+    pagination.page,
+    search,
+  ]);
 
   useEffect(() => {
     apiGetTeams()
-      .then((res) => setTeams(res.data))
+      .then((res) =>
+        setTeams(
+          isTeamManager && managerTeamId
+            ? res.data.filter((t) => t.id === managerTeamId)
+            : res.data,
+        ),
+      )
       .catch(() => {});
-  }, []);
+  }, [isTeamManager, managerTeamId]);
 
   const onSearch = (value: string) => {
     const cleanValue = value.trim();
@@ -108,7 +167,7 @@ export default function PlayersPage() {
   const openCreateModal = () => {
     setEditingPlayer(null);
     form.resetFields();
-    form.setFieldsValue({ playerType: 'DOMESTIC' });
+    form.setFieldsValue({ playerType: 'DOMESTIC', teamId: managerTeamId ?? undefined });
     setModalOpen(true);
   };
 
@@ -123,7 +182,7 @@ export default function PlayersPage() {
       birthPlace: player.birthPlace ?? '',
       heightCm: player.heightCm ?? undefined,
       weightKg: player.weightKg ?? undefined,
-      teamId: (player.roster || [])[0]?.team?.id ?? undefined,
+      teamId: managerTeamId ?? (player.roster || [])[0]?.team?.id ?? undefined,
     });
     setModalOpen(true);
   };
@@ -142,7 +201,7 @@ export default function PlayersPage() {
         birthPlace: values.birthPlace || undefined,
         heightCm: values.heightCm || undefined,
         weightKg: values.weightKg || undefined,
-        teamId: values.teamId || undefined,
+        teamId: managerTeamId ?? values.teamId ?? undefined,
       };
 
       if (editingPlayer) {
@@ -395,7 +454,8 @@ export default function PlayersPage() {
           <Form.Item name="teamId" label={t('players.formClub')}>
             <Select
               placeholder={t('players.formClubPlaceholder')}
-              allowClear
+              allowClear={!isTeamManager}
+              disabled={isTeamManager}
               showSearch
               optionFilterProp="label"
               options={teams

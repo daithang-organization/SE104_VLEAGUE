@@ -1,9 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
 const mockSeasonApi = vi.hoisted(() => ({
   apiGetSeasons: vi.fn().mockResolvedValue([{ id: 's1', name: 'V.League 2025' }]),
+  apiGetCurrentSeason: vi.fn().mockResolvedValue({ id: 's1', name: 'V.League 2025' }),
 }));
 const mockStandingsApi = vi.hoisted(() => ({
   apiGetStandings: vi.fn().mockResolvedValue([
@@ -34,21 +36,32 @@ const mockStandingsApi = vi.hoisted(() => ({
       points: 23,
     },
   ]),
-  apiGetTopScorers: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        playerId: 'p1',
-        playerName: 'Nguyễn Tiến Linh',
-        teamName: 'Bình Dương',
-        position: 1,
-        goals: 12,
-      },
-    ]),
+  apiGetTopScorers: vi.fn().mockResolvedValue([
+    {
+      playerId: 'p1',
+      playerName: 'Nguyễn Tiến Linh',
+      teamName: 'Bình Dương',
+      position: 1,
+      goals: 12,
+    },
+  ]),
 }));
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+    loading: false,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+  })),
+);
 
+vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
+vi.mock('../../services/teamManagerApi', () => ({
+  apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
+}));
 
 // Mock ExportButton to simplify
 vi.mock('../../components/ExportButton', () => ({
@@ -58,7 +71,14 @@ vi.mock('../../components/ExportButton', () => ({
 import StandingsPage from '../StandingsPage';
 
 function renderPage() {
-  return render(<StandingsPage />);
+  return render(
+    <MemoryRouter initialEntries={['/standings']}>
+      <Routes>
+        <Route path="/standings" element={<StandingsPage />} />
+        <Route path="/teams/:id" element={<div>Team Detail Route</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 describe('StandingsPage', () => {
@@ -102,5 +122,22 @@ describe('StandingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Nguyễn Tiến Linh')).toBeInTheDocument();
     });
+  });
+
+  it('navigates to team detail when clicking a team in standings', async () => {
+    renderPage();
+
+    const teamButton = await waitFor(() => {
+      const button = screen
+        .getAllByRole('button')
+        .find((candidate) => candidate.textContent?.includes('FC'));
+
+      expect(button).toBeDefined();
+      return button;
+    });
+
+    fireEvent.click(teamButton!);
+
+    expect(screen.getByText('Team Detail Route')).toBeInTheDocument();
   });
 });
