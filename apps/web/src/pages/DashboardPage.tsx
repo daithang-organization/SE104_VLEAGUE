@@ -333,7 +333,30 @@ function TeamManagerDashboard() {
             <Table
               columns={[
                 { title: '#', dataIndex: 'position', width: 50 },
-                { title: 'Đội', dataIndex: 'teamName' },
+                {
+                  title: 'Đội',
+                  dataIndex: 'teamName',
+                  render: (teamName: string) => {
+                    const logoUrl = getTeamLogoUrl(teamName);
+                    return (
+                      <Space size={8}>
+                        {logoUrl && (
+                          <img
+                            src={logoUrl}
+                            alt={`${teamName} logo`}
+                            style={{
+                              width: 24,
+                              height: 24,
+                              objectFit: 'contain',
+                              flex: '0 0 auto',
+                            }}
+                          />
+                        )}
+                        <Typography.Text strong>{teamName}</Typography.Text>
+                      </Space>
+                    );
+                  },
+                },
                 { title: 'Trận', dataIndex: 'played', width: 70 },
                 { title: 'Điểm', dataIndex: 'points', width: 70 },
                 {
@@ -513,6 +536,10 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isAdmin = user?.role === 'ADMIN';
+  const dashboardWelcome =
+    user?.role === 'REFEREE'
+      ? 'Chào mừng đến trang quản lý chính thức của VLeague dành cho trọng tài'
+      : t('dashboard.welcome');
   const [stats, setStats] = useState({
     teams: 0,
     players: 0,
@@ -917,7 +944,7 @@ export default function DashboardPage() {
       `}</style>
 
       <Typography.Title level={3}>{t('dashboard.title')}</Typography.Title>
-      <Typography.Paragraph type="secondary">{t('dashboard.welcome')}</Typography.Paragraph>
+      <Typography.Paragraph type="secondary">{dashboardWelcome}</Typography.Paragraph>
 
       {loading ? (
         <Row gutter={[16, 16]}>
