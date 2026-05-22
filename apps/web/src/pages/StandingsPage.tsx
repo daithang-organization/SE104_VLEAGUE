@@ -157,7 +157,7 @@ export default function StandingsPage() {
                 style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
               />
             )}
-            <Typography.Link strong style={{ color: '#fff' }}>
+            <Typography.Link strong className="standings-team-link">
               {teamName}
             </Typography.Link>
           </Flex>
@@ -262,8 +262,14 @@ export default function StandingsPage() {
         .standings-rank-manager {
           box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.85), 0 0 18px rgba(250, 204, 21, 0.4);
         }
+        .standings-team-link {
+          color: #dc2626 !important;
+        }
         .standings-manager-team td {
           background: rgba(250, 204, 21, 0.08) !important;
+        }
+        :root[data-theme='dark'] .standings-team-link {
+          color: #ffffff !important;
         }
         :root[data-theme='dark'] .standings-rank-afc-cl {
           background: rgba(22, 163, 74, 0.26);
