@@ -103,6 +103,7 @@ function TeamManagerDashboard() {
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
+  const [seasonMatches, setSeasonMatches] = useState<Match[]>([]);
   const [teamMatches, setTeamMatches] = useState<Match[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
 
@@ -130,6 +131,7 @@ function TeamManagerDashboard() {
   useEffect(() => {
     if (!selectedTeamId || !currentSeason) {
       setTeam(null);
+      setSeasonMatches([]);
       setTeamMatches([]);
       setStandings([]);
       setTopScorers([]);
@@ -151,6 +153,7 @@ function TeamManagerDashboard() {
         );
 
         setTeam(teamData);
+        setSeasonMatches(matchesData.data);
         setTeamMatches(matches);
         setStandings(standingsData);
         setTopScorers(
@@ -192,14 +195,24 @@ function TeamManagerDashboard() {
         Math.max(0, selectedStanding.position - 3) + 5,
       )
     : standings.slice(0, 5);
-  const latestFinishedRound = Math.max(
-    0,
-    ...teamMatches.filter((match) => match.status === 'FINISHED').map((match) => match.roundNo),
-  );
-  const currentRound = Math.max(latestFinishedRound, (selectedStanding?.played ?? 0) + 1);
+  const matchesByRound = seasonMatches.reduce((roundMap, match) => {
+    const roundMatches = roundMap.get(match.roundNo) ?? [];
+    roundMatches.push(match);
+    roundMap.set(match.roundNo, roundMatches);
+    return roundMap;
+  }, new Map<number, Match[]>());
+  const lastCompletedRound = [...matchesByRound.entries()]
+    .sort(([roundA], [roundB]) => roundA - roundB)
+    .reduce((completedRound, [roundNo, roundMatches]) => {
+      if (completedRound !== roundNo - 1) return completedRound;
+      return roundMatches.every((match) => match.status === 'FINISHED') ? roundNo : completedRound;
+    }, 0);
   const upcomingMatches = teamMatches
-    .filter((match) => match.status !== 'FINISHED' && match.roundNo > currentRound)
-    .sort((a, b) => a.roundNo - b.roundNo)
+    .filter((match) => match.status !== 'FINISHED' && match.roundNo > lastCompletedRound)
+    .sort((a, b) => {
+      if (a.roundNo !== b.roundNo) return a.roundNo - b.roundNo;
+      return dayjs(a.kickoffAt ?? 0).valueOf() - dayjs(b.kickoffAt ?? 0).valueOf();
+    })
     .slice(0, 5);
   const recentResults = teamMatches
     .filter((match) => match.status === 'FINISHED')
