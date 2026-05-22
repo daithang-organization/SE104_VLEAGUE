@@ -1,3 +1,4 @@
+import { WarningOutlined } from '@ant-design/icons';
 import { Flex, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
@@ -43,15 +44,7 @@ export default function CardStatsTab({ data, loading }: Props) {
       render: (v: number) =>
         v > 0 ? (
           <Space size={4}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 12,
-                height: 16,
-                background: color,
-                borderRadius: 2,
-              }}
-            />
+            <WarningOutlined style={{ color }} />
             {v}
           </Space>
         ) : (

@@ -1,3 +1,4 @@
+import { WarningOutlined } from '@ant-design/icons';
 import { Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
@@ -65,14 +66,14 @@ export default function TeamStatsTab({ data, loading }: Props) {
       sorter: (a, b) => a.cleanSheets - b.cleanSheets,
     },
     {
-      title: '🟨',
+      title: <WarningOutlined style={{ color: '#faad14' }} />,
       dataIndex: 'yellowCards',
       width: 55,
       align: 'center',
       sorter: (a, b) => a.yellowCards - b.yellowCards,
     },
     {
-      title: '🟥',
+      title: <WarningOutlined style={{ color: '#f5222d' }} />,
       dataIndex: 'redCards',
       width: 55,
       align: 'center',

@@ -1,6 +1,13 @@
-import { DownloadOutlined } from '@ant-design/icons';
+import {
+  BarChartOutlined,
+  DownloadOutlined,
+  RiseOutlined,
+  TeamOutlined,
+  TrophyOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
 import { Alert, Button, Card, Flex, message, Space, Tabs, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton } from '../components';
 import {
@@ -18,6 +25,17 @@ import ChartsTab from './reports/ChartsTab';
 import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
+
+const cleanTabLabel = (label: string) => label.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+
+function reportTabLabel(icon: ReactNode, label: string) {
+  return (
+    <Space size={6}>
+      {icon}
+      <span>{cleanTabLabel(label)}</span>
+    </Space>
+  );
+}
 
 /* ────────── Dynamic PDF Export ────────── */
 
@@ -184,27 +202,27 @@ export default function ReportsPage() {
           items={[
             {
               key: 'scorers',
-              label: t('reports.tabScorers'),
+              label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
               children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
             },
             {
               key: 'assists',
-              label: t('reports.tabAssists'),
+              label: reportTabLabel(<RiseOutlined />, t('reports.tabAssists')),
               children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
             },
             {
               key: 'cards',
-              label: t('reports.tabCards'),
+              label: reportTabLabel(<WarningOutlined />, t('reports.tabCards')),
               children: <CardStatsTab data={cardStats} loading={loading} />,
             },
             {
               key: 'team-stats',
-              label: t('reports.tabTeamStats'),
+              label: reportTabLabel(<TeamOutlined />, t('reports.tabTeamStats')),
               children: <TeamStatsTab data={teamStats} loading={loading} />,
             },
             {
               key: 'charts',
-              label: t('reports.tabCharts'),
+              label: reportTabLabel(<BarChartOutlined />, t('reports.tabCharts')),
               children: (
                 <ChartsTab scorers={scorers.slice(0, 10)} teamStats={teamStats} loading={loading} />
               ),
