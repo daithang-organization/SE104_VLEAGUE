@@ -230,10 +230,11 @@ export class MatchController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REFEREE)
   @ApiOperation({
     summary: 'Cập nhật thông tin trận đấu',
-    description: 'Cập nhật sân vận động và giờ thi đấu. Chỉ ADMIN có quyền.',
+    description:
+      'Cập nhật thông tin trận đấu và tỉ số. ADMIN và REFEREE có quyền cập nhật kết quả.',
   })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiBody({
@@ -267,7 +268,9 @@ export class MatchController {
   })
   @ApiOkResponse({ description: 'Trận đấu đã được cập nhật' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
-  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  @ApiForbiddenResponse({
+    description: 'Không có quyền (yêu cầu ADMIN hoặc REFEREE)',
+  })
   updateMatch(
     @Param('id') id: string,
     @Body()
@@ -282,12 +285,12 @@ export class MatchController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REFEREE)
   @ApiOperation({
     summary: 'Cập nhật trạng thái trận đấu',
     description:
       'Chuyển trạng thái trận đấu theo state machine: DRAFT → PUBLISHED → LOCKED → FINISHED. ' +
-      'DRAFT/PUBLISHED có thể chuyển sang POSTPONED. Chỉ ADMIN có quyền.',
+      'DRAFT/PUBLISHED có thể chuyển sang POSTPONED. ADMIN và REFEREE có quyền cập nhật trạng thái.',
   })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiBody({
@@ -306,7 +309,9 @@ export class MatchController {
   @ApiOkResponse({ description: 'Trạng thái đã được cập nhật' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy trận đấu' })
   @ApiBadRequestResponse({ description: 'Chuyển trạng thái không hợp lệ' })
-  @ApiForbiddenResponse({ description: 'Không có quyền (yêu cầu ADMIN)' })
+  @ApiForbiddenResponse({
+    description: 'Không có quyền (yêu cầu ADMIN hoặc REFEREE)',
+  })
   updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
     return this.match.updateStatus(id, body.status);
   }

@@ -30,7 +30,7 @@ import { useAuth } from '../auth/AuthContext';
 import { CardSkeleton } from '../components';
 import { apiGetMatches, type Match } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
-import { apiGetSchedule, type ScheduleMatch } from '../services/scheduleApi';
+import { apiGetSchedule } from '../services/scheduleApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetCardStats,
@@ -60,6 +60,8 @@ type RecentResult = {
   kickoffAt: string | null;
 };
 
+const FORM_SLOTS = 5;
+
 function getDashboardSeason(seasons: Season[]) {
   return (
     seasons.find((season) => {
@@ -74,6 +76,23 @@ function getDashboardSeason(seasons: Season[]) {
       .filter((season) => season.startDate)
       .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
     null
+  );
+}
+
+function renderDashboardRecentForm(recentForm: TeamStanding['recentForm'] = []) {
+  const slots = Array.from({ length: FORM_SLOTS }, (_, index) => recentForm[index]);
+  return (
+    <Space size={4}>
+      {slots.map((result, index) => (
+        <span
+          key={`${result ?? 'empty'}-${index}`}
+          className={`standings-form-box standings-form-${result?.toLowerCase() ?? 'empty'}`}
+          title={result ?? ''}
+        >
+          {result === 'W' ? '✓' : result === 'D' ? '−' : result === 'L' ? '×' : ''}
+        </span>
+      ))}
+    </Space>
   );
 }
 
@@ -186,23 +205,6 @@ function TeamManagerDashboard() {
     .filter((match) => match.status === 'FINISHED')
     .sort((a, b) => b.roundNo - a.roundNo)
     .slice(0, 5);
-
-  const renderMiniRecentForm = (recentForm: TeamStanding['recentForm'] = []) => {
-    const slots = Array.from({ length: 5 }, (_, index) => recentForm[index]);
-    return (
-      <Space size={4}>
-        {slots.map((result, index) => (
-          <span
-            key={`${result ?? 'empty'}-${index}`}
-            className={`standings-form-box standings-form-${result?.toLowerCase() ?? 'empty'}`}
-            title={result ?? ''}
-          >
-            {result === 'W' ? '✓' : result === 'D' ? '−' : result === 'L' ? '×' : ''}
-          </span>
-        ))}
-      </Space>
-    );
-  };
 
   if (!selectedTeamId) {
     return (
@@ -326,7 +328,7 @@ function TeamManagerDashboard() {
                   dataIndex: 'recentForm',
                   width: 140,
                   align: 'center',
-                  render: renderMiniRecentForm,
+                  render: renderDashboardRecentForm,
                 },
               ]}
               dataSource={standingsWindow}
@@ -505,7 +507,7 @@ export default function DashboardPage() {
     seasons: 0,
   });
   const [standings, setStandings] = useState<TeamStanding[]>([]);
-  const [upcoming, setUpcoming] = useState<ScheduleMatch[]>([]);
+  const [upcoming, setUpcoming] = useState<Match[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [seasonProgress, setSeasonProgress] = useState<number | null>(null);
@@ -554,14 +556,6 @@ export default function DashboardPage() {
           setStandings(standingsData.value.slice(0, 5));
         }
 
-        if (schedule.status === 'fulfilled') {
-          const now = new Date();
-          const upcomingMatches = (schedule.value.matches ?? [])
-            .filter((m) => m.kickoffAt && new Date(m.kickoffAt) > now && m.status !== 'FINISHED')
-            .slice(0, 5);
-          setUpcoming(upcomingMatches);
-        }
-
         if (matchesData.status === 'fulfilled') {
           const finished = matchesData.value.data
             .filter((m) => m.status === 'FINISHED')
@@ -595,12 +589,34 @@ export default function DashboardPage() {
           const seasonMatches = await apiGetMatches(dashboardSeason.id, 1, 1000);
           const teamIds = new Set<string>();
           let finishedMatches = 0;
+          const sortedSeasonMatches = [...seasonMatches.data].sort((a, b) => {
+            if (a.roundNo !== b.roundNo) return a.roundNo - b.roundNo;
+            return dayjs(a.kickoffAt ?? 0).valueOf() - dayjs(b.kickoffAt ?? 0).valueOf();
+          });
 
-          seasonMatches.data.forEach((match) => {
+          sortedSeasonMatches.forEach((match) => {
             teamIds.add(match.homeTeamId);
             teamIds.add(match.awayTeamId);
             if (match.status === 'FINISHED') finishedMatches++;
           });
+
+          const latestFinishedRound = Math.max(
+            0,
+            ...sortedSeasonMatches
+              .filter((match) => match.status === 'FINISHED')
+              .map((match) => match.roundNo),
+          );
+          const nextRoundNo =
+            sortedSeasonMatches.find(
+              (match) => match.status !== 'FINISHED' && match.roundNo > latestFinishedRound,
+            )?.roundNo ?? sortedSeasonMatches.find((match) => match.status !== 'FINISHED')?.roundNo;
+          setUpcoming(
+            nextRoundNo
+              ? sortedSeasonMatches.filter(
+                  (match) => match.status !== 'FINISHED' && match.roundNo === nextRoundNo,
+                )
+              : [],
+          );
 
           const roundRobinFixtures = teamIds.size > 1 ? teamIds.size * (teamIds.size - 1) : 0;
           const totalSeasonMatches =
@@ -612,6 +628,7 @@ export default function DashboardPage() {
           );
         } else {
           setSeasonProgress(null);
+          setUpcoming([]);
         }
 
         if (scorersData.status === 'fulfilled') {
@@ -651,12 +668,37 @@ export default function DashboardPage() {
 
   const standingsCols: ColumnsType<TeamStanding> = [
     { title: t('dashboard.standingsColRank'), dataIndex: 'position', width: 50 },
-    { title: t('dashboard.standingsColTeam'), dataIndex: 'teamName' },
+    {
+      title: t('dashboard.standingsColTeam'),
+      dataIndex: 'teamName',
+      render: (teamName: string) => {
+        const logoUrl = getTeamLogoUrl(teamName);
+        return (
+          <Space size={8}>
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={`${teamName} logo`}
+                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+              />
+            )}
+            <Typography.Text strong>{teamName}</Typography.Text>
+          </Space>
+        );
+      },
+    },
     { title: t('dashboard.standingsColPlayed'), dataIndex: 'played', width: 60 },
     { title: t('dashboard.standingsColPoints'), dataIndex: 'points', width: 60 },
+    {
+      title: '5 trận gần nhất',
+      dataIndex: 'recentForm',
+      width: 140,
+      align: 'center',
+      render: renderDashboardRecentForm,
+    },
   ];
 
-  const upcomingCols: ColumnsType<ScheduleMatch> = [
+  const upcomingCols: ColumnsType<Match> = [
     {
       title: t('dashboard.upcomingColRound'),
       dataIndex: 'roundNo',
@@ -666,20 +708,39 @@ export default function DashboardPage() {
     {
       title: t('dashboard.upcomingColMatch'),
       key: 'match',
-      render: (_, r) => `${r.homeTeam?.name ?? '—'} vs ${r.awayTeam?.name ?? '—'}`,
+      render: (_, r) => (
+        <div className="dashboard-upcoming-match">
+          <span className="dashboard-upcoming-team dashboard-upcoming-team-left">
+            {r.homeTeam?.name ?? '-'}
+          </span>
+          {r.homeTeam && getTeamLogoUrl(r.homeTeam) && (
+            <img
+              className="dashboard-upcoming-logo"
+              src={getTeamLogoUrl(r.homeTeam)}
+              alt={`${r.homeTeam.name} logo`}
+            />
+          )}
+          <Typography.Text type="secondary" className="dashboard-upcoming-vs">
+            vs
+          </Typography.Text>
+          {r.awayTeam && getTeamLogoUrl(r.awayTeam) && (
+            <img
+              className="dashboard-upcoming-logo"
+              src={getTeamLogoUrl(r.awayTeam)}
+              alt={`${r.awayTeam.name} logo`}
+            />
+          )}
+          <span className="dashboard-upcoming-team dashboard-upcoming-team-right">
+            {r.awayTeam?.name ?? '-'}
+          </span>
+        </div>
+      ),
     },
     {
       title: t('dashboard.upcomingColTime'),
       dataIndex: 'kickoffAt',
       width: 150,
-      render: (v: string) => dayjs(v).format('DD/MM HH:mm'),
-    },
-    {
-      title: t('dashboard.upcomingColStatus'),
-      dataIndex: 'status',
-      width: 110,
-      // Đổi tag PUBLISHED sang màu đỏ
-      render: (s: string) => <Tag color={s === 'PUBLISHED' ? 'red' : 'default'}>{s}</Tag>,
+      render: (v: string | null) => (v ? dayjs(v).format('DD/MM HH:mm') : '-'),
     },
   ];
 
@@ -798,6 +859,41 @@ export default function DashboardPage() {
         :root[data-theme='light'] .stat-card .ant-statistic-content-prefix,
         :root[data-theme='light'] .stat-card .ant-statistic-content-value {
           color: #ffffff !important;
+        }
+
+        .dashboard-upcoming-match {
+          display: grid;
+          grid-template-columns: minmax(140px, 1fr) 28px 28px 28px minmax(140px, 1fr);
+          align-items: center;
+          column-gap: 8px;
+        }
+
+        .dashboard-upcoming-team {
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .dashboard-upcoming-team-left {
+          text-align: right;
+        }
+
+        .dashboard-upcoming-team-right {
+          text-align: left;
+        }
+
+        .dashboard-upcoming-logo {
+          width: 24px;
+          height: 24px;
+          object-fit: contain;
+          justify-self: center;
+          flex: 0 0 auto;
+        }
+
+        .dashboard-upcoming-vs {
+          justify-self: center;
+          font-weight: 700;
         }
 
         /* Keyframe xoay Aura */

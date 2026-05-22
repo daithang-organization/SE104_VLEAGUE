@@ -146,7 +146,7 @@ export default function MatchesPage() {
     loadMatches(val, searchText, filterStatus, filterTeam);
   };
 
-  // â”€â”€ Group matches by round â”€â”€
+  // Group matches by round
   const availableTeams = useMemo(() => {
     const teamMap = new Map<string, string>();
     // We want to see all teams in the filter, so we use the full list of matches
@@ -223,7 +223,7 @@ export default function MatchesPage() {
     }
   };
 
-  // â”€â”€ Score update â”€â”€
+  // Score update
   const handleSaveScore = async (homeScore: number, awayScore: number) => {
     if (!detailMatch) return;
     try {
@@ -240,7 +240,7 @@ export default function MatchesPage() {
     }
   };
 
-  // â”€â”€ Status update â”€â”€
+  // Status update
   const handleStatusChange = async (newStatus: string) => {
     if (!detailMatch) return;
     try {
@@ -260,7 +260,7 @@ export default function MatchesPage() {
     }
   };
 
-  // â”€â”€ Add events (batch) â”€â”€
+  // Add events (batch)
   const handleAddEvent = async (teamSide: 'home' | 'away', events: EventFormRow[]) => {
     if (!detailMatch) return;
     try {
@@ -440,7 +440,7 @@ export default function MatchesPage() {
     return (
       <Timeline
         items={events.map((e) => {
-          const meta = EVENT_TYPE_MAP[e.type] ?? { label: e.type, color: 'default', icon: 'â€¢' };
+          const meta = EVENT_TYPE_MAP[e.type] ?? { label: e.type, color: 'default', icon: '•' };
           return {
             color: meta.color,
             children: (
@@ -448,10 +448,10 @@ export default function MatchesPage() {
                 <strong>
                   {meta.icon} {e.minute}'
                 </strong>{' '}
-                â€” <Tag color={meta.color}>{meta.label}</Tag>
+                - <Tag color={meta.color}>{meta.label}</Tag>
                 {e.player && <span>{e.player.fullName}</span>}
                 {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
-                {e.note && <span style={{ color: '#888', marginLeft: 8 }}>â€” {e.note}</span>}
+                {e.note && <span style={{ color: '#888', marginLeft: 8 }}>- {e.note}</span>}
               </div>
             ),
           };
@@ -563,7 +563,7 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {/* â”€â”€ Match Detail Modal â”€â”€ */}
+      {/* Match Detail Modal */}
       <Modal
         title={t('matches.detailModalTitle')}
         open={!!detailMatch}
@@ -615,7 +615,7 @@ export default function MatchesPage() {
                 )
                 .sort((a, b) => (a.minute ?? 0) - (b.minute ?? 0));
 
-              // Group events by player â†’ { name, minutes[] }
+              // Group events by player -> { name, minutes[] }
               const groupByPlayer = (evts: MatchEvent[]) => {
                 const grouped = new Map<
                   string,
@@ -628,7 +628,7 @@ export default function MatchesPage() {
                     existing.minutes.push({ minute: g.minute, type: g.type });
                   } else {
                     grouped.set(pid, {
-                      name: g.player?.fullName ?? 'â€”',
+                      name: g.player?.fullName ?? '-',
                       minutes: [{ minute: g.minute, type: g.type }],
                     });
                   }
@@ -645,7 +645,7 @@ export default function MatchesPage() {
                         key={pid}
                         style={{ fontSize: 12, color: '#555', textAlign: align, lineHeight: 1.7 }}
                       >
-                        âš½ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
+                        ⚽ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
                         <span style={{ color: '#999' }}>
                           {minutes
                             .sort((a, b) => a.minute - b.minute)
@@ -680,7 +680,7 @@ export default function MatchesPage() {
                           .map((m, i) => (
                             <span key={i}>
                               {i > 0 && ', '}
-                              {m.type === 'RED_CARD' ? 'ðŸŸ¥' : 'ðŸŸ¨'}
+                              {m.type === 'RED_CARD' ? '🟥' : '🟨'}
                             </span>
                           ))}{' '}
                         <span style={{ fontWeight: 500 }}>{name}</span>{' '}
@@ -717,7 +717,7 @@ export default function MatchesPage() {
                         </div>
                       )}
                       <Typography.Text strong style={{ fontSize: 16 }}>
-                        {detailMatch.homeTeam?.name ?? 'â€”'}
+                        {detailMatch.homeTeam?.name ?? '-'}
                       </Typography.Text>
                       <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>
                         {t('matches.homeTeamLabel')}
@@ -727,7 +727,7 @@ export default function MatchesPage() {
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 80 }}>
                       <Typography.Title level={2} style={{ margin: 0 }}>
-                        {detailMatch.homeScore ?? 'â€”'} : {detailMatch.awayScore ?? 'â€”'}
+                        {detailMatch.homeScore ?? '-'} : {detailMatch.awayScore ?? '-'}
                       </Typography.Title>
                       <Tag
                         color={STATUS_MAP[detailMatch.status]?.color ?? 'default'}
@@ -747,7 +747,7 @@ export default function MatchesPage() {
                         </div>
                       )}
                       <Typography.Text strong style={{ fontSize: 16 }}>
-                        {detailMatch.awayTeam?.name ?? 'â€”'}
+                        {detailMatch.awayTeam?.name ?? '-'}
                       </Typography.Text>
                       <div style={{ color: '#888', fontSize: 12, marginBottom: 2 }}>
                         {t('matches.awayTeamLabel')}
@@ -768,12 +768,12 @@ export default function MatchesPage() {
                 {detailMatch.leg === 1 ? t('common.leg1') : t('common.leg2')}
               </Descriptions.Item>
               <Descriptions.Item label={t('matches.stadiumDescLabel')}>
-                {detailMatch.stadium?.name ?? 'â€”'}
+                {detailMatch.stadium?.name ?? '-'}
               </Descriptions.Item>
               <Descriptions.Item label={t('matches.timeDescLabel')}>
                 {detailMatch.kickoffAt
                   ? dayjs(detailMatch.kickoffAt).format('DD/MM/YYYY HH:mm')
-                  : 'â€”'}
+                  : '-'}
               </Descriptions.Item>
             </Descriptions>
 
@@ -820,7 +820,7 @@ export default function MatchesPage() {
         )}
       </Modal>
 
-      {/* â”€â”€ Score Edit Modal â”€â”€ */}
+      {/* Score Edit Modal */}
       {detailMatch && (
         <ScoreEditModal
           open={scoreModalOpen}
@@ -834,7 +834,7 @@ export default function MatchesPage() {
         />
       )}
 
-      {/* â”€â”€ Add Event Modal (Batch) â”€â”€ */}
+      {/* Add Event Modal (Batch) */}
       {detailMatch && (
         <EventModal
           open={eventModalOpen}
