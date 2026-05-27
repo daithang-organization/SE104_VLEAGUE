@@ -74,6 +74,21 @@ const mockTeamApi = vi.hoisted(() => ({
   apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 0 }),
 }));
 const mockTeamInvitationApi = vi.hoisted(() => ({
+  apiGetInvitationCandidates: vi.fn().mockResolvedValue({
+    targetSeason: { id: 's1', name: 'VLeague 2025/2026', year: 2025, status: 'IN_PROGRESS' },
+    previousSeason: { id: 's2', name: 'VLeague 2024/2025', year: 2024, status: 'COMPLETED' },
+    candidates: [
+      {
+        teamId: 'team-1',
+        teamName: 'CLB Bình Định',
+        sourceType: 'PREVIOUS_TOP_8',
+        sourceRank: 1,
+        points: 42,
+        goalDifference: 18,
+        invitationStatus: null,
+      },
+    ],
+  }),
   apiGetSeasonInvitations: vi.fn().mockResolvedValue([
     {
       id: 'invitation-1',
@@ -191,6 +206,27 @@ describe('SeasonsPage', () => {
     expect(await screen.findByText('CLB Bình Định')).toBeInTheDocument();
     expect(screen.getByText('Đã đồng ý')).toBeInTheDocument();
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
+  });
+
+  it('sends top-8 candidate invitations with PREVIOUS_TOP_8 source', async () => {
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText('Top 8 mùa trước')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /gửi top 8/i }));
+
+    await waitFor(() => {
+      expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+      });
+    });
   });
 
   it('shows the backend validation reason when team approval fails', async () => {
