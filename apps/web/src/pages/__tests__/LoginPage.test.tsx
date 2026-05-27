@@ -53,6 +53,15 @@ describe('LoginPage', () => {
     expect(screen.getByText('VLeague Admin')).toBeInTheDocument();
   });
 
+  it('renders the V.League season logo in the login brand area', () => {
+    renderPage();
+
+    expect(screen.getByRole('img', { name: 'V.League 1 2025/26' })).toHaveAttribute(
+      'src',
+      '/V.League_1_2025-26_logo.svg.png',
+    );
+  });
+
   it('renders the V.League management system introduction', () => {
     renderPage();
 

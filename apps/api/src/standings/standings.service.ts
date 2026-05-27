@@ -14,7 +14,22 @@ export interface TeamStanding {
   goalDifference: number;
   points: number;
   recentForm: Array<'W' | 'D' | 'L'>;
+  requiresDrawLot?: boolean;
+  headToHeadGoalsFor?: number;
+  headToHeadGoalsAgainst?: number;
+  tieBreakNote?: string;
 }
+
+export type StandingsMode = 'in_progress' | 'final';
+
+type StandingMatch = {
+  homeTeamId: string;
+  awayTeamId: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  kickoffAt?: Date | null;
+  roundNo: number;
+};
 
 @Injectable()
 export class StandingsService {
@@ -24,15 +39,12 @@ export class StandingsService {
    * Calculate standings for a specific season
    * Win = 3 points, Draw = 1 point, Loss = 0 points
    */
-  async getStandings(seasonId?: string): Promise<TeamStanding[]> {
+  async getStandings(
+    seasonId?: string,
+    mode: StandingsMode = 'in_progress',
+  ): Promise<TeamStanding[]> {
     // Get the season (current if not specified)
-    let targetSeasonId = seasonId;
-    if (!targetSeasonId) {
-      const currentSeason = await this.prisma.season.findFirst({
-        where: { status: 'IN_PROGRESS' },
-      });
-      targetSeasonId = currentSeason?.id;
-    }
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
 
     // Get only teams registered (APPROVED) for this season via SeasonTeam
     let teams: { id: string; name: string }[];
@@ -61,6 +73,7 @@ export class StandingsService {
         seasonId: targetSeasonId,
         status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
         homeScore: { not: null },
+        awayScore: { not: null },
       },
       select: {
         homeTeamId: true,
@@ -165,22 +178,16 @@ export class StandingsService {
     }
 
     // Sort standings
-    const standings = Array.from(standingsMap.values()).sort((a, b) => {
-      // 1. Points (descending)
-      if (b.points !== a.points) return b.points - a.points;
-      // 2. Goal difference (descending)
-      if (b.goalDifference !== a.goalDifference)
-        return b.goalDifference - a.goalDifference;
-      // 3. Goals scored (descending)
-      if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-      // 4. Alphabetical (ascending)
-      return a.teamName.localeCompare(b.teamName);
-    });
+    let standings = Array.from(standingsMap.values()).sort((a, b) =>
+      this.compareByPrimaryStandingRules(a, b),
+    );
+
+    if (mode === 'final') {
+      standings = this.applyFinalTieBreakers(standings, matches);
+    }
 
     // Assign positions
-    standings.forEach((team, index) => {
-      team.position = index + 1;
-    });
+    this.assignPositions(standings, mode);
 
     return standings;
   }
@@ -189,13 +196,7 @@ export class StandingsService {
    * Get top scorers for a season
    */
   async getTopScorers(seasonId?: string, limit = 10) {
-    let targetSeasonId = seasonId;
-    if (!targetSeasonId) {
-      const currentSeason = await this.prisma.season.findFirst({
-        where: { status: 'IN_PROGRESS' },
-      });
-      targetSeasonId = currentSeason?.id;
-    }
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
 
     const goalEvents = await this.prisma.matchEvent.findMany({
       where: {
@@ -251,13 +252,7 @@ export class StandingsService {
    * Get top assists for a season
    */
   async getTopAssists(seasonId?: string, limit = 10) {
-    let targetSeasonId = seasonId;
-    if (!targetSeasonId) {
-      const currentSeason = await this.prisma.season.findFirst({
-        where: { status: 'IN_PROGRESS' },
-      });
-      targetSeasonId = currentSeason?.id;
-    }
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
 
     const assistEvents = await this.prisma.matchEvent.findMany({
       where: {
@@ -312,13 +307,7 @@ export class StandingsService {
    * Get card statistics per player for a season
    */
   async getCardStats(seasonId?: string, limit = 20) {
-    let targetSeasonId = seasonId;
-    if (!targetSeasonId) {
-      const currentSeason = await this.prisma.season.findFirst({
-        where: { status: 'IN_PROGRESS' },
-      });
-      targetSeasonId = currentSeason?.id;
-    }
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
 
     const cardEvents = await this.prisma.matchEvent.findMany({
       where: {
@@ -381,16 +370,116 @@ export class StandingsService {
   }
 
   /**
+   * Get player-of-the-match award counts for a season.
+   */
+  async getPlayerOfMatchStats(seasonId?: string, limit = 20) {
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
+
+    const reports = await this.prisma.matchReport.findMany({
+      where: {
+        bestPlayerId: { not: null },
+        match: {
+          seasonId: targetSeasonId,
+          status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        },
+      },
+      include: {
+        bestPlayer: { select: { id: true, fullName: true } },
+      },
+    });
+
+    const awardMap = new Map<
+      string,
+      {
+        playerId: string;
+        playerName: string;
+        awards: number;
+      }
+    >();
+
+    for (const report of reports) {
+      if (!report.bestPlayerId || !report.bestPlayer) continue;
+      const existing = awardMap.get(report.bestPlayerId);
+      if (existing) {
+        existing.awards++;
+      } else {
+        awardMap.set(report.bestPlayerId, {
+          playerId: report.bestPlayerId,
+          playerName: report.bestPlayer.fullName,
+          awards: 1,
+        });
+      }
+    }
+
+    return Array.from(awardMap.values())
+      .sort(
+        (a, b) =>
+          b.awards - a.awards || a.playerName.localeCompare(b.playerName),
+      )
+      .slice(0, limit)
+      .map((award, index) => ({ position: index + 1, ...award }));
+  }
+
+  /**
+   * Get suspensions created by the discipline rules for a season.
+   */
+  async getSuspensionStats(seasonId?: string) {
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
+
+    const suspensions = await this.prisma.playerSuspension.findMany({
+      where: { seasonId: targetSeasonId },
+      include: {
+        player: { select: { id: true, fullName: true } },
+        team: { select: { id: true, name: true } },
+        sourceMatch: { select: { id: true, roundNo: true } },
+        effectiveMatch: { select: { id: true, roundNo: true } },
+      },
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    return suspensions.map((suspension) => ({
+      id: suspension.id,
+      playerId: suspension.playerId,
+      playerName: suspension.player?.fullName ?? '—',
+      teamId: suspension.teamId,
+      teamName: suspension.team?.name ?? '—',
+      reason: suspension.reason,
+      status: suspension.status,
+      sourceMatchId: suspension.sourceMatchId,
+      sourceRound: suspension.sourceMatch?.roundNo ?? null,
+      effectiveMatchId: suspension.effectiveMatchId,
+      effectiveRound: suspension.effectiveMatch?.roundNo ?? null,
+      servedAt: suspension.servedAt,
+    }));
+  }
+
+  /**
+   * Summarize final season awards from standings and player statistics.
+   */
+  async getSeasonAwards(seasonId?: string) {
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
+    const [standings, topScorers, bestPlayers] = await Promise.all([
+      this.getStandings(targetSeasonId, 'final'),
+      this.getTopScorers(targetSeasonId, 1),
+      this.getPlayerOfMatchStats(targetSeasonId, 1),
+    ]);
+
+    return {
+      seasonId: targetSeasonId,
+      champion: standings[0] ?? null,
+      runnerUp: standings[1] ?? null,
+      topScorer: topScorers[0] ?? null,
+      bestPlayer: bestPlayers[0] ?? null,
+      requiresDrawLot: standings.some((standing) => standing.requiresDrawLot),
+      standings,
+    };
+  }
+
+  /**
    * Get aggregated team statistics for a season
    */
   async getTeamStats(seasonId?: string) {
-    let targetSeasonId = seasonId;
-    if (!targetSeasonId) {
-      const currentSeason = await this.prisma.season.findFirst({
-        where: { status: 'IN_PROGRESS' },
-      });
-      targetSeasonId = currentSeason?.id;
-    }
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
 
     // Get standings for base stats
     const standings = await this.getStandings(targetSeasonId);
@@ -602,5 +691,163 @@ export class StandingsService {
       goalsByRound,
       recentEvents: events.slice(0, 20),
     };
+  }
+
+  private async resolveSeasonId(seasonId?: string) {
+    if (seasonId) return seasonId;
+
+    const currentSeason = await this.prisma.season.findFirst({
+      where: { status: 'IN_PROGRESS' },
+    });
+    return currentSeason?.id;
+  }
+
+  private compareByPrimaryStandingRules(a: TeamStanding, b: TeamStanding) {
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.goalDifference !== a.goalDifference) {
+      return b.goalDifference - a.goalDifference;
+    }
+    return a.teamName.localeCompare(b.teamName);
+  }
+
+  private applyFinalTieBreakers(
+    standings: TeamStanding[],
+    matches: StandingMatch[],
+  ) {
+    const result: TeamStanding[] = [];
+
+    for (let index = 0; index < standings.length; ) {
+      const group = [standings[index]];
+      let nextIndex = index + 1;
+      while (
+        nextIndex < standings.length &&
+        standings[nextIndex].points === standings[index].points &&
+        standings[nextIndex].goalDifference === standings[index].goalDifference
+      ) {
+        group.push(standings[nextIndex]);
+        nextIndex++;
+      }
+
+      if (group.length === 2) {
+        result.push(
+          ...this.resolveTwoTeamFinalTie(group[0], group[1], matches),
+        );
+      } else if (group.length > 2) {
+        for (const standing of group) {
+          standing.requiresDrawLot = true;
+          standing.tieBreakNote =
+            'Có từ 3 đội trở lên bằng điểm và hiệu số; cần BTC xử lý/rút thăm theo quy định bổ sung.';
+        }
+        result.push(...group);
+      } else {
+        group[0].requiresDrawLot = false;
+        result.push(group[0]);
+      }
+
+      index = nextIndex;
+    }
+
+    return result;
+  }
+
+  private resolveTwoTeamFinalTie(
+    first: TeamStanding,
+    second: TeamStanding,
+    matches: StandingMatch[],
+  ) {
+    const aggregate = this.getHeadToHeadAggregate(
+      first.teamId,
+      second.teamId,
+      matches,
+    );
+
+    first.headToHeadGoalsFor = aggregate.firstGoals;
+    first.headToHeadGoalsAgainst = aggregate.secondGoals;
+    second.headToHeadGoalsFor = aggregate.secondGoals;
+    second.headToHeadGoalsAgainst = aggregate.firstGoals;
+
+    if (aggregate.firstGoals > aggregate.secondGoals) {
+      first.requiresDrawLot = false;
+      second.requiresDrawLot = false;
+      first.tieBreakNote = 'Xếp trên nhờ tổng tỷ số đối đầu.';
+      second.tieBreakNote = 'Xếp sau do tổng tỷ số đối đầu.';
+      return [first, second];
+    }
+
+    if (aggregate.firstGoals < aggregate.secondGoals) {
+      first.requiresDrawLot = false;
+      second.requiresDrawLot = false;
+      first.tieBreakNote = 'Xếp sau do tổng tỷ số đối đầu.';
+      second.tieBreakNote = 'Xếp trên nhờ tổng tỷ số đối đầu.';
+      return [second, first];
+    }
+
+    first.requiresDrawLot = true;
+    second.requiresDrawLot = true;
+    first.tieBreakNote = 'Bằng tổng tỷ số đối đầu; cần rút thăm.';
+    second.tieBreakNote = 'Bằng tổng tỷ số đối đầu; cần rút thăm.';
+    return [first, second].sort((a, b) => a.teamName.localeCompare(b.teamName));
+  }
+
+  private getHeadToHeadAggregate(
+    firstTeamId: string,
+    secondTeamId: string,
+    matches: StandingMatch[],
+  ) {
+    let firstGoals = 0;
+    let secondGoals = 0;
+
+    for (const match of matches) {
+      const involvesBothTeams =
+        (match.homeTeamId === firstTeamId &&
+          match.awayTeamId === secondTeamId) ||
+        (match.homeTeamId === secondTeamId && match.awayTeamId === firstTeamId);
+      if (!involvesBothTeams) continue;
+
+      const homeScore = match.homeScore ?? 0;
+      const awayScore = match.awayScore ?? 0;
+      if (match.homeTeamId === firstTeamId) {
+        firstGoals += homeScore;
+        secondGoals += awayScore;
+      } else {
+        firstGoals += awayScore;
+        secondGoals += homeScore;
+      }
+    }
+
+    return { firstGoals, secondGoals };
+  }
+
+  private assignPositions(standings: TeamStanding[], mode: StandingsMode) {
+    let currentPosition = 1;
+
+    standings.forEach((team, index) => {
+      if (index === 0) {
+        team.position = currentPosition;
+        return;
+      }
+
+      const previous = standings[index - 1];
+      const sharesPrimaryRank =
+        team.points === previous.points &&
+        team.goalDifference === previous.goalDifference;
+      const unresolvedFinalTie =
+        mode === 'final' &&
+        sharesPrimaryRank &&
+        Boolean(team.requiresDrawLot && previous.requiresDrawLot);
+
+      if (mode === 'in_progress' && sharesPrimaryRank) {
+        team.position = currentPosition;
+        return;
+      }
+
+      if (unresolvedFinalTie) {
+        team.position = currentPosition;
+        return;
+      }
+
+      currentPosition = index + 1;
+      team.position = currentPosition;
+    });
   }
 }

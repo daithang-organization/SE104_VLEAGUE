@@ -191,4 +191,36 @@ describe('SeasonsPage', () => {
     expect(screen.getByText('Đã đồng ý')).toBeInTheDocument();
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
+
+  it('shows the club decline reason in the admin season team panel', async () => {
+    mockTeamInvitationApi.apiGetSeasonInvitations.mockResolvedValueOnce([
+      {
+        id: 'invitation-1',
+        seasonId: 's1',
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+        status: 'DECLINED',
+        sentAt: '2025-01-01T00:00:00Z',
+        deadlineAt: '2025-01-15T00:00:00Z',
+        responseAt: '2025-01-03T00:00:00Z',
+        responseReason: 'Không đủ ngân sách tham dự mùa giải mới',
+        regulationsSnapshot: null,
+        team: { id: 'team-1', name: 'CLB Bình Định' },
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-03T00:00:00Z',
+      },
+    ]);
+
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText('Đã từ chối')).toBeInTheDocument();
+    expect(screen.getByText('Không đủ ngân sách tham dự mùa giải mới')).toBeInTheDocument();
+  });
 });

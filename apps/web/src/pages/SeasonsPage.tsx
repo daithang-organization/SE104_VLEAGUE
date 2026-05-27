@@ -244,6 +244,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           label: invitation.status,
           color: 'default',
         };
+        const declineReason = invitation.responseReason?.trim();
 
         return (
           <div>
@@ -253,6 +254,18 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               {' · '}
               hạn {dayjs(invitation.deadlineAt).format('DD/MM/YYYY')}
             </div>
+            {invitation.status === 'DECLINED' && declineReason && (
+              <Tooltip title={declineReason}>
+                <div style={{ marginTop: 6, whiteSpace: 'normal', lineHeight: 1.45 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 700 }}>
+                    Lý do:{' '}
+                  </Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {declineReason}
+                  </Typography.Text>
+                </div>
+              </Tooltip>
+            )}
           </div>
         );
       },

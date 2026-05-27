@@ -5,7 +5,6 @@ import {
   GoogleOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
-  TrophyOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Checkbox, Divider, Form, Input, message, Space, Typography } from 'antd';
 import { useEffect, useState } from 'react';
@@ -13,6 +12,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { getFacebookAuthUrl, getGoogleAuthUrl } from '../services/authApi';
+
+const seasonLogoSrc = '/V.League_1_2025-26_logo.svg.png';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -96,8 +97,8 @@ export default function LoginPage() {
 
       <section className="login-showcase" aria-labelledby="login-system-title">
         <div className="login-brand-row">
-          <div className="login-brand-mark" aria-hidden="true">
-            <TrophyOutlined />
+          <div className="login-brand-mark">
+            <img className="login-season-logo" src={seasonLogoSrc} alt="V.League 1 2025/26" />
           </div>
           <div>
             <Typography.Text className="login-eyebrow">{t('login.systemEyebrow')}</Typography.Text>
