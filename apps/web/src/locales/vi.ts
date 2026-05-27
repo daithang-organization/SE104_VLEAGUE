@@ -284,6 +284,7 @@ const vi = {
   matchDetail: {
     title: 'Chi tiết trận đấu — Vòng {round}',
     loadError: 'Không thể tải chi tiết trận đấu',
+    lineupLoadError: 'Không thể tải dữ liệu đăng ký thi đấu',
     notFound: 'Không tìm thấy trận đấu',
     back: 'Quay lại',
     homeLabel: '🏠 Đội nhà',

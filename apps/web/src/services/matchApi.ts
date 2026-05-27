@@ -72,6 +72,8 @@ export type RosterPlayer = {
   playerId: string;
   fullName: string;
   position: string;
+  nationality?: string | null;
+  dob?: string | null;
   jerseyNumber?: number | null;
 };
 
@@ -80,6 +82,76 @@ export type TeamRoster = {
   teamName: string;
   count: number;
   players: RosterPlayer[];
+};
+
+export type MatchKitType = 'PRIMARY' | 'BACKUP';
+export type MatchLineupRole = 'STARTER' | 'SUBSTITUTE';
+export type MatchLineupStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+export type PlayerPosition = 'GK' | 'DF' | 'MF' | 'FW';
+
+export type SubmitMatchLineupPlayerPayload = {
+  playerId: string;
+  role: MatchLineupRole;
+  position?: PlayerPosition;
+  shirtNumber?: number;
+};
+
+export type SubmitMatchLineupPayload = {
+  teamId: string;
+  kitType: MatchKitType;
+  formation: string;
+  players: SubmitMatchLineupPlayerPayload[];
+};
+
+export type ReviewMatchLineupPayload = {
+  status: Extract<MatchLineupStatus, 'APPROVED' | 'REJECTED'>;
+  reviewNote?: string;
+};
+
+export type MatchLineupPlayer = {
+  id: string;
+  registrationId: string;
+  playerId: string;
+  role: MatchLineupRole;
+  position?: PlayerPosition | null;
+  shirtNumber?: number | null;
+  player?: {
+    id: string;
+    fullName: string;
+    position: string;
+    playerType?: 'DOMESTIC' | 'FOREIGN' | string;
+    nationality?: string | null;
+  } | null;
+};
+
+export type MatchTeamLineup = {
+  id: string;
+  matchId: string;
+  teamId: string;
+  kitType: MatchKitType;
+  formation: string;
+  status: MatchLineupStatus;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  team?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null } | null;
+  lineupPlayers?: MatchLineupPlayer[];
+};
+
+export type MatchSuspension = {
+  id: string;
+  playerId: string;
+  teamId: string;
+  seasonId: string;
+  sourceMatchId: string;
+  effectiveMatchId: string;
+  reason: string;
+  status: 'ACTIVE' | 'SERVED' | 'CANCELLED' | string;
+  servedAt?: string | null;
+  createdAt?: string;
+  player?: { id: string; fullName: string } | null;
+  team?: { id: string; name: string } | null;
+  sourceMatch?: { id: string; roundNo: number } | null;
 };
 
 // ─────────── API calls ───────────
@@ -125,4 +197,26 @@ export function apiUpdateMatch(
 
 export function apiUpdateMatchStatus(matchId: string, status: string) {
   return api.patch<Match>(`/matches/${matchId}/status`, { status }).then((res) => res.data);
+}
+
+export function apiGetMatchLineups(matchId: string) {
+  return api.get<MatchTeamLineup[]>(`/matches/${matchId}/lineups`).then((res) => res.data);
+}
+
+export function apiSubmitMatchLineup(matchId: string, data: SubmitMatchLineupPayload) {
+  return api.post<MatchTeamLineup>(`/matches/${matchId}/lineups`, data).then((res) => res.data);
+}
+
+export function apiReviewMatchLineup(
+  matchId: string,
+  teamId: string,
+  data: ReviewMatchLineupPayload,
+) {
+  return api
+    .patch<MatchTeamLineup>(`/matches/${matchId}/lineups/${teamId}/review`, data)
+    .then((res) => res.data);
+}
+
+export function apiGetMatchSuspensions(matchId: string) {
+  return api.get<MatchSuspension[]>(`/matches/${matchId}/suspensions`).then((res) => res.data);
 }

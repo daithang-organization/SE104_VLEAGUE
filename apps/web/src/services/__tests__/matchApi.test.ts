@@ -11,10 +11,14 @@ vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
   apiAddMatchEvent,
+  apiGetMatchLineups,
   apiGetMatch,
   apiGetMatches,
+  apiGetMatchSuspensions,
   apiGetTeamRoster,
+  apiReviewMatchLineup,
   apiRemoveMatchEvent,
+  apiSubmitMatchLineup,
   apiUpdateMatch,
   apiUpdateMatchStatus,
 } from '../matchApi';
@@ -88,5 +92,49 @@ describe('matchApi', () => {
     const result = await apiRemoveMatchEvent('m1', 'e1');
     expect(mockApi.delete).toHaveBeenCalledWith('/matches/m1/events/e1');
     expect(result).toEqual({ success: true });
+  });
+
+  it('apiGetMatchLineups calls GET /matches/:id/lineups', async () => {
+    const lineups = [{ id: 'lineup-1', matchId: 'm1', teamId: 't1' }];
+    mockApi.get.mockResolvedValue({ data: lineups });
+    const result = await apiGetMatchLineups('m1');
+    expect(mockApi.get).toHaveBeenCalledWith('/matches/m1/lineups');
+    expect(result).toEqual(lineups);
+  });
+
+  it('apiSubmitMatchLineup calls POST /matches/:id/lineups', async () => {
+    const payload = {
+      teamId: 't1',
+      kitType: 'PRIMARY' as const,
+      formation: '4-4-2',
+      players: Array.from({ length: 16 }, (_, index) => ({
+        playerId: `p${index + 1}`,
+        role: index < 11 ? ('STARTER' as const) : ('SUBSTITUTE' as const),
+        position: index === 0 ? ('GK' as const) : ('MF' as const),
+        shirtNumber: index + 1,
+      })),
+    };
+    const response = { id: 'lineup-1', matchId: 'm1', teamId: 't1' };
+    mockApi.post.mockResolvedValue({ data: response });
+    const result = await apiSubmitMatchLineup('m1', payload);
+    expect(mockApi.post).toHaveBeenCalledWith('/matches/m1/lineups', payload);
+    expect(result).toEqual(response);
+  });
+
+  it('apiReviewMatchLineup calls PATCH /matches/:id/lineups/:teamId/review', async () => {
+    const payload = { status: 'APPROVED' as const, reviewNote: 'Hợp lệ' };
+    const response = { id: 'lineup-1', status: 'APPROVED' };
+    mockApi.patch.mockResolvedValue({ data: response });
+    const result = await apiReviewMatchLineup('m1', 't1', payload);
+    expect(mockApi.patch).toHaveBeenCalledWith('/matches/m1/lineups/t1/review', payload);
+    expect(result).toEqual(response);
+  });
+
+  it('apiGetMatchSuspensions calls GET /matches/:id/suspensions', async () => {
+    const suspensions = [{ id: 's1', matchId: 'm1', playerId: 'p1' }];
+    mockApi.get.mockResolvedValue({ data: suspensions });
+    const result = await apiGetMatchSuspensions('m1');
+    expect(mockApi.get).toHaveBeenCalledWith('/matches/m1/suspensions');
+    expect(result).toEqual(suspensions);
   });
 });

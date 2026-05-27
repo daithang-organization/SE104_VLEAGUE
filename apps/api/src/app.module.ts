@@ -7,6 +7,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './common/logger';
 import { HealthModule } from './health/health.module';
+import { MatchLineupModule } from './match-lineup/match-lineup.module';
 import { MatchModule } from './match/match.module';
 import { NotificationModule } from './notification/notification.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -64,6 +65,7 @@ import { UsersModule } from './users/users.module';
     RegistrationModule,
     SchedulingModule,
     MatchModule,
+    MatchLineupModule,
     // New modules
     SeasonModule,
     StadiumModule,

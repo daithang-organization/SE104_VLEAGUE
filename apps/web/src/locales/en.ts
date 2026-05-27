@@ -261,6 +261,7 @@ const en = {
   matchDetail: {
     title: 'Match Detail — Round {round}',
     loadError: 'Failed to load match details',
+    lineupLoadError: 'Failed to load match lineup data',
     notFound: 'Match not found',
     back: 'Go back',
     homeLabel: '🏠 Home',

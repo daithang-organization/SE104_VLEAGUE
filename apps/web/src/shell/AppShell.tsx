@@ -184,47 +184,23 @@ export default function AppShell() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
+        className="app-sidebar"
         collapsible
+        width={252}
+        collapsedWidth={76}
         style={{
-          background: 'var(--sidebar-bg)',
           borderRight: `1px solid var(--sidebar-border)`,
         }}
       >
-        <div
-          style={{
-            padding: 16,
-            color: 'var(--text-main)',
-            fontWeight: 'bold',
-            fontSize: 18,
-            textAlign: 'center',
-          }}
-        >
+        <div className="sidebar-brand">
           <img
+            className="sidebar-brand-logo"
             src="/V.League_1_2025-26_logo.svg.png"
             alt="VLeague Logo"
-            style={{ height: '50px', objectFit: 'contain' }}
           />
         </div>
-        <style>{`
-          .sidebar-menu-icon {
-            width: 22px;
-            height: 22px;
-            display: inline-block;
-            vertical-align: middle;
-            background: currentColor;
-            opacity: 0.92;
-          }
-
-          .ant-layout-sider:not(.ant-layout-sider-collapsed) .sidebar-menu-icon {
-            margin-inline-end: 12px;
-          }
-
-          .ant-layout-sider-collapsed .sidebar-menu-icon {
-            width: 30px;
-            height: 30px;
-          }
-        `}</style>
         <Menu
+          className="sidebar-menu"
           theme={isDark ? 'dark' : 'light'}
           mode="inline"
           items={menuItems}

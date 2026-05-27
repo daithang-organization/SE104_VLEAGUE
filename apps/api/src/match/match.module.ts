@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MatchLineupModule } from '../match-lineup/match-lineup.module';
 import { NotificationModule } from '../notification/notification.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RegulationModule } from '../regulation/regulation.module';
@@ -13,6 +14,7 @@ import { MatchService } from './match.service';
     StandingsModule,
     RegulationModule,
     NotificationModule,
+    MatchLineupModule,
   ],
   controllers: [MatchController],
   providers: [MatchService, MatchGateway],
