@@ -239,6 +239,7 @@ export class SeasonService {
     }
 
     if (status === 'APPROVED') {
+      this.assertApplicationComplete(record);
       await this.assertTeamEligibleForApproval(seasonId, teamId);
     }
 
@@ -382,5 +383,48 @@ export class SeasonService {
       .trim();
 
     return normalized === 'viet nam' || normalized === 'vietnam';
+  }
+
+  private assertApplicationComplete(record: {
+    applicationSubmittedAt?: Date | null;
+    ownerName?: string | null;
+    ownerCountry?: string | null;
+    teamIntroduction?: string | null;
+    primaryKit?: string | null;
+    backupKit?: string | null;
+    participationFeePaid?: boolean | null;
+  }) {
+    if (!record.applicationSubmittedAt) {
+      throw new BadRequestException('CLB chưa nộp hồ sơ tham dự mùa giải.');
+    }
+
+    const requiredFields = [
+      ['cơ quan chủ quản', record.ownerName],
+      ['quốc gia cơ quan chủ quản', record.ownerCountry],
+      ['giới thiệu đội', record.teamIntroduction],
+      ['áo thi đấu chính thức', record.primaryKit],
+      ['áo thi đấu dự bị', record.backupKit],
+    ] as const;
+    const missing = requiredFields
+      .filter(([, value]) => !value?.trim())
+      .map(([label]) => label);
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Hồ sơ tham dự còn thiếu: ${missing.join(', ')}.`,
+      );
+    }
+
+    if (!this.isVietnam(record.ownerCountry)) {
+      throw new BadRequestException(
+        'Cơ quan chủ quản của CLB phải nằm tại Việt Nam.',
+      );
+    }
+
+    if (!record.participationFeePaid) {
+      throw new BadRequestException(
+        'CLB chưa xác nhận nộp lệ phí tham dự 1 tỷ đồng.',
+      );
+    }
   }
 }

@@ -936,6 +936,26 @@ const vi = {
 
   login: {
     title: 'VLeague Admin',
+    formSubtitle: 'Đăng nhập để truy cập bảng điều khiển vận hành giải đấu.',
+    systemEyebrow: 'V.League Operations Platform',
+    systemTitle: 'Hệ thống quản lý giải vô địch bóng đá quốc gia V.League',
+    systemIntro:
+      'Nền tảng điều hành tập trung cho mùa giải, câu lạc bộ, cầu thủ, lịch thi đấu, kết quả và báo cáo thống kê.',
+    featureCompetitionTitle: 'Điều hành giải đấu',
+    featureCompetitionDesc:
+      'Quản lý mùa giải, vòng đấu, lịch thi đấu và trạng thái trận đấu từ một nơi.',
+    featureTeamsTitle: 'Dữ liệu đội bóng',
+    featureTeamsDesc:
+      'Theo dõi câu lạc bộ, sân vận động, danh sách cầu thủ và phân quyền người dùng.',
+    featureReportsTitle: 'Báo cáo thống kê',
+    featureReportsDesc: 'Tổng hợp bảng xếp hạng, vua phá lưới, thẻ phạt và thống kê đội bóng.',
+    trustLabel: 'Thông tin hệ thống',
+    statSeasonValue: '24/7',
+    statSeasonLabel: 'Theo dõi mùa giải',
+    statClubValue: '14+',
+    statClubLabel: 'Câu lạc bộ',
+    statRoleValue: 'RBAC',
+    statRoleLabel: 'Phân quyền truy cập',
     emailLabel: 'Email',
     emailRequired: 'Vui lòng nhập email',
     emailInvalid: 'Email không hợp lệ',

@@ -1077,6 +1077,265 @@ select {
   box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.28);
 }
 
+.login-page {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 460px);
+  gap: 48px;
+  align-items: center;
+  min-height: 100vh;
+  padding: 54px 72px;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(220, 38, 38, 0.12), transparent 38%),
+    linear-gradient(150deg, transparent 0%, rgba(37, 99, 235, 0.1) 58%, rgba(22, 163, 74, 0.1)),
+    var(--bg);
+  color: var(--text-main);
+}
+
+.login-page::before {
+  content: '';
+  position: absolute;
+  inset: -80px;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(100, 116, 139, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 116, 139, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(90deg, black, transparent 82%);
+  animation: login-grid-drift 24s linear infinite;
+  will-change: background-position;
+}
+
+.login-page::after {
+  content: '';
+  position: absolute;
+  inset: -30% -18%;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      112deg,
+      transparent 0%,
+      transparent 39%,
+      rgba(255, 255, 255, 0.08) 45%,
+      rgba(220, 38, 38, 0.08) 48%,
+      transparent 55%,
+      transparent 100%
+    ),
+    linear-gradient(
+      68deg,
+      transparent 0%,
+      transparent 60%,
+      rgba(37, 99, 235, 0.07) 64%,
+      transparent 70%,
+      transparent 100%
+    );
+  opacity: 0.78;
+  transform: translateX(-16%);
+  animation: login-light-sweep 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.login-showcase,
+.login-panel {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes login-grid-drift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      88px 44px,
+      44px 88px;
+  }
+}
+
+@keyframes login-light-sweep {
+  0%,
+  100% {
+    opacity: 0.46;
+    transform: translateX(-18%);
+  }
+
+  50% {
+    opacity: 0.86;
+    transform: translateX(12%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page::before,
+  .login-page::after {
+    animation: none;
+  }
+}
+
+.login-showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 780px;
+}
+
+.login-brand-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.login-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, var(--primary), #991b1b);
+  color: #ffffff;
+  font-size: 32px;
+  box-shadow: 0 18px 40px rgba(220, 38, 38, 0.22);
+}
+
+.login-eyebrow.ant-typography {
+  display: block;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.login-system-title.ant-typography {
+  max-width: 760px;
+  margin: 5px 0 0;
+  color: var(--text-main);
+  font-size: 52px;
+  line-height: 1.04;
+  overflow-wrap: anywhere;
+}
+
+.login-system-intro.ant-typography {
+  max-width: 700px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.login-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.login-feature {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.login-feature-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 19px;
+}
+
+.login-feature .ant-typography {
+  color: var(--text-main);
+}
+
+.login-feature p.ant-typography {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.login-trust-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 620px;
+}
+
+.login-trust-strip > div {
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+.login-trust-strip strong,
+.login-trust-strip span {
+  display: block;
+  min-width: 0;
+}
+
+.login-trust-strip strong {
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.login-trust-strip span {
+  margin-top: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.login-panel {
+  display: flex;
+  justify-content: center;
+}
+
+.login-card.ant-card {
+  width: min(440px, 100%);
+  border-color: var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.login-card .ant-card-body {
+  padding: 32px;
+}
+
+.login-card-title.ant-typography {
+  margin: 0;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.login-card-subtitle.ant-typography {
+  margin: 6px 0 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.login-card .ant-btn {
+  min-height: 42px;
+}
+
+.login-card .ant-form-item {
+  margin-bottom: 18px;
+}
+
 @media (max-width: 900px) {
   .page-hero,
   .page-hero-compact {
@@ -1134,6 +1393,29 @@ select {
 
   .team-fixture-meta {
     grid-column: 1 / -1;
+  }
+
+  .login-page {
+    grid-template-columns: 1fr;
+    gap: 26px;
+    align-items: start;
+    padding: 28px 20px 36px;
+  }
+
+  .login-showcase {
+    order: 2;
+  }
+
+  .login-panel {
+    order: 1;
+  }
+
+  .login-system-title.ant-typography {
+    font-size: 38px;
+  }
+
+  .login-feature-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1278,5 +1560,36 @@ select {
     min-width: 58px;
     height: 34px;
     padding: 0 8px;
+  }
+
+  .login-page {
+    padding: 18px 14px 28px;
+  }
+
+  .login-card .ant-card-body {
+    padding: 24px 18px;
+  }
+
+  .login-brand-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .login-brand-mark {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+
+  .login-system-title.ant-typography {
+    font-size: 30px;
+  }
+
+  .login-system-intro.ant-typography {
+    font-size: 15px;
+  }
+
+  .login-trust-strip {
+    grid-template-columns: 1fr;
   }
 }

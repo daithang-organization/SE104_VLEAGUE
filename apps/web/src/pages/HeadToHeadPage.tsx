@@ -56,7 +56,6 @@ export default function HeadToHeadPage() {
       <PageHero
         eyebrow={t('menu.headToHead')}
         title={t('headToHead.title')}
-        description={t('headToHead.emptyHint')}
         icon={<BarChartOutlined />}
         metrics={[
           {

@@ -184,12 +184,38 @@ async function main() {
   for (const team of approvedTeams) {
     await prisma.seasonTeam.upsert({
       where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
-      update: { status: SeasonTeamStatus.APPROVED, approvedAt: new Date() },
+      update: {
+        status: SeasonTeamStatus.APPROVED,
+        approvedAt: new Date(),
+        ownerName: `Công ty chủ quản ${team.name}`,
+        ownerCountry: 'Việt Nam',
+        ownerAddress: team.city ?? 'Việt Nam',
+        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-25.`,
+        primaryKit: 'Áo màu chính thức theo nhận diện CLB',
+        backupKit: 'Áo dự bị màu tương phản',
+        participationFeePaid: true,
+        feePaidAt: new Date(),
+        feeReceiptCode: `FEE-${slugTeamName(team.name).toUpperCase()}`,
+        externalCompetitionSchedule: 'Cúp Quốc gia 2024-25',
+        applicationSubmittedAt: new Date(),
+        applicationReviewNote: null,
+      },
       create: {
         seasonId: season.id,
         teamId: team.id,
         status: SeasonTeamStatus.APPROVED,
         approvedAt: new Date(),
+        ownerName: `Công ty chủ quản ${team.name}`,
+        ownerCountry: 'Việt Nam',
+        ownerAddress: team.city ?? 'Việt Nam',
+        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-25.`,
+        primaryKit: 'Áo màu chính thức theo nhận diện CLB',
+        backupKit: 'Áo dự bị màu tương phản',
+        participationFeePaid: true,
+        feePaidAt: new Date(),
+        feeReceiptCode: `FEE-${slugTeamName(team.name).toUpperCase()}`,
+        externalCompetitionSchedule: 'Cúp Quốc gia 2024-25',
+        applicationSubmittedAt: new Date(),
       },
     });
     console.log(`  ✅ Registered & Approved: ${team.name}`);
@@ -198,7 +224,14 @@ async function main() {
   for (const team of reserveTeams) {
     await prisma.seasonTeam.upsert({
       where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
-      update: { status: SeasonTeamStatus.REGISTERED, approvedAt: null },
+      update: {
+        status: SeasonTeamStatus.REGISTERED,
+        approvedAt: null,
+        participationFeePaid: false,
+        feePaidAt: null,
+        applicationSubmittedAt: null,
+        applicationReviewNote: null,
+      },
       create: {
         seasonId: season.id,
         teamId: team.id,

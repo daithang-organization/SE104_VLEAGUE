@@ -479,7 +479,7 @@ export default function MatchesPage() {
             icon: <TrophyOutlined />,
           },
           {
-            label: STATUS_MAP.FINISHED.label,
+            label: t('matches.colStatus'),
             value: finishedMatches.toLocaleString('vi-VN'),
             icon: <FieldTimeOutlined />,
           },

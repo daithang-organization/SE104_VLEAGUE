@@ -256,6 +256,18 @@ describe('SeasonService', () => {
       seasonId: 'season-1',
       teamId: 'team-1',
       status: 'REGISTERED',
+      ownerName: 'Công ty Cổ phần Bóng đá Hà Nội',
+      ownerCountry: 'Việt Nam',
+      ownerAddress: 'Hà Nội',
+      teamIntroduction: 'Đội bóng đại diện Thủ đô.',
+      primaryKit: 'Áo tím, quần trắng',
+      backupKit: 'Áo trắng, quần tím',
+      participationFeePaid: true,
+      feePaidAt: new Date(),
+      feeReceiptCode: 'REC-001',
+      externalCompetitionSchedule: 'Cúp Quốc gia',
+      applicationSubmittedAt: new Date(),
+      applicationReviewNote: null,
       registeredAt: new Date(),
       approvedAt: null,
       createdAt: new Date(),
@@ -309,6 +321,18 @@ describe('SeasonService', () => {
           player: { playerType: 'FOREIGN' },
         },
       });
+    });
+
+    it('should reject approval when the team has not submitted application information', async () => {
+      jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
+        ...seasonTeamRecord,
+        applicationSubmittedAt: null,
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('chưa nộp hồ sơ');
+      expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
     });
 
     it('should reject approval when a team has fewer than 16 active players', async () => {

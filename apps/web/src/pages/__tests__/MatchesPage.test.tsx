@@ -22,8 +22,8 @@ const mockMatchApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't1',
         awayTeamId: 't2',
-        homeTeam: { name: 'Ha Noi FC' },
-        awayTeam: { name: 'Hai Phong FC' },
+        homeTeam: { id: 't1', name: 'Ha Noi FC', shortName: 'HN' },
+        awayTeam: { id: 't2', name: 'Hai Phong FC', shortName: 'HP' },
         stadium: { name: 'Hang Day' },
         homeScore: 2,
         awayScore: 1,
@@ -36,8 +36,8 @@ const mockMatchApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't3',
         awayTeamId: 't4',
-        homeTeam: { name: 'HAGL' },
-        awayTeam: { name: 'Binh Duong' },
+        homeTeam: { id: 't3', name: 'Hoang Anh Gia Lai', shortName: 'HAGL' },
+        awayTeam: { id: 't4', name: 'Binh Duong', shortName: 'BBD' },
         stadium: { name: 'Pleiku' },
         homeScore: null,
         awayScore: null,
@@ -97,12 +97,12 @@ describe('MatchesPage', () => {
     });
   });
 
-  it('renders team names in match list', async () => {
+  it('renders team abbreviations in match list', async () => {
     renderPage();
     await waitFor(
       () => {
-        expect(screen.getByText('Ha Noi FC')).toBeInTheDocument();
-        expect(screen.getByText('Hai Phong FC')).toBeInTheDocument();
+        expect(screen.getByText('HN')).toBeInTheDocument();
+        expect(screen.getByText('HP')).toBeInTheDocument();
       },
       { timeout: 5000 },
     );
@@ -127,5 +127,23 @@ describe('MatchesPage', () => {
       },
       { timeout: 5000 },
     );
+  });
+
+  it('renders results with the schedule fixture card layout', async () => {
+    const { container } = renderPage();
+
+    await waitFor(
+      () => {
+        expect(container.querySelector('.schedule-fixture-list')).toBeInTheDocument();
+        expect(container.querySelector('.schedule-fixture-day-group')).toBeInTheDocument();
+        expect(container.querySelectorAll('.schedule-fixture-row')).toHaveLength(2);
+        expect(container.querySelector('.schedule-fixture-score.is-final')).toHaveTextContent(
+          '2 - 1',
+        );
+      },
+      { timeout: 5000 },
+    );
+
+    expect(container.querySelector('.ant-table')).not.toBeInTheDocument();
   });
 });

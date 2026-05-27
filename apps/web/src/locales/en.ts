@@ -897,6 +897,25 @@ const en = {
 
   login: {
     title: 'VLeague Admin',
+    formSubtitle: 'Sign in to access the league operations dashboard.',
+    systemEyebrow: 'V.League Operations Platform',
+    systemTitle: 'Vietnam national football championship management system',
+    systemIntro:
+      'A centralized operations platform for seasons, clubs, players, fixtures, results, and statistical reports.',
+    featureCompetitionTitle: 'League operations',
+    featureCompetitionDesc:
+      'Manage seasons, rounds, fixtures, and match status from one workspace.',
+    featureTeamsTitle: 'Club data',
+    featureTeamsDesc: 'Track clubs, stadiums, player rosters, and user access permissions.',
+    featureReportsTitle: 'Statistical reports',
+    featureReportsDesc: 'Compile standings, top scorers, card stats, and team performance reports.',
+    trustLabel: 'System information',
+    statSeasonValue: '24/7',
+    statSeasonLabel: 'Season monitoring',
+    statClubValue: '14+',
+    statClubLabel: 'Clubs',
+    statRoleValue: 'RBAC',
+    statRoleLabel: 'Access control',
     emailLabel: 'Email',
     emailRequired: 'Please enter email',
     emailInvalid: 'Invalid email',

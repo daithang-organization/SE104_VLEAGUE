@@ -290,6 +290,19 @@ model SeasonTeam {
   registeredAt DateTime  @default(now()) @map("registered_at")
   approvedAt   DateTime? @map("approved_at")
 
+  ownerName       String? @map("owner_name")
+  ownerCountry    String? @map("owner_country")
+  ownerAddress    String? @map("owner_address")
+  teamIntroduction String? @map("team_introduction") @db.Text
+  primaryKit      String? @map("primary_kit")
+  backupKit       String? @map("backup_kit")
+  participationFeePaid Boolean @default(false) @map("participation_fee_paid")
+  feePaidAt       DateTime? @map("fee_paid_at")
+  feeReceiptCode  String? @map("fee_receipt_code")
+  externalCompetitionSchedule String? @map("external_competition_schedule") @db.Text
+  applicationSubmittedAt DateTime? @map("application_submitted_at")
+  applicationReviewNote String? @map("application_review_note")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

@@ -4,6 +4,7 @@ import {
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   PlusOutlined,
   SendOutlined,
   TeamOutlined,
@@ -12,6 +13,7 @@ import {
   Button,
   Card,
   DatePicker,
+  Descriptions,
   Flex,
   Form,
   Input,
@@ -48,7 +50,11 @@ import {
   type SeasonTeam,
 } from '../services/seasonTeamApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
-import { apiSendTeamInvitation } from '../services/teamInvitationApi';
+import {
+  apiGetSeasonInvitations,
+  apiSendTeamInvitation,
+  type TeamInvitation,
+} from '../services/teamInvitationApi';
 
 const STATUS_OPTIONS = [
   { value: 'UPCOMING', label: 'Sắp diễn ra', color: 'blue' },
@@ -76,25 +82,52 @@ const TEAM_STATUS_MAP: Record<string, { label: string; color: string }> = {
   WITHDRAWN: { label: 'Rút lui', color: 'default' },
 };
 
+const INVITATION_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  SENT: { label: 'Đã gửi', color: 'processing' },
+  ACCEPTED: { label: 'Đã đồng ý', color: 'success' },
+  DECLINED: { label: 'Đã từ chối', color: 'error' },
+  EXPIRED: { label: 'Quá hạn', color: 'default' },
+};
+
+const INVITATION_SOURCE_MAP: Record<string, string> = {
+  PREVIOUS_TOP_8: 'Top 8 mùa trước',
+  PROMOTED: 'Thăng hạng',
+  REPLACEMENT: 'Thay thế',
+};
+
+function getSeasonTeamApplicationStatus(record: SeasonTeam, invitation?: TeamInvitation) {
+  if (record.status === 'APPROVED') return { label: 'Đã duyệt hồ sơ', color: 'success' };
+  if (record.status === 'REJECTED') return { label: 'Bị từ chối', color: 'error' };
+  if (record.applicationSubmittedAt) return { label: 'Đã nộp hồ sơ', color: 'processing' };
+  if (invitation?.status === 'ACCEPTED') return { label: 'Chờ nộp hồ sơ', color: 'warning' };
+  if (invitation?.status === 'SENT') return { label: 'Chờ phản hồi lời mời', color: 'default' };
+  if (invitation?.status === 'DECLINED') return { label: 'Đội đã từ chối', color: 'error' };
+  return { label: 'Chưa gửi lời mời', color: 'default' };
+}
+
 // ─── Season Team Panel (expandable row) ───
 function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const { t } = useTranslation();
   const [teams, setTeams] = useState<SeasonTeam[]>([]);
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [viewingTeam, setViewingTeam] = useState<SeasonTeam | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>();
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
     try {
-      const [seasonTeams, teamRes] = await Promise.all([
+      const [seasonTeams, teamRes, invitationData] = await Promise.all([
         apiGetSeasonTeams(seasonId),
         apiGetTeams(),
+        apiGetSeasonInvitations(seasonId),
       ]);
       setTeams(seasonTeams);
       setAllTeams(teamRes.data);
+      setInvitations(invitationData);
     } catch (_err) {
       message.error(t('seasons.teamPanelLoadError'));
     } finally {
@@ -109,6 +142,9 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const registeredTeamIds = new Set(teams.map((t) => t.teamId));
   const availableTeams = allTeams.filter(
     (t) => !registeredTeamIds.has(t.id) && t.status === 'ACTIVE',
+  );
+  const invitationsByTeamId = new Map(
+    invitations.map((invitation) => [invitation.teamId, invitation]),
   );
 
   const handleAdd = async () => {
@@ -135,6 +171,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         sourceType: 'REPLACEMENT',
       });
       message.success('Đã gửi lời mời tham dự đến manager CLB');
+      fetchTeams();
     } catch (_err) {
       message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có manager trong mùa giải.');
     } finally {
@@ -197,6 +234,44 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       },
     },
     {
+      title: 'Lời mời BTC',
+      key: 'invitation',
+      width: 180,
+      render: (_, r) => {
+        const invitation = invitationsByTeamId.get(r.teamId);
+        if (!invitation) return <Tag>Chưa gửi lời mời</Tag>;
+        const status = INVITATION_STATUS_MAP[invitation.status] ?? {
+          label: invitation.status,
+          color: 'default',
+        };
+
+        return (
+          <div>
+            <Tag color={status.color}>{status.label}</Tag>
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              {INVITATION_SOURCE_MAP[invitation.sourceType] ?? invitation.sourceType}
+              {' · '}
+              hạn {dayjs(invitation.deadlineAt).format('DD/MM/YYYY')}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Hồ sơ tham dự',
+      key: 'application',
+      width: 180,
+      render: (_, r) => {
+        const status = getSeasonTeamApplicationStatus(r, invitationsByTeamId.get(r.teamId));
+        return (
+          <Space size={4} wrap>
+            <Tag color={status.color}>{status.label}</Tag>
+            {r.participationFeePaid && <Tag color="green">Đã nộp phí</Tag>}
+          </Space>
+        );
+      },
+    },
+    {
       title: t('seasons.teamPanelColRegDate'),
       dataIndex: 'registeredAt',
       width: 120,
@@ -214,6 +289,15 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               size="small"
               icon={<SendOutlined />}
               onClick={() => handleSendInvitation(r.teamId)}
+            />
+          </Tooltip>
+          <Tooltip title="Xem hồ sơ tham dự">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              disabled={!r.applicationSubmittedAt}
+              onClick={() => setViewingTeam(r)}
             />
           </Tooltip>
           {r.status === 'REGISTERED' && (
@@ -305,6 +389,39 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         size="small"
         locale={{ emptyText: t('seasons.teamPanelEmpty') }}
       />
+      <Modal
+        title={viewingTeam ? `Hồ sơ tham dự - ${viewingTeam.team.name}` : 'Hồ sơ tham dự'}
+        open={!!viewingTeam}
+        onCancel={() => setViewingTeam(null)}
+        footer={null}
+        width={760}
+      >
+        {viewingTeam && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Cơ quan/công ty chủ quản">
+              {viewingTeam.ownerName ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Quốc gia đặt trụ sở">
+              {viewingTeam.ownerCountry ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Địa chỉ">{viewingTeam.ownerAddress ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Áo chính thức">
+              {viewingTeam.primaryKit ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Áo dự bị">{viewingTeam.backupKit ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Lệ phí tham dự">
+              {viewingTeam.participationFeePaid ? 'Đã nộp' : 'Chưa nộp'}
+              {viewingTeam.feeReceiptCode ? ` (${viewingTeam.feeReceiptCode})` : ''}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giới thiệu đội">
+              {viewingTeam.teamIntroduction ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Lịch giải khác">
+              {viewingTeam.externalCompetitionSchedule ?? '—'}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
     </div>
   );
 }

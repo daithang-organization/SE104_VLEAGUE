@@ -291,7 +291,7 @@ export default function StandingsPage() {
 
       <PageHero
         variant="compact"
-        eyebrow={t('menu.standings')}
+        eyebrow="VLeague"
         title={standingsTitle}
         icon={<TrophyOutlined />}
         metrics={[

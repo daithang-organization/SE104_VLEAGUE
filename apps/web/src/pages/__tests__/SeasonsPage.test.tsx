@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -39,7 +39,31 @@ const mockSeasonApi = vi.hoisted(() => ({
 }));
 
 const mockSeasonTeamApi = vi.hoisted(() => ({
-  apiGetSeasonTeams: vi.fn().mockResolvedValue([]),
+  apiGetSeasonTeams: vi.fn().mockResolvedValue([
+    {
+      id: 'season-team-1',
+      seasonId: 's1',
+      teamId: 'team-1',
+      status: 'REGISTERED',
+      registeredAt: '2025-01-01T00:00:00Z',
+      approvedAt: null,
+      applicationSubmittedAt: null,
+      ownerName: null,
+      ownerCountry: null,
+      teamIntroduction: null,
+      primaryKit: null,
+      backupKit: null,
+      participationFeePaid: false,
+      team: {
+        id: 'team-1',
+        name: 'CLB Bình Định',
+        shortName: 'BĐ',
+        logoUrl: null,
+        city: 'Quy Nhơn',
+        status: 'ACTIVE',
+      },
+    },
+  ]),
   apiRegisterTeam: vi.fn().mockResolvedValue({}),
   apiRemoveSeasonTeam: vi.fn().mockResolvedValue({}),
   apiUpdateSeasonTeamStatus: vi.fn().mockResolvedValue({}),
@@ -48,11 +72,32 @@ const mockSeasonTeamApi = vi.hoisted(() => ({
 const mockTeamApi = vi.hoisted(() => ({
   apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 0 }),
 }));
+const mockTeamInvitationApi = vi.hoisted(() => ({
+  apiGetSeasonInvitations: vi.fn().mockResolvedValue([
+    {
+      id: 'invitation-1',
+      seasonId: 's1',
+      teamId: 'team-1',
+      sourceType: 'PREVIOUS_TOP_8',
+      status: 'ACCEPTED',
+      sentAt: '2025-01-01T00:00:00Z',
+      deadlineAt: '2025-01-15T00:00:00Z',
+      responseAt: '2025-01-02T00:00:00Z',
+      responseReason: null,
+      regulationsSnapshot: null,
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-02T00:00:00Z',
+    },
+  ]),
+  apiSendTeamInvitation: vi.fn().mockResolvedValue({}),
+}));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/seasonTeamApi', () => mockSeasonTeamApi);
 vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/teamInvitationApi', () => mockTeamInvitationApi);
 
 import SeasonsPage from '../SeasonsPage';
 
@@ -119,5 +164,31 @@ describe('SeasonsPage', () => {
       expect(screen.getByText('2025/2026')).toBeInTheDocument();
       expect(screen.getByText('2024/2025')).toBeInTheDocument();
     });
+  });
+
+  it('shows invitation and application status in the admin season team panel', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    await waitFor(() => {
+      expect(mockSeasonTeamApi.apiGetSeasonTeams).toHaveBeenCalledWith('s1');
+      expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledWith('s1');
+    });
+    expect(await screen.findByText('CLB Bình Định')).toBeInTheDocument();
+    expect(screen.getByText('Đã đồng ý')).toBeInTheDocument();
+    expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
 });

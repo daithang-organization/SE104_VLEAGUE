@@ -37,8 +37,8 @@ export type Match = {
   season?: { id: string; name: string } | null;
   homeTeamId: string;
   awayTeamId: string;
-  homeTeam?: { id: string; name: string; logoUrl?: string | null };
-  awayTeam?: { id: string; name: string; logoUrl?: string | null };
+  homeTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
+  awayTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
   homeScore?: number | null;
   awayScore?: number | null;
   stadiumId?: string | null;

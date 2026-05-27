@@ -15,6 +15,11 @@ const mockUseAuth = vi.hoisted(() =>
 
 const mockTeamApi = vi.hoisted(() => ({
   apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 5 }),
+  apiGetTeam: vi.fn().mockResolvedValue({
+    id: 'team-1',
+    name: 'CLB Bình Định',
+    roster: [],
+  }),
 }));
 const mockPlayerApi = vi.hoisted(() => ({
   apiGetPlayers: vi.fn().mockResolvedValue({ data: [], total: 12 }),
@@ -41,6 +46,12 @@ const mockStandingsApi = vi.hoisted(() => ({
 const mockMatchApi = vi.hoisted(() => ({
   apiGetMatches: vi.fn().mockResolvedValue({ data: [], total: 8 }),
 }));
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiCreateTeamManagerAssignment: vi.fn(),
+  apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
+  apiGetTeamManagerApplication: vi.fn().mockResolvedValue(null),
+  apiSubmitTeamManagerApplication: vi.fn(),
+}));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/teamApi', () => mockTeamApi);
@@ -49,6 +60,7 @@ vi.mock('../../services/scheduleApi', () => mockScheduleApi);
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
 vi.mock('../../services/matchApi', () => mockMatchApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import DashboardPage from '../DashboardPage';
 
@@ -127,5 +139,45 @@ describe('DashboardPage', () => {
       expect(screen.getByText('📅 Trận đấu sắp tới')).toBeInTheDocument();
       expect(screen.getByText('⚽ Kết quả gần đây')).toBeInTheDocument();
     });
+  });
+
+  it('shows the season application form for assigned team managers', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamManagerApi.apiGetTeamManagerAssignment.mockResolvedValue({
+      id: 'assignment-1',
+      userId: 'u-manager',
+      seasonId: 's1',
+      teamId: 'team-1',
+      season: { id: 's1', name: 'V.League 2025', status: 'IN_PROGRESS' },
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    });
+    mockTeamManagerApi.apiGetTeamManagerApplication.mockResolvedValue({
+      id: 'season-team-1',
+      seasonId: 's1',
+      teamId: 'team-1',
+      status: 'REGISTERED',
+      applicationSubmittedAt: null,
+      ownerName: null,
+      ownerCountry: null,
+      teamIntroduction: null,
+      primaryKit: null,
+      backupKit: null,
+      participationFeePaid: false,
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('Hồ sơ tham dự mùa giải')).toBeInTheDocument();
+    expect(screen.getByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
   });
 });
