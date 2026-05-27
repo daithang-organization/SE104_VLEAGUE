@@ -19,6 +19,7 @@ import { SeasonModule } from './season/season.module';
 import { StadiumModule } from './stadium/stadium.module';
 import { StandingsModule } from './standings/standings.module';
 import { TeamManagerModule } from './team-manager/team-manager.module';
+import { TeamInvitationModule } from './team-invitation/team-invitation.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 
@@ -72,6 +73,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     UploadModule,
     TeamManagerModule,
+    TeamInvitationModule,
     // v1.2.0 modules
     SearchModule,
     AuditModule,

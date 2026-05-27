@@ -1,14 +1,15 @@
 import {
+  ArrowRightOutlined,
   DeleteOutlined,
   EditOutlined,
-  EyeOutlined,
+  EnvironmentOutlined,
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import {
   Button,
-  Card,
   Col,
+  Empty,
   Form,
   Input,
   message,
@@ -17,11 +18,9 @@ import {
   Row,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +37,7 @@ import {
   type Stadium,
   type Team,
 } from '../services/teamApi';
-import { getTeamLogoUrl } from '../utils/teamLogos';
+import { getTeamLogoUrl, getTeamThemeStyle } from '../utils/teamLogos';
 
 const CAN_EDIT_ROLES = ['ADMIN'];
 
@@ -53,6 +52,7 @@ export default function TeamsPage() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | Team['status']>('ALL');
   const [form] = Form.useForm();
 
   const canEdit = useMemo(() => {
@@ -148,125 +148,83 @@ export default function TeamsPage() {
     }
   };
 
-  const filteredTeams = (teams || []).filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredTeams = (teams || []).filter((team) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      [team.name, team.shortName, team.city, team.stadium?.name]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    const matchesStatus = statusFilter === 'ALL' || team.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  const columns: ColumnsType<Team> = [
-    {
-      title: '#',
-      key: 'index',
-      width: 60,
-      render: (_, __, i) => i + 1,
-    },
-    {
-      title: t('teams.colName'),
-      dataIndex: 'name',
-      sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (name: string, record: Team) => {
-        const logoUrl = getTeamLogoUrl(record);
-        return (
-          <a
-            onClick={() => navigate(`/teams/${record.id}`)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-          >
-            {logoUrl && (
-              <img
-                src={logoUrl}
-                alt={`${name} logo`}
-                style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }}
-              />
-            )}
-            {name}
-          </a>
-        );
-      },
-    },
-    {
-      title: t('teams.colShortName'),
-      dataIndex: 'shortName',
-      width: 100,
-      render: (v: string | null) => v ?? '—',
-    },
-    {
-      title: t('teams.colCity'),
-      dataIndex: 'city',
-      width: 130,
-      render: (v: string | null) => v ?? '—',
-    },
-    {
-      title: t('teams.colStadium'),
-      key: 'stadium',
-      render: (_, record) => record.stadium?.name ?? '—',
-    },
-    {
-      title: t('teams.colStatus'),
-      dataIndex: 'status',
-      width: 120,
-      render: (status: string) => (
-        <Tag color={status === 'ACTIVE' ? 'green' : 'default'}>
-          {status === 'ACTIVE' ? t('teams.filterActive') : t('teams.filterInactive')}
-        </Tag>
-      ),
-      filters: [
-        { text: t('teams.filterActive'), value: 'ACTIVE' },
-        { text: t('teams.filterInactive'), value: 'INACTIVE' },
-      ],
-      onFilter: (value, record) => record.status === value,
-    },
-    ...(canEdit
-      ? [
-          {
-            title: t('teams.colActions'),
-            key: 'actions',
-            width: 120,
-            render: (_: unknown, record: Team) => (
-              <Space>
-                <Button
-                  type="text"
-                  icon={<EyeOutlined />}
-                  onClick={() => navigate(`/teams/${record.id}`)}
-                />
-                <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-                <Popconfirm
-                  title={t('teams.deleteConfirmTitle')}
-                  description={t('teams.deleteConfirmDesc', { name: record.name })}
-                  onConfirm={() => handleDelete(record.id)}
-                  okText={t('teams.deleteOk')}
-                  cancelText={t('teams.deleteCancel')}
-                  okButtonProps={{ danger: true }}
-                >
-                  <Button type="text" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
-              </Space>
-            ),
-          },
-        ]
-      : []),
-  ];
+  const activeTeams = teams.filter((team) => team.status === 'ACTIVE').length;
+  const inactiveTeams = teams.filter((team) => team.status === 'INACTIVE').length;
+
+  const renderTeamLogo = (team: Team) => {
+    const logoUrl = getTeamLogoUrl(team);
+    if (logoUrl) {
+      return <img src={logoUrl} alt={`${team.name} logo`} className="club-card-logo" />;
+    }
+
+    return (
+      <div className="club-card-logo club-card-logo-fallback" aria-hidden="true">
+        {(team.shortName || team.name).slice(0, 2).toUpperCase()}
+      </div>
+    );
+  };
 
   return (
-    <Card>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('teams.title')}
-        </Typography.Title>
-        <Space>
+    <div className="clubs-page">
+      <section className="clubs-hero-panel" aria-labelledby="clubs-page-title">
+        <div className="clubs-hero-copy">
+          <Typography.Text className="clubs-eyebrow">V.League 1 2025/26</Typography.Text>
+          <Typography.Title id="clubs-page-title" level={2} className="clubs-title">
+            {t('teams.title')}
+          </Typography.Title>
+          <Typography.Paragraph className="clubs-subtitle">
+            Danh sách câu lạc bộ, sân nhà và trạng thái đăng ký trong hệ thống.
+          </Typography.Paragraph>
+        </div>
+        <div className="clubs-hero-stats" aria-label="Tổng quan đội bóng">
+          <div className="clubs-hero-stat">
+            <strong>{teams.length}</strong>
+            <span>Tổng đội</span>
+          </div>
+          <div className="clubs-hero-stat">
+            <strong>{activeTeams}</strong>
+            <span>Hoạt động</span>
+          </div>
+          <div className="clubs-hero-stat">
+            <strong>{inactiveTeams}</strong>
+            <span>Ngưng</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="clubs-toolbar">
+        <Space wrap className="clubs-toolbar-controls">
           <Input
             placeholder={t('teams.searchPlaceholder')}
             prefix={<SearchOutlined />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 250 }}
+            className="clubs-search"
             allowClear
           />
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            className="clubs-status-filter"
+            options={[
+              { value: 'ALL', label: t('common.all') },
+              { value: 'ACTIVE', label: t('teams.filterActive') },
+              { value: 'INACTIVE', label: t('teams.filterInactive') },
+            ]}
+          />
+        </Space>
+        <Space>
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
               {t('teams.addBtn')}
@@ -277,16 +235,76 @@ export default function TeamsPage() {
 
       {loading && filteredTeams.length === 0 ? (
         <TableSkeleton rows={8} />
+      ) : filteredTeams.length === 0 ? (
+        <div className="clubs-empty">
+          <Empty description={t('common.noData')} />
+        </div>
       ) : (
-        <Table
-          columns={columns}
-          dataSource={filteredTeams}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 15, showSizeChanger: true }}
-          size="middle"
-          locale={{ emptyText: t('common.noData') }}
-        />
+        <div className="club-card-grid" aria-label="Danh sách đội bóng">
+          {filteredTeams.map((team) => (
+            <article key={team.id} className="club-card" style={getTeamThemeStyle(team)}>
+              <button
+                type="button"
+                className="club-card-main"
+                onClick={() => navigate(`/teams/${team.id}`)}
+              >
+                <span className="club-card-crest">{renderTeamLogo(team)}</span>
+                <span className="club-card-body">
+                  <span className="club-card-heading">
+                    <span className="club-card-name">{team.name}</span>
+                    {team.shortName && (
+                      <span className="club-card-code-pill">{team.shortName}</span>
+                    )}
+                  </span>
+                  <span className="club-card-meta">
+                    <EnvironmentOutlined />
+                    {team.stadium?.name ?? team.city ?? 'Chưa có sân nhà'}
+                  </span>
+                </span>
+                <ArrowRightOutlined className="club-card-arrow" />
+              </button>
+
+              <div className="club-card-footer">
+                <Tag color={team.status === 'ACTIVE' ? 'green' : 'default'}>
+                  {team.status === 'ACTIVE' ? t('teams.filterActive') : t('teams.filterInactive')}
+                </Tag>
+              </div>
+
+              <div className="club-card-actions">
+                <Button
+                  className="club-card-detail-button"
+                  icon={<ArrowRightOutlined />}
+                  onClick={() => navigate(`/teams/${team.id}`)}
+                >
+                  {t('common.detail')}
+                </Button>
+                {canEdit && (
+                  <>
+                    <Button
+                      aria-label={`${t('common.edit')} ${team.name}`}
+                      icon={<EditOutlined />}
+                      onClick={() => openEditModal(team)}
+                    />
+                    <Popconfirm
+                      title={t('teams.deleteConfirmTitle')}
+                      description={t('teams.deleteConfirmDesc', { name: team.name })}
+                      onConfirm={() => handleDelete(team.id)}
+                      okText={t('teams.deleteOk')}
+                      cancelText={t('teams.deleteCancel')}
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Button
+                        aria-label={`${t('common.delete')} ${team.name}`}
+                        danger
+                        icon={<DeleteOutlined />}
+                      />
+                    </Popconfirm>
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
       )}
 
       <Modal
@@ -352,6 +370,6 @@ export default function TeamsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </div>
   );
 }

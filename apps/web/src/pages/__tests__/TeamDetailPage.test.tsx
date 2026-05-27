@@ -45,4 +45,13 @@ describe('TeamDetailPage', () => {
 
     expect(logo).toHaveAttribute('src', '/team-logos/Logo_CAHN_FC.svg.png');
   });
+
+  it('applies the club color theme to the detail hero', async () => {
+    renderPage();
+
+    const logo = await screen.findByRole('img', { name: 'Công An Hà Nội' });
+    const hero = logo.closest('.club-detail-hero');
+
+    expect(hero?.getAttribute('style')).toContain('--club-accent: #f5c542');
+  });
 });

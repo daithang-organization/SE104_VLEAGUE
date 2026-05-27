@@ -5,7 +5,12 @@ export interface CreateNotificationDto {
   userId?: string;
   title: string;
   message: string;
-  type: 'MATCH_RESULT' | 'STATUS_CHANGE' | 'SCHEDULE_CHANGE' | 'SYSTEM';
+  type:
+    | 'MATCH_RESULT'
+    | 'STATUS_CHANGE'
+    | 'SCHEDULE_CHANGE'
+    | 'TEAM_INVITATION'
+    | 'SYSTEM';
   entityType?: string;
   entityId?: string;
 }

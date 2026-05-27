@@ -46,6 +46,19 @@ enum SeasonTeamStatus {
   WITHDRAWN
 }
 
+enum TeamInvitationSourceType {
+  PREVIOUS_TOP_8
+  PROMOTED
+  REPLACEMENT
+}
+
+enum TeamInvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 enum EventType {
   GOAL
   OWN_GOAL
@@ -173,6 +186,7 @@ model Team {
   matchEvents  MatchEvent[]
   standings    Standing[]
   managerAssignments TeamManagerAssignment[]
+  invitations TeamInvitation[]
 
   @@map("teams")
 }
@@ -239,6 +253,7 @@ model Season {
   regulations Regulation[]
   standings   Standing[]
   managerAssignments TeamManagerAssignment[]
+  invitations TeamInvitation[]
 
   @@map("seasons")
 }
@@ -410,6 +425,33 @@ model TeamManagerAssignment {
   @@index([teamId])
   @@index([seasonId])
   @@map("team_manager_assignments")
+}
+
+model TeamInvitation {
+  id       String @id @default(uuid()) @db.Uuid
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId   String @map("team_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  sourceType TeamInvitationSourceType @map("source_type")
+  status     TeamInvitationStatus     @default(SENT)
+
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  deadlineAt  DateTime  @map("deadline_at")
+  responseAt  DateTime? @map("response_at")
+  responseReason String? @map("response_reason")
+  regulationsSnapshot Json? @map("regulations_snapshot")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId])
+  @@index([teamId])
+  @@index([status])
+  @@index([deadlineAt])
+  @@map("team_invitations")
 }
 
 // ─── Audit Log ──────────────────────────────────────────────
