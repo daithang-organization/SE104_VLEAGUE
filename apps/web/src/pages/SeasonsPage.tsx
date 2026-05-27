@@ -178,6 +178,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const invitationsByTeamId = new Map(
     invitations.map((invitation) => [invitation.teamId, invitation]),
   );
+  const candidateTopCount =
+    candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PREVIOUS_TOP_8')
+      .length ?? 0;
+  const candidatePromotedCount =
+    candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PROMOTED').length ??
+    0;
 
   const handleAdd = async () => {
     if (!selectedTeamId) return;
@@ -206,7 +212,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         sourceType,
       });
       message.success('Đã gửi lời mời tham dự đến manager CLB');
-      fetchTeams();
+      await fetchTeams();
     } catch (_err) {
       message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có manager trong mùa giải.');
     } finally {
@@ -220,7 +226,19 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       dataIndex: 'sourceRank',
       width: 64,
       align: 'center',
-      render: (rank: number) => <Tag color="blue">#{rank}</Tag>,
+      render: (rank: number, record) => (
+        <Tag color={record.sourceType === 'PROMOTED' ? 'green' : 'blue'}>#{rank}</Tag>
+      ),
+    },
+    {
+      title: 'Nguồn',
+      dataIndex: 'sourceType',
+      width: 130,
+      render: (sourceType: TeamInvitationSourceType) => (
+        <Tag color={sourceType === 'PROMOTED' ? 'green' : 'blue'}>
+          {INVITATION_SOURCE_MAP[sourceType] ?? sourceType}
+        </Tag>
+      ),
     },
     {
       title: 'CLB',
@@ -244,14 +262,17 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       dataIndex: 'points',
       width: 80,
       align: 'center',
+      render: (points: number, record) => (record.sourceType === 'PREVIOUS_TOP_8' ? points : '-'),
     },
     {
       title: 'Hiệu số',
       dataIndex: 'goalDifference',
       width: 90,
       align: 'center',
-      render: (goalDifference: number) =>
-        goalDifference > 0 ? `+${goalDifference}` : goalDifference,
+      render: (goalDifference: number, record) => {
+        if (record.sourceType !== 'PREVIOUS_TOP_8') return '-';
+        return goalDifference > 0 ? `+${goalDifference}` : goalDifference;
+      },
     },
     {
       title: 'Lời mời',
@@ -271,17 +292,25 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       key: 'actions',
       width: 120,
       align: 'right',
-      render: (_, r) => (
-        <Button
-          size="small"
-          icon={<SendOutlined />}
-          loading={inviting}
-          disabled={r.invitationStatus === 'ACCEPTED'}
-          onClick={() => handleSendInvitation(r.teamId, 'PREVIOUS_TOP_8')}
-        >
-          {r.invitationStatus === 'SENT' ? 'Gửi lại top 8' : 'Gửi top 8'}
-        </Button>
-      ),
+      render: (_, r) => {
+        const actionSource =
+          r.sourceType === 'PREVIOUS_TOP_8'
+            ? 'top 8'
+            : r.sourceType === 'PROMOTED'
+              ? 'thăng hạng'
+              : 'thay thế';
+        return (
+          <Button
+            size="small"
+            icon={<SendOutlined />}
+            loading={inviting}
+            disabled={r.invitationStatus === 'ACCEPTED'}
+            onClick={() => handleSendInvitation(r.teamId, r.sourceType)}
+          >
+            {r.invitationStatus === 'SENT' ? `Gửi lại ${actionSource}` : `Gửi ${actionSource}`}
+          </Button>
+        );
+      },
     },
   ];
 
@@ -464,11 +493,22 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         {candidateResult ? (
           <>
             <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-              <Typography.Text strong>Top 8 mùa trước</Typography.Text>
+              <Typography.Text strong>Danh sách mời dự kiến</Typography.Text>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Nguồn: {candidateResult.previousSeason.name}
+                Nguồn: {candidateResult.previousSeason.name} · Top 8: {candidateTopCount}/
+                {candidateResult.requiredTopLeagueSlots} · Thăng hạng: {candidatePromotedCount}/
+                {candidateResult.requiredPromotedSlots}
               </Typography.Text>
             </Flex>
+            {candidatePromotedCount < candidateResult.requiredPromotedSlots && (
+              <Alert
+                showIcon
+                type="info"
+                message="Cần bổ sung đội thăng hạng"
+                description="Chọn nguồn Thăng hạng ở khu vực bên dưới để gửi lời mời cho đủ 2 đội thăng hạng."
+                style={{ marginBottom: 8 }}
+              />
+            )}
             <Table
               columns={candidateColumns}
               dataSource={candidateResult.candidates}
@@ -482,7 +522,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             <Alert
               showIcon
               type="warning"
-              message="Top 8 mùa trước"
+              message="Danh sách mời dự kiến"
               description={candidateError}
               style={{ marginBottom: 12 }}
             />

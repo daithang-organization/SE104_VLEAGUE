@@ -77,6 +77,8 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
   apiGetInvitationCandidates: vi.fn().mockResolvedValue({
     targetSeason: { id: 's1', name: 'VLeague 2025/2026', year: 2025, status: 'IN_PROGRESS' },
     previousSeason: { id: 's2', name: 'VLeague 2024/2025', year: 2024, status: 'COMPLETED' },
+    requiredTopLeagueSlots: 8,
+    requiredPromotedSlots: 2,
     candidates: [
       {
         teamId: 'team-1',
@@ -85,6 +87,16 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
         sourceRank: 1,
         points: 42,
         goalDifference: 18,
+        invitationStatus: null,
+      },
+      {
+        teamId: 'team-promoted-1',
+        teamName: 'CLB Thăng hạng',
+        sourceType: 'PROMOTED',
+        sourceRank: 1,
+        points: 0,
+        goalDifference: 0,
+        played: 0,
         invitationStatus: null,
       },
     ],
@@ -208,7 +220,7 @@ describe('SeasonsPage', () => {
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
 
-  it('sends top-8 candidate invitations with PREVIOUS_TOP_8 source', async () => {
+  it('sends top-8 invitation candidates with the previous top source type', async () => {
     const { container } = renderPage();
 
     await waitFor(() => {
@@ -218,13 +230,34 @@ describe('SeasonsPage', () => {
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
     fireEvent.click(expandButton);
 
-    expect(await screen.findByText('Top 8 mùa trước')).toBeInTheDocument();
+    expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /gửi top 8/i }));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
         teamId: 'team-1',
         sourceType: 'PREVIOUS_TOP_8',
+      });
+    });
+  });
+
+  it('sends promoted invitation candidates with the promoted source type', async () => {
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /gửi thăng hạng/i }));
+
+    await waitFor(() => {
+      expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
+        teamId: 'team-promoted-1',
+        sourceType: 'PROMOTED',
       });
     });
   });

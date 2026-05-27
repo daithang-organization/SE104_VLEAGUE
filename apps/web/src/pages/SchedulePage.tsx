@@ -21,7 +21,6 @@ import {
   Space,
   Spin,
   Tabs,
-  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -30,7 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { PageHero } from '../components';
+import { MatchFixtureCard, PageHero } from '../components';
 import { apiUpdateMatch } from '../services/matchApi';
 import {
   apiGenerateSchedule,
@@ -41,33 +40,12 @@ import {
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { STATUS_MAP } from '../utils/constants';
-import { getTeamLogoUrl } from '../utils/teamLogos';
-
-type ScheduleTeam = NonNullable<ScheduleMatch['homeTeam']>;
-type ScheduleTeamDisplay = {
-  id?: string;
-  name: string;
-  logoUrl?: string;
-};
 
 function formatScheduleDateLabel(kickoffAt?: string | null) {
   if (!kickoffAt) return 'Chưa xếp lịch';
   const date = dayjs(kickoffAt);
   const weekday = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.day()];
   return `${weekday}, ${date.format('D/M')}`;
-}
-
-function getScheduleTeamDisplay(
-  team: ScheduleTeam | undefined,
-  fallbackId: string,
-): ScheduleTeamDisplay {
-  const fallbackName = fallbackId.slice(0, 8);
-
-  return {
-    id: team?.id ?? fallbackId,
-    name: team?.shortName || team?.name || fallbackName,
-    logoUrl: getTeamLogoUrl(team),
-  };
 }
 
 function compareMatchesByKickoff(a: ScheduleMatch, b: ScheduleMatch) {
@@ -265,77 +243,30 @@ export default function SchedulePage() {
   const draftCount = matches.filter((m) => m.status === 'DRAFT').length;
   const scheduledCount = matches.filter((m) => m.kickoffAt).length;
 
-  const renderScheduleLogo = (displayTeam: ScheduleTeamDisplay) =>
-    displayTeam.logoUrl ? (
-      <img
-        src={displayTeam.logoUrl}
-        alt={`${displayTeam.name} logo`}
-        className="schedule-match-logo"
-      />
-    ) : (
-      <div className="schedule-match-logo schedule-match-logo-fallback">
-        {displayTeam.name.slice(0, 2).toUpperCase()}
-      </div>
-    );
-
   const renderScheduleFixture = (match: ScheduleMatch) => {
-    const homeTeam = getScheduleTeamDisplay(match.homeTeam, match.homeTeamId);
-    const awayTeam = getScheduleTeamDisplay(match.awayTeam, match.awayTeamId);
-    const hasScore = match.homeScore != null && match.awayScore != null;
-    const scoreText = hasScore
-      ? `${match.homeScore} - ${match.awayScore}`
-      : match.kickoffAt
-        ? dayjs(match.kickoffAt).format('HH:mm')
-        : 'vs';
     const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
 
     return (
-      <div key={match.id} className="schedule-fixture-row">
-        <div className="schedule-fixture-meta">
-          <span className="schedule-fixture-round">
-            {t('schedule.roundLabel', { round: match.roundNo })}
-          </span>
-          <Tag color={status.color}>{status.label}</Tag>
-        </div>
-
-        <button
-          type="button"
-          className="schedule-fixture-team schedule-fixture-team-left"
-          onClick={() => homeTeam.id && navigate(`/teams/${homeTeam.id}`)}
-        >
-          <span>{homeTeam.name}</span>
-          {renderScheduleLogo(homeTeam)}
-        </button>
-
-        <button
-          type="button"
-          className={`schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}`}
-          onClick={() => navigate(`/matches/${match.id}`)}
-        >
-          {scoreText}
-        </button>
-
-        <button
-          type="button"
-          className="schedule-fixture-team schedule-fixture-team-right"
-          onClick={() => awayTeam.id && navigate(`/teams/${awayTeam.id}`)}
-        >
-          {renderScheduleLogo(awayTeam)}
-          <span>{awayTeam.name}</span>
-        </button>
-
-        <div className="schedule-fixture-detail">
-          <span>{match.stadium?.name ?? t('schedule.stadiumNotSet')}</span>
-          <span>
-            <CalendarOutlined aria-hidden="true" />
-            {match.kickoffAt
-              ? dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm')
-              : t('schedule.kickoffNotSet')}
-          </span>
-        </div>
-
-        <div className="schedule-fixture-action">
-          {isAdmin && (
+      <MatchFixtureCard
+        key={match.id}
+        id={match.id}
+        roundLabel={t('schedule.roundLabel', { round: match.roundNo })}
+        statusLabel={status.label}
+        statusColor={status.color}
+        homeTeamId={match.homeTeamId}
+        awayTeamId={match.awayTeamId}
+        homeTeam={match.homeTeam}
+        awayTeam={match.awayTeam}
+        homeScore={match.homeScore}
+        awayScore={match.awayScore}
+        kickoffAt={match.kickoffAt}
+        stadiumName={match.stadium?.name}
+        stadiumFallback={t('schedule.stadiumNotSet')}
+        kickoffFallback={t('schedule.kickoffNotSet')}
+        onTeamClick={(teamId) => navigate(`/teams/${teamId}`)}
+        onMatchClick={(matchId) => navigate(`/matches/${matchId}`)}
+        actions={
+          isAdmin ? (
             <Tooltip title={t('schedule.editTooltip')}>
               <Button
                 type="text"
@@ -344,9 +275,9 @@ export default function SchedulePage() {
                 onClick={() => openEditModal(match)}
               />
             </Tooltip>
-          )}
-        </div>
-      </div>
+          ) : null
+        }
+      />
     );
   };
 

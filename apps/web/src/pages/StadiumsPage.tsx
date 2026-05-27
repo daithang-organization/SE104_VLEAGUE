@@ -71,6 +71,7 @@ export default function StadiumsPage() {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
+    form.setFieldsValue({ country: 'Việt Nam', fifaStars: 2 });
     setModalOpen(true);
   };
 
@@ -80,7 +81,9 @@ export default function StadiumsPage() {
       name: stadium.name,
       city: stadium.city,
       address: stadium.address ?? '',
+      country: stadium.country ?? 'Việt Nam',
       capacity: stadium.capacity,
+      fifaStars: stadium.fifaStars,
     });
     setModalOpen(true);
   };
@@ -94,7 +97,9 @@ export default function StadiumsPage() {
         name: values.name,
         city: values.city,
         address: values.address || undefined,
+        country: values.country?.trim() || undefined,
         capacity: values.capacity || undefined,
+        fifaStars: values.fifaStars ?? undefined,
       };
 
       if (editing) {
@@ -128,7 +133,8 @@ export default function StadiumsPage() {
   const filtered = stadiums.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.city.toLowerCase().includes(search.toLowerCase()),
+      s.city.toLowerCase().includes(search.toLowerCase()) ||
+      (s.country ?? '').toLowerCase().includes(search.toLowerCase()),
   );
   const totalCapacity = stadiums.reduce((sum, stadium) => sum + (stadium.capacity ?? 0), 0);
   const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
@@ -199,6 +205,12 @@ export default function StadiumsPage() {
       sorter: (a, b) => a.city.localeCompare(b.city),
     },
     {
+      title: t('stadiums.colCountry'),
+      dataIndex: 'country',
+      width: 130,
+      render: (v: string | null) => v ?? '—',
+    },
+    {
       title: t('stadiums.colAddress'),
       dataIndex: 'address',
       ellipsis: true,
@@ -212,6 +224,14 @@ export default function StadiumsPage() {
       sorter: (a, b) => (a.capacity ?? 0) - (b.capacity ?? 0),
       render: (v: number | null) => (v ? v.toLocaleString('vi-VN') : '—'),
     },
+    {
+      title: t('stadiums.colFifaStars'),
+      dataIndex: 'fifaStars',
+      width: 120,
+      align: 'center',
+      sorter: (a, b) => (a.fifaStars ?? 0) - (b.fifaStars ?? 0),
+      render: (v: number | null) => (v != null ? `${v}/5` : '—'),
+    },
     ...(isAdmin
       ? [
           {
@@ -220,7 +240,12 @@ export default function StadiumsPage() {
             width: 120,
             render: (_: unknown, record: Stadium) => (
               <Space>
-                <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  aria-label={t('stadiums.editAction')}
+                  onClick={() => openEdit(record)}
+                />
                 <Popconfirm
                   title={t('stadiums.deleteConfirmTitle')}
                   description={t('stadiums.deleteConfirmDesc', { name: record.name })}
@@ -229,7 +254,12 @@ export default function StadiumsPage() {
                   cancelText={t('stadiums.deleteCancel')}
                   okButtonProps={{ danger: true }}
                 >
-                  <Button type="text" danger icon={<DeleteOutlined />} />
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    aria-label={t('stadiums.deleteAction')}
+                  />
                 </Popconfirm>
               </Space>
             ),
@@ -296,12 +326,31 @@ export default function StadiumsPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
+              <Form.Item name="country" label={t('stadiums.formCountry')}>
+                <Input placeholder={t('stadiums.formCountryPlaceholder')} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
               <Form.Item name="capacity" label={t('stadiums.formCapacity')}>
                 <InputNumber
                   style={{ width: '100%' }}
                   placeholder={t('stadiums.formCapacityPlaceholder')}
                   min={0}
                   formatter={(v) => (v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '')}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="fifaStars" label={t('stadiums.formFifaStars')}>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  placeholder={t('stadiums.formFifaStarsPlaceholder')}
+                  min={2}
+                  max={5}
+                  precision={0}
                 />
               </Form.Item>
             </Col>

@@ -1,5 +1,4 @@
 ﻿import {
-  CalendarOutlined,
   EditOutlined,
   EyeOutlined,
   FieldTimeOutlined,
@@ -30,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { EventFormRow } from '../components';
-import { EventModal, PageHero, ScoreEditModal } from '../components';
+import { EventModal, MatchFixtureCard, PageHero, ScoreEditModal } from '../components';
 import {
   apiAddMatchEvent,
   apiGetMatch,
@@ -47,28 +46,11 @@ import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
-type MatchTeam = NonNullable<Match['homeTeam']>;
-type MatchTeamDisplay = {
-  id?: string;
-  name: string;
-  logoUrl?: string;
-};
-
 function formatMatchDateLabel(kickoffAt?: string | null) {
   if (!kickoffAt) return 'Chưa xếp lịch';
   const date = dayjs(kickoffAt);
   const weekday = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.day()];
   return `${weekday}, ${date.format('D/M')}`;
-}
-
-function getMatchTeamDisplay(team: MatchTeam | undefined, fallbackId: string): MatchTeamDisplay {
-  const fallbackName = fallbackId.slice(0, 8);
-
-  return {
-    id: team?.id ?? fallbackId,
-    name: team?.shortName || team?.name || fallbackName,
-    logoUrl: getTeamLogoUrl(team),
-  };
 }
 
 function compareMatchesByKickoff(a: Match, b: Match) {
@@ -369,96 +351,58 @@ export default function MatchesPage() {
     return transitions[match.status] ?? [];
   };
 
-  const renderMatchLogo = (displayTeam: MatchTeamDisplay) =>
-    displayTeam.logoUrl ? (
-      <img
-        src={displayTeam.logoUrl}
-        alt={`${displayTeam.name} logo`}
-        className="schedule-match-logo"
-      />
-    ) : (
-      <div className="schedule-match-logo schedule-match-logo-fallback">
-        {displayTeam.name.slice(0, 2).toUpperCase()}
-      </div>
-    );
-
   const renderResultFixture = (match: Match) => {
-    const homeTeam = getMatchTeamDisplay(match.homeTeam, match.homeTeamId);
-    const awayTeam = getMatchTeamDisplay(match.awayTeam, match.awayTeamId);
-    const hasScore = match.homeScore != null && match.awayScore != null;
-    const scoreText = hasScore ? `${match.homeScore} - ${match.awayScore}` : '— : —';
     const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
 
     return (
-      <div key={match.id} className="schedule-fixture-row results-fixture-row">
-        <div className="schedule-fixture-meta">
-          <span className="schedule-fixture-round">
-            {t('matches.roundLabel', { round: match.roundNo })}
-          </span>
-          <Tag color={status.color}>{status.label}</Tag>
-        </div>
-
-        <button
-          type="button"
-          className="schedule-fixture-team schedule-fixture-team-left"
-          onClick={() => homeTeam.id && navigate(`/teams/${homeTeam.id}`)}
-        >
-          <span>{homeTeam.name}</span>
-          {renderMatchLogo(homeTeam)}
-        </button>
-
-        <button
-          type="button"
-          className={`schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}`}
-          onClick={() => navigate(`/matches/${match.id}`)}
-        >
-          {scoreText}
-        </button>
-
-        <button
-          type="button"
-          className="schedule-fixture-team schedule-fixture-team-right"
-          onClick={() => awayTeam.id && navigate(`/teams/${awayTeam.id}`)}
-        >
-          {renderMatchLogo(awayTeam)}
-          <span>{awayTeam.name}</span>
-        </button>
-
-        <div className="schedule-fixture-detail">
-          <span>{match.stadium?.name ?? t('schedule.stadiumNotSet')}</span>
-          <span>
-            <CalendarOutlined aria-hidden="true" />
-            {match.kickoffAt
-              ? dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm')
-              : t('schedule.kickoffNotSet')}
-          </span>
-        </div>
-
-        <div className="schedule-fixture-action results-fixture-action">
-          <Tooltip title={t('matches.btnDetail')}>
-            <Button
-              type="link"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => navigate(`/matches/${match.id}`)}
-            >
-              {t('matches.btnDetail')}
-            </Button>
-          </Tooltip>
-          {canEdit && (
-            <Tooltip title={t('matches.btnEdit')}>
+      <MatchFixtureCard
+        key={match.id}
+        id={match.id}
+        className="results-fixture-row"
+        actionClassName="results-fixture-action"
+        roundLabel={t('matches.roundLabel', { round: match.roundNo })}
+        statusLabel={status.label}
+        statusColor={status.color}
+        homeTeamId={match.homeTeamId}
+        awayTeamId={match.awayTeamId}
+        homeTeam={match.homeTeam}
+        awayTeam={match.awayTeam}
+        homeScore={match.homeScore}
+        awayScore={match.awayScore}
+        kickoffAt={match.kickoffAt}
+        stadiumName={match.stadium?.name}
+        stadiumFallback={t('schedule.stadiumNotSet')}
+        kickoffFallback={t('schedule.kickoffNotSet')}
+        scoreMode="result-placeholder"
+        onTeamClick={(teamId) => navigate(`/teams/${teamId}`)}
+        onMatchClick={(matchId) => navigate(`/matches/${matchId}`)}
+        actions={
+          <>
+            <Tooltip title={t('matches.btnDetail')}>
               <Button
                 type="link"
                 size="small"
-                icon={<EditOutlined />}
-                onClick={() => viewDetail(match.id)}
+                icon={<EyeOutlined />}
+                onClick={() => navigate(`/matches/${match.id}`)}
               >
-                {t('matches.btnEdit')}
+                {t('matches.btnDetail')}
               </Button>
             </Tooltip>
-          )}
-        </div>
-      </div>
+            {canEdit && (
+              <Tooltip title={t('matches.btnEdit')}>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => viewDetail(match.id)}
+                >
+                  {t('matches.btnEdit')}
+                </Button>
+              </Tooltip>
+            )}
+          </>
+        }
+      />
     );
   };
   const finishedMatches = matches.filter((match) => match.status === 'FINISHED').length;

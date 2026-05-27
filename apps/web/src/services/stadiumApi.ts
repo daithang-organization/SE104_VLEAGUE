@@ -6,8 +6,10 @@ export type Stadium = {
   id: string;
   name: string;
   address?: string | null;
+  country?: string | null;
   city: string;
   capacity?: number | null;
+  fifaStars?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -34,7 +36,9 @@ export type CreateStadiumPayload = {
   name: string;
   city: string;
   address?: string;
+  country?: string;
   capacity?: number;
+  fifaStars?: number;
 };
 
 export type UpdateStadiumPayload = Partial<CreateStadiumPayload>;

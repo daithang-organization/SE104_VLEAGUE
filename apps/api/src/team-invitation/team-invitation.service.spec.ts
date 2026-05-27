@@ -72,8 +72,10 @@ describe('TeamInvitationService', () => {
               findUnique: jest.fn(),
               upsert: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn(),
             },
             seasonTeam: {
+              findMany: jest.fn(),
               upsert: jest.fn(),
               updateMany: jest.fn(),
             },
@@ -210,27 +212,77 @@ describe('TeamInvitationService', () => {
       jest
         .spyOn(standingsService, 'getStandings')
         .mockResolvedValue(finalStandings as any);
-      jest.spyOn(prisma.team, 'findMany').mockResolvedValue(
-        finalStandings.slice(0, 8).map((standing) => ({
-          id: standing.teamId,
-          name: standing.teamName,
-          shortName: null,
-          city: 'Hà Nội',
-          logoUrl: null,
-          status: 'ACTIVE',
-        })) as any,
-      );
-      jest.spyOn(prisma.teamInvitation, 'findMany').mockResolvedValue([
+      jest.spyOn(prisma.team, 'findMany').mockImplementation((args: any) => {
+        const ids = new Set(args.where.id.in);
+        return Promise.resolve(
+          finalStandings
+            .slice(0, 8)
+            .filter((standing) => ids.has(standing.teamId))
+            .map((standing) => ({
+              id: standing.teamId,
+              name: standing.teamName,
+              shortName: null,
+              city: 'Hà Nội',
+              logoUrl: null,
+              status: 'ACTIVE',
+            })),
+        ) as any;
+      });
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where.sourceType === 'PROMOTED') {
+            return Promise.resolve([
+              {
+                id: 'promoted-invitation-1',
+                teamId: 'promoted-1',
+                sourceType: 'PROMOTED',
+                status: 'SENT',
+                responseReason: null,
+                deadlineAt: new Date('2026-05-15T00:00:00.000Z'),
+                sentAt: now,
+                createdAt: now,
+                team: {
+                  id: 'promoted-1',
+                  name: 'CLB Thăng hạng 1',
+                  shortName: 'TH1',
+                  city: 'Đà Nẵng',
+                  logoUrl: null,
+                  status: 'ACTIVE',
+                },
+              },
+            ]) as any;
+          }
+
+          return Promise.resolve([
+            {
+              ...invitation,
+              teamId: 'team-1',
+              sourceType: 'PREVIOUS_TOP_8',
+              status: 'SENT',
+            },
+          ]) as any;
+        });
+      jest.spyOn(prisma.seasonTeam, 'findMany').mockResolvedValue([
         {
-          ...invitation,
-          teamId: 'team-1',
-          sourceType: 'PREVIOUS_TOP_8',
-          status: 'SENT',
+          teamId: 'promoted-2',
+          registeredAt: now,
+          team: {
+            id: 'promoted-2',
+            name: 'CLB Thăng hạng 2',
+            shortName: 'TH2',
+            city: 'Huế',
+            logoUrl: null,
+            status: 'ACTIVE',
+          },
         },
       ] as any);
+      jest
+        .spyOn(prisma.teamInvitation, 'updateMany')
+        .mockResolvedValue({ count: 0 } as any);
     });
 
-    it('builds the top 8 invitation candidates from a completed previous season', async () => {
+    it('builds the initial invitation candidates from top 8 and two promoted teams', async () => {
       const result = await (service as any).getInvitationCandidates('season-1');
 
       expect(prisma.season.findFirst).toHaveBeenCalledWith({
@@ -242,13 +294,41 @@ describe('TeamInvitationService', () => {
         'final',
       );
       expect(result.previousSeason).toEqual(previousSeason);
-      expect(result.candidates).toHaveLength(8);
+      expect(result.requiredTopLeagueSlots).toBe(8);
+      expect(result.requiredPromotedSlots).toBe(2);
+      expect(result.candidates).toHaveLength(10);
+      expect(
+        result.candidates.filter(
+          (candidate: any) => candidate.sourceType === 'PREVIOUS_TOP_8',
+        ),
+      ).toHaveLength(8);
+      expect(
+        result.candidates.filter(
+          (candidate: any) => candidate.sourceType === 'PROMOTED',
+        ),
+      ).toHaveLength(2);
       expect(result.candidates[0]).toEqual(
         expect.objectContaining({
           teamId: 'team-1',
           sourceType: 'PREVIOUS_TOP_8',
           sourceRank: 1,
           invitationStatus: 'SENT',
+        }),
+      );
+      expect(result.candidates[8]).toEqual(
+        expect.objectContaining({
+          teamId: 'promoted-1',
+          sourceType: 'PROMOTED',
+          sourceRank: 1,
+          invitationStatus: 'SENT',
+        }),
+      );
+      expect(result.candidates[9]).toEqual(
+        expect.objectContaining({
+          teamId: 'promoted-2',
+          sourceType: 'PROMOTED',
+          sourceRank: 2,
+          invitationStatus: null,
         }),
       );
     });
@@ -345,7 +425,7 @@ describe('TeamInvitationService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('rejects expired invitations before recording a response', async () => {
+    it('marks expired invitations before rejecting the response', async () => {
       jest.spyOn(prisma.teamInvitation, 'findUnique').mockResolvedValue({
         ...invitation,
         deadlineAt: new Date('2026-04-30T00:00:00.000Z'),
@@ -356,6 +436,18 @@ describe('TeamInvitationService', () => {
           responseStatus: 'ACCEPTED',
         }),
       ).rejects.toThrow(BadRequestException);
+      expect(prisma.teamInvitation.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'invitation-1',
+          status: 'SENT',
+          deadlineAt: { lt: now },
+        },
+        data: {
+          status: 'EXPIRED',
+          responseAt: now,
+          responseReason: 'Quá hạn phản hồi',
+        },
+      });
       expect(prisma.teamInvitation.update).not.toHaveBeenCalled();
     });
 

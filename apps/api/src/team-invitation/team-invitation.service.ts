@@ -82,6 +82,7 @@ export class TeamInvitationService {
 
   async listForSeason(seasonId: string) {
     await this.ensureSeasonExists(seasonId);
+    await this.markExpiredInvitations({ seasonId });
 
     return this.prisma.teamInvitation.findMany({
       where: { seasonId },
@@ -101,6 +102,7 @@ export class TeamInvitationService {
     candidates: InvitationCandidate[];
   }> {
     const targetSeason = await this.ensureSeasonExists(seasonId);
+    await this.markExpiredInvitations({ seasonId });
     const previousSeason = previousSeasonId
       ? await this.prisma.season.findUnique({ where: { id: previousSeasonId } })
       : await this.prisma.season.findFirst({
@@ -134,9 +136,14 @@ export class TeamInvitationService {
       );
     }
 
-    const candidates = await this.buildTopLeagueCandidates(
+    const topLeagueCandidates = await this.buildTopLeagueCandidates(
       seasonId,
       topStandings,
+    );
+    const promotedCandidates = await this.buildPromotedCandidates(
+      seasonId,
+      topStandings.map((standing) => standing.teamId),
+      promotedSlots,
     );
 
     return {
@@ -144,7 +151,7 @@ export class TeamInvitationService {
       previousSeason,
       requiredTopLeagueSlots: topLeagueSlots,
       requiredPromotedSlots: promotedSlots,
-      candidates,
+      candidates: [...topLeagueCandidates, ...promotedCandidates],
     };
   }
 
@@ -227,14 +234,17 @@ export class TeamInvitationService {
 
     if (assignments.length === 0) return [];
 
+    const assignmentFilter = assignments.map((assignment) => ({
+      seasonId: assignment.seasonId,
+      teamId: assignment.teamId,
+    }));
+    await this.markExpiredInvitations({ OR: assignmentFilter });
+
     return this.prisma.teamInvitation.findMany({
       where: {
         status: TeamInvitationStatus.SENT,
         deadlineAt: { gte: new Date() },
-        OR: assignments.map((assignment) => ({
-          seasonId: assignment.seasonId,
-          teamId: assignment.teamId,
-        })),
+        OR: assignmentFilter,
       },
       include: this.invitationInclude,
       orderBy: { deadlineAt: 'asc' },
@@ -264,6 +274,7 @@ export class TeamInvitationService {
     }
 
     if (invitation.deadlineAt < new Date()) {
+      await this.markInvitationExpired(invitation.id);
       throw new BadRequestException('Lời mời đã quá hạn phản hồi.');
     }
 
@@ -323,6 +334,125 @@ export class TeamInvitationService {
     }
 
     return updatedInvitation;
+  }
+
+  private async buildPromotedCandidates(
+    seasonId: string,
+    excludedTeamIds: string[],
+    requiredSlots: number,
+  ): Promise<InvitationCandidate[]> {
+    if (requiredSlots <= 0) return [];
+
+    const excluded = new Set(excludedTeamIds);
+    const selectedTeamIds = new Set<string>();
+    const selected: Array<{
+      teamId: string;
+      teamName: string;
+      team: InvitationCandidate['team'];
+      invitationId: string | null;
+      invitationStatus: TeamInvitationStatus | null;
+      responseReason: string | null;
+      deadlineAt: Date | null;
+    }> = [];
+
+    const promotedInvitations = await this.prisma.teamInvitation.findMany({
+      where: {
+        seasonId,
+        sourceType: TeamInvitationSourceType.PROMOTED,
+        teamId: { notIn: excludedTeamIds },
+      },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            city: true,
+            logoUrl: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: [{ sentAt: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    for (const invitation of promotedInvitations) {
+      if (selected.length >= requiredSlots) break;
+      if (
+        excluded.has(invitation.teamId) ||
+        selectedTeamIds.has(invitation.teamId)
+      ) {
+        continue;
+      }
+
+      selectedTeamIds.add(invitation.teamId);
+      selected.push({
+        teamId: invitation.teamId,
+        teamName: invitation.team.name,
+        team: invitation.team,
+        invitationId: invitation.id,
+        invitationStatus: invitation.status,
+        responseReason: invitation.responseReason,
+        deadlineAt: invitation.deadlineAt,
+      });
+    }
+
+    if (selected.length < requiredSlots) {
+      const promotedSeasonTeams = await this.prisma.seasonTeam.findMany({
+        where: {
+          seasonId,
+          teamId: {
+            notIn: [...excludedTeamIds, ...selectedTeamIds],
+          },
+          status: {
+            in: [SeasonTeamStatus.REGISTERED, SeasonTeamStatus.APPROVED],
+          },
+        },
+        include: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              city: true,
+              logoUrl: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { registeredAt: 'asc' },
+      });
+
+      for (const seasonTeam of promotedSeasonTeams) {
+        if (selected.length >= requiredSlots) break;
+        if (
+          excluded.has(seasonTeam.teamId) ||
+          selectedTeamIds.has(seasonTeam.teamId)
+        ) {
+          continue;
+        }
+
+        selectedTeamIds.add(seasonTeam.teamId);
+        selected.push({
+          teamId: seasonTeam.teamId,
+          teamName: seasonTeam.team.name,
+          team: seasonTeam.team,
+          invitationId: null,
+          invitationStatus: null,
+          responseReason: null,
+          deadlineAt: null,
+        });
+      }
+    }
+
+    return selected.map((candidate, index) => ({
+      ...candidate,
+      sourceType: TeamInvitationSourceType.PROMOTED,
+      sourceRank: index + 1,
+      points: 0,
+      goalDifference: 0,
+      played: 0,
+    }));
   }
 
   private async buildTopLeagueCandidates(
@@ -400,6 +530,25 @@ export class TeamInvitationService {
     }
 
     return team;
+  }
+
+  private async markExpiredInvitations(where: Prisma.TeamInvitationWhereInput) {
+    await this.prisma.teamInvitation.updateMany({
+      where: {
+        ...where,
+        status: TeamInvitationStatus.SENT,
+        deadlineAt: { lt: new Date() },
+      },
+      data: {
+        status: TeamInvitationStatus.EXPIRED,
+        responseAt: new Date(),
+        responseReason: 'Quá hạn phản hồi',
+      },
+    });
+  }
+
+  private async markInvitationExpired(invitationId: string) {
+    await this.markExpiredInvitations({ id: invitationId });
   }
 
   private async buildRegulationsSnapshot(seasonId: string) {
