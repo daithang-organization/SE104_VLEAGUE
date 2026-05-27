@@ -105,6 +105,13 @@ function getSeasonTeamApplicationStatus(record: SeasonTeam, invitation?: TeamInv
   return { label: 'Chưa gửi lời mời', color: 'default' };
 }
 
+function getBackendErrorMessage(error: unknown) {
+  const backendMessage = (error as { response?: { data?: { message?: string | string[] } } })
+    ?.response?.data?.message;
+  if (Array.isArray(backendMessage)) return backendMessage.join(', ');
+  return backendMessage?.trim() || undefined;
+}
+
 // ─── Season Team Panel (expandable row) ───
 function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const { t } = useTranslation();
@@ -184,8 +191,8 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       await apiUpdateSeasonTeamStatus(seasonId, teamId, status);
       message.success(t('seasons.teamPanelStatusSuccess'));
       fetchTeams();
-    } catch (_err) {
-      message.error(t('seasons.teamPanelStatusError'));
+    } catch (err: unknown) {
+      message.error(getBackendErrorMessage(err) || t('seasons.teamPanelStatusError'));
     }
   };
 
