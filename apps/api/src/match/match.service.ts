@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { MatchLineupService } from '../match-lineup/match-lineup.service';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
@@ -32,6 +33,7 @@ export class MatchService {
     private regulationHelper: RegulationHelper,
     private matchGateway: MatchGateway,
     private notificationService: NotificationService,
+    private matchLineupService: MatchLineupService,
   ) {}
 
   async getMatchById(id: string) {
@@ -375,6 +377,8 @@ export class MatchService {
     // Trigger standings recalculation when match finishes
     if (newStatus === 'FINISHED' && match.seasonId) {
       try {
+        await this.matchLineupService.markServedSuspensionsForMatch(matchId);
+        await this.matchLineupService.syncSuspensionsForMatch(matchId);
         await this.standingsService.getStandings(match.seasonId);
         this.logger.log(
           `Standings recalculated for season ${match.seasonId} after match ${matchId} finished`,

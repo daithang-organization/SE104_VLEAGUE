@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, Season } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import { CreateSeasonDto, UpdateSeasonDto } from './dto';
 
 // Valid season status transitions
@@ -14,6 +15,12 @@ const SEASON_STATUS_TRANSITIONS: Record<string, string[]> = {
   IN_PROGRESS: ['COMPLETED'],
   COMPLETED: [],
 };
+
+const DEFAULT_MIN_ROSTER = 16;
+const DEFAULT_MAX_ROSTER = 22;
+const DEFAULT_MAX_FOREIGN_PLAYERS = 5;
+const DEFAULT_MIN_STADIUM_CAPACITY = 10000;
+const DEFAULT_MIN_STADIUM_FIFA_STARS = 2;
 
 function assertValidSeasonDateRange(
   startDate?: Date | string,
@@ -33,7 +40,10 @@ function assertValidSeasonDateRange(
 
 @Injectable()
 export class SeasonService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private regulationHelper: RegulationHelper,
+  ) {}
 
   findAll(): Promise<Season[]> {
     return this.prisma.season.findMany({
@@ -228,11 +238,16 @@ export class SeasonService {
       );
     }
 
+    if (status === 'APPROVED') {
+      this.assertApplicationComplete(record);
+      await this.assertTeamEligibleForApproval(seasonId, teamId);
+    }
+
     return this.prisma.seasonTeam.update({
       where: { seasonId_teamId: { seasonId, teamId } },
       data: {
         status: status as never,
-        approvedAt: status === 'APPROVED' ? new Date() : undefined,
+        approvedAt: status === 'APPROVED' ? new Date() : null,
       },
       include: {
         team: {
@@ -256,5 +271,160 @@ export class SeasonService {
     });
 
     return { success: true };
+  }
+
+  private async assertTeamEligibleForApproval(
+    seasonId: string,
+    teamId: string,
+  ) {
+    const [
+      minRoster,
+      maxRoster,
+      maxForeignPlayers,
+      minStadiumCapacity,
+      minStadiumFifaStars,
+      activePlayers,
+      foreignPlayers,
+      team,
+    ] = await Promise.all([
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'MIN_ROSTER',
+        DEFAULT_MIN_ROSTER,
+      ),
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'MAX_ROSTER',
+        DEFAULT_MAX_ROSTER,
+      ),
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'MAX_FOREIGN_PLAYERS',
+        DEFAULT_MAX_FOREIGN_PLAYERS,
+      ),
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'MIN_STADIUM_CAPACITY',
+        DEFAULT_MIN_STADIUM_CAPACITY,
+      ),
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'MIN_STADIUM_FIFA_STARS',
+        DEFAULT_MIN_STADIUM_FIFA_STARS,
+      ),
+      this.prisma.teamPlayer.count({
+        where: { teamId, leftAt: null },
+      }),
+      this.prisma.teamPlayer.count({
+        where: {
+          teamId,
+          leftAt: null,
+          player: { playerType: 'FOREIGN' },
+        },
+      }),
+      this.prisma.team.findUnique({
+        where: { id: teamId },
+        include: { stadium: true },
+      }),
+    ]);
+
+    if (!team) {
+      throw new NotFoundException('Không tìm thấy đội bóng');
+    }
+
+    if (activePlayers < minRoster) {
+      throw new BadRequestException(
+        `Đội phải có tối thiểu ${minRoster} cầu thủ để được duyệt`,
+      );
+    }
+
+    if (activePlayers > maxRoster) {
+      throw new BadRequestException(
+        `Đội chỉ được đăng ký tối đa ${maxRoster} cầu thủ`,
+      );
+    }
+
+    if (foreignPlayers > maxForeignPlayers) {
+      throw new BadRequestException(
+        `Đội chỉ được đăng ký tối đa ${maxForeignPlayers} cầu thủ ngoại`,
+      );
+    }
+
+    const stadium = team.stadium;
+    if (!stadium) {
+      throw new BadRequestException('Đội phải có sân nhà để được duyệt');
+    }
+
+    if ((stadium.capacity ?? 0) < minStadiumCapacity) {
+      throw new BadRequestException(
+        `Sân nhà phải có sức chứa tối thiểu ${minStadiumCapacity.toLocaleString('vi-VN')} chỗ`,
+      );
+    }
+
+    if (!this.isVietnam(stadium.country)) {
+      throw new BadRequestException('Sân nhà phải nằm tại Việt Nam');
+    }
+
+    if ((stadium.fifaStars ?? 0) < minStadiumFifaStars) {
+      throw new BadRequestException(
+        `Sân nhà phải đạt tiêu chuẩn ít nhất ${minStadiumFifaStars} sao FIFA`,
+      );
+    }
+  }
+
+  private isVietnam(country?: string | null) {
+    if (!country) return false;
+
+    const normalized = country
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return normalized === 'viet nam' || normalized === 'vietnam';
+  }
+
+  private assertApplicationComplete(record: {
+    applicationSubmittedAt?: Date | null;
+    ownerName?: string | null;
+    ownerCountry?: string | null;
+    teamIntroduction?: string | null;
+    primaryKit?: string | null;
+    backupKit?: string | null;
+    participationFeePaid?: boolean | null;
+  }) {
+    if (!record.applicationSubmittedAt) {
+      throw new BadRequestException('CLB chưa nộp hồ sơ tham dự mùa giải.');
+    }
+
+    const requiredFields = [
+      ['cơ quan chủ quản', record.ownerName],
+      ['quốc gia cơ quan chủ quản', record.ownerCountry],
+      ['giới thiệu đội', record.teamIntroduction],
+      ['áo thi đấu chính thức', record.primaryKit],
+      ['áo thi đấu dự bị', record.backupKit],
+    ] as const;
+    const missing = requiredFields
+      .filter(([, value]) => !value?.trim())
+      .map(([label]) => label);
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Hồ sơ tham dự còn thiếu: ${missing.join(', ')}.`,
+      );
+    }
+
+    if (!this.isVietnam(record.ownerCountry)) {
+      throw new BadRequestException(
+        'Cơ quan chủ quản của CLB phải nằm tại Việt Nam.',
+      );
+    }
+
+    if (!record.participationFeePaid) {
+      throw new BadRequestException(
+        'CLB chưa xác nhận nộp lệ phí tham dự 1 tỷ đồng.',
+      );
+    }
   }
 }

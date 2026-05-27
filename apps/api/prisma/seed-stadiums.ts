@@ -140,9 +140,15 @@ async function main() {
       update: {
         address: stadium.address,
         city: stadium.city,
+        country: 'Việt Nam',
         capacity: stadium.capacity,
+        fifaStars: 2,
       },
-      create: stadium,
+      create: {
+        ...stadium,
+        country: 'Việt Nam',
+        fifaStars: 2,
+      },
     });
     console.log(
       `  ✅ ${s.name} (${s.city}) — ${s.capacity?.toLocaleString() ?? '?'} chỗ`,

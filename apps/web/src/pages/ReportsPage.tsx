@@ -2,29 +2,42 @@ import {
   BarChartOutlined,
   DownloadOutlined,
   RiseOutlined,
+  StarOutlined,
+  StopOutlined,
   TeamOutlined,
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Flex, message, Space, Tabs, Typography } from 'antd';
+import { Alert, Button, Card, message, Space, Tabs } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton } from '../components';
+import { PageHero } from '../components/PageHero';
 import {
   apiGetCardStats,
+  apiGetPlayerOfMatchStats,
+  apiGetSeasonAwards,
   apiGetTeamStats,
   apiGetTopAssists,
   apiGetTopScorers,
   type CardStat,
+  type PlayerOfMatchStat,
+  type SeasonAwards,
+  type SuspensionStat,
   type TeamStat,
   type TopAssist,
   type TopScorer,
+  apiGetSuspensionStats,
 } from '../services/standingsApi';
 import CardStatsTab from './reports/CardStatsTab';
 import ChartsTab from './reports/ChartsTab';
+import PlayerOfMatchTab from './reports/PlayerOfMatchTab';
+import SeasonAwardsTab from './reports/SeasonAwardsTab';
+import SuspensionsTab from './reports/SuspensionsTab';
 import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
+import { exportPdf } from '../utils/pdfExport';
 
 const cleanTabLabel = (label: string) => label.replace(/^[^\p{L}\p{N}]+/u, '').trim();
 
@@ -37,28 +50,6 @@ function reportTabLabel(icon: ReactNode, label: string) {
   );
 }
 
-/* ────────── Dynamic PDF Export ────────── */
-
-async function exportPdf(title: string, headers: string[], rows: string[][]) {
-  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
-  ]);
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text(title, 14, 20);
-  doc.setFontSize(10);
-  doc.text(`${new Date().toLocaleDateString('vi-VN')}`, 14, 28);
-  autoTable(doc, {
-    startY: 34,
-    head: [headers],
-    body: rows,
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: [0, 21, 41] },
-  });
-  doc.save(`${title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
-}
-
 /* ────────── Main Page ────────── */
 
 export default function ReportsPage() {
@@ -67,6 +58,9 @@ export default function ReportsPage() {
   const [assists, setAssists] = useState<TopAssist[]>([]);
   const [cardStats, setCardStats] = useState<CardStat[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStat[]>([]);
+  const [playerOfMatchStats, setPlayerOfMatchStats] = useState<PlayerOfMatchStat[]>([]);
+  const [suspensions, setSuspensions] = useState<SuspensionStat[]>([]);
+  const [seasonAwards, setSeasonAwards] = useState<SeasonAwards | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -76,25 +70,40 @@ export default function ReportsPage() {
       apiGetTopAssists(undefined, 50),
       apiGetCardStats(undefined, 30),
       apiGetTeamStats(),
+      apiGetPlayerOfMatchStats(undefined, 30),
+      apiGetSuspensionStats(),
+      apiGetSeasonAwards(),
     ])
-      .then(([scorerRes, assistRes, cardRes, teamRes]) => {
-        if (scorerRes.status === 'fulfilled') setScorers(scorerRes.value);
-        if (assistRes.status === 'fulfilled') setAssists(assistRes.value);
-        if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
-        if (teamRes.status === 'fulfilled') setTeamStats(teamRes.value);
-        const failed = [scorerRes, assistRes, cardRes, teamRes].filter(
-          (r) => r.status === 'rejected',
-        );
-        if (failed.length === 4) setError(t('reports.loadError'));
-      })
+      .then(
+        ([scorerRes, assistRes, cardRes, teamRes, playerOfMatchRes, suspensionRes, awardRes]) => {
+          if (scorerRes.status === 'fulfilled') setScorers(scorerRes.value);
+          if (assistRes.status === 'fulfilled') setAssists(assistRes.value);
+          if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
+          if (teamRes.status === 'fulfilled') setTeamStats(teamRes.value);
+          if (playerOfMatchRes.status === 'fulfilled')
+            setPlayerOfMatchStats(playerOfMatchRes.value);
+          if (suspensionRes.status === 'fulfilled') setSuspensions(suspensionRes.value);
+          if (awardRes.status === 'fulfilled') setSeasonAwards(awardRes.value);
+          const failed = [
+            scorerRes,
+            assistRes,
+            cardRes,
+            teamRes,
+            playerOfMatchRes,
+            suspensionRes,
+            awardRes,
+          ].filter((r) => r.status === 'rejected');
+          if (failed.length === 7) setError(t('reports.loadError'));
+        },
+      )
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const handleExportScorersPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Vua pha luoi',
-        ['#', 'Cau thu', 'Doi', 'Ban thang'],
+        'VLeague - Vua phá lưới',
+        ['#', 'Cầu thủ', 'Đội', 'Bàn thắng'],
         scorers.map((s) => [String(s.position), s.playerName, s.teamName, String(s.goals)]),
       );
     } catch (_err) {
@@ -105,8 +114,8 @@ export default function ReportsPage() {
   const handleExportTeamStatsPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Thong ke doi bong',
-        ['Doi', 'Tran', 'Thang', 'Hoa', 'Thua', 'BT', 'BN', 'HS', 'Diem'],
+        'VLeague - Thống kê đội bóng',
+        ['Đội', 'Trận', 'Thắng', 'Hòa', 'Thua', 'BT', 'BN', 'HS', 'Điểm'],
         teamStats.map((s) => [
           s.teamName,
           String(s.played),
@@ -127,8 +136,8 @@ export default function ReportsPage() {
   const handleExportAssistsPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Top kien tao',
-        ['#', 'Cau thu', 'Doi', 'Kien tao'],
+        'VLeague - Top kiến tạo',
+        ['#', 'Cầu thủ', 'Đội', 'Kiến tạo'],
         assists.map((s) => [String(s.position), s.playerName, s.teamName, String(s.assists)]),
       );
     } catch (_err) {
@@ -139,8 +148,8 @@ export default function ReportsPage() {
   const handleExportCardStatsPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Thong ke the phat',
-        ['#', 'Cau thu', 'Doi', 'The vang', 'The do'],
+        'VLeague - Thống kê thẻ phạt',
+        ['#', 'Cầu thủ', 'Đội', 'Thẻ vàng', 'Thẻ đỏ'],
         cardStats.map((s, i) => [
           String(i + 1),
           s.playerName,
@@ -156,80 +165,130 @@ export default function ReportsPage() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
 
-  return (
-    <Card>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-        <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
-          {t('reports.title')}
-        </Typography.Title>
-        <Space>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportScorersPdf}
-            disabled={scorers.length === 0}
-          >
-            {t('reports.exportScorersPdf')}
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportAssistsPdf}
-            disabled={assists.length === 0}
-          >
-            {t('reports.exportAssistsPdf')}
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportTeamStatsPdf}
-            disabled={teamStats.length === 0}
-          >
-            {t('reports.exportTeamStatsPdf')}
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportCardStatsPdf}
-            disabled={cardStats.length === 0}
-          >
-            {t('reports.exportCardStatsPdf')}
-          </Button>
-        </Space>
-      </Flex>
+  const exportActions = (
+    <Space wrap>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportScorersPdf}
+        disabled={scorers.length === 0}
+      >
+        {t('reports.exportScorersPdf')}
+      </Button>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportAssistsPdf}
+        disabled={assists.length === 0}
+      >
+        {t('reports.exportAssistsPdf')}
+      </Button>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportTeamStatsPdf}
+        disabled={teamStats.length === 0}
+      >
+        {t('reports.exportTeamStatsPdf')}
+      </Button>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportCardStatsPdf}
+        disabled={cardStats.length === 0}
+      >
+        {t('reports.exportCardStatsPdf')}
+      </Button>
+    </Space>
+  );
 
-      {loading ? (
-        <TableSkeleton />
-      ) : (
-        <Tabs
-          defaultActiveKey="scorers"
-          items={[
-            {
-              key: 'scorers',
-              label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
-              children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
-            },
-            {
-              key: 'assists',
-              label: reportTabLabel(<RiseOutlined />, t('reports.tabAssists')),
-              children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
-            },
-            {
-              key: 'cards',
-              label: reportTabLabel(<WarningOutlined />, t('reports.tabCards')),
-              children: <CardStatsTab data={cardStats} loading={loading} />,
-            },
-            {
-              key: 'team-stats',
-              label: reportTabLabel(<TeamOutlined />, t('reports.tabTeamStats')),
-              children: <TeamStatsTab data={teamStats} loading={loading} />,
-            },
-            {
-              key: 'charts',
-              label: reportTabLabel(<BarChartOutlined />, t('reports.tabCharts')),
-              children: (
-                <ChartsTab scorers={scorers.slice(0, 10)} teamStats={teamStats} loading={loading} />
-              ),
-            },
-          ]}
-        />
-      )}
-    </Card>
+  return (
+    <div className="page-stack">
+      <PageHero
+        variant="compact"
+        eyebrow={t('menu.reports')}
+        title={t('reports.title')}
+        icon={<BarChartOutlined />}
+        metrics={[
+          {
+            label: cleanTabLabel(t('reports.tabScorers')),
+            value: scorers.length.toLocaleString('vi-VN'),
+            icon: <TrophyOutlined />,
+          },
+          {
+            label: cleanTabLabel(t('reports.tabAssists')),
+            value: assists.length.toLocaleString('vi-VN'),
+            icon: <RiseOutlined />,
+          },
+          {
+            label: cleanTabLabel(t('reports.tabTeamStats')),
+            value: teamStats.length.toLocaleString('vi-VN'),
+            icon: <TeamOutlined />,
+          },
+          {
+            label: cleanTabLabel(t('reports.tabPlayerOfMatch')),
+            value: playerOfMatchStats.length.toLocaleString('vi-VN'),
+            icon: <StarOutlined />,
+          },
+        ]}
+        actions={exportActions}
+      />
+
+      <Card>
+        {loading ? (
+          <TableSkeleton />
+        ) : (
+          <Tabs
+            defaultActiveKey="scorers"
+            items={[
+              {
+                key: 'scorers',
+                label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
+                children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
+              },
+              {
+                key: 'assists',
+                label: reportTabLabel(<RiseOutlined />, t('reports.tabAssists')),
+                children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
+              },
+              {
+                key: 'player-of-match',
+                label: reportTabLabel(<StarOutlined />, t('reports.tabPlayerOfMatch')),
+                children: (
+                  <PlayerOfMatchTab data={playerOfMatchStats.slice(0, 20)} loading={loading} />
+                ),
+              },
+              {
+                key: 'cards',
+                label: reportTabLabel(<WarningOutlined />, t('reports.tabCards')),
+                children: <CardStatsTab data={cardStats} loading={loading} />,
+              },
+              {
+                key: 'suspensions',
+                label: reportTabLabel(<StopOutlined />, t('reports.tabSuspensions')),
+                children: <SuspensionsTab data={suspensions} loading={loading} />,
+              },
+              {
+                key: 'team-stats',
+                label: reportTabLabel(<TeamOutlined />, t('reports.tabTeamStats')),
+                children: <TeamStatsTab data={teamStats} loading={loading} />,
+              },
+              {
+                key: 'awards',
+                label: reportTabLabel(<TrophyOutlined />, t('reports.tabAwards')),
+                children: <SeasonAwardsTab awards={seasonAwards} loading={loading} />,
+              },
+              {
+                key: 'charts',
+                label: reportTabLabel(<BarChartOutlined />, t('reports.tabCharts')),
+                children: (
+                  <ChartsTab
+                    scorers={scorers.slice(0, 10)}
+                    teamStats={teamStats}
+                    loading={loading}
+                  />
+                ),
+              },
+            ]}
+          />
+        )}
+      </Card>
+    </div>
   );
 }

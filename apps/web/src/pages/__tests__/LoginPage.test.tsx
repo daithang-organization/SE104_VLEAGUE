@@ -53,6 +53,42 @@ describe('LoginPage', () => {
     expect(screen.getByText('VLeague Admin')).toBeInTheDocument();
   });
 
+  it('renders the V.League season logo in the login brand area', () => {
+    renderPage();
+
+    expect(screen.getByRole('img', { name: 'V.League 1 2025/26' })).toHaveAttribute(
+      'src',
+      '/V.League_1_2025-26_logo.svg.png',
+    );
+  });
+
+  it('renders the V.League management system introduction', () => {
+    renderPage();
+
+    expect(
+      screen.getByText('Hệ thống quản lý giải vô địch bóng đá quốc gia V.League'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Nền tảng điều hành tập trung cho mùa giải, câu lạc bộ, cầu thủ, lịch thi đấu, kết quả và báo cáo thống kê.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Điều hành giải đấu')).toBeInTheDocument();
+    expect(screen.getByText('Dữ liệu đội bóng')).toBeInTheDocument();
+    expect(screen.getByText('Báo cáo thống kê')).toBeInTheDocument();
+  });
+
+  it('renders the decorative football background outside the accessible content', () => {
+    renderPage();
+
+    const background = screen.getByTestId('login-football-background');
+
+    expect(background).toHaveAttribute('aria-hidden', 'true');
+    expect(background.querySelector('.login-pitch-lines')).toBeInTheDocument();
+    expect(background.querySelector('.login-goal-line')).toBeInTheDocument();
+    expect(background.querySelectorAll('.login-ball')).toHaveLength(3);
+  });
+
   it('renders email and password fields', () => {
     renderPage();
     expect(screen.getByPlaceholderText('admin@vleague.local')).toBeInTheDocument();

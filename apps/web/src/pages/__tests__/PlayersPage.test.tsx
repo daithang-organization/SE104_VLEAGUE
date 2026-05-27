@@ -26,7 +26,7 @@ const mockPlayerApi = vi.hoisted(() => ({
         heightCm: 168,
         weightKg: 65,
         birthPlace: 'Hà Nội',
-        teamPlayers: [{ team: { id: 't1', name: 'Hà Nội FC', shortName: 'HN', logoUrl: null } }],
+        roster: [{ team: { id: 't1', name: 'Hà Nội FC', shortName: 'HN', logoUrl: null } }],
       },
       {
         id: 'p2',
@@ -38,7 +38,7 @@ const mockPlayerApi = vi.hoisted(() => ({
         heightCm: 180,
         weightKg: 78,
         birthPlace: null,
-        teamPlayers: [],
+        roster: [],
       },
     ],
     total: 2,
@@ -72,11 +72,21 @@ function renderPage() {
 }
 
 describe('PlayersPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
 
   it('renders the page title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('Quản lý cầu thủ')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
   it('calls apiGetPlayers on mount', async () => {
@@ -116,6 +126,28 @@ describe('PlayersPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Tiền vệ')).toBeInTheDocument();
       expect(screen.getByText('Tiền đạo')).toBeInTheDocument();
+    });
+  });
+
+  it('renders club logos in the club column', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalled();
+    });
+    await screen.findByText('Nguyễn Quang Hải', undefined, { timeout: 5_000 });
+    const logo = await screen.findByRole('img', { name: 'Hà Nội FC logo' }, { timeout: 5_000 });
+
+    expect(logo).toHaveAttribute('src', '/team-logos/Logo_H%C3%A0_N%E1%BB%99i_FC.png');
+    expect(logo).toHaveClass('player-club-logo');
+    expect(logo.closest('.player-club-cell')).toHaveTextContent('HN');
+  });
+
+  it('summarizes player counts in the hero metrics', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Ngoại binh')).toBeInTheDocument();
     });
   });
 });

@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import NotificationBell from '../components/NotificationBell';
+import TeamInvitationPopup from '../components/TeamInvitationPopup';
 import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import { useTheme } from './ThemeContext';
 import { MENU } from './menu';
@@ -183,47 +184,23 @@ export default function AppShell() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
+        className="app-sidebar"
         collapsible
+        width={252}
+        collapsedWidth={76}
         style={{
-          background: 'var(--sidebar-bg)',
           borderRight: `1px solid var(--sidebar-border)`,
         }}
       >
-        <div
-          style={{
-            padding: 16,
-            color: 'var(--text-main)',
-            fontWeight: 'bold',
-            fontSize: 18,
-            textAlign: 'center',
-          }}
-        >
+        <div className="sidebar-brand">
           <img
+            className="sidebar-brand-logo"
             src="/V.League_1_2025-26_logo.svg.png"
             alt="VLeague Logo"
-            style={{ height: '50px', objectFit: 'contain' }}
           />
         </div>
-        <style>{`
-          .sidebar-menu-icon {
-            width: 22px;
-            height: 22px;
-            display: inline-block;
-            vertical-align: middle;
-            background: currentColor;
-            opacity: 0.92;
-          }
-
-          .ant-layout-sider:not(.ant-layout-sider-collapsed) .sidebar-menu-icon {
-            margin-inline-end: 12px;
-          }
-
-          .ant-layout-sider-collapsed .sidebar-menu-icon {
-            width: 30px;
-            height: 30px;
-          }
-        `}</style>
         <Menu
+          className="sidebar-menu"
           theme={isDark ? 'dark' : 'light'}
           mode="inline"
           items={menuItems}
@@ -250,6 +227,7 @@ export default function AppShell() {
         >
           {/* Global Search */}
           <AutoComplete
+            className="global-search"
             options={searchOptions}
             onSearch={onSearch}
             onSelect={onSelectSearch}
@@ -261,10 +239,10 @@ export default function AppShell() {
             allowClear
           >
             <Input
+              className="global-search-input"
               size="small" // Dùng size nhỏ để khớp với navbar hẹp
               prefix={searchLoading ? <Spin size="small" /> : <SearchOutlined />}
               placeholder={t('common.search')}
-              style={{ borderRadius: 20 }}
             />
           </AutoComplete>
 
@@ -331,6 +309,7 @@ export default function AppShell() {
           <div key={location.pathname} className="page-animate">
             <Outlet />
           </div>
+          <TeamInvitationPopup />
         </Content>
       </Layout>
     </Layout>

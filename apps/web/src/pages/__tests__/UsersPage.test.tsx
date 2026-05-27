@@ -42,8 +42,9 @@ describe('UsersPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('users.title')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
   it('fetches users on mount', async () => {

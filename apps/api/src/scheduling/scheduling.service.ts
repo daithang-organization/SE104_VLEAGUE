@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class SchedulingService {
   private readonly logger = new Logger(SchedulingService.name);
+  private readonly requiredTeamCount = 10;
 
   constructor(private prisma: PrismaService) {}
 
@@ -51,24 +52,18 @@ export class SchedulingService {
       resolvedSeasonId = season.id;
     }
 
-    // 2) Get all ACTIVE teams (registered in the season, or all active teams)
+    // 2) Only approved teams are eligible for official league scheduling.
     const seasonTeams = await this.prisma.seasonTeam.findMany({
-      where: { seasonId: resolvedSeasonId },
+      where: { seasonId: resolvedSeasonId, status: 'APPROVED' },
       include: { team: { select: { id: true, name: true, stadiumId: true } } },
+      orderBy: { registeredAt: 'asc' },
     });
 
-    const teams =
-      seasonTeams.length > 0
-        ? seasonTeams.map((st) => st.team)
-        : // Fallback: get all ACTIVE teams if no seasonTeams registered
-          await this.prisma.team.findMany({
-            where: { status: 'ACTIVE' },
-            select: { id: true, name: true, stadiumId: true },
-          });
+    const teams = seasonTeams.map((st) => st.team);
 
-    if (teams.length < 2) {
+    if (teams.length !== this.requiredTeamCount) {
       throw new BadRequestException(
-        `Cần ít nhất 2 đội để tạo lịch thi đấu (hiện có ${teams.length} đội).`,
+        `Cần đúng ${this.requiredTeamCount} đội đã được duyệt để tạo lịch thi đấu (hiện có ${teams.length} đội APPROVED).`,
       );
     }
 
@@ -199,6 +194,11 @@ export class SchedulingService {
       rotating.unshift(rotating.pop()!);
     }
 
+    this.validateGeneratedSchedule(
+      matchData,
+      teams.map((team) => team.id),
+    );
+
     // 5) Bulk-create matches
     const result = await this.prisma.match.createMany({
       data: matchData as never,
@@ -213,6 +213,50 @@ export class SchedulingService {
       message: `Đã tạo ${result.count} trận đấu cho mùa giải "${season?.name}" (${teams.length} đội, ${numRounds * 2} vòng: lượt đi V1–V${numRounds}, lượt về V${numRounds + 1}–V${numRounds * 2})`,
       totalMatches: result.count,
     };
+  }
+
+  private validateGeneratedSchedule(
+    matches: Array<{
+      roundNo: number;
+      homeTeamId: string;
+      awayTeamId: string;
+    }>,
+    teamIds: string[],
+  ) {
+    const expectedRounds = (this.requiredTeamCount - 1) * 2;
+    const expectedMatches =
+      this.requiredTeamCount * (this.requiredTeamCount - 1);
+    const matchesPerRound = this.requiredTeamCount / 2;
+
+    if (matches.length !== expectedMatches) {
+      throw new BadRequestException(
+        `Lịch thi đấu không hợp lệ: cần ${expectedMatches} trận, hiện có ${matches.length}.`,
+      );
+    }
+
+    for (let roundNo = 1; roundNo <= expectedRounds; roundNo++) {
+      const roundMatches = matches.filter((match) => match.roundNo === roundNo);
+      if (roundMatches.length !== matchesPerRound) {
+        throw new BadRequestException(
+          `Lịch thi đấu không hợp lệ: vòng ${roundNo} phải có ${matchesPerRound} trận.`,
+        );
+      }
+    }
+
+    for (const teamId of teamIds) {
+      const homeMatches = matches.filter(
+        (match) => match.homeTeamId === teamId,
+      );
+      const awayMatches = matches.filter(
+        (match) => match.awayTeamId === teamId,
+      );
+
+      if (homeMatches.length !== 9 || awayMatches.length !== 9) {
+        throw new BadRequestException(
+          `Lịch thi đấu không hợp lệ: mỗi đội phải có 9 trận sân nhà và 9 trận sân khách.`,
+        );
+      }
+    }
   }
 
   // ────────── PUBLISH schedule ──────────

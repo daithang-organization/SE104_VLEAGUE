@@ -1,6 +1,9 @@
 import {
   ArrowLeftOutlined,
+  CalendarOutlined,
   EnvironmentOutlined,
+  FileTextOutlined,
+  HomeOutlined,
   TeamOutlined,
   TrophyOutlined,
 } from '@ant-design/icons';
@@ -20,12 +23,14 @@ import {
   Typography,
 } from 'antd';
 import dayjs from 'dayjs';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGetStadium, type StadiumDetail, type StadiumMatch } from '../services/stadiumApi';
 
 import { STATUS_MAP } from '../utils/constants';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const { Title } = Typography;
 
@@ -76,6 +81,34 @@ export default function StadiumDetailPage() {
   const finishedMatches = stadium.matches.filter((m) => m.status === 'FINISHED');
   const upcomingMatches = stadium.matches.filter((m) => m.status !== 'FINISHED');
 
+  const renderTeamLogo = (team: { name: string }) => {
+    const logoUrl = getTeamLogoUrl(team);
+
+    return logoUrl ? (
+      <img src={logoUrl} alt={`${team.name} logo`} className="stadium-team-logo" />
+    ) : (
+      <span className="stadium-team-logo stadium-team-logo-fallback" aria-hidden="true">
+        {team.name.slice(0, 2).toUpperCase()}
+      </span>
+    );
+  };
+
+  const renderTeamLink = (team: StadiumMatch['homeTeam']) => (
+    <a className="stadium-team-link" onClick={() => navigate(`/teams/${team.id}`)}>
+      {renderTeamLogo(team)}
+      <span>{team.name}</span>
+    </a>
+  );
+
+  const renderTabLabel = (icon: ReactNode, label: string) => (
+    <Space size={6}>
+      <span aria-hidden="true" className="stadium-tab-icon">
+        {icon}
+      </span>
+      <span>{label}</span>
+    </Space>
+  );
+
   const matchColumns = [
     {
       title: t('stadiumDetail.matchColRound'),
@@ -86,9 +119,7 @@ export default function StadiumDetailPage() {
     {
       title: t('stadiumDetail.matchColHome'),
       key: 'home',
-      render: (_: unknown, r: StadiumMatch) => (
-        <a onClick={() => navigate(`/teams/${r.homeTeam.id}`)}>{r.homeTeam.name}</a>
-      ),
+      render: (_: unknown, r: StadiumMatch) => renderTeamLink(r.homeTeam),
     },
     {
       title: t('stadiumDetail.matchColScore'),
@@ -107,9 +138,7 @@ export default function StadiumDetailPage() {
     {
       title: t('stadiumDetail.matchColAway'),
       key: 'away',
-      render: (_: unknown, r: StadiumMatch) => (
-        <a onClick={() => navigate(`/teams/${r.awayTeam.id}`)}>{r.awayTeam.name}</a>
-      ),
+      render: (_: unknown, r: StadiumMatch) => renderTeamLink(r.awayTeam),
     },
     {
       title: t('stadiumDetail.matchColDate'),
@@ -146,7 +175,12 @@ export default function StadiumDetailPage() {
           {t('stadiumDetail.back')}
         </Button>
         <Title level={3} style={{ margin: 0 }}>
-          🏟️ {stadium.name}
+          <Space size={8}>
+            <span aria-hidden="true" className="stadium-title-icon">
+              <HomeOutlined />
+            </span>
+            <span>{stadium.name}</span>
+          </Space>
         </Title>
       </Space>
 
@@ -190,7 +224,7 @@ export default function StadiumDetailPage() {
         items={[
           {
             key: 'info',
-            label: t('stadiumDetail.tabInfo'),
+            label: renderTabLabel(<FileTextOutlined />, t('stadiumDetail.tabInfo')),
             children: (
               <Card>
                 <Descriptions bordered column={{ xs: 1, sm: 2 }}>
@@ -219,10 +253,12 @@ export default function StadiumDetailPage() {
                         <Tag
                           key={t.id}
                           color="blue"
+                          className="stadium-home-team-tag"
                           style={{ cursor: 'pointer' }}
                           onClick={() => navigate(`/teams/${t.id}`)}
                         >
-                          {t.name}
+                          {renderTeamLogo(t)}
+                          <span>{t.name}</span>
                         </Tag>
                       ))}
                     </Space>
@@ -233,7 +269,10 @@ export default function StadiumDetailPage() {
           },
           {
             key: 'matches',
-            label: t('stadiumDetail.tabMatches', { count: stadium.matches.length }),
+            label: renderTabLabel(
+              <CalendarOutlined />,
+              t('stadiumDetail.tabMatches', { count: stadium.matches.length }),
+            ),
             children: (
               <div>
                 {upcomingMatches.length > 0 && (

@@ -85,8 +85,9 @@ describe('StandingsPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders standings title', () => {
-    renderPage();
-    expect(screen.getByText('🏆 Bảng xếp hạng')).toBeInTheDocument();
+    const { container } = renderPage();
+    expect(screen.getByText('Bảng xếp hạng')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
   });
 
   it('renders top scorers title', () => {

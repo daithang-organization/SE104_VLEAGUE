@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 /* ---------- hoisted mocks ---------- */
 const mockUseAuth = vi.hoisted(() =>
@@ -26,9 +27,9 @@ const mockScheduleApi = vi.hoisted(() => ({
         awayTeam: { name: 'Hai Phong FC', shortName: 'HP' },
         stadium: { name: 'Hang Day', city: 'Ha Noi' },
         stadiumId: 's1',
-        homeScore: null,
-        awayScore: null,
-        status: 'DRAFT',
+        homeScore: 2,
+        awayScore: 0,
+        status: 'FINISHED',
         kickoffAt: '2025-03-15T17:00:00Z',
       },
     ],
@@ -60,15 +61,20 @@ vi.mock('../../services/matchApi', () => mockMatchApi);
 import SchedulePage from '../SchedulePage';
 
 function renderPage() {
-  return render(<SchedulePage />);
+  return render(
+    <MemoryRouter>
+      <SchedulePage />
+    </MemoryRouter>,
+  );
 }
 
 describe('SchedulePage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the page title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getAllByText('Lịch thi đấu')[0]).toBeInTheDocument();
+    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
   });
 
   it('calls apiGetSeasons on mount', async () => {
@@ -109,5 +115,21 @@ describe('SchedulePage', () => {
     expect(screen.getByText(/Tất cả/)).toBeInTheDocument();
     expect(screen.getByText(/Lượt đi/)).toBeInTheDocument();
     expect(screen.getByText(/Lượt về/)).toBeInTheDocument();
+  });
+
+  it('renders the active round as a fixture list grouped by match day', async () => {
+    const { container } = renderPage();
+
+    await screen.findByText('HN');
+
+    expect(container.querySelector('.schedule-fixture-list')).toBeInTheDocument();
+    expect(container.querySelector('.schedule-fixture-day-group')).toBeInTheDocument();
+    expect(container.querySelector('.schedule-fixture-row')).toBeInTheDocument();
+    expect(container.querySelector('.schedule-fixture-score')).toBeInTheDocument();
+    expect(
+      container.querySelector('.schedule-fixture-score.is-final.is-score-card'),
+    ).toHaveTextContent('2 - 0');
+    expect(screen.getByText('HP')).toBeInTheDocument();
+    expect(screen.getByText('Hang Day')).toBeInTheDocument();
   });
 });

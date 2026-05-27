@@ -51,8 +51,16 @@ describe('stadiumApi', () => {
   it('apiUpdateStadium calls PATCH /stadiums/:id', async () => {
     const stadium = { id: 's1', name: 'Updated', city: 'HCM' };
     mockApi.patch.mockResolvedValue({ data: stadium });
-    const result = await apiUpdateStadium('s1', { capacity: 20000 });
-    expect(mockApi.patch).toHaveBeenCalledWith('/stadiums/s1', { capacity: 20000 });
+    const result = await apiUpdateStadium('s1', {
+      capacity: 20000,
+      country: 'Việt Nam',
+      fifaStars: 2,
+    });
+    expect(mockApi.patch).toHaveBeenCalledWith('/stadiums/s1', {
+      capacity: 20000,
+      country: 'Việt Nam',
+      fifaStars: 2,
+    });
     expect(result).toEqual(stadium);
   });
 

@@ -18,6 +18,7 @@ import {
 import type { Response } from 'express';
 import { toCsv } from '../common/utils/csv';
 import { StandingsService } from './standings.service';
+import type { StandingsMode } from './standings.service';
 
 @ApiTags('Standings')
 @Controller('standings')
@@ -37,6 +38,13 @@ export class StandingsController {
     required: false,
     type: 'string',
     description: 'ID mùa giải (mặc định: mùa giải đang diễn ra)',
+  })
+  @ApiQuery({
+    name: 'mode',
+    required: false,
+    enum: ['in_progress', 'final'],
+    description:
+      'in_progress: chỉ xét điểm/hiệu số và cho đồng hạng; final: xét thêm đối đầu/rút thăm',
   })
   @ApiOkResponse({
     description: 'Bảng xếp hạng',
@@ -65,8 +73,11 @@ export class StandingsController {
       },
     },
   })
-  getStandings(@Query('seasonId') seasonId?: string) {
-    return this.standingsService.getStandings(seasonId);
+  getStandings(
+    @Query('seasonId') seasonId?: string,
+    @Query('mode') mode: StandingsMode = 'in_progress',
+  ) {
+    return this.standingsService.getStandings(seasonId, mode);
   }
 
   @Get('top-scorers')
@@ -176,6 +187,67 @@ export class StandingsController {
     return this.standingsService.getCardStats(seasonId, limit ?? 20);
   }
 
+  @Get('player-of-match')
+  @ApiOperation({
+    summary: 'Thống kê số lần cầu thủ xuất sắc nhất trận',
+    description:
+      'Đếm số lần cầu thủ được chọn là cầu thủ xuất sắc từ báo cáo trận',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: 'integer',
+    description: 'Số lượng (mặc định: 20)',
+  })
+  @ApiOkResponse({
+    description: 'Danh sách cầu thủ xuất sắc theo số lần được bầu',
+  })
+  getPlayerOfMatchStats(
+    @Query('seasonId') seasonId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.standingsService.getPlayerOfMatchStats(seasonId, limit ?? 20);
+  }
+
+  @Get('suspensions')
+  @ApiOperation({
+    summary: 'Danh sách cầu thủ bị treo giò',
+    description: 'Trả về danh sách treo giò được tạo từ luật thẻ phạt',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải',
+  })
+  @ApiOkResponse({ description: 'Danh sách cầu thủ bị treo giò' })
+  getSuspensionStats(@Query('seasonId') seasonId?: string) {
+    return this.standingsService.getSuspensionStats(seasonId);
+  }
+
+  @Get('awards')
+  @ApiOperation({
+    summary: 'Tổng hợp giải thưởng cuối mùa',
+    description:
+      'Trả về vô địch, á quân, vua phá lưới và cầu thủ xuất sắc dựa trên BXH final/thống kê',
+  })
+  @ApiQuery({
+    name: 'seasonId',
+    required: false,
+    type: 'string',
+    description: 'ID mùa giải',
+  })
+  @ApiOkResponse({ description: 'Danh sách giải thưởng cuối mùa' })
+  getSeasonAwards(@Query('seasonId') seasonId?: string) {
+    return this.standingsService.getSeasonAwards(seasonId);
+  }
+
   @Get('team-stats')
   @ApiOperation({
     summary: 'Thống kê theo đội',
@@ -205,8 +277,9 @@ export class StandingsController {
   async exportStandingsCsv(
     @Res() res: Response,
     @Query('seasonId') seasonId?: string,
+    @Query('mode') mode: StandingsMode = 'in_progress',
   ) {
-    const data = await this.standingsService.getStandings(seasonId);
+    const data = await this.standingsService.getStandings(seasonId, mode);
     const csv = toCsv(data, [
       'position',
       'teamName',
@@ -365,7 +438,10 @@ export class StandingsController {
   })
   @ApiParam({ name: 'seasonId', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Bảng xếp hạng' })
-  getStandingsBySeason(@Param('seasonId') seasonId: string) {
-    return this.standingsService.getStandings(seasonId);
+  getStandingsBySeason(
+    @Param('seasonId') seasonId: string,
+    @Query('mode') mode: StandingsMode = 'in_progress',
+  ) {
+    return this.standingsService.getStandings(seasonId, mode);
   }
 }

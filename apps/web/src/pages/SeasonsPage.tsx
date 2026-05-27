@@ -4,13 +4,17 @@ import {
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   PlusOutlined,
+  SendOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Card,
   DatePicker,
+  Descriptions,
   Flex,
   Form,
   Input,
@@ -29,6 +33,7 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { PageHero } from '../components';
 import {
   apiCreateSeason,
   apiDeleteSeason,
@@ -46,6 +51,15 @@ import {
   type SeasonTeam,
 } from '../services/seasonTeamApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
+import {
+  apiGetInvitationCandidates,
+  apiGetSeasonInvitations,
+  apiSendTeamInvitation,
+  type InvitationCandidate,
+  type InvitationCandidateResult,
+  type TeamInvitation,
+  type TeamInvitationSourceType,
+} from '../services/teamInvitationApi';
 
 const STATUS_OPTIONS = [
   { value: 'UPCOMING', label: 'Sắp diễn ra', color: 'blue' },
@@ -73,24 +87,79 @@ const TEAM_STATUS_MAP: Record<string, { label: string; color: string }> = {
   WITHDRAWN: { label: 'Rút lui', color: 'default' },
 };
 
+const INVITATION_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  SENT: { label: 'Đã gửi', color: 'processing' },
+  ACCEPTED: { label: 'Đã đồng ý', color: 'success' },
+  DECLINED: { label: 'Đã từ chối', color: 'error' },
+  EXPIRED: { label: 'Quá hạn', color: 'default' },
+};
+
+const INVITATION_SOURCE_MAP: Record<string, string> = {
+  PREVIOUS_TOP_8: 'Top 8 mùa trước',
+  PROMOTED: 'Thăng hạng',
+  REPLACEMENT: 'Thay thế',
+};
+const INVITATION_SOURCE_OPTIONS: { value: TeamInvitationSourceType; label: string }[] = [
+  { value: 'PROMOTED', label: 'Thăng hạng' },
+  { value: 'REPLACEMENT', label: 'Thay thế' },
+];
+
+function getSeasonTeamApplicationStatus(record: SeasonTeam, invitation?: TeamInvitation) {
+  if (record.status === 'APPROVED') return { label: 'Đã duyệt hồ sơ', color: 'success' };
+  if (record.status === 'REJECTED') return { label: 'Bị từ chối', color: 'error' };
+  if (record.applicationSubmittedAt) return { label: 'Đã nộp hồ sơ', color: 'processing' };
+  if (invitation?.status === 'ACCEPTED') return { label: 'Chờ nộp hồ sơ', color: 'warning' };
+  if (invitation?.status === 'SENT') return { label: 'Chờ phản hồi lời mời', color: 'default' };
+  if (invitation?.status === 'DECLINED') return { label: 'Đội đã từ chối', color: 'error' };
+  return { label: 'Chưa gửi lời mời', color: 'default' };
+}
+
+function getBackendErrorMessage(error: unknown) {
+  const backendMessage = (error as { response?: { data?: { message?: string | string[] } } })
+    ?.response?.data?.message;
+  if (Array.isArray(backendMessage)) return backendMessage.join(', ');
+  return backendMessage?.trim() || undefined;
+}
+
 // ─── Season Team Panel (expandable row) ───
 function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const { t } = useTranslation();
   const [teams, setTeams] = useState<SeasonTeam[]>([]);
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [viewingTeam, setViewingTeam] = useState<SeasonTeam | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>();
+  const [selectedInvitationSource, setSelectedInvitationSource] =
+    useState<TeamInvitationSourceType>('PROMOTED');
+  const [candidateResult, setCandidateResult] = useState<InvitationCandidateResult | null>(null);
+  const [candidateError, setCandidateError] = useState<string | null>(null);
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
     try {
-      const [seasonTeams, teamRes] = await Promise.all([
+      const [seasonTeams, teamRes, invitationData] = await Promise.all([
         apiGetSeasonTeams(seasonId),
         apiGetTeams(),
+        apiGetSeasonInvitations(seasonId),
       ]);
       setTeams(seasonTeams);
       setAllTeams(teamRes.data);
+      setInvitations(invitationData);
+
+      try {
+        const candidateData = await apiGetInvitationCandidates(seasonId);
+        setCandidateResult(candidateData);
+        setCandidateError(null);
+      } catch (err: unknown) {
+        setCandidateResult(null);
+        setCandidateError(
+          getBackendErrorMessage(err) ||
+            'Chưa thể sinh top 8 mùa trước cho mùa giải này. Hãy kiểm tra mùa nguồn đã kết thúc.',
+        );
+      }
     } catch (_err) {
       message.error(t('seasons.teamPanelLoadError'));
     } finally {
@@ -106,6 +175,15 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const availableTeams = allTeams.filter(
     (t) => !registeredTeamIds.has(t.id) && t.status === 'ACTIVE',
   );
+  const invitationsByTeamId = new Map(
+    invitations.map((invitation) => [invitation.teamId, invitation]),
+  );
+  const candidateTopCount =
+    candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PREVIOUS_TOP_8')
+      .length ?? 0;
+  const candidatePromotedCount =
+    candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PROMOTED').length ??
+    0;
 
   const handleAdd = async () => {
     if (!selectedTeamId) return;
@@ -122,13 +200,127 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     }
   };
 
+  const handleSendInvitation = async (
+    teamId = selectedTeamId,
+    sourceType = selectedInvitationSource,
+  ) => {
+    if (!teamId) return;
+    setInviting(true);
+    try {
+      await apiSendTeamInvitation(seasonId, {
+        teamId,
+        sourceType,
+      });
+      message.success('Đã gửi lời mời tham dự đến manager CLB');
+      await fetchTeams();
+    } catch (_err) {
+      message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có manager trong mùa giải.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const candidateColumns: ColumnsType<InvitationCandidate> = [
+    {
+      title: 'Hạng',
+      dataIndex: 'sourceRank',
+      width: 64,
+      align: 'center',
+      render: (rank: number, record) => (
+        <Tag color={record.sourceType === 'PROMOTED' ? 'green' : 'blue'}>#{rank}</Tag>
+      ),
+    },
+    {
+      title: 'Nguồn',
+      dataIndex: 'sourceType',
+      width: 130,
+      render: (sourceType: TeamInvitationSourceType) => (
+        <Tag color={sourceType === 'PROMOTED' ? 'green' : 'blue'}>
+          {INVITATION_SOURCE_MAP[sourceType] ?? sourceType}
+        </Tag>
+      ),
+    },
+    {
+      title: 'CLB',
+      key: 'team',
+      render: (_, r) => (
+        <Space size={6}>
+          {r.team?.logoUrl && (
+            <img
+              src={r.team.logoUrl}
+              alt=""
+              style={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
+          )}
+          <strong>{r.teamName}</strong>
+          {r.team?.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
+        </Space>
+      ),
+    },
+    {
+      title: 'Điểm',
+      dataIndex: 'points',
+      width: 80,
+      align: 'center',
+      render: (points: number, record) => (record.sourceType === 'PREVIOUS_TOP_8' ? points : '-'),
+    },
+    {
+      title: 'Hiệu số',
+      dataIndex: 'goalDifference',
+      width: 90,
+      align: 'center',
+      render: (goalDifference: number, record) => {
+        if (record.sourceType !== 'PREVIOUS_TOP_8') return '-';
+        return goalDifference > 0 ? `+${goalDifference}` : goalDifference;
+      },
+    },
+    {
+      title: 'Lời mời',
+      key: 'invitationStatus',
+      width: 140,
+      render: (_, r) => {
+        if (!r.invitationStatus) return <Tag>Chưa gửi</Tag>;
+        const status = INVITATION_STATUS_MAP[r.invitationStatus] ?? {
+          label: r.invitationStatus,
+          color: 'default',
+        };
+        return <Tag color={status.color}>{status.label}</Tag>;
+      },
+    },
+    {
+      title: '',
+      key: 'actions',
+      width: 120,
+      align: 'right',
+      render: (_, r) => {
+        const actionSource =
+          r.sourceType === 'PREVIOUS_TOP_8'
+            ? 'top 8'
+            : r.sourceType === 'PROMOTED'
+              ? 'thăng hạng'
+              : 'thay thế';
+        return (
+          <Button
+            size="small"
+            icon={<SendOutlined />}
+            loading={inviting}
+            disabled={r.invitationStatus === 'ACCEPTED'}
+            onClick={() => handleSendInvitation(r.teamId, r.sourceType)}
+          >
+            {r.invitationStatus === 'SENT' ? `Gửi lại ${actionSource}` : `Gửi ${actionSource}`}
+          </Button>
+        );
+      },
+    },
+  ];
+
   const handleStatus = async (teamId: string, status: string) => {
     try {
       await apiUpdateSeasonTeamStatus(seasonId, teamId, status);
       message.success(t('seasons.teamPanelStatusSuccess'));
       fetchTeams();
-    } catch (_err) {
-      message.error(t('seasons.teamPanelStatusError'));
+    } catch (err: unknown) {
+      message.error(getBackendErrorMessage(err) || t('seasons.teamPanelStatusError'));
     }
   };
 
@@ -177,6 +369,57 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       },
     },
     {
+      title: 'Lời mời BTC',
+      key: 'invitation',
+      width: 180,
+      render: (_, r) => {
+        const invitation = invitationsByTeamId.get(r.teamId);
+        if (!invitation) return <Tag>Chưa gửi lời mời</Tag>;
+        const status = INVITATION_STATUS_MAP[invitation.status] ?? {
+          label: invitation.status,
+          color: 'default',
+        };
+        const declineReason = invitation.responseReason?.trim();
+
+        return (
+          <div>
+            <Tag color={status.color}>{status.label}</Tag>
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              {INVITATION_SOURCE_MAP[invitation.sourceType] ?? invitation.sourceType}
+              {' · '}
+              hạn {dayjs(invitation.deadlineAt).format('DD/MM/YYYY')}
+            </div>
+            {invitation.status === 'DECLINED' && declineReason && (
+              <Tooltip title={declineReason}>
+                <div style={{ marginTop: 6, whiteSpace: 'normal', lineHeight: 1.45 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 700 }}>
+                    Lý do:{' '}
+                  </Typography.Text>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {declineReason}
+                  </Typography.Text>
+                </div>
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Hồ sơ tham dự',
+      key: 'application',
+      width: 180,
+      render: (_, r) => {
+        const status = getSeasonTeamApplicationStatus(r, invitationsByTeamId.get(r.teamId));
+        return (
+          <Space size={4} wrap>
+            <Tag color={status.color}>{status.label}</Tag>
+            {r.participationFeePaid && <Tag color="green">Đã nộp phí</Tag>}
+          </Space>
+        );
+      },
+    },
+    {
       title: t('seasons.teamPanelColRegDate'),
       dataIndex: 'registeredAt',
       width: 120,
@@ -185,46 +428,107 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     {
       title: '',
       key: 'actions',
-      width: 140,
-      render: (_, r) => (
-        <Space size={4}>
-          {r.status === 'REGISTERED' && (
-            <>
-              <Tooltip title={t('seasons.teamPanelApproveTooltip')}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CheckOutlined />}
-                  style={{ color: '#52c41a' }}
-                  onClick={() => handleStatus(r.teamId, 'APPROVED')}
-                />
-              </Tooltip>
-              <Tooltip title={t('seasons.teamPanelRejectTooltip')}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CloseOutlined />}
-                  danger
-                  onClick={() => handleStatus(r.teamId, 'REJECTED')}
-                />
-              </Tooltip>
-            </>
-          )}
-          <Popconfirm
-            title={t('seasons.teamPanelRemoveConfirm')}
-            onConfirm={() => handleRemove(r.teamId)}
-            okText={t('seasons.deleteOk')}
-            cancelText={t('seasons.deleteCancel')}
-          >
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      width: 180,
+      render: (_, r) => {
+        const invitationSource =
+          invitationsByTeamId.get(r.teamId)?.sourceType ?? selectedInvitationSource;
+        return (
+          <Space size={4}>
+            <Tooltip title="Gửi lời mời/popup cho manager CLB">
+              <Button
+                type="text"
+                size="small"
+                icon={<SendOutlined />}
+                onClick={() => handleSendInvitation(r.teamId, invitationSource)}
+              />
+            </Tooltip>
+            <Tooltip title="Xem hồ sơ tham dự">
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined />}
+                disabled={!r.applicationSubmittedAt}
+                onClick={() => setViewingTeam(r)}
+              />
+            </Tooltip>
+            {r.status === 'REGISTERED' && (
+              <>
+                <Tooltip title={t('seasons.teamPanelApproveTooltip')}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CheckOutlined />}
+                    style={{ color: '#52c41a' }}
+                    onClick={() => handleStatus(r.teamId, 'APPROVED')}
+                  />
+                </Tooltip>
+                <Tooltip title={t('seasons.teamPanelRejectTooltip')}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined />}
+                    danger
+                    onClick={() => handleStatus(r.teamId, 'REJECTED')}
+                  />
+                </Tooltip>
+              </>
+            )}
+            <Popconfirm
+              title={t('seasons.teamPanelRemoveConfirm')}
+              onConfirm={() => handleRemove(r.teamId)}
+              okText={t('seasons.deleteOk')}
+              cancelText={t('seasons.deleteCancel')}
+            >
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
   return (
     <div style={{ padding: '8px 0' }}>
+      <div style={{ marginBottom: 12 }}>
+        {candidateResult ? (
+          <>
+            <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+              <Typography.Text strong>Danh sách mời dự kiến</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Nguồn: {candidateResult.previousSeason.name} · Top 8: {candidateTopCount}/
+                {candidateResult.requiredTopLeagueSlots} · Thăng hạng: {candidatePromotedCount}/
+                {candidateResult.requiredPromotedSlots}
+              </Typography.Text>
+            </Flex>
+            {candidatePromotedCount < candidateResult.requiredPromotedSlots && (
+              <Alert
+                showIcon
+                type="info"
+                message="Cần bổ sung đội thăng hạng"
+                description="Chọn nguồn Thăng hạng ở khu vực bên dưới để gửi lời mời cho đủ 2 đội thăng hạng."
+                style={{ marginBottom: 8 }}
+              />
+            )}
+            <Table
+              columns={candidateColumns}
+              dataSource={candidateResult.candidates}
+              rowKey="teamId"
+              pagination={false}
+              size="small"
+            />
+          </>
+        ) : (
+          candidateError && (
+            <Alert
+              showIcon
+              type="warning"
+              message="Danh sách mời dự kiến"
+              description={candidateError}
+              style={{ marginBottom: 12 }}
+            />
+          )
+        )}
+      </div>
       <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
         <Typography.Text strong>
           <TeamOutlined />{' '}
@@ -234,6 +538,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           })}
         </Typography.Text>
         <Space>
+          <Select
+            value={selectedInvitationSource}
+            onChange={setSelectedInvitationSource}
+            style={{ width: 140 }}
+            options={INVITATION_SOURCE_OPTIONS}
+          />
           <Select
             value={selectedTeamId}
             onChange={setSelectedTeamId}
@@ -257,6 +567,15 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           >
             {t('seasons.teamPanelAddBtn')}
           </Button>
+          <Button
+            size="small"
+            icon={<SendOutlined />}
+            disabled={!selectedTeamId}
+            loading={inviting}
+            onClick={() => handleSendInvitation()}
+          >
+            Gửi lời mời
+          </Button>
         </Space>
       </Flex>
       <Table
@@ -268,6 +587,39 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         size="small"
         locale={{ emptyText: t('seasons.teamPanelEmpty') }}
       />
+      <Modal
+        title={viewingTeam ? `Hồ sơ tham dự - ${viewingTeam.team.name}` : 'Hồ sơ tham dự'}
+        open={!!viewingTeam}
+        onCancel={() => setViewingTeam(null)}
+        footer={null}
+        width={760}
+      >
+        {viewingTeam && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Cơ quan/công ty chủ quản">
+              {viewingTeam.ownerName ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Quốc gia đặt trụ sở">
+              {viewingTeam.ownerCountry ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Địa chỉ">{viewingTeam.ownerAddress ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Áo chính thức">
+              {viewingTeam.primaryKit ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Áo dự bị">{viewingTeam.backupKit ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Lệ phí tham dự">
+              {viewingTeam.participationFeePaid ? 'Đã nộp' : 'Chưa nộp'}
+              {viewingTeam.feeReceiptCode ? ` (${viewingTeam.feeReceiptCode})` : ''}
+            </Descriptions.Item>
+            <Descriptions.Item label="Giới thiệu đội">
+              {viewingTeam.teamIntroduction ?? '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Lịch giải khác">
+              {viewingTeam.externalCompetitionSchedule ?? '—'}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -493,36 +845,65 @@ export default function SeasonsPage() {
         ]
       : []),
   ];
+  const inProgressCount = seasons.filter((season) => season.status === 'IN_PROGRESS').length;
+  const upcomingCount = seasons.filter((season) => season.status === 'UPCOMING').length;
 
   return (
-    <Card>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('seasons.title')}
-        </Typography.Title>
-        {isAdmin && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            {t('seasons.createBtn')}
-          </Button>
-        )}
-      </Flex>
+    <>
+      <div className="page-stack">
+        <PageHero
+          eyebrow={t('menu.seasons')}
+          title={t('seasons.title')}
+          description={t('seasons.teamPanelTitle', {
+            approved: inProgressCount,
+            total: seasons.length,
+          })}
+          icon={<CalendarOutlined />}
+          metrics={[
+            {
+              label: t('common.total'),
+              value: seasons.length.toLocaleString('vi-VN'),
+              icon: <CalendarOutlined />,
+            },
+            {
+              label: t('seasonStatus.IN_PROGRESS'),
+              value: inProgressCount.toLocaleString('vi-VN'),
+              icon: <CheckOutlined />,
+            },
+            {
+              label: t('seasonStatus.UPCOMING'),
+              value: upcomingCount.toLocaleString('vi-VN'),
+              icon: <TeamOutlined />,
+            },
+          ]}
+          actions={
+            isAdmin ? (
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                {t('seasons.createBtn')}
+              </Button>
+            ) : undefined
+          }
+        />
 
-      <Table
-        columns={columns}
-        dataSource={seasons}
-        rowKey="id"
-        loading={loading}
-        pagination={false}
-        size="middle"
-        expandable={
-          isAdmin
-            ? {
-                expandedRowRender: (record) => <SeasonTeamPanel seasonId={record.id} />,
-                expandRowByClick: false,
-              }
-            : undefined
-        }
-      />
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={seasons}
+            rowKey="id"
+            loading={loading}
+            pagination={false}
+            size="middle"
+            expandable={
+              isAdmin
+                ? {
+                    expandedRowRender: (record) => <SeasonTeamPanel seasonId={record.id} />,
+                    expandRowByClick: false,
+                  }
+                : undefined
+            }
+          />
+        </Card>
+      </div>
 
       {/* Create/Edit Modal */}
       <Modal
@@ -578,6 +959,6 @@ export default function SeasonsPage() {
           </Flex>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

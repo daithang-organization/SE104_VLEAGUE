@@ -9,6 +9,18 @@ export type SeasonTeam = {
   status: 'REGISTERED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
   registeredAt: string;
   approvedAt: string | null;
+  ownerName: string | null;
+  ownerCountry: string | null;
+  ownerAddress: string | null;
+  teamIntroduction: string | null;
+  primaryKit: string | null;
+  backupKit: string | null;
+  participationFeePaid: boolean;
+  feePaidAt: string | null;
+  feeReceiptCode: string | null;
+  externalCompetitionSchedule: string | null;
+  applicationSubmittedAt: string | null;
+  applicationReviewNote: string | null;
   team: {
     id: string;
     name: string;

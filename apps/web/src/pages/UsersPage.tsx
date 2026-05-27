@@ -1,4 +1,12 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -11,12 +19,12 @@ import {
   Space,
   Table,
   Tag,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PageHero } from '../components/PageHero';
 import { TableSkeleton } from '../components/LoadingSkeleton';
 import {
   apiCreateUser,
@@ -131,6 +139,8 @@ export default function UsersPage() {
       u.email.toLowerCase().includes(search.toLowerCase()) ||
       (u.name ?? '').toLowerCase().includes(search.toLowerCase()),
   );
+  const verifiedUsers = users.filter((user) => user.emailVerified).length;
+  const adminUsers = users.filter((user) => user.role === 'ADMIN').length;
 
   const columns: ColumnsType<User> = [
     {
@@ -203,13 +213,31 @@ export default function UsersPage() {
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            {t('users.title')}
-          </Typography.Title>
-          <Space>
+    <div className="page-stack">
+      <PageHero
+        eyebrow={t('menu.users')}
+        title={t('users.title')}
+        description={t('users.searchPlaceholder')}
+        icon={<UserOutlined />}
+        metrics={[
+          {
+            label: t('common.total'),
+            value: users.length.toLocaleString('vi-VN'),
+            icon: <UserOutlined />,
+          },
+          {
+            label: t('profile.emailVerified'),
+            value: verifiedUsers.toLocaleString('vi-VN'),
+            icon: <CheckCircleOutlined />,
+          },
+          {
+            label: t('role.ADMIN'),
+            value: adminUsers.toLocaleString('vi-VN'),
+            icon: <SafetyCertificateOutlined />,
+          },
+        ]}
+        actions={
+          <Space wrap>
             <Input
               placeholder={t('users.searchPlaceholder')}
               prefix={<SearchOutlined />}
@@ -222,8 +250,10 @@ export default function UsersPage() {
               {t('users.createBtn')}
             </Button>
           </Space>
-        </div>
+        }
+      />
 
+      <Card>
         {loading && filteredUsers.length === 0 ? (
           <TableSkeleton rows={8} />
         ) : (
@@ -317,6 +347,6 @@ export default function UsersPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </Space>
+    </div>
   );
 }

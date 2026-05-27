@@ -3,6 +3,11 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 type ThemeMode = 'light' | 'dark';
 
+const APP_FONT_FAMILY =
+  "'Be Vietnam Pro', 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif";
+const APP_CODE_FONT_FAMILY =
+  "'SFMono-Regular', Consolas, 'Liberation Mono', 'Courier New', monospace";
+
 interface ThemeContextValue {
   mode: ThemeMode;
   toggleTheme: () => void;
@@ -66,6 +71,8 @@ export function useAntdThemeConfig(): ThemeConfig {
           colorBgElevated: '#1e2f4a',
           colorTextBase: '#f0f2f5',
           borderRadius: 8,
+          fontFamily: APP_FONT_FAMILY,
+          fontFamilyCode: APP_CODE_FONT_FAMILY,
         },
         components: {
           Layout: {
@@ -109,6 +116,8 @@ export function useAntdThemeConfig(): ThemeConfig {
         colorBorder: '#e2e8f0',
         colorBorderSecondary: '#e2e8f0',
         borderRadius: 8,
+        fontFamily: APP_FONT_FAMILY,
+        fontFamilyCode: APP_CODE_FONT_FAMILY,
       },
       components: {
         Layout: {

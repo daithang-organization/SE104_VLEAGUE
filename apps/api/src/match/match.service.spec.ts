@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { MatchLineupService } from '../match-lineup/match-lineup.service';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
@@ -77,6 +78,15 @@ describe('MatchService', () => {
           useValue: {
             notifyMatchStatusChange: jest.fn().mockResolvedValue(undefined),
             notifyMatchResult: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: MatchLineupService,
+          useValue: {
+            markServedSuspensionsForMatch: jest
+              .fn()
+              .mockResolvedValue(undefined),
+            syncSuspensionsForMatch: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

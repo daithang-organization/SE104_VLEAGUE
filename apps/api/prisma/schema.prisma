@@ -46,6 +46,19 @@ enum SeasonTeamStatus {
   WITHDRAWN
 }
 
+enum TeamInvitationSourceType {
+  PREVIOUS_TOP_8
+  PROMOTED
+  REPLACEMENT
+}
+
+enum TeamInvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 enum EventType {
   GOAL
   OWN_GOAL
@@ -54,6 +67,40 @@ enum EventType {
   SUBSTITUTION
   PENALTY
   PENALTY_MISS
+}
+
+enum MatchKitType {
+  PRIMARY
+  BACKUP
+}
+
+enum MatchLineupRole {
+  STARTER
+  SUBSTITUTE
+}
+
+enum MatchLineupStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum PlayerSuspensionStatus {
+  ACTIVE
+  SERVED
+  CANCELLED
+}
+
+enum OfficialStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MatchOfficialRole {
+  MAIN_REFEREE
+  ASSISTANT_REFEREE
+  FOURTH_OFFICIAL
+  SUPERVISOR
 }
 
 enum UserRole {
@@ -171,8 +218,11 @@ model Team {
   homeMatches  Match[]        @relation("HomeTeam")
   awayMatches  Match[]        @relation("AwayTeam")
   matchEvents  MatchEvent[]
+  matchTeamRegistrations MatchTeamRegistration[]
+  playerSuspensions PlayerSuspension[]
   standings    Standing[]
   managerAssignments TeamManagerAssignment[]
+  invitations TeamInvitation[]
 
   @@map("teams")
 }
@@ -195,6 +245,9 @@ model Player {
   roster        TeamPlayer[]
   matchEvents   MatchEvent[] @relation("EventPlayer")
   relatedEvents MatchEvent[] @relation("RelatedPlayer")
+  lineupSelections MatchLineupPlayer[]
+  suspensions PlayerSuspension[]
+  bestPlayerReports MatchReport[]
 
   @@index([fullName], map: "players_full_name_idx")
   @@index([nationality], map: "players_nationality_idx")
@@ -204,11 +257,13 @@ model Player {
 }
 
 model Stadium {
-  id       String @id @default(uuid()) @db.Uuid
-  name     String @unique
-  address  String?
-  city     String
-  capacity Int?
+  id        String @id @default(uuid()) @db.Uuid
+  name      String @unique
+  address   String?
+  city      String
+  country   String @default("Việt Nam")
+  capacity  Int?
+  fifaStars Int?   @map("fifa_stars")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -237,6 +292,8 @@ model Season {
   regulations Regulation[]
   standings   Standing[]
   managerAssignments TeamManagerAssignment[]
+  invitations TeamInvitation[]
+  playerSuspensions PlayerSuspension[]
 
   @@map("seasons")
 }
@@ -272,6 +329,19 @@ model SeasonTeam {
 
   registeredAt DateTime  @default(now()) @map("registered_at")
   approvedAt   DateTime? @map("approved_at")
+
+  ownerName       String? @map("owner_name")
+  ownerCountry    String? @map("owner_country")
+  ownerAddress    String? @map("owner_address")
+  teamIntroduction String? @map("team_introduction") @db.Text
+  primaryKit      String? @map("primary_kit")
+  backupKit       String? @map("backup_kit")
+  participationFeePaid Boolean @default(false) @map("participation_fee_paid")
+  feePaidAt       DateTime? @map("fee_paid_at")
+  feeReceiptCode  String? @map("fee_receipt_code")
+  externalCompetitionSchedule String? @map("external_competition_schedule") @db.Text
+  applicationSubmittedAt DateTime? @map("application_submitted_at")
+  applicationReviewNote String? @map("application_review_note")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -312,6 +382,12 @@ model Match {
 
   // Relations
   events  MatchEvent[]
+  teamRegistrations MatchTeamRegistration[]
+  sourceSuspensions PlayerSuspension[] @relation("SuspensionSourceMatch")
+  effectiveSuspensions PlayerSuspension[] @relation("SuspensionEffectiveMatch")
+  officialAssignments MatchOfficialAssignment[]
+  matchReport MatchReport?
+  disciplineReport DisciplineReport?
 
   @@index([roundNo], map: "matches_round_no_idx")
   @@index([status], map: "matches_status_idx")
@@ -349,6 +425,164 @@ model MatchEvent {
   @@index([teamId])
   @@index([type], map: "match_events_type_idx")
   @@map("match_events")
+}
+
+model MatchTeamRegistration {
+  id      String @id @default(uuid()) @db.Uuid
+  matchId String @map("match_id") @db.Uuid
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  teamId  String @map("team_id") @db.Uuid
+  team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  kitType   MatchKitType      @default(PRIMARY) @map("kit_type")
+  formation String
+  status    MatchLineupStatus @default(SUBMITTED)
+
+  submittedAt DateTime  @default(now()) @map("submitted_at")
+  reviewedAt  DateTime? @map("reviewed_at")
+  reviewNote  String?   @map("review_note")
+
+  lineupPlayers MatchLineupPlayer[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, teamId])
+  @@index([matchId])
+  @@index([teamId])
+  @@index([status])
+  @@map("match_team_registrations")
+}
+
+model MatchLineupPlayer {
+  id             String                @id @default(uuid()) @db.Uuid
+  registrationId String                @map("registration_id") @db.Uuid
+  registration   MatchTeamRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  playerId       String                @map("player_id") @db.Uuid
+  player         Player                @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  role         MatchLineupRole
+  position     PlayerPosition?
+  shirtNumber  Int? @map("shirt_number")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([registrationId, playerId])
+  @@index([playerId])
+  @@index([role])
+  @@map("match_lineup_players")
+}
+
+model PlayerSuspension {
+  id       String @id @default(uuid()) @db.Uuid
+  playerId String @map("player_id") @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  teamId   String @map("team_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  sourceMatchId    String @map("source_match_id") @db.Uuid
+  sourceMatch      Match  @relation("SuspensionSourceMatch", fields: [sourceMatchId], references: [id], onDelete: Cascade)
+  effectiveMatchId String @map("effective_match_id") @db.Uuid
+  effectiveMatch   Match  @relation("SuspensionEffectiveMatch", fields: [effectiveMatchId], references: [id], onDelete: Cascade)
+
+  reason String
+  status PlayerSuspensionStatus @default(ACTIVE)
+  servedAt DateTime? @map("served_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([playerId, sourceMatchId, reason])
+  @@index([teamId])
+  @@index([seasonId])
+  @@index([effectiveMatchId])
+  @@index([status])
+  @@map("player_suspensions")
+}
+
+model Official {
+  id       String         @id @default(uuid()) @db.Uuid
+  fullName String         @map("full_name")
+  email    String?
+  phone    String?
+  status   OfficialStatus @default(ACTIVE)
+
+  assignments MatchOfficialAssignment[]
+  disciplineReports DisciplineReport[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("officials")
+}
+
+model MatchOfficialAssignment {
+  id         String            @id @default(uuid()) @db.Uuid
+  matchId    String            @map("match_id") @db.Uuid
+  match      Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  officialId String            @map("official_id") @db.Uuid
+  official   Official          @relation(fields: [officialId], references: [id], onDelete: Restrict)
+  role       MatchOfficialRole
+
+  publishedAt DateTime @default(now()) @map("published_at")
+  note        String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, officialId, role])
+  @@index([matchId])
+  @@index([officialId])
+  @@index([role])
+  @@map("match_official_assignments")
+}
+
+model MatchReport {
+  id                String   @id @default(uuid()) @db.Uuid
+  matchId           String   @unique @map("match_id") @db.Uuid
+  match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  submittedByUserId String?  @map("submitted_by_user_id") @db.Uuid
+
+  homeScore    Int    @map("home_score")
+  awayScore    Int    @map("away_score")
+  bestPlayerId String? @map("best_player_id") @db.Uuid
+  bestPlayer   Player? @relation(fields: [bestPlayerId], references: [id], onDelete: SetNull)
+
+  technicalStats Json?    @map("technical_stats")
+  note           String?  @db.Text
+  submittedAt    DateTime @default(now()) @map("submitted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([bestPlayerId])
+  @@index([submittedByUserId])
+  @@map("match_reports")
+}
+
+model DisciplineReport {
+  id           String   @id @default(uuid()) @db.Uuid
+  matchId      String   @unique @map("match_id") @db.Uuid
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  supervisorId String   @map("supervisor_id") @db.Uuid
+  supervisor   Official @relation(fields: [supervisorId], references: [id], onDelete: Restrict)
+
+  organizationRating String  @map("organization_rating")
+  refereeIssues      String? @map("referee_issues") @db.Text
+  playerIssues       String? @map("player_issues") @db.Text
+  organizerIssues    String? @map("organizer_issues") @db.Text
+  notes              String? @db.Text
+  sentToDisciplinaryAt DateTime? @map("sent_to_disciplinary_at")
+  submittedAt          DateTime  @default(now()) @map("submitted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([supervisorId])
+  @@map("discipline_reports")
 }
 
 // ─── Regulation & Standings ─────────────────────────────────
@@ -408,6 +642,33 @@ model TeamManagerAssignment {
   @@index([teamId])
   @@index([seasonId])
   @@map("team_manager_assignments")
+}
+
+model TeamInvitation {
+  id       String @id @default(uuid()) @db.Uuid
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId   String @map("team_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  sourceType TeamInvitationSourceType @map("source_type")
+  status     TeamInvitationStatus     @default(SENT)
+
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  deadlineAt  DateTime  @map("deadline_at")
+  responseAt  DateTime? @map("response_at")
+  responseReason String? @map("response_reason")
+  regulationsSnapshot Json? @map("regulations_snapshot")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId])
+  @@index([teamId])
+  @@index([status])
+  @@index([deadlineAt])
+  @@map("team_invitations")
 }
 
 // ─── Audit Log ──────────────────────────────────────────────

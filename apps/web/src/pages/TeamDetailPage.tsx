@@ -29,7 +29,7 @@ import { ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
 import { POSITION_MAP, STATUS_MAP } from '../utils/constants';
-import { getTeamLogoUrl } from '../utils/teamLogos';
+import { getTeamLogoUrl, getTeamThemeStyle } from '../utils/teamLogos';
 
 const { Title } = Typography;
 
@@ -289,60 +289,64 @@ export default function TeamDetailPage() {
   ];
 
   const currentStanding = (team.standings || []).length > 0 ? team.standings[0] : null;
+  const teamLogoUrl = getTeamLogoUrl(team);
+  const teamInitials = (team.shortName || team.name).slice(0, 2).toUpperCase();
 
   return (
-    <div>
-      <Space style={{ marginBottom: 16 }} align="center">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teams')}>
-          {t('teamDetail.back')}
-        </Button>
-        {team.logoUrl && (
-          <img
-            src={team.logoUrl}
-            alt={team.name}
-            style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8 }}
-          />
-        )}
-        <Title level={3} style={{ margin: 0 }}>
-          {team.name}
-        </Title>
-        <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
-          {team.status === 'ACTIVE' ? t('teamDetail.statusActive') : t('teamDetail.statusInactive')}
-        </Tag>
-      </Space>
+    <div className="club-detail-page">
+      <section className="club-detail-hero" style={getTeamThemeStyle(team)}>
+        <div className="club-detail-hero-top">
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teams')}>
+            {t('teamDetail.back')}
+          </Button>
+          <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
+            {team.status === 'ACTIVE'
+              ? t('teamDetail.statusActive')
+              : t('teamDetail.statusInactive')}
+          </Tag>
+        </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <Card size="small">
-            <Statistic
-              title={t('teamDetail.statPlayers')}
-              value={(team.roster || []).length}
-              prefix={<TeamOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card size="small">
-            <Statistic
-              title={t('teamDetail.statMatches')}
-              value={allMatches.length}
-              prefix={<TrophyOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card size="small">
-            <Statistic
-              title={t('teamDetail.statStadium')}
-              value={team.stadium?.name ?? t('teamDetail.stadiumEmpty')}
-              prefix={<EnvironmentOutlined />}
-              styles={{ content: { fontSize: 16 } }}
-            />
-          </Card>
-        </Col>
-      </Row>
+        <div className="club-detail-hero-main">
+          <div className="club-detail-crest">
+            {teamLogoUrl ? (
+              <img src={teamLogoUrl} alt={team.name} />
+            ) : (
+              <span aria-hidden="true">{teamInitials}</span>
+            )}
+          </div>
+          <div className="club-detail-copy">
+            <Title level={1} className="club-detail-title">
+              {team.name}
+            </Title>
+            <div className="club-detail-facts">
+              {team.shortName && <span className="club-detail-code-pill">{team.shortName}</span>}
+              <span>{team.city ?? 'Chưa cập nhật thành phố'}</span>
+              <span>{team.stadium?.name ?? t('teamDetail.stadiumEmpty')}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="club-detail-stat-strip">
+          <div className="club-detail-stat">
+            <TeamOutlined />
+            <span>{t('teamDetail.statPlayers')}</span>
+            <strong>{(team.roster || []).length}</strong>
+          </div>
+          <div className="club-detail-stat">
+            <TrophyOutlined />
+            <span>{t('teamDetail.statMatches')}</span>
+            <strong>{allMatches.length}</strong>
+          </div>
+          <div className="club-detail-stat club-detail-stat-wide">
+            <EnvironmentOutlined />
+            <span>{t('teamDetail.statStadium')}</span>
+            <strong>{team.stadium?.name ?? t('teamDetail.stadiumEmpty')}</strong>
+          </div>
+        </div>
+      </section>
 
       <Tabs
+        className="club-detail-tabs"
         defaultActiveKey="info"
         items={[
           {

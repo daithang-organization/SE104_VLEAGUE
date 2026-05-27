@@ -51,6 +51,13 @@ describe('StandingsService', () => {
             },
             matchEvent: {
               findMany: jest.fn(),
+              count: jest.fn(),
+            },
+            matchReport: {
+              findMany: jest.fn(),
+            },
+            playerSuspension: {
+              findMany: jest.fn(),
             },
           },
         },
@@ -147,6 +154,138 @@ describe('StandingsService', () => {
       expect(result[0].teamId).toBe('team-1'); // Team 1 first (3 pts)
       expect(result[1].teamId).toBe('team-2'); // Team 2 second (0 pts)
     });
+
+    it('keeps teams tied in-progress when points and goal difference are equal', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+        { team: { id: 'team-c', name: 'C FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-c',
+          homeScore: 3,
+          awayScore: 0,
+          roundNo: 1,
+        },
+        {
+          homeTeamId: 'team-b',
+          awayTeamId: 'team-c',
+          homeScore: 4,
+          awayScore: 1,
+          roundNo: 1,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(matches as any);
+
+      const result = await service.getStandings('season-1', 'in_progress');
+      const teamA = result.find((standing) => standing.teamId === 'team-a');
+      const teamB = result.find((standing) => standing.teamId === 'team-b');
+
+      expect(teamA?.points).toBe(teamB?.points);
+      expect(teamA?.goalDifference).toBe(teamB?.goalDifference);
+      expect(teamA?.position).toBe(1);
+      expect(teamB?.position).toBe(1);
+    });
+
+    it('uses two-leg head-to-head aggregate to break final ties', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+        { team: { id: 'team-c', name: 'C FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-b',
+          homeScore: 2,
+          awayScore: 0,
+          roundNo: 1,
+        },
+        {
+          homeTeamId: 'team-b',
+          awayTeamId: 'team-a',
+          homeScore: 1,
+          awayScore: 1,
+          roundNo: 2,
+        },
+        {
+          homeTeamId: 'team-b',
+          awayTeamId: 'team-c',
+          homeScore: 3,
+          awayScore: 0,
+          roundNo: 3,
+        },
+        {
+          homeTeamId: 'team-c',
+          awayTeamId: 'team-b',
+          homeScore: 0,
+          awayScore: 2,
+          roundNo: 4,
+        },
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-c',
+          homeScore: 1,
+          awayScore: 0,
+          roundNo: 5,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(matches as any);
+
+      const result = await service.getStandings('season-1', 'final');
+
+      expect(result[0].teamId).toBe('team-a');
+      expect(result[1].teamId).toBe('team-b');
+      expect(result[0].headToHeadGoalsFor).toBe(3);
+      expect(result[1].headToHeadGoalsFor).toBe(1);
+      expect(result[0].requiresDrawLot).toBe(false);
+    });
+
+    it('marks final ties as requiring draw lot when head-to-head aggregate is equal', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-b',
+          homeScore: 1,
+          awayScore: 0,
+          roundNo: 1,
+        },
+        {
+          homeTeamId: 'team-b',
+          awayTeamId: 'team-a',
+          homeScore: 1,
+          awayScore: 0,
+          roundNo: 2,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(matches as any);
+
+      const result = await service.getStandings('season-1', 'final');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].position).toBe(1);
+      expect(result[1].position).toBe(1);
+      expect(result[0].requiresDrawLot).toBe(true);
+      expect(result[1].requiresDrawLot).toBe(true);
+    });
   });
 
   describe('getTopScorers', () => {
@@ -198,6 +337,111 @@ describe('StandingsService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].assists).toBe(2);
       expect(result[0].playerName).toBe('Assist Player');
+    });
+  });
+
+  describe('getPlayerOfMatchStats', () => {
+    it('counts player-of-the-match awards from match reports', async () => {
+      jest
+        .spyOn(prisma.season, 'findFirst')
+        .mockResolvedValue({ id: 'season-1' } as any);
+      jest.spyOn(prisma.matchReport, 'findMany').mockResolvedValue([
+        {
+          bestPlayerId: 'player-1',
+          bestPlayer: { id: 'player-1', fullName: 'Home Player 1' },
+        },
+        {
+          bestPlayerId: 'player-1',
+          bestPlayer: { id: 'player-1', fullName: 'Home Player 1' },
+        },
+      ] as any);
+
+      const result = await service.getPlayerOfMatchStats();
+
+      expect(result).toEqual([
+        {
+          position: 1,
+          playerId: 'player-1',
+          playerName: 'Home Player 1',
+          awards: 2,
+        },
+      ]);
+    });
+  });
+
+  describe('getSuspensionStats', () => {
+    it('returns suspensions linked to players, teams, and matches', async () => {
+      jest
+        .spyOn(prisma.season, 'findFirst')
+        .mockResolvedValue({ id: 'season-1' } as any);
+      jest.spyOn(prisma.playerSuspension, 'findMany').mockResolvedValue([
+        {
+          id: 'suspension-1',
+          playerId: 'player-1',
+          teamId: 'team-1',
+          reason: 'RED_CARD',
+          status: 'ACTIVE',
+          player: { id: 'player-1', fullName: 'Home Player 1' },
+          team: { id: 'team-1', name: 'A FC' },
+          sourceMatch: { id: 'match-1', roundNo: 1 },
+          effectiveMatch: { id: 'match-2', roundNo: 2 },
+        },
+      ] as any);
+
+      const result = await service.getSuspensionStats();
+
+      expect(result[0]).toMatchObject({
+        playerName: 'Home Player 1',
+        teamName: 'A FC',
+        reason: 'RED_CARD',
+        status: 'ACTIVE',
+        sourceRound: 1,
+        effectiveRound: 2,
+      });
+    });
+  });
+
+  describe('getSeasonAwards', () => {
+    it('returns champion, runner-up, top scorer, and best player award candidates', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-b',
+          homeScore: 2,
+          awayScore: 0,
+          roundNo: 1,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(matches as any);
+      jest.spyOn(prisma.matchEvent, 'findMany').mockResolvedValue([
+        {
+          type: 'GOAL',
+          player: { id: 'player-1', fullName: 'Home Player 1' },
+          team: { id: 'team-a', name: 'A FC' },
+        },
+      ] as any);
+      jest.spyOn(prisma.matchReport, 'findMany').mockResolvedValue([
+        {
+          bestPlayerId: 'player-1',
+          bestPlayer: { id: 'player-1', fullName: 'Home Player 1' },
+        },
+      ] as any);
+
+      const result = await service.getSeasonAwards('season-1');
+
+      expect(result.champion?.teamId).toBe('team-a');
+      expect(result.runnerUp?.teamId).toBe('team-b');
+      expect(result.topScorer?.playerId).toBe('player-1');
+      expect(result.bestPlayer?.playerId).toBe('player-1');
+      expect(result.requiresDrawLot).toBe(false);
     });
   });
 });

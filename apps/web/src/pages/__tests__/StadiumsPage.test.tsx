@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
@@ -10,8 +11,18 @@ const mockStadiumApi = vi.hoisted(() => ({
       city: 'Hà Nội',
       address: 'Mỹ Đình, Nam Từ Liêm',
       capacity: 40000,
+      country: 'Việt Nam',
+      fifaStars: null,
     },
-    { id: 's2', name: 'Sân Thống Nhất', city: 'TP.HCM', address: 'Q.10', capacity: 25000 },
+    {
+      id: 's2',
+      name: 'Sân Thống Nhất',
+      city: 'TP.HCM',
+      address: 'Q.10',
+      capacity: 25000,
+      country: 'Việt Nam',
+      fifaStars: 2,
+    },
   ]),
   apiCreateStadium: vi.fn(),
   apiUpdateStadium: vi.fn(),
@@ -39,12 +50,24 @@ function renderPage() {
 }
 
 describe('StadiumsPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.useAuth.mockReturnValue({ user: { role: 'ADMIN' } });
+  });
 
   it('renders title', async () => {
-    renderPage();
+    const { container } = renderPage();
     await waitFor(() => {
       expect(screen.getByText('stadiums.title')).toBeInTheDocument();
+      expect(container.querySelector('.page-hero')).toBeInTheDocument();
+    });
+  });
+
+  it('summarizes stadium inventory in the hero metrics', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('65.000')).toBeInTheDocument();
     });
   });
 
@@ -76,5 +99,42 @@ describe('StadiumsPage', () => {
       expect(mockStadiumApi.apiGetStadiums).toHaveBeenCalledTimes(1);
     });
     expect(screen.queryByText('stadiums.addBtn')).not.toBeInTheDocument();
+  });
+
+  it('lets admin update stadium country and FIFA stars', async () => {
+    mockStadiumApi.apiUpdateStadium.mockResolvedValue({
+      id: 's1',
+      name: 'Sân Mỹ Đình',
+      city: 'Hà Nội',
+      country: 'Việt Nam',
+      fifaStars: 2,
+    });
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Sân Mỹ Đình')).toBeInTheDocument();
+    });
+
+    const editButton = screen.getAllByRole('button', { name: 'stadiums.editAction' })[0];
+    await userEvent.click(editButton);
+
+    const countryInput = await screen.findByLabelText('stadiums.formCountry');
+    const fifaStarsInput = screen.getByLabelText('stadiums.formFifaStars');
+
+    await userEvent.clear(countryInput);
+    await userEvent.type(countryInput, 'Việt Nam');
+    await userEvent.clear(fifaStarsInput);
+    await userEvent.type(fifaStarsInput, '2');
+    await userEvent.click(screen.getByText('common.save'));
+
+    await waitFor(() => {
+      expect(mockStadiumApi.apiUpdateStadium).toHaveBeenCalledWith(
+        's1',
+        expect.objectContaining({
+          country: 'Việt Nam',
+          fifaStars: 2,
+        }),
+      );
+    });
   });
 });

@@ -1,4 +1,11 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+  CalendarOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SettingOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -16,7 +23,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton } from '../components';
+import { PageHero, TableSkeleton } from '../components';
 import {
   apiDeleteRegulation,
   apiGetRegulations,
@@ -197,11 +204,65 @@ export default function RegulationsPage() {
       ),
     },
   ];
+  const hero = (
+    <PageHero
+      eyebrow={t('menu.regulations')}
+      title={t('regulations.title')}
+      description={t('regulations.subtitle')}
+      icon={<SettingOutlined />}
+      metrics={[
+        {
+          label: t('common.total'),
+          value: regulations.length.toLocaleString('vi-VN'),
+          icon: <SettingOutlined />,
+        },
+        {
+          label: t('menu.seasons'),
+          value: seasons.length.toLocaleString('vi-VN'),
+          icon: <CalendarOutlined />,
+        },
+        {
+          label: t('regulations.colKey'),
+          value: REGULATION_KEYS.length.toLocaleString('vi-VN'),
+          icon: <SettingOutlined />,
+        },
+      ]}
+      actions={
+        <Space wrap>
+          <Select
+            style={{ width: 240 }}
+            value={selectedSeason || undefined}
+            onChange={setSelectedSeason}
+            placeholder={t('regulations.seasonPlaceholder')}
+            options={seasons.map((s) => ({
+              label: `${s.name} (${s.year})`,
+              value: s.id,
+            }))}
+          />
+          <Button
+            icon={<ThunderboltOutlined />}
+            onClick={handleSeedDefaults}
+            disabled={!selectedSeason}
+          >
+            {t('regulations.seedDefaultsBtn')}
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={openCreateModal}
+            disabled={!selectedSeason}
+          >
+            {t('regulations.addBtn')}
+          </Button>
+        </Space>
+      }
+    />
+  );
 
   if (initialLoad) {
     return (
-      <div>
-        <Typography.Title level={3}>{t('regulations.title')}</Typography.Title>
+      <div className="page-stack">
+        {hero}
         <Card>
           <TableSkeleton rows={6} />
         </Card>
@@ -210,46 +271,10 @@ export default function RegulationsPage() {
   }
 
   return (
-    <div>
-      <Typography.Title level={3}>{t('regulations.title')}</Typography.Title>
-      <Typography.Paragraph type="secondary">{t('regulations.subtitle')}</Typography.Paragraph>
+    <div className="page-stack">
+      {hero}
 
-      <Card
-        title={
-          <Space>
-            <span>{t('regulations.seasonLabel')}</span>
-            <Select
-              style={{ width: 240 }}
-              value={selectedSeason || undefined}
-              onChange={setSelectedSeason}
-              placeholder={t('regulations.seasonPlaceholder')}
-              options={seasons.map((s) => ({
-                label: `${s.name} (${s.year})`,
-                value: s.id,
-              }))}
-            />
-          </Space>
-        }
-        extra={
-          <Space>
-            <Button
-              icon={<ThunderboltOutlined />}
-              onClick={handleSeedDefaults}
-              disabled={!selectedSeason}
-            >
-              {t('regulations.seedDefaultsBtn')}
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreateModal}
-              disabled={!selectedSeason}
-            >
-              {t('regulations.addBtn')}
-            </Button>
-          </Space>
-        }
-      >
+      <Card>
         <Table
           columns={columns}
           dataSource={regulations}

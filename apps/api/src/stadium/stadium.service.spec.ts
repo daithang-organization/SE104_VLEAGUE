@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { StadiumService } from './stadium.service';
@@ -12,7 +12,9 @@ describe('StadiumService', () => {
     name: 'Sân Mỹ Đình',
     address: null,
     city: 'Hà Nội',
+    country: 'Việt Nam',
     capacity: 40000,
+    fifaStars: 2,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -85,7 +87,9 @@ describe('StadiumService', () => {
       const createDto = {
         name: 'Sân Thống Nhất',
         city: 'TP.HCM',
+        country: 'Việt Nam',
         capacity: 15000,
+        fifaStars: 2,
       };
       jest.spyOn(prisma.stadium, 'create').mockResolvedValue({
         ...mockStadium,
@@ -96,6 +100,42 @@ describe('StadiumService', () => {
       const result = await service.create(createDto);
 
       expect(result.name).toBe('Sân Thống Nhất');
+    });
+
+    it('should reject a stadium with capacity below 10,000 seats', async () => {
+      await expect(
+        service.create({
+          name: 'Sân nhỏ',
+          city: 'Hà Nội',
+          country: 'Việt Nam',
+          capacity: 9999,
+          fifaStars: 2,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a stadium outside Vietnam', async () => {
+      await expect(
+        service.create({
+          name: 'Sân nước ngoài',
+          city: 'Bangkok',
+          country: 'Thailand',
+          capacity: 20000,
+          fifaStars: 2,
+        }),
+      ).rejects.toThrow('Việt Nam');
+    });
+
+    it('should reject a stadium below 2 FIFA stars', async () => {
+      await expect(
+        service.create({
+          name: 'Sân chưa đạt chuẩn',
+          city: 'Hà Nội',
+          country: 'Việt Nam',
+          capacity: 20000,
+          fifaStars: 1,
+        }),
+      ).rejects.toThrow('2 sao');
     });
 
     it('should throw ConflictException if stadium name exists', async () => {
@@ -126,6 +166,17 @@ describe('StadiumService', () => {
       const result = await service.update('stadium-1', { capacity: 50000 });
 
       expect(result.capacity).toBe(50000);
+    });
+
+    it('should reject updates that make a stadium ineligible', async () => {
+      jest.spyOn(prisma.stadium, 'findUnique').mockResolvedValue({
+        ...mockStadium,
+        teams: [],
+      } as any);
+
+      await expect(
+        service.update('stadium-1', { capacity: 9000 }),
+      ).rejects.toThrow('10.000');
     });
   });
 

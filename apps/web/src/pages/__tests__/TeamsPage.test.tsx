@@ -106,4 +106,30 @@ describe('TeamsPage', () => {
       expect(screen.getByText('Ngưng')).toBeInTheDocument();
     });
   });
+
+  it('renders detail buttons for the club card layout', async () => {
+    renderPage();
+
+    const detailButtons = await screen.findAllByRole('button', { name: /chi tiết/i });
+
+    expect(detailButtons).toHaveLength(2);
+  });
+
+  it('keeps the short name attached to the club identity area', async () => {
+    renderPage();
+
+    const code = await screen.findByText('HN');
+
+    expect(code).toHaveClass('club-card-code-pill');
+    expect(code.closest('.club-card-footer')).toBeNull();
+  });
+
+  it('applies a club color theme to each club card', async () => {
+    renderPage();
+
+    const logo = await screen.findByRole('img', { name: 'Hà Nội FC logo' });
+    const card = logo.closest('.club-card');
+
+    expect(card?.getAttribute('style')).toContain('--club-accent: #f7c948');
+  });
 });

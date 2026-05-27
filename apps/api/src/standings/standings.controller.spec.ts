@@ -87,14 +87,26 @@ describe('StandingsController', () => {
       const result = await controller.getStandings();
 
       expect(result).toEqual(mockStandings);
-      expect(service.getStandings).toHaveBeenCalledWith(undefined);
+      expect(service.getStandings).toHaveBeenCalledWith(
+        undefined,
+        'in_progress',
+      );
     });
 
     it('should return standings for specific season', async () => {
       const seasonId = 'season-1';
       await controller.getStandings(seasonId);
 
-      expect(service.getStandings).toHaveBeenCalledWith(seasonId);
+      expect(service.getStandings).toHaveBeenCalledWith(
+        seasonId,
+        'in_progress',
+      );
+    });
+
+    it('should pass requested standings mode', async () => {
+      await controller.getStandings('season-1', 'final');
+
+      expect(service.getStandings).toHaveBeenCalledWith('season-1', 'final');
     });
   });
 
@@ -133,7 +145,16 @@ describe('StandingsController', () => {
       const seasonId = 'season-1';
       await controller.getStandingsBySeason(seasonId);
 
-      expect(service.getStandings).toHaveBeenCalledWith(seasonId);
+      expect(service.getStandings).toHaveBeenCalledWith(
+        seasonId,
+        'in_progress',
+      );
+    });
+
+    it('should pass requested standings mode', async () => {
+      await controller.getStandingsBySeason('season-1', 'final');
+
+      expect(service.getStandings).toHaveBeenCalledWith('season-1', 'final');
     });
   });
 });

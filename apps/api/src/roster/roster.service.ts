@@ -11,7 +11,7 @@ import { AddPlayerToRosterDto, UpdateRosterPlayerDto } from './dto';
 
 /** Fallback limits when no season regulation is available */
 const DEFAULT_MAX_ROSTER = 22;
-const DEFAULT_MAX_FOREIGN = 3;
+const DEFAULT_MAX_FOREIGN = 5;
 const DEFAULT_MIN_AGE = 16;
 const DEFAULT_MAX_AGE = 40;
 

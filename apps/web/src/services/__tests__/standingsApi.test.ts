@@ -8,7 +8,10 @@ vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
   apiGetCardStats,
+  apiGetPlayerOfMatchStats,
+  apiGetSeasonAwards,
   apiGetStandings,
+  apiGetSuspensionStats,
   apiGetTeamStats,
   apiGetTopAssists,
   apiGetTopScorers,
@@ -22,6 +25,14 @@ describe('standingsApi', () => {
     mockApi.get.mockResolvedValue({ data: standings });
     const result = await apiGetStandings('s1');
     expect(mockApi.get).toHaveBeenCalledWith('/standings?seasonId=s1');
+    expect(result).toEqual(standings);
+  });
+
+  it('apiGetStandings calls GET /standings with final mode', async () => {
+    const standings = [{ position: 1, teamName: 'Hà Nội FC', points: 30 }];
+    mockApi.get.mockResolvedValue({ data: standings });
+    const result = await apiGetStandings('s1', 'final');
+    expect(mockApi.get).toHaveBeenCalledWith('/standings?seasonId=s1&mode=final');
     expect(result).toEqual(standings);
   });
 
@@ -85,5 +96,29 @@ describe('standingsApi', () => {
     mockApi.get.mockResolvedValue({ data: [] });
     await apiGetTeamStats();
     expect(mockApi.get).toHaveBeenCalledWith('/standings/team-stats');
+  });
+
+  it('apiGetPlayerOfMatchStats calls GET /standings/player-of-match with params', async () => {
+    const stats = [{ position: 1, playerName: 'Player A', awards: 3 }];
+    mockApi.get.mockResolvedValue({ data: stats });
+    const result = await apiGetPlayerOfMatchStats('s1', 10);
+    expect(mockApi.get).toHaveBeenCalledWith('/standings/player-of-match?seasonId=s1&limit=10');
+    expect(result).toEqual(stats);
+  });
+
+  it('apiGetSuspensionStats calls GET /standings/suspensions with seasonId', async () => {
+    const suspensions = [{ id: 'sus1', playerName: 'Player A', status: 'ACTIVE' }];
+    mockApi.get.mockResolvedValue({ data: suspensions });
+    const result = await apiGetSuspensionStats('s1');
+    expect(mockApi.get).toHaveBeenCalledWith('/standings/suspensions?seasonId=s1');
+    expect(result).toEqual(suspensions);
+  });
+
+  it('apiGetSeasonAwards calls GET /standings/awards with seasonId', async () => {
+    const awards = { champion: { teamName: 'Hà Nội FC' }, requiresDrawLot: false };
+    mockApi.get.mockResolvedValue({ data: awards });
+    const result = await apiGetSeasonAwards('s1');
+    expect(mockApi.get).toHaveBeenCalledWith('/standings/awards?seasonId=s1');
+    expect(result).toEqual(awards);
   });
 });

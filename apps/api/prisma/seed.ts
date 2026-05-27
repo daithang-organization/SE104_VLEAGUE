@@ -119,24 +119,27 @@ const playersData = [
 
 // Tham số quy định mặc định cho mùa giải (QĐ1–QĐ6)
 const defaultRegulations = [
-  { key: 'player_age_min', value: '16', valueType: 'INT' },
-  { key: 'player_age_max', value: '40', valueType: 'INT' },
-  { key: 'team_player_min', value: '15', valueType: 'INT' },
-  { key: 'team_player_max', value: '22', valueType: 'INT' },
-  { key: 'foreign_max_registered', value: '3', valueType: 'INT' },
-  { key: 'goal_types', value: '["A","B","C"]', valueType: 'JSON' },
-  { key: 'max_goal_minute', value: '90', valueType: 'INT' },
-  { key: 'points_win', value: '3', valueType: 'INT' },
-  { key: 'points_draw', value: '1', valueType: 'INT' },
-  { key: 'points_loss', value: '0', valueType: 'INT' },
+  { key: 'MIN_AGE', value: '16', valueType: 'number' },
+  { key: 'MAX_AGE', value: '40', valueType: 'number' },
+  { key: 'MIN_ROSTER', value: '16', valueType: 'number' },
+  { key: 'MAX_ROSTER', value: '22', valueType: 'number' },
+  { key: 'MAX_FOREIGN_PLAYERS', value: '5', valueType: 'number' },
+  { key: 'MAX_FOREIGN_PLAYERS_ON_FIELD', value: '3', valueType: 'number' },
+  { key: 'MIN_STADIUM_CAPACITY', value: '10000', valueType: 'number' },
+  { key: 'MIN_STADIUM_FIFA_STARS', value: '2', valueType: 'number' },
+  { key: 'PARTICIPATION_FEE_VND', value: '1000000000', valueType: 'number' },
+  { key: 'MAX_GOAL_TIME', value: '96', valueType: 'number' },
+  { key: 'WIN_POINTS', value: '3', valueType: 'number' },
+  { key: 'DRAW_POINTS', value: '1', valueType: 'number' },
+  { key: 'LOSS_POINTS', value: '0', valueType: 'number' },
   {
-    key: 'rank_tiebreak_order',
-    value: '["points","goal_diff","goals_for"]',
-    valueType: 'JSON',
+    key: 'RANK_TIEBREAK_ORDER_FINAL',
+    value: '["points","goal_diff","head_to_head","draw_lot"]',
+    valueType: 'json',
   },
-  { key: 'total_legs', value: '2', valueType: 'INT' },
-  { key: 'rounds_per_season', value: '26', valueType: 'INT' },
-  { key: 'matches_per_round', value: '7', valueType: 'INT' },
+  { key: 'TOTAL_LEGS', value: '2', valueType: 'number' },
+  { key: 'ROUNDS_PER_SEASON', value: '18', valueType: 'number' },
+  { key: 'MATCHES_PER_ROUND', value: '5', valueType: 'number' },
 ];
 
 async function main() {

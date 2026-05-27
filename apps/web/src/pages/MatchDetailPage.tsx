@@ -1,16 +1,28 @@
-import { ArrowLeftOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import {
+  ArrowLeftOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SendOutlined,
+} from '@ant-design/icons';
+import {
+  Alert,
   Badge,
   Button,
   Card,
   Col,
   Descriptions,
   Flex,
+  Input,
+  InputNumber,
   message,
   Row,
+  Select,
   Space,
   Spin,
   Statistic,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -25,10 +37,32 @@ import { useAuth } from '../auth/AuthContext';
 import { useMatchSocket } from '../hooks/useMatchSocket';
 import {
   apiGetMatch,
+  apiGetDisciplineReport,
+  apiGetMatchOfficials,
+  apiGetMatchLineups,
+  apiGetMatchReport,
+  apiGetOfficials,
+  apiGetMatchSuspensions,
   apiGetTeamRoster,
+  apiAssignMatchOfficial,
+  apiReviewMatchLineup,
+  apiSubmitDisciplineReport,
+  apiSubmitMatchLineup,
+  apiSubmitMatchReport,
   apiUpdateMatchStatus,
+  type DisciplineReport,
   type Match,
   type MatchEvent,
+  type MatchOfficialAssignment,
+  type MatchOfficialRole,
+  type MatchKitType,
+  type MatchLineupRole,
+  type MatchLineupStatus,
+  type MatchReport,
+  type MatchSuspension,
+  type MatchTeamLineup,
+  type Official,
+  type PlayerPosition,
   type RosterPlayer,
 } from '../services/matchApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
@@ -37,6 +71,43 @@ import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
 
 const { Title, Text } = Typography;
+
+const LINEUP_STATUS_MAP: Record<MatchLineupStatus, { color: string; label: string }> = {
+  SUBMITTED: { color: 'processing', label: 'Đã nộp' },
+  APPROVED: { color: 'success', label: 'Đã duyệt' },
+  REJECTED: { color: 'error', label: 'Từ chối' },
+};
+
+const KIT_TYPE_LABEL: Record<MatchKitType, string> = {
+  PRIMARY: 'Áo chính thức',
+  BACKUP: 'Áo dự bị',
+};
+
+const SUSPENSION_REASON_LABEL: Record<string, string> = {
+  RED_CARD: 'Thẻ đỏ',
+  ACCUMULATED_YELLOW_CARDS: 'Đủ 2 thẻ vàng',
+};
+
+const OFFICIAL_ROLE_LABEL: Record<MatchOfficialRole, string> = {
+  MAIN_REFEREE: 'Trọng tài chính',
+  ASSISTANT_REFEREE: 'Trợ lý trọng tài',
+  FOURTH_OFFICIAL: 'Trọng tài bàn',
+  SUPERVISOR: 'Giám sát viên',
+};
+
+const FORMATION_OPTIONS = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2'];
+
+function isForeignNationality(nationality?: string | null) {
+  if (!nationality) return false;
+  const normalized = nationality
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return normalized !== 'viet nam' && normalized !== 'vietnam';
+}
 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -52,11 +123,59 @@ export default function MatchDetailPage() {
   const [awayRoster, setAwayRoster] = useState<RosterPlayer[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
 
+  // Match registration
+  const [lineups, setLineups] = useState<MatchTeamLineup[]>([]);
+  const [suspensions, setSuspensions] = useState<MatchSuspension[]>([]);
+  const [lineupLoading, setLineupLoading] = useState(false);
+  const [selectedLineupTeamId, setSelectedLineupTeamId] = useState<string>();
+  const [lineupKitType, setLineupKitType] = useState<MatchKitType>('PRIMARY');
+  const [lineupFormation, setLineupFormation] = useState('4-4-2');
+  const [lineupRoles, setLineupRoles] = useState<Record<string, MatchLineupRole | undefined>>({});
+  const [lineupSubmitting, setLineupSubmitting] = useState(false);
+  const [lineupReviewNotes, setLineupReviewNotes] = useState<Record<string, string>>({});
+  const [lineupReviewingKey, setLineupReviewingKey] = useState<string | null>(null);
+
+  // Officials and post-match reports
+  const [officials, setOfficials] = useState<Official[]>([]);
+  const [officialAssignments, setOfficialAssignments] = useState<MatchOfficialAssignment[]>([]);
+  const [matchReport, setMatchReport] = useState<MatchReport | null>(null);
+  const [disciplineReport, setDisciplineReport] = useState<DisciplineReport | null>(null);
+  const [officialLoading, setOfficialLoading] = useState(false);
+  const [selectedOfficialId, setSelectedOfficialId] = useState<string>();
+  const [selectedOfficialRole, setSelectedOfficialRole] =
+    useState<MatchOfficialRole>('MAIN_REFEREE');
+  const [officialNote, setOfficialNote] = useState('');
+  const [officialAssigning, setOfficialAssigning] = useState(false);
+  const [reportHomeScore, setReportHomeScore] = useState(0);
+  const [reportAwayScore, setReportAwayScore] = useState(0);
+  const [reportBestPlayerId, setReportBestPlayerId] = useState<string>();
+  const [reportNote, setReportNote] = useState('');
+  const [technicalStatsText, setTechnicalStatsText] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [disciplineSupervisorId, setDisciplineSupervisorId] = useState<string>();
+  const [disciplineRating, setDisciplineRating] = useState('GOOD');
+  const [refereeIssues, setRefereeIssues] = useState('');
+  const [playerIssues, setPlayerIssues] = useState('');
+  const [organizerIssues, setOrganizerIssues] = useState('');
+  const [disciplineNotes, setDisciplineNotes] = useState('');
+  const [sendToDisciplinary, setSendToDisciplinary] = useState(false);
+  const [disciplineSubmitting, setDisciplineSubmitting] = useState(false);
+
   // Modal visibility
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
+  const canViewLineupData = useMemo(
+    () => user?.role && ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR'].includes(user.role),
+    [user],
+  );
+  const canViewOfficialData = useMemo(
+    () =>
+      user?.role &&
+      ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'].includes(user.role),
+    [user],
+  );
 
   const loadRosters = useCallback(async (m: Match) => {
     setRosterLoading(true);
@@ -75,6 +194,58 @@ export default function MatchDetailPage() {
     }
   }, []);
 
+  const loadLineupData = useCallback(
+    async (matchId: string) => {
+      setLineupLoading(true);
+      try {
+        const [nextLineups, nextSuspensions] = await Promise.all([
+          apiGetMatchLineups(matchId),
+          apiGetMatchSuspensions(matchId),
+        ]);
+        setLineups(nextLineups ?? []);
+        setSuspensions(nextSuspensions ?? []);
+      } catch (_err) {
+        setLineups([]);
+        setSuspensions([]);
+        message.error(t('matchDetail.lineupLoadError'));
+      } finally {
+        setLineupLoading(false);
+      }
+    },
+    [t],
+  );
+
+  const loadOfficialData = useCallback(async (matchId: string) => {
+    setOfficialLoading(true);
+    try {
+      const [nextOfficials, nextAssignments, nextReport, nextDisciplineReport] = await Promise.all([
+        apiGetOfficials(),
+        apiGetMatchOfficials(matchId),
+        apiGetMatchReport(matchId),
+        apiGetDisciplineReport(matchId),
+      ]);
+      setOfficials(nextOfficials ?? []);
+      setOfficialAssignments(nextAssignments ?? []);
+      setMatchReport(nextReport ?? null);
+      setDisciplineReport(nextDisciplineReport ?? null);
+      setSelectedOfficialId((current) => current ?? nextOfficials?.[0]?.id);
+      const supervisorAssignment = nextAssignments?.find(
+        (assignment) => assignment.role === 'SUPERVISOR',
+      );
+      setDisciplineSupervisorId(
+        (current) => current ?? supervisorAssignment?.officialId ?? nextOfficials?.[0]?.id,
+      );
+    } catch (_err) {
+      setOfficials([]);
+      setOfficialAssignments([]);
+      setMatchReport(null);
+      setDisciplineReport(null);
+      message.error('Không thể tải dữ liệu trọng tài và báo cáo trận đấu.');
+    } finally {
+      setOfficialLoading(false);
+    }
+  }, []);
+
   const fetchMatch = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -82,16 +253,66 @@ export default function MatchDetailPage() {
       const data = await apiGetMatch(id);
       setMatch(data);
       loadRosters(data);
+      if (canViewLineupData) {
+        loadLineupData(data.id);
+      } else {
+        setLineups([]);
+        setSuspensions([]);
+      }
+      if (canViewOfficialData) {
+        loadOfficialData(data.id);
+      } else {
+        setOfficials([]);
+        setOfficialAssignments([]);
+        setMatchReport(null);
+        setDisciplineReport(null);
+      }
     } catch (_err) {
       message.error(t('matchDetail.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [id, loadRosters]);
+  }, [
+    canViewLineupData,
+    canViewOfficialData,
+    id,
+    loadLineupData,
+    loadOfficialData,
+    loadRosters,
+    t,
+  ]);
 
   useEffect(() => {
     fetchMatch();
   }, [fetchMatch]);
+
+  useEffect(() => {
+    if (match && !selectedLineupTeamId) {
+      setSelectedLineupTeamId(match.homeTeamId);
+    }
+  }, [match, selectedLineupTeamId]);
+
+  useEffect(() => {
+    if (!match) return;
+    setReportHomeScore(matchReport?.homeScore ?? match.homeScore ?? 0);
+    setReportAwayScore(matchReport?.awayScore ?? match.awayScore ?? 0);
+    setReportBestPlayerId(matchReport?.bestPlayerId ?? undefined);
+    setReportNote(matchReport?.note ?? '');
+    setTechnicalStatsText(
+      matchReport?.technicalStats ? JSON.stringify(matchReport.technicalStats, null, 2) : '',
+    );
+  }, [match, matchReport]);
+
+  useEffect(() => {
+    if (!disciplineReport) return;
+    setDisciplineSupervisorId(disciplineReport.supervisorId);
+    setDisciplineRating(disciplineReport.organizationRating);
+    setRefereeIssues(disciplineReport.refereeIssues ?? '');
+    setPlayerIssues(disciplineReport.playerIssues ?? '');
+    setOrganizerIssues(disciplineReport.organizerIssues ?? '');
+    setDisciplineNotes(disciplineReport.notes ?? '');
+    setSendToDisciplinary(Boolean(disciplineReport.sentToDisciplinaryAt));
+  }, [disciplineReport]);
 
   // ── Real-time WebSocket updates ──
   const { isConnected } = useMatchSocket({
@@ -133,6 +354,258 @@ export default function MatchDetailPage() {
       POSTPONED: ['DRAFT'],
     };
     return transitions[m.status] ?? [];
+  };
+
+  const canSubmitLineup = user?.role === 'ADMIN' || user?.role === 'TEAM_MANAGER';
+  const canReviewLineup = user?.role === 'ADMIN' || user?.role === 'REFEREE';
+  const canAssignOfficials = user?.role === 'ADMIN';
+  const canSubmitMatchReport = user?.role === 'ADMIN' || user?.role === 'REFEREE';
+  const canSubmitDisciplineReport = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR';
+
+  const selectedRoster = useMemo(() => {
+    if (!match || !selectedLineupTeamId) return [];
+    return selectedLineupTeamId === match.homeTeamId ? homeRoster : awayRoster;
+  }, [awayRoster, homeRoster, match, selectedLineupTeamId]);
+
+  const selectedTeamName = useMemo(() => {
+    if (!match || !selectedLineupTeamId) return '—';
+    if (selectedLineupTeamId === match.homeTeamId) return match.homeTeam?.name ?? '—';
+    if (selectedLineupTeamId === match.awayTeamId) return match.awayTeam?.name ?? '—';
+    return '—';
+  }, [match, selectedLineupTeamId]);
+
+  const playerOptions = useMemo(
+    () =>
+      [...homeRoster, ...awayRoster].map((player) => ({
+        value: player.playerId,
+        label: `${player.fullName}${player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}`,
+      })),
+    [awayRoster, homeRoster],
+  );
+
+  const supervisorAssignments = useMemo(
+    () => officialAssignments.filter((assignment) => assignment.role === 'SUPERVISOR'),
+    [officialAssignments],
+  );
+
+  const suspendedPlayerIdsForSelectedTeam = useMemo(
+    () =>
+      new Set(
+        suspensions
+          .filter((suspension) => suspension.teamId === selectedLineupTeamId)
+          .map((suspension) => suspension.playerId),
+      ),
+    [selectedLineupTeamId, suspensions],
+  );
+
+  const lineupCounts = useMemo(() => {
+    const selected = selectedRoster.filter((player) => lineupRoles[player.playerId]);
+    const starters = selected.filter((player) => lineupRoles[player.playerId] === 'STARTER');
+    const substitutes = selected.filter((player) => lineupRoles[player.playerId] === 'SUBSTITUTE');
+    const foreignStarters = starters.filter((player) =>
+      isForeignNationality(player.nationality),
+    ).length;
+    const suspendedSelected = selected.filter((player) =>
+      suspendedPlayerIdsForSelectedTeam.has(player.playerId),
+    );
+
+    return {
+      selected,
+      starters,
+      substitutes,
+      foreignStarters,
+      suspendedSelected,
+    };
+  }, [lineupRoles, selectedRoster, suspendedPlayerIdsForSelectedTeam]);
+
+  const isLineupReady =
+    lineupCounts.starters.length === 11 &&
+    lineupCounts.substitutes.length === 5 &&
+    lineupCounts.foreignStarters <= 3 &&
+    lineupCounts.suspendedSelected.length === 0;
+
+  const handleLineupTeamChange = (teamId: string) => {
+    setSelectedLineupTeamId(teamId);
+    setLineupRoles({});
+  };
+
+  const handleLineupRoleChange = (playerId: string, role: MatchLineupRole | 'NONE') => {
+    setLineupRoles((prev) => ({
+      ...prev,
+      [playerId]: role === 'NONE' ? undefined : role,
+    }));
+  };
+
+  const handleAutoFillLineup = () => {
+    const availablePlayers = selectedRoster.filter(
+      (player) => !suspendedPlayerIdsForSelectedTeam.has(player.playerId),
+    );
+    const nextRoles: Record<string, MatchLineupRole> = {};
+    availablePlayers.slice(0, 11).forEach((player) => {
+      nextRoles[player.playerId] = 'STARTER';
+    });
+    availablePlayers.slice(11, 16).forEach((player) => {
+      nextRoles[player.playerId] = 'SUBSTITUTE';
+    });
+    setLineupRoles(nextRoles);
+  };
+
+  const handleSubmitLineup = async () => {
+    if (!match || !selectedLineupTeamId) return;
+
+    if (!isLineupReady) {
+      message.warning(
+        'Danh sách phải có đúng 11 chính thức, 5 dự bị, tối đa 3 cầu thủ ngoại đá chính và không có cầu thủ bị treo giò.',
+      );
+      return;
+    }
+
+    setLineupSubmitting(true);
+    try {
+      await apiSubmitMatchLineup(match.id, {
+        teamId: selectedLineupTeamId,
+        kitType: lineupKitType,
+        formation: lineupFormation,
+        players: lineupCounts.selected.map((player) => ({
+          playerId: player.playerId,
+          role: lineupRoles[player.playerId] as MatchLineupRole,
+          position: player.position as PlayerPosition,
+          shirtNumber: player.jerseyNumber ?? undefined,
+        })),
+      });
+      message.success('Đã nộp danh sách đăng ký thi đấu.');
+      setLineupRoles({});
+      loadLineupData(match.id);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || 'Không thể nộp danh sách đăng ký thi đấu.');
+    } finally {
+      setLineupSubmitting(false);
+    }
+  };
+
+  const handleReviewLineup = async (
+    lineup: MatchTeamLineup,
+    status: Extract<MatchLineupStatus, 'APPROVED' | 'REJECTED'>,
+  ) => {
+    if (!match) return;
+    setLineupReviewingKey(`${lineup.teamId}:${status}`);
+    try {
+      await apiReviewMatchLineup(match.id, lineup.teamId, {
+        status,
+        reviewNote: lineupReviewNotes[lineup.teamId]?.trim() || undefined,
+      });
+      message.success(status === 'APPROVED' ? 'Đã duyệt đội hình.' : 'Đã từ chối đội hình.');
+      loadLineupData(match.id);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || 'Không thể cập nhật trạng thái đội hình.');
+    } finally {
+      setLineupReviewingKey(null);
+    }
+  };
+
+  const handleAssignOfficial = async () => {
+    if (!match || !selectedOfficialId) return;
+    setOfficialAssigning(true);
+    try {
+      await apiAssignMatchOfficial(match.id, {
+        officialId: selectedOfficialId,
+        role: selectedOfficialRole,
+        note: officialNote.trim() || undefined,
+      });
+      message.success('Đã phân công trọng tài/giám sát viên.');
+      setOfficialNote('');
+      loadOfficialData(match.id);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || 'Không thể phân công trọng tài/giám sát viên.');
+    } finally {
+      setOfficialAssigning(false);
+    }
+  };
+
+  const parseTechnicalStats = () => {
+    const trimmed = technicalStatsText.trim();
+    if (!trimmed) return undefined;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+        throw new Error('Technical stats must be an object');
+      }
+      return parsed as Record<string, unknown>;
+    } catch (_err) {
+      message.error('Thông số chuyên môn phải là JSON object hợp lệ.');
+      return null;
+    }
+  };
+
+  const handleSubmitMatchReport = async () => {
+    if (!match) return;
+    const technicalStats = parseTechnicalStats();
+    if (technicalStats === null) return;
+
+    setReportSubmitting(true);
+    try {
+      await apiSubmitMatchReport(match.id, {
+        homeScore: reportHomeScore,
+        awayScore: reportAwayScore,
+        bestPlayerId: reportBestPlayerId,
+        technicalStats,
+        note: reportNote.trim() || undefined,
+      });
+      message.success('Đã nộp báo cáo trọng tài.');
+      fetchMatch();
+      loadOfficialData(match.id);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || 'Không thể nộp báo cáo trọng tài.');
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  const handleSubmitDisciplineReport = async () => {
+    if (!match || !disciplineSupervisorId) return;
+    setDisciplineSubmitting(true);
+    try {
+      await apiSubmitDisciplineReport(match.id, {
+        supervisorId: disciplineSupervisorId,
+        organizationRating: disciplineRating,
+        refereeIssues: refereeIssues.trim() || undefined,
+        playerIssues: playerIssues.trim() || undefined,
+        organizerIssues: organizerIssues.trim() || undefined,
+        notes: disciplineNotes.trim() || undefined,
+        sendToDisciplinary,
+      });
+      message.success('Đã nộp báo cáo giám sát.');
+      loadOfficialData(match.id);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || 'Không thể nộp báo cáo giám sát.');
+    } finally {
+      setDisciplineSubmitting(false);
+    }
   };
 
   // ── Helpers ──
@@ -289,6 +762,154 @@ export default function MatchDetailPage() {
         const p = POSITION_MAP[pos];
         return <Tag color={p?.color}>{p?.label ?? pos}</Tag>;
       },
+    },
+  ];
+
+  const lineupSelectionColumns = [
+    {
+      title: t('matchDetail.colJersey'),
+      dataIndex: 'jerseyNumber',
+      key: 'jerseyNumber',
+      width: 72,
+      render: (v: number | null) => v ?? '—',
+    },
+    {
+      title: t('matchDetail.colPlayer'),
+      dataIndex: 'fullName',
+      key: 'fullName',
+      render: (name: string, player: RosterPlayer) => {
+        const isSuspended = suspendedPlayerIdsForSelectedTeam.has(player.playerId);
+        return (
+          <Space direction="vertical" size={0}>
+            <a onClick={() => navigate(`/players/${player.playerId}`)}>{name}</a>
+            <Space size={4} wrap>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {player.nationality ?? '—'}
+              </Text>
+              {isForeignNationality(player.nationality) && <Tag color="purple">Ngoại binh</Tag>}
+              {isSuspended && <Tag color="red">Treo giò</Tag>}
+            </Space>
+          </Space>
+        );
+      },
+    },
+    {
+      title: t('matchDetail.colPosition'),
+      dataIndex: 'position',
+      key: 'position',
+      width: 110,
+      render: (pos: string) => {
+        const p = POSITION_MAP[pos];
+        return <Tag color={p?.color}>{p?.label ?? pos}</Tag>;
+      },
+    },
+    {
+      title: 'Vai trò',
+      key: 'lineupRole',
+      width: 170,
+      render: (_: unknown, player: RosterPlayer) => {
+        const isSuspended = suspendedPlayerIdsForSelectedTeam.has(player.playerId);
+        return (
+          <Select
+            value={lineupRoles[player.playerId] ?? 'NONE'}
+            disabled={isSuspended}
+            style={{ width: '100%' }}
+            onChange={(value) =>
+              handleLineupRoleChange(player.playerId, value as MatchLineupRole | 'NONE')
+            }
+            options={[
+              { value: 'NONE', label: 'Không chọn' },
+              { value: 'STARTER', label: 'Chính thức' },
+              { value: 'SUBSTITUTE', label: 'Dự bị' },
+            ]}
+          />
+        );
+      },
+    },
+  ];
+
+  const suspensionColumns = [
+    {
+      title: 'Cầu thủ',
+      key: 'player',
+      render: (_: unknown, suspension: MatchSuspension) =>
+        suspension.player?.fullName ?? suspension.playerId,
+    },
+    {
+      title: 'Đội',
+      key: 'team',
+      render: (_: unknown, suspension: MatchSuspension) =>
+        suspension.team?.name ?? suspension.teamId,
+    },
+    {
+      title: 'Lý do',
+      dataIndex: 'reason',
+      key: 'reason',
+      render: (reason: string) => (
+        <Tag color={reason === 'RED_CARD' ? 'red' : 'gold'}>
+          {SUSPENSION_REASON_LABEL[reason] ?? reason}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Từ trận',
+      key: 'sourceMatch',
+      width: 120,
+      render: (_: unknown, suspension: MatchSuspension) =>
+        suspension.sourceMatch ? `Vòng ${suspension.sourceMatch.roundNo}` : '—',
+    },
+  ];
+
+  const submittedLineupColumns = [
+    {
+      title: 'Số áo',
+      dataIndex: 'shirtNumber',
+      key: 'shirtNumber',
+      width: 72,
+      render: (value: number | null) => value ?? '—',
+    },
+    {
+      title: 'Cầu thủ',
+      key: 'player',
+      render: (_: unknown, player: NonNullable<MatchTeamLineup['lineupPlayers']>[number]) =>
+        player.player?.fullName ?? player.playerId,
+    },
+    {
+      title: 'Vai trò',
+      dataIndex: 'role',
+      key: 'role',
+      width: 110,
+      render: (role: MatchLineupRole) => (
+        <Tag color={role === 'STARTER' ? 'green' : 'blue'}>
+          {role === 'STARTER' ? 'Chính thức' : 'Dự bị'}
+        </Tag>
+      ),
+    },
+  ];
+
+  const officialAssignmentColumns = [
+    {
+      title: 'Vai trò',
+      dataIndex: 'role',
+      key: 'role',
+      width: 160,
+      render: (role: MatchOfficialRole) => (
+        <Tag color={role === 'SUPERVISOR' ? 'purple' : 'blue'}>
+          {OFFICIAL_ROLE_LABEL[role] ?? role}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Họ tên',
+      key: 'official',
+      render: (_: unknown, assignment: MatchOfficialAssignment) =>
+        assignment.official?.fullName ?? assignment.officialId,
+    },
+    {
+      title: 'Ghi chú',
+      dataIndex: 'note',
+      key: 'note',
+      render: (note: string | null) => note || '—',
     },
   ];
 
@@ -558,53 +1179,518 @@ export default function MatchDetailPage() {
             ),
           },
           {
+            key: 'officials',
+            label: '🧑‍⚖️ Trọng tài & báo cáo',
+            children: (
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} lg={14}>
+                    <Card
+                      title="Danh sách trọng tài/giám sát"
+                      size="small"
+                      loading={officialLoading}
+                    >
+                      <Table
+                        dataSource={officialAssignments}
+                        columns={officialAssignmentColumns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        locale={{ emptyText: 'Chưa phân công trọng tài/giám sát viên.' }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={24} lg={10}>
+                    <Card title="Phân công trước trận" size="small" loading={officialLoading}>
+                      {canAssignOfficials ? (
+                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                          <Select
+                            value={selectedOfficialId}
+                            placeholder="Chọn trọng tài/giám sát viên"
+                            style={{ width: '100%' }}
+                            onChange={setSelectedOfficialId}
+                            options={officials.map((official) => ({
+                              value: official.id,
+                              label: official.fullName,
+                            }))}
+                          />
+                          <Select
+                            value={selectedOfficialRole}
+                            style={{ width: '100%' }}
+                            onChange={(value) =>
+                              setSelectedOfficialRole(value as MatchOfficialRole)
+                            }
+                            options={(Object.keys(OFFICIAL_ROLE_LABEL) as MatchOfficialRole[]).map(
+                              (role) => ({
+                                value: role,
+                                label: OFFICIAL_ROLE_LABEL[role],
+                              }),
+                            )}
+                          />
+                          <Input
+                            value={officialNote}
+                            placeholder="Ghi chú phân công"
+                            onChange={(event) => setOfficialNote(event.target.value)}
+                          />
+                          <Button
+                            type="primary"
+                            icon={<SendOutlined />}
+                            loading={officialAssigning}
+                            disabled={!selectedOfficialId}
+                            onClick={handleAssignOfficial}
+                          >
+                            Công bố phân công
+                          </Button>
+                        </Space>
+                      ) : (
+                        <Text type="secondary">
+                          Chỉ BTC có quyền phân công trọng tài/giám sát viên.
+                        </Text>
+                      )}
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} lg={12}>
+                    <Card title="Báo cáo trọng tài" size="small" loading={officialLoading}>
+                      {matchReport && (
+                        <Alert
+                          style={{ marginBottom: 12 }}
+                          type="success"
+                          showIcon
+                          message={`Tỷ số đã báo cáo: ${matchReport.homeScore} - ${matchReport.awayScore}`}
+                          description={
+                            <Space direction="vertical" size={2}>
+                              <Text>Cầu thủ xuất sắc</Text>
+                              <Text strong>
+                                {matchReport.bestPlayer?.fullName ??
+                                  matchReport.bestPlayerId ??
+                                  'Chưa chọn'}
+                              </Text>
+                              {matchReport.note && <Text>{matchReport.note}</Text>}
+                            </Space>
+                          }
+                        />
+                      )}
+                      {canSubmitMatchReport ? (
+                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                          <Row gutter={8}>
+                            <Col span={12}>
+                              <Text strong>{match.homeTeam?.name ?? 'Đội nhà'}</Text>
+                              <InputNumber
+                                min={0}
+                                value={reportHomeScore}
+                                style={{ width: '100%', marginTop: 6 }}
+                                onChange={(value) => setReportHomeScore(Number(value ?? 0))}
+                              />
+                            </Col>
+                            <Col span={12}>
+                              <Text strong>{match.awayTeam?.name ?? 'Đội khách'}</Text>
+                              <InputNumber
+                                min={0}
+                                value={reportAwayScore}
+                                style={{ width: '100%', marginTop: 6 }}
+                                onChange={(value) => setReportAwayScore(Number(value ?? 0))}
+                              />
+                            </Col>
+                          </Row>
+                          <Select
+                            allowClear
+                            showSearch
+                            value={reportBestPlayerId}
+                            placeholder="Cầu thủ xuất sắc nhất trận"
+                            optionFilterProp="label"
+                            style={{ width: '100%' }}
+                            onChange={setReportBestPlayerId}
+                            options={playerOptions}
+                          />
+                          <Input.TextArea
+                            rows={3}
+                            value={technicalStatsText}
+                            placeholder='Thông số chuyên môn JSON, ví dụ {"shots":{"home":8,"away":5}}'
+                            onChange={(event) => setTechnicalStatsText(event.target.value)}
+                          />
+                          <Input.TextArea
+                            rows={2}
+                            value={reportNote}
+                            placeholder="Ghi chú báo cáo trọng tài"
+                            onChange={(event) => setReportNote(event.target.value)}
+                          />
+                          <Button
+                            type="primary"
+                            icon={<SendOutlined />}
+                            loading={reportSubmitting}
+                            onClick={handleSubmitMatchReport}
+                          >
+                            Nộp báo cáo trọng tài
+                          </Button>
+                        </Space>
+                      ) : (
+                        <Text type="secondary">Chỉ BTC hoặc trọng tài được nộp báo cáo.</Text>
+                      )}
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card title="Báo cáo giám sát" size="small" loading={officialLoading}>
+                      {disciplineReport && (
+                        <Alert
+                          style={{ marginBottom: 12 }}
+                          type={disciplineReport.sentToDisciplinaryAt ? 'warning' : 'info'}
+                          showIcon
+                          message={`Đánh giá tổ chức: ${disciplineReport.organizationRating}`}
+                          description={
+                            <Space direction="vertical" size={2}>
+                              <Text>
+                                Giám sát:{' '}
+                                {disciplineReport.supervisor?.fullName ??
+                                  disciplineReport.supervisorId}
+                              </Text>
+                              {disciplineReport.refereeIssues && (
+                                <Text>Sai sót trọng tài: {disciplineReport.refereeIssues}</Text>
+                              )}
+                              {disciplineReport.playerIssues && (
+                                <Text>Sai sót cầu thủ: {disciplineReport.playerIssues}</Text>
+                              )}
+                              {disciplineReport.organizerIssues && (
+                                <Text>Sai sót BTC sân: {disciplineReport.organizerIssues}</Text>
+                              )}
+                            </Space>
+                          }
+                        />
+                      )}
+                      {canSubmitDisciplineReport ? (
+                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                          <Select
+                            value={disciplineSupervisorId}
+                            placeholder="Chọn giám sát viên đã phân công"
+                            style={{ width: '100%' }}
+                            onChange={setDisciplineSupervisorId}
+                            options={
+                              supervisorAssignments.length
+                                ? supervisorAssignments.map((assignment) => ({
+                                    value: assignment.officialId,
+                                    label: assignment.official?.fullName ?? assignment.officialId,
+                                  }))
+                                : officials.map((official) => ({
+                                    value: official.id,
+                                    label: official.fullName,
+                                  }))
+                            }
+                          />
+                          <Select
+                            value={disciplineRating}
+                            style={{ width: '100%' }}
+                            onChange={setDisciplineRating}
+                            options={[
+                              { value: 'GOOD', label: 'Tốt' },
+                              { value: 'ACCEPTABLE', label: 'Đạt yêu cầu' },
+                              { value: 'ISSUES_FOUND', label: 'Có sai sót' },
+                            ]}
+                          />
+                          <Input.TextArea
+                            rows={2}
+                            value={refereeIssues}
+                            placeholder="Sai sót từ trọng tài nếu có"
+                            onChange={(event) => setRefereeIssues(event.target.value)}
+                          />
+                          <Input.TextArea
+                            rows={2}
+                            value={playerIssues}
+                            placeholder="Sai sót từ cầu thủ nếu có"
+                            onChange={(event) => setPlayerIssues(event.target.value)}
+                          />
+                          <Input.TextArea
+                            rows={2}
+                            value={organizerIssues}
+                            placeholder="Sai sót từ BTC sân nếu có"
+                            onChange={(event) => setOrganizerIssues(event.target.value)}
+                          />
+                          <Input.TextArea
+                            rows={2}
+                            value={disciplineNotes}
+                            placeholder="Ghi chú giám sát"
+                            onChange={(event) => setDisciplineNotes(event.target.value)}
+                          />
+                          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+                            <Space>
+                              <Switch
+                                checked={sendToDisciplinary}
+                                onChange={setSendToDisciplinary}
+                              />
+                              <Text>Chuyển BTC kỷ luật</Text>
+                            </Space>
+                            <Button
+                              type="primary"
+                              icon={<SendOutlined />}
+                              loading={disciplineSubmitting}
+                              disabled={!disciplineSupervisorId}
+                              onClick={handleSubmitDisciplineReport}
+                            >
+                              Nộp báo cáo giám sát
+                            </Button>
+                          </Flex>
+                        </Space>
+                      ) : (
+                        <Text type="secondary">Chỉ BTC hoặc giám sát viên được nộp báo cáo.</Text>
+                      )}
+                    </Card>
+                  </Col>
+                </Row>
+              </Space>
+            ),
+          },
+          {
             key: 'lineups',
             label: t('matchDetail.tabLineups'),
             children: (
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={12}>
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} lg={16}>
+                    <Card title="Danh sách đã nộp" size="small" loading={lineupLoading}>
+                      {lineups.length === 0 ? (
+                        <Text type="secondary">Chưa có đội nào nộp danh sách thi đấu.</Text>
+                      ) : (
+                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          {lineups.map((lineup) => {
+                            const statusMeta = LINEUP_STATUS_MAP[lineup.status] ?? {
+                              color: 'default',
+                              label: lineup.status,
+                            };
+                            const lineupPlayers = [...(lineup.lineupPlayers ?? [])].sort((a, b) => {
+                              if (a.role !== b.role) return a.role === 'STARTER' ? -1 : 1;
+                              return (a.shirtNumber ?? 99) - (b.shirtNumber ?? 99);
+                            });
+                            const starters = lineupPlayers.filter((p) => p.role === 'STARTER');
+                            const substitutes = lineupPlayers.filter(
+                              (p) => p.role === 'SUBSTITUTE',
+                            );
+
+                            return (
+                              <div
+                                key={lineup.id}
+                                style={{
+                                  border: '1px solid #f0f0f0',
+                                  borderRadius: 8,
+                                  padding: 12,
+                                }}
+                              >
+                                <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+                                  <Space wrap>
+                                    <Text strong>{lineup.team?.name ?? lineup.teamId}</Text>
+                                    <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
+                                    <Tag>{KIT_TYPE_LABEL[lineup.kitType]}</Tag>
+                                    <Tag>{lineup.formation}</Tag>
+                                  </Space>
+                                  <Text type="secondary">
+                                    {starters.length} chính thức · {substitutes.length} dự bị
+                                  </Text>
+                                </Flex>
+                                {lineup.reviewNote && (
+                                  <Alert
+                                    style={{ marginTop: 8 }}
+                                    type={lineup.status === 'REJECTED' ? 'error' : 'info'}
+                                    message={lineup.reviewNote}
+                                  />
+                                )}
+                                <Table
+                                  style={{ marginTop: 8 }}
+                                  dataSource={lineupPlayers}
+                                  columns={submittedLineupColumns}
+                                  rowKey={(player) => player.id}
+                                  pagination={false}
+                                  size="small"
+                                />
+                                {canReviewLineup && (
+                                  <Space
+                                    direction="vertical"
+                                    size={8}
+                                    style={{ width: '100%', marginTop: 12 }}
+                                  >
+                                    <Input.TextArea
+                                      rows={2}
+                                      placeholder="Ghi chú xét duyệt"
+                                      value={lineupReviewNotes[lineup.teamId] ?? ''}
+                                      onChange={(event) =>
+                                        setLineupReviewNotes((prev) => ({
+                                          ...prev,
+                                          [lineup.teamId]: event.target.value,
+                                        }))
+                                      }
+                                    />
+                                    <Space wrap>
+                                      <Button
+                                        type="primary"
+                                        icon={<CheckOutlined />}
+                                        loading={lineupReviewingKey === `${lineup.teamId}:APPROVED`}
+                                        onClick={() => handleReviewLineup(lineup, 'APPROVED')}
+                                      >
+                                        Duyệt
+                                      </Button>
+                                      <Button
+                                        danger
+                                        icon={<CloseOutlined />}
+                                        loading={lineupReviewingKey === `${lineup.teamId}:REJECTED`}
+                                        onClick={() => handleReviewLineup(lineup, 'REJECTED')}
+                                      >
+                                        Từ chối
+                                      </Button>
+                                    </Space>
+                                  </Space>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </Space>
+                      )}
+                    </Card>
+                  </Col>
+                  <Col xs={24} lg={8}>
+                    <Card title="Treo giò trận này" size="small" loading={lineupLoading}>
+                      <Table
+                        dataSource={suspensions}
+                        columns={suspensionColumns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        locale={{ emptyText: 'Không có cầu thủ bị treo giò.' }}
+                      />
+                    </Card>
+                  </Col>
+                </Row>
+
+                {canSubmitLineup && (
                   <Card
-                    title={t('matchDetail.homeRosterTitle', {
-                      team: match.homeTeam?.name ?? t('matchDetail.homeLabel'),
-                    })}
+                    title="Đăng ký thi đấu"
                     size="small"
-                    loading={rosterLoading}
+                    extra={<Text type="secondary">{selectedTeamName}</Text>}
                   >
+                    <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+                      <Col xs={24} md={8}>
+                        <Text strong>Đội đăng ký</Text>
+                        <Select
+                          value={selectedLineupTeamId}
+                          style={{ width: '100%', marginTop: 6 }}
+                          onChange={handleLineupTeamChange}
+                          options={[
+                            {
+                              value: match.homeTeamId,
+                              label: match.homeTeam?.name ?? t('matchDetail.homeLabel'),
+                            },
+                            {
+                              value: match.awayTeamId,
+                              label: match.awayTeam?.name ?? t('matchDetail.awayLabel'),
+                            },
+                          ]}
+                        />
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Text strong>Trang phục</Text>
+                        <Select
+                          value={lineupKitType}
+                          style={{ width: '100%', marginTop: 6 }}
+                          onChange={setLineupKitType}
+                          options={[
+                            { value: 'PRIMARY', label: KIT_TYPE_LABEL.PRIMARY },
+                            { value: 'BACKUP', label: KIT_TYPE_LABEL.BACKUP },
+                          ]}
+                        />
+                      </Col>
+                      <Col xs={24} md={8}>
+                        <Text strong>Sơ đồ thi đấu</Text>
+                        <Select
+                          value={lineupFormation}
+                          style={{ width: '100%', marginTop: 6 }}
+                          onChange={setLineupFormation}
+                          options={FORMATION_OPTIONS.map((formation) => ({
+                            value: formation,
+                            label: formation,
+                          }))}
+                        />
+                      </Col>
+                    </Row>
+
+                    <Alert
+                      showIcon
+                      type={isLineupReady ? 'success' : 'warning'}
+                      message="11 chính thức / 5 dự bị"
+                      description={`Đã chọn ${lineupCounts.starters.length}/11 chính thức, ${lineupCounts.substitutes.length}/5 dự bị, ${lineupCounts.foreignStarters}/3 ngoại binh đá chính, ${lineupCounts.suspendedSelected.length} cầu thủ treo giò.`}
+                      style={{ marginBottom: 12 }}
+                    />
+
+                    <Space wrap style={{ marginBottom: 12 }}>
+                      <Button onClick={handleAutoFillLineup}>Chọn nhanh 16</Button>
+                      <Button onClick={() => setLineupRoles({})}>Xóa chọn</Button>
+                      <Button
+                        type="primary"
+                        icon={<SendOutlined />}
+                        loading={lineupSubmitting}
+                        disabled={!isLineupReady}
+                        onClick={handleSubmitLineup}
+                      >
+                        Nộp danh sách
+                      </Button>
+                    </Space>
+
                     <Table
-                      dataSource={homeRoster}
-                      columns={rosterColumns}
+                      dataSource={selectedRoster}
+                      columns={lineupSelectionColumns}
                       rowKey="id"
                       pagination={false}
                       size="small"
+                      loading={rosterLoading}
                       locale={{ emptyText: t('matchDetail.rosterEmpty') }}
+                      scroll={{ x: 720 }}
                     />
-                    <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-                      {t('matchDetail.rosterTotal', { count: homeRoster.length })}
-                    </div>
                   </Card>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Card
-                    title={t('matchDetail.awayRosterTitle', {
-                      team: match.awayTeam?.name ?? t('matchDetail.awayLabel'),
-                    })}
-                    size="small"
-                    loading={rosterLoading}
-                  >
-                    <Table
-                      dataSource={awayRoster}
-                      columns={rosterColumns}
-                      rowKey="id"
-                      pagination={false}
+                )}
+
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} md={12}>
+                    <Card
+                      title={t('matchDetail.homeRosterTitle', {
+                        team: match.homeTeam?.name ?? t('matchDetail.homeLabel'),
+                      })}
                       size="small"
-                      locale={{ emptyText: t('matchDetail.rosterEmpty') }}
-                    />
-                    <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
-                      {t('matchDetail.rosterTotal', { count: awayRoster.length })}
-                    </div>
-                  </Card>
-                </Col>
-              </Row>
+                      loading={rosterLoading}
+                    >
+                      <Table
+                        dataSource={homeRoster}
+                        columns={rosterColumns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        locale={{ emptyText: t('matchDetail.rosterEmpty') }}
+                      />
+                      <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
+                        {t('matchDetail.rosterTotal', { count: homeRoster.length })}
+                      </div>
+                    </Card>
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <Card
+                      title={t('matchDetail.awayRosterTitle', {
+                        team: match.awayTeam?.name ?? t('matchDetail.awayLabel'),
+                      })}
+                      size="small"
+                      loading={rosterLoading}
+                    >
+                      <Table
+                        dataSource={awayRoster}
+                        columns={rosterColumns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        locale={{ emptyText: t('matchDetail.rosterEmpty') }}
+                      />
+                      <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
+                        {t('matchDetail.rosterTotal', { count: awayRoster.length })}
+                      </div>
+                    </Card>
+                  </Col>
+                </Row>
+              </Space>
             ),
           },
         ]}

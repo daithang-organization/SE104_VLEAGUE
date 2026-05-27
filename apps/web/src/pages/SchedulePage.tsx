@@ -20,17 +20,16 @@ import {
   Select,
   Space,
   Spin,
-  Table,
   Tabs,
-  Tag,
   Tooltip,
   Typography,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { MatchFixtureCard, PageHero } from '../components';
 import { apiUpdateMatch } from '../services/matchApi';
 import {
   apiGenerateSchedule,
@@ -41,11 +40,27 @@ import {
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { STATUS_MAP } from '../utils/constants';
-import { getTeamLogoUrl } from '../utils/teamLogos';
+
+function formatScheduleDateLabel(kickoffAt?: string | null) {
+  if (!kickoffAt) return 'Chưa xếp lịch';
+  const date = dayjs(kickoffAt);
+  const weekday = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.day()];
+  return `${weekday}, ${date.format('D/M')}`;
+}
+
+function compareMatchesByKickoff(a: ScheduleMatch, b: ScheduleMatch) {
+  if (!a.kickoffAt && !b.kickoffAt) return a.id.localeCompare(b.id);
+  if (!a.kickoffAt) return 1;
+  if (!b.kickoffAt) return -1;
+
+  const timeDiff = new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime();
+  return timeDiff || a.id.localeCompare(b.id);
+}
 
 export default function SchedulePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [matches, setMatches] = useState<ScheduleMatch[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
@@ -93,7 +108,7 @@ export default function SchedulePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSeasonId]);
+  }, [selectedSeasonId, t]);
 
   useEffect(() => {
     fetchSchedule();
@@ -198,7 +213,7 @@ export default function SchedulePage() {
 
   const activeRoundIndex = roundGroups.findIndex(([roundNo]) => roundNo === activeRoundNo);
   const activeRound = activeRoundIndex >= 0 ? roundGroups[activeRoundIndex] : undefined;
-  const activeRoundMatches = activeRound?.[1] ?? [];
+  const activeRoundMatches = useMemo(() => activeRound?.[1] ?? [], [activeRound]);
   const activeRoundDates = activeRoundMatches
     .filter((m) => m.kickoffAt)
     .map((m) => dayjs(m.kickoffAt!));
@@ -207,292 +222,205 @@ export default function SchedulePage() {
       ? activeRoundDates.reduce((a, b) => (a.isBefore(b) ? a : b)).format('DD/MM/YYYY')
       : '';
   const activeRoundFinishedCount = activeRoundMatches.filter((m) => m.status === 'FINISHED').length;
+  const activeRoundMatchGroups = useMemo(() => {
+    const map = new Map<string, ScheduleMatch[]>();
+    [...activeRoundMatches].sort(compareMatchesByKickoff).forEach((match) => {
+      const key = match.kickoffAt ? dayjs(match.kickoffAt).format('YYYY-MM-DD') : 'unscheduled';
+      const list = map.get(key) ?? [];
+      list.push(match);
+      map.set(key, list);
+    });
+
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return a.localeCompare(b);
+    });
+  }, [activeRoundMatches]);
 
   // Stats
   const totalMatches = matches.length;
   const draftCount = matches.filter((m) => m.status === 'DRAFT').length;
+  const scheduledCount = matches.filter((m) => m.kickoffAt).length;
 
-  // Compact columns for per-round table
-  const roundColumns: ColumnsType<ScheduleMatch> = [
-    {
-      title: t('schedule.colLeg'),
-      dataIndex: 'leg',
-      width: 80,
-      align: 'center',
-      render: (leg: number) => (
-        <Tag color={leg === 1 ? 'blue' : 'volcano'} style={{ margin: 0 }}>
-          {leg === 1 ? t('common.leg1') : t('common.leg2')}
-        </Tag>
-      ),
-    },
-    {
-      title: t('schedule.colHome'),
-      key: 'home',
-      width: '20%',
-      align: 'center',
-      render: (_, r) => {
-        const teamName = r.homeTeam?.name || r.homeTeamId.slice(0, 8);
-        return (
-          <strong
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {teamName}
-          </strong>
-        );
-      },
-    },
-    {
-      title: t('schedule.colScore'),
-      key: 'score',
-      width: 110,
-      align: 'center',
-      render: (_, r) => {
-        const homeLogoUrl = getTeamLogoUrl(r.homeTeam);
-        const awayLogoUrl = getTeamLogoUrl(r.awayTeam);
-        const score =
-          r.homeScore == null && r.awayScore == null
-            ? 'vs'
-            : `${r.homeScore ?? 0} - ${r.awayScore ?? 0}`;
-        const scoreColor = r.homeScore == null && r.awayScore == null ? '#bbb' : undefined;
-        const homeTeamName = r.homeTeam?.name || r.homeTeamId.slice(0, 8);
-        const awayTeamName = r.awayTeam?.name || r.awayTeamId.slice(0, 8);
+  const renderScheduleFixture = (match: ScheduleMatch) => {
+    const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
 
-        return (
-          <Flex align="center" justify="center" gap={10} style={{ whiteSpace: 'nowrap' }}>
-            {homeLogoUrl && (
-              <img
-                src={homeLogoUrl}
-                alt={`${homeTeamName} logo`}
-                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
+    return (
+      <MatchFixtureCard
+        key={match.id}
+        id={match.id}
+        roundLabel={t('schedule.roundLabel', { round: match.roundNo })}
+        statusLabel={status.label}
+        statusColor={status.color}
+        homeTeamId={match.homeTeamId}
+        awayTeamId={match.awayTeamId}
+        homeTeam={match.homeTeam}
+        awayTeam={match.awayTeam}
+        homeScore={match.homeScore}
+        awayScore={match.awayScore}
+        kickoffAt={match.kickoffAt}
+        stadiumName={match.stadium?.name}
+        stadiumFallback={t('schedule.stadiumNotSet')}
+        kickoffFallback={t('schedule.kickoffNotSet')}
+        onTeamClick={(teamId) => navigate(`/teams/${teamId}`)}
+        onMatchClick={(matchId) => navigate(`/matches/${matchId}`)}
+        actions={
+          isAdmin ? (
+            <Tooltip title={t('schedule.editTooltip')}>
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => openEditModal(match)}
               />
-            )}
-            <strong style={{ minWidth: 48, textAlign: 'center', color: scoreColor }}>
-              {score}
-            </strong>
-            {awayLogoUrl && (
-              <img
-                src={awayLogoUrl}
-                alt={`${awayTeamName} logo`}
-                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
-              />
-            )}
-          </Flex>
-        );
-      },
-    },
-    {
-      title: t('schedule.colAway'),
-      key: 'away',
-      width: '22%',
-      align: 'center',
-      render: (_, r) => {
-        const teamName = r.awayTeam?.name || r.awayTeamId.slice(0, 8);
-        return (
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {teamName}
-          </span>
-        );
-      },
-    },
-    {
-      title: t('schedule.colStadium'),
-      key: 'stadium',
-      align: 'center',
-      render: (_, r) =>
-        r.stadium?.name ? (
-          <span style={{ fontSize: 13 }}>{r.stadium.name}</span>
-        ) : (
-          <span style={{ color: '#ccc', fontSize: 13 }}>{t('schedule.stadiumNotSet')}</span>
-        ),
-    },
-    {
-      title: t('schedule.colKickoff'),
-      dataIndex: 'kickoffAt',
-      width: 150,
-      align: 'center',
-      render: (v: string | null) =>
-        v ? (
-          <Flex align="center" justify="center" gap={4}>
-            <CalendarOutlined style={{ color: '#1677ff', fontSize: 12 }} />
-            <span style={{ fontSize: 13 }}>{dayjs(v).format('DD/MM/YYYY HH:mm')}</span>
-          </Flex>
-        ) : (
-          <span style={{ color: '#ccc', fontSize: 13 }}>{t('schedule.kickoffNotSet')}</span>
-        ),
-    },
-    {
-      title: t('schedule.colStatus'),
-      dataIndex: 'status',
-      width: 90,
-      align: 'center',
-      render: (status: string) => {
-        const s = STATUS_MAP[status] ?? { label: status, color: 'default' };
-        return <Tag color={s.color}>{s.label}</Tag>;
-      },
-    },
-    ...(isAdmin
-      ? [
-          {
-            title: '',
-            key: 'actions',
-            width: 40,
-            align: 'center',
-            render: (_: unknown, r: ScheduleMatch) => (
-              <Tooltip title={t('schedule.editTooltip')}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditModal(r);
-                  }}
-                />
-              </Tooltip>
-            ),
-          } as const,
-        ]
-      : []),
-  ];
+            </Tooltip>
+          ) : null
+        }
+      />
+    );
+  };
 
   return (
-    <Card>
-      {/* Header */}
-      <Flex justify="space-between" align="center" wrap="wrap" gap={8} style={{ marginBottom: 16 }}>
-        <Space>
-          <TrophyOutlined style={{ fontSize: 22, color: '#faad14' }} />
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            {t('schedule.title')}
-          </Typography.Title>
-          {seasons.length > 0 && (
-            <Select
-              value={selectedSeasonId}
-              onChange={(v) => setSelectedSeasonId(v)}
-              style={{ width: 200 }}
-              placeholder={t('schedule.seasonPlaceholder')}
-              options={seasons.map((s) => ({
-                value: s.id,
-                label: `${s.name} (${s.year}/${s.year + 1})`,
-              }))}
-            />
-          )}
-          {totalMatches > 0 && (
-            <Typography.Text type="secondary">
-              {t('schedule.matchCount', { total: totalMatches })}
-              {draftCount > 0 ? ` · ${t('schedule.draftCount', { count: draftCount })}` : ''}
-            </Typography.Text>
-          )}
-        </Space>
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchSchedule} loading={loading}>
-            {t('schedule.reloadBtn')}
-          </Button>
-          {isAdmin && (
-            <>
-              <Button
-                icon={<ThunderboltOutlined />}
-                onClick={openGenerateModal}
-                loading={generating}
-              >
-                {t('schedule.generateBtn')}
-              </Button>
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handlePublish}
-                loading={publishing}
-                disabled={draftCount === 0}
-              >
-                {t('schedule.publishBtn')}
-              </Button>
-            </>
-          )}
-        </Space>
-      </Flex>
-
-      {/* Leg tabs */}
-      <Tabs
-        activeKey={activeLeg}
-        onChange={setActiveLeg}
-        items={[
-          { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+    <div className="page-stack">
+      <PageHero
+        variant="compact"
+        eyebrow={t('menu.schedule')}
+        title={t('schedule.title')}
+        icon={<CalendarOutlined />}
+        metrics={[
           {
-            key: '1',
-            label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
+            label: t('common.total'),
+            value: totalMatches.toLocaleString('vi-VN'),
+            icon: <TrophyOutlined />,
           },
           {
-            key: '2',
-            label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
+            label: t('status.DRAFT'),
+            value: draftCount.toLocaleString('vi-VN'),
+            icon: <WarningOutlined />,
+          },
+          {
+            label: t('schedule.formKickoff'),
+            value: scheduledCount.toLocaleString('vi-VN'),
+            icon: <CalendarOutlined />,
           },
         ]}
-        style={{ marginBottom: 12 }}
+        actions={
+          <Space wrap>
+            {seasons.length > 0 && (
+              <Select
+                value={selectedSeasonId}
+                onChange={(v) => setSelectedSeasonId(v)}
+                style={{ width: 200 }}
+                placeholder={t('schedule.seasonPlaceholder')}
+                options={seasons.map((s) => ({
+                  value: s.id,
+                  label: `${s.name} (${s.year}/${s.year + 1})`,
+                }))}
+              />
+            )}
+            <Button icon={<ReloadOutlined />} onClick={fetchSchedule} loading={loading}>
+              {t('schedule.reloadBtn')}
+            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  icon={<ThunderboltOutlined />}
+                  onClick={openGenerateModal}
+                  loading={generating}
+                >
+                  {t('schedule.generateBtn')}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  onClick={handlePublish}
+                  loading={publishing}
+                  disabled={draftCount === 0}
+                >
+                  {t('schedule.publishBtn')}
+                </Button>
+              </>
+            )}
+          </Space>
+        }
       />
 
-      {/* Round navigator */}
-      <Spin spinning={loading} tip={t('common.loading')}>
-        {roundGroups.length === 0 && !loading ? (
-          <Flex justify="center" align="center" style={{ padding: 48, color: '#999' }}>
-            <Typography.Text type="secondary" style={{ fontSize: 15 }}>
-              {t('schedule.emptySchedule')}
-            </Typography.Text>
-          </Flex>
-        ) : (
-          <div>
-            <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
-              <Button
-                shape="circle"
-                size="large"
-                icon={<LeftOutlined />}
-                disabled={activeRoundIndex <= 0}
-                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
-              />
-              <div style={{ minWidth: 220, textAlign: 'center' }}>
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {activeRound
-                    ? t('schedule.roundLabel', { round: activeRound[0] })
-                    : t('schedule.title')}
-                </Typography.Title>
-                <Typography.Text type="secondary">
-                  {activeRound
-                    ? `${t('schedule.roundMatches', { count: activeRoundMatches.length })}${
-                        activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                      } · ${activeRoundFinishedCount}/${activeRoundMatches.length} xong`
-                    : ''}
-                </Typography.Text>
-              </div>
-              <Button
-                shape="circle"
-                size="large"
-                icon={<RightOutlined />}
-                disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
-                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
-              />
+      <Card className="schedule-page-card">
+        {/* Leg tabs */}
+        <Tabs
+          activeKey={activeLeg}
+          onChange={setActiveLeg}
+          items={[
+            { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+            {
+              key: '1',
+              label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
+            },
+            {
+              key: '2',
+              label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
+            },
+          ]}
+          style={{ marginBottom: 12 }}
+        />
+
+        {/* Round navigator */}
+        <Spin spinning={loading} tip={t('common.loading')}>
+          {roundGroups.length === 0 && !loading ? (
+            <Flex justify="center" align="center" style={{ padding: 48, color: '#999' }}>
+              <Typography.Text type="secondary" style={{ fontSize: 15 }}>
+                {t('schedule.emptySchedule')}
+              </Typography.Text>
             </Flex>
-            <Table
-              columns={roundColumns}
-              dataSource={activeRoundMatches}
-              rowKey="id"
-              pagination={false}
-              size="small"
-              showHeader={false}
-            />
-          </div>
-        )}
-      </Spin>
+          ) : (
+            <div>
+              <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
+                <Button
+                  shape="circle"
+                  size="large"
+                  icon={<LeftOutlined />}
+                  disabled={activeRoundIndex <= 0}
+                  onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
+                />
+                <div style={{ minWidth: 220, textAlign: 'center' }}>
+                  <Typography.Title level={4} style={{ margin: 0 }}>
+                    {activeRound
+                      ? t('schedule.roundLabel', { round: activeRound[0] })
+                      : t('schedule.title')}
+                  </Typography.Title>
+                  <Typography.Text type="secondary">
+                    {activeRound
+                      ? `${t('schedule.roundMatches', { count: activeRoundMatches.length })}${
+                          activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
+                        } · ${activeRoundFinishedCount}/${activeRoundMatches.length} xong`
+                      : ''}
+                  </Typography.Text>
+                </div>
+                <Button
+                  shape="circle"
+                  size="large"
+                  icon={<RightOutlined />}
+                  disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
+                  onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
+                />
+              </Flex>
+              <div className="schedule-fixture-list">
+                {activeRoundMatchGroups.map(([dayKey, dayMatches]) => (
+                  <div key={dayKey} className="schedule-fixture-day-group">
+                    <Typography.Title level={5} className="schedule-fixture-date">
+                      {formatScheduleDateLabel(dayMatches[0]?.kickoffAt)}
+                    </Typography.Title>
+                    <div className="schedule-fixture-day-list">
+                      {dayMatches.map((match) => renderScheduleFixture(match))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Spin>
+      </Card>
 
       {/* Edit Match Modal */}
       <Modal
@@ -583,6 +511,6 @@ export default function SchedulePage() {
           </Typography.Text>
         </div>
       </Modal>
-    </Card>
+    </div>
   );
 }

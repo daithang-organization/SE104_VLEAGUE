@@ -1,4 +1,12 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  BankOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EnvironmentOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -12,7 +20,6 @@ import {
   Row,
   Space,
   Table,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { TableSkeleton } from '../components';
+import { PageHero } from '../components/PageHero';
 import {
   apiCreateStadium,
   apiDeleteStadium,
@@ -63,6 +71,7 @@ export default function StadiumsPage() {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
+    form.setFieldsValue({ country: 'Việt Nam', fifaStars: 2 });
     setModalOpen(true);
   };
 
@@ -72,7 +81,9 @@ export default function StadiumsPage() {
       name: stadium.name,
       city: stadium.city,
       address: stadium.address ?? '',
+      country: stadium.country ?? 'Việt Nam',
       capacity: stadium.capacity,
+      fifaStars: stadium.fifaStars,
     });
     setModalOpen(true);
   };
@@ -86,7 +97,9 @@ export default function StadiumsPage() {
         name: values.name,
         city: values.city,
         address: values.address || undefined,
+        country: values.country?.trim() || undefined,
         capacity: values.capacity || undefined,
+        fifaStars: values.fifaStars ?? undefined,
       };
 
       if (editing) {
@@ -120,7 +133,52 @@ export default function StadiumsPage() {
   const filtered = stadiums.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.city.toLowerCase().includes(search.toLowerCase()),
+      s.city.toLowerCase().includes(search.toLowerCase()) ||
+      (s.country ?? '').toLowerCase().includes(search.toLowerCase()),
+  );
+  const totalCapacity = stadiums.reduce((sum, stadium) => sum + (stadium.capacity ?? 0), 0);
+  const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
+  const hero = (
+    <PageHero
+      eyebrow={t('menu.stadiums')}
+      title={t('stadiums.title')}
+      description={t('stadiums.searchPlaceholder')}
+      icon={<BankOutlined />}
+      metrics={[
+        {
+          label: t('menu.stadiums'),
+          value: stadiums.length.toLocaleString('vi-VN'),
+          icon: <BankOutlined />,
+        },
+        {
+          label: t('stadiumDetail.statCapacity'),
+          value: totalCapacity.toLocaleString('vi-VN'),
+          icon: <TeamOutlined />,
+        },
+        {
+          label: t('stadiums.colCity'),
+          value: cityCount.toLocaleString('vi-VN'),
+          icon: <EnvironmentOutlined />,
+        },
+      ]}
+      actions={
+        <Space wrap>
+          <Input
+            placeholder={t('stadiums.searchPlaceholder')}
+            prefix={<SearchOutlined />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 250 }}
+            allowClear
+          />
+          {isAdmin && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              {t('stadiums.addBtn')}
+            </Button>
+          )}
+        </Space>
+      }
+    />
   );
 
   const columns: ColumnsType<Stadium> = [
@@ -147,6 +205,12 @@ export default function StadiumsPage() {
       sorter: (a, b) => a.city.localeCompare(b.city),
     },
     {
+      title: t('stadiums.colCountry'),
+      dataIndex: 'country',
+      width: 130,
+      render: (v: string | null) => v ?? '—',
+    },
+    {
       title: t('stadiums.colAddress'),
       dataIndex: 'address',
       ellipsis: true,
@@ -160,6 +224,14 @@ export default function StadiumsPage() {
       sorter: (a, b) => (a.capacity ?? 0) - (b.capacity ?? 0),
       render: (v: number | null) => (v ? v.toLocaleString('vi-VN') : '—'),
     },
+    {
+      title: t('stadiums.colFifaStars'),
+      dataIndex: 'fifaStars',
+      width: 120,
+      align: 'center',
+      sorter: (a, b) => (a.fifaStars ?? 0) - (b.fifaStars ?? 0),
+      render: (v: number | null) => (v != null ? `${v}/5` : '—'),
+    },
     ...(isAdmin
       ? [
           {
@@ -168,7 +240,12 @@ export default function StadiumsPage() {
             width: 120,
             render: (_: unknown, record: Stadium) => (
               <Space>
-                <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  aria-label={t('stadiums.editAction')}
+                  onClick={() => openEdit(record)}
+                />
                 <Popconfirm
                   title={t('stadiums.deleteConfirmTitle')}
                   description={t('stadiums.deleteConfirmDesc', { name: record.name })}
@@ -177,7 +254,12 @@ export default function StadiumsPage() {
                   cancelText={t('stadiums.deleteCancel')}
                   okButtonProps={{ danger: true }}
                 >
-                  <Button type="text" danger icon={<DeleteOutlined />} />
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    aria-label={t('stadiums.deleteAction')}
+                  />
                 </Popconfirm>
               </Space>
             ),
@@ -188,50 +270,30 @@ export default function StadiumsPage() {
 
   if (initialLoad) {
     return (
-      <Card>
-        <TableSkeleton rows={8} />
-      </Card>
+      <div className="page-stack">
+        {hero}
+        <Card>
+          <TableSkeleton rows={8} />
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('stadiums.title')}
-        </Typography.Title>
-        <Space>
-          <Input
-            placeholder={t('stadiums.searchPlaceholder')}
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 250 }}
-            allowClear
+    <>
+      <div className="page-stack">
+        {hero}
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={filtered}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 15, showSizeChanger: true }}
+            size="middle"
           />
-          {isAdmin && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              {t('stadiums.addBtn')}
-            </Button>
-          )}
-        </Space>
+        </Card>
       </div>
-
-      <Table
-        columns={columns}
-        dataSource={filtered}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 15, showSizeChanger: true }}
-        size="middle"
-      />
 
       <Modal
         title={editing ? t('stadiums.modalEditTitle') : t('stadiums.modalCreateTitle')}
@@ -264,12 +326,31 @@ export default function StadiumsPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
+              <Form.Item name="country" label={t('stadiums.formCountry')}>
+                <Input placeholder={t('stadiums.formCountryPlaceholder')} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
               <Form.Item name="capacity" label={t('stadiums.formCapacity')}>
                 <InputNumber
                   style={{ width: '100%' }}
                   placeholder={t('stadiums.formCapacityPlaceholder')}
                   min={0}
                   formatter={(v) => (v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '')}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="fifaStars" label={t('stadiums.formFifaStars')}>
+                <InputNumber
+                  style={{ width: '100%' }}
+                  placeholder={t('stadiums.formFifaStarsPlaceholder')}
+                  min={2}
+                  max={5}
+                  precision={0}
                 />
               </Form.Item>
             </Col>
@@ -280,6 +361,6 @@ export default function StadiumsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

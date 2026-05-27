@@ -7,6 +7,8 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './common/logger';
 import { HealthModule } from './health/health.module';
+import { MatchLineupModule } from './match-lineup/match-lineup.module';
+import { MatchOfficialModule } from './match-official/match-official.module';
 import { MatchModule } from './match/match.module';
 import { NotificationModule } from './notification/notification.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -19,6 +21,7 @@ import { SeasonModule } from './season/season.module';
 import { StadiumModule } from './stadium/stadium.module';
 import { StandingsModule } from './standings/standings.module';
 import { TeamManagerModule } from './team-manager/team-manager.module';
+import { TeamInvitationModule } from './team-invitation/team-invitation.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 
@@ -63,6 +66,8 @@ import { UsersModule } from './users/users.module';
     RegistrationModule,
     SchedulingModule,
     MatchModule,
+    MatchLineupModule,
+    MatchOfficialModule,
     // New modules
     SeasonModule,
     StadiumModule,
@@ -72,6 +77,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     UploadModule,
     TeamManagerModule,
+    TeamInvitationModule,
     // v1.2.0 modules
     SearchModule,
     AuditModule,

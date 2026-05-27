@@ -1,4 +1,12 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  IdcardOutlined,
+  PlusOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -15,7 +23,6 @@ import {
   Space,
   Table,
   Tag,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -23,7 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { TableSkeleton } from '../components/LoadingSkeleton';
+import { PageHero, TableSkeleton } from '../components';
 import {
   apiCreatePlayer,
   apiDeletePlayer,
@@ -35,6 +42,7 @@ import {
 import { apiGetCurrentSeason } from '../services/seasonApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
 import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const POSITION_LABELS: Record<string, string> = {
   GK: 'Thủ môn',
@@ -72,6 +80,9 @@ export default function PlayersPage() {
   const canEdit = useMemo(() => {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
+  const totalPlayers = pagination.total || players.length;
+  const foreignPlayers = players.filter((player) => player.playerType === 'FOREIGN').length;
+  const rosteredPlayers = players.filter((player) => player.roster?.[0]?.team).length;
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -242,6 +253,24 @@ export default function PlayersPage() {
     }
   };
 
+  const renderClubCell = (team: NonNullable<Player['roster']>[number]['team']) => {
+    const logoUrl = getTeamLogoUrl(team);
+    const label = team.shortName || team.name;
+
+    return (
+      <span className="player-club-cell" title={team.name}>
+        {logoUrl ? (
+          <img src={logoUrl} alt={`${team.name} logo`} className="player-club-logo" />
+        ) : (
+          <span className="player-club-logo player-club-logo-fallback" aria-hidden="true">
+            {label.slice(0, 2).toUpperCase()}
+          </span>
+        )}
+        <span className="player-club-name">{label}</span>
+      </span>
+    );
+  };
+
   const columns: ColumnsType<Player> = [
     {
       title: '#',
@@ -264,19 +293,7 @@ export default function PlayersPage() {
       render: (_, record) => {
         const tp = record.roster?.[0];
         if (!tp?.team) return <span style={{ color: '#ccc' }}>{t('players.colNoClub')}</span>;
-        const team = tp.team;
-        return (
-          <Space size={4}>
-            {team.logoUrl && (
-              <img
-                src={team.logoUrl}
-                alt={team.name}
-                style={{ width: 20, height: 20, objectFit: 'contain' }}
-              />
-            )}
-            <span>{team.shortName || team.name}</span>
-          </Space>
-        );
+        return renderClubCell(tp.team);
       },
       filters: (() => {
         const clubs = new Map<string, string>();
@@ -379,57 +396,74 @@ export default function PlayersPage() {
   ];
 
   return (
-    <Card>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('players.title')}
-        </Typography.Title>
-        <Space>
-          <Input.Search
-            placeholder={t('players.searchPlaceholder')}
-            onSearch={onSearch}
-            style={{ width: 300 }}
-            allowClear
-            loading={loading}
-          />
-          {canEdit && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-              {t('players.addBtn')}
-            </Button>
-          )}
-        </Space>
-      </div>
-
-      {loading && players.length === 0 ? (
-        <TableSkeleton rows={8} />
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={players}
-          rowKey="id"
-          loading={loading}
-          scroll={{ x: 1000 }}
-          pagination={{
-            current: pagination.page,
-            pageSize: pagination.limit,
-            total: pagination.total,
-            showSizeChanger: true,
-            showTotal: (total) => t('players.totalCount', { total }),
-            onChange: (page, pageSize) => {
-              setPagination((prev) => ({ ...prev, page, limit: pageSize }));
+    <>
+      <div className="page-stack">
+        <PageHero
+          eyebrow={t('menu.players')}
+          title={t('players.title')}
+          description={t('players.searchPlaceholder')}
+          icon={<IdcardOutlined />}
+          metrics={[
+            {
+              label: t('common.total'),
+              value: totalPlayers.toLocaleString('vi-VN'),
+              icon: <UserOutlined />,
             },
-          }}
-          size="middle"
-          locale={{ emptyText: t('common.noData') }}
+            {
+              label: t('playerType.FOREIGN'),
+              value: foreignPlayers.toLocaleString('vi-VN'),
+              icon: <TeamOutlined />,
+            },
+            {
+              label: t('players.colClub'),
+              value: rosteredPlayers.toLocaleString('vi-VN'),
+              icon: <TeamOutlined />,
+            },
+          ]}
+          actions={
+            <Space wrap>
+              <Input.Search
+                placeholder={t('players.searchPlaceholder')}
+                onSearch={onSearch}
+                style={{ width: 300 }}
+                allowClear
+                loading={loading}
+              />
+              {canEdit && (
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+                  {t('players.addBtn')}
+                </Button>
+              )}
+            </Space>
+          }
         />
-      )}
+
+        <Card>
+          {loading && players.length === 0 ? (
+            <TableSkeleton rows={8} />
+          ) : (
+            <Table
+              columns={columns}
+              dataSource={players}
+              rowKey="id"
+              loading={loading}
+              scroll={{ x: 1000 }}
+              pagination={{
+                current: pagination.page,
+                pageSize: pagination.limit,
+                total: pagination.total,
+                showSizeChanger: true,
+                showTotal: (total) => t('players.totalCount', { total }),
+                onChange: (page, pageSize) => {
+                  setPagination((prev) => ({ ...prev, page, limit: pageSize }));
+                },
+              }}
+              size="middle"
+              locale={{ emptyText: t('common.noData') }}
+            />
+          )}
+        </Card>
+      </div>
 
       <Modal
         title={editingPlayer ? t('players.modalEditTitle') : t('players.modalCreateTitle')}
@@ -546,6 +580,6 @@ export default function PlayersPage() {
           </Row>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

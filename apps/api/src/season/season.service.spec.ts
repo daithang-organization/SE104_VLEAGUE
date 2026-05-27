@@ -1,11 +1,13 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import { SeasonService } from './season.service';
 
 describe('SeasonService', () => {
   let service: SeasonService;
   let prisma: PrismaService;
+  let regulationHelper: RegulationHelper;
 
   const mockSeason = {
     id: 'season-1',
@@ -33,6 +35,32 @@ describe('SeasonService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
+            seasonTeam: {
+              findMany: jest.fn(),
+              findUnique: jest.fn(),
+              create: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
+            },
+            team: {
+              findUnique: jest.fn(),
+            },
+            teamPlayer: {
+              count: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: RegulationHelper,
+          useValue: {
+            getNumericValue: jest.fn().mockImplementation((_sid, key, fb) => {
+              if (key === 'MIN_ROSTER') return Promise.resolve(16);
+              if (key === 'MAX_ROSTER') return Promise.resolve(22);
+              if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(5);
+              if (key === 'MIN_STADIUM_CAPACITY') return Promise.resolve(10000);
+              if (key === 'MIN_STADIUM_FIFA_STARS') return Promise.resolve(2);
+              return Promise.resolve(fb);
+            }),
           },
         },
       ],
@@ -40,6 +68,7 @@ describe('SeasonService', () => {
 
     service = module.get<SeasonService>(SeasonService);
     prisma = module.get<PrismaService>(PrismaService);
+    regulationHelper = module.get<RegulationHelper>(RegulationHelper);
   });
 
   it('should be defined', () => {
@@ -218,6 +247,177 @@ describe('SeasonService', () => {
       await expect(
         service.updateStatus('non-existent', 'IN_PROGRESS'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateTeamStatus approval validation', () => {
+    const seasonTeamRecord = {
+      id: 'season-team-1',
+      seasonId: 'season-1',
+      teamId: 'team-1',
+      status: 'REGISTERED',
+      ownerName: 'Công ty Cổ phần Bóng đá Hà Nội',
+      ownerCountry: 'Việt Nam',
+      ownerAddress: 'Hà Nội',
+      teamIntroduction: 'Đội bóng đại diện Thủ đô.',
+      primaryKit: 'Áo tím, quần trắng',
+      backupKit: 'Áo trắng, quần tím',
+      participationFeePaid: true,
+      feePaidAt: new Date(),
+      feeReceiptCode: 'REC-001',
+      externalCompetitionSchedule: 'Cúp Quốc gia',
+      applicationSubmittedAt: new Date(),
+      applicationReviewNote: null,
+      registeredAt: new Date(),
+      approvedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const validTeam = {
+      id: 'team-1',
+      name: 'Hà Nội FC',
+      stadium: {
+        id: 'stadium-1',
+        name: 'Sân Hàng Đẫy',
+        capacity: 22500,
+        country: 'Việt Nam',
+        fifaStars: 2,
+      },
+    };
+
+    beforeEach(() => {
+      jest
+        .spyOn(prisma.seasonTeam, 'findUnique')
+        .mockResolvedValue(seasonTeamRecord as any);
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(validTeam as any);
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockResolvedValueOnce(16)
+        .mockResolvedValueOnce(5);
+      jest.spyOn(prisma.seasonTeam, 'update').mockResolvedValue({
+        ...seasonTeamRecord,
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        team: validTeam,
+      } as any);
+    });
+
+    it('should approve a team that satisfies roster and stadium regulations', async () => {
+      const result = await service.updateTeamStatus(
+        'season-1',
+        'team-1',
+        'APPROVED',
+      );
+
+      expect(result.status).toBe('APPROVED');
+      expect(prisma.teamPlayer.count).toHaveBeenCalledWith({
+        where: { teamId: 'team-1', leftAt: null },
+      });
+      expect(prisma.teamPlayer.count).toHaveBeenCalledWith({
+        where: {
+          teamId: 'team-1',
+          leftAt: null,
+          player: { playerType: 'FOREIGN' },
+        },
+      });
+    });
+
+    it('should reject approval when the team has not submitted application information', async () => {
+      jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
+        ...seasonTeamRecord,
+        applicationSubmittedAt: null,
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('chưa nộp hồ sơ');
+      expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
+    });
+
+    it('should reject approval when a team has fewer than 16 active players', async () => {
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockReset()
+        .mockResolvedValueOnce(15)
+        .mockResolvedValueOnce(4);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('tối thiểu 16 cầu thủ');
+    });
+
+    it('should reject approval when a team has more than 22 active players', async () => {
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockReset()
+        .mockResolvedValueOnce(23)
+        .mockResolvedValueOnce(4);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('tối đa 22 cầu thủ');
+    });
+
+    it('should reject approval when a team has more than 5 foreign players', async () => {
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockReset()
+        .mockResolvedValueOnce(20)
+        .mockResolvedValueOnce(6);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('tối đa 5 cầu thủ ngoại');
+    });
+
+    it('should reject approval when the home stadium is below 10,000 seats', async () => {
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        ...validTeam,
+        stadium: { ...validTeam.stadium, capacity: 9000 },
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('10.000');
+    });
+
+    it('should reject approval when the home stadium is outside Vietnam', async () => {
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        ...validTeam,
+        stadium: { ...validTeam.stadium, country: 'Thailand' },
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('Việt Nam');
+    });
+
+    it('should reject approval when the home stadium is below 2 FIFA stars', async () => {
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        ...validTeam,
+        stadium: { ...validTeam.stadium, fifaStars: 1 },
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('2 sao');
+    });
+
+    it('should not run approval validation for rejection or withdrawal', async () => {
+      jest.spyOn(prisma.seasonTeam, 'update').mockResolvedValue({
+        ...seasonTeamRecord,
+        status: 'REJECTED',
+      } as any);
+
+      const result = await service.updateTeamStatus(
+        'season-1',
+        'team-1',
+        'REJECTED',
+      );
+
+      expect(result.status).toBe('REJECTED');
+      expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
     });
   });
 });
