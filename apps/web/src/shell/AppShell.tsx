@@ -251,6 +251,7 @@ export default function AppShell() {
         >
           {/* Global Search */}
           <AutoComplete
+            className="global-search"
             options={searchOptions}
             onSearch={onSearch}
             onSelect={onSelectSearch}
@@ -262,10 +263,10 @@ export default function AppShell() {
             allowClear
           >
             <Input
+              className="global-search-input"
               size="small" // Dùng size nhỏ để khớp với navbar hẹp
               prefix={searchLoading ? <Spin size="small" /> : <SearchOutlined />}
               placeholder={t('common.search')}
-              style={{ borderRadius: 20 }}
             />
           </AutoComplete>
 

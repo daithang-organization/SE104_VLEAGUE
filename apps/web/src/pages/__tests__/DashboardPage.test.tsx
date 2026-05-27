@@ -84,8 +84,9 @@ describe('DashboardPage', () => {
   afterEach(() => cleanup());
 
   it('renders the Dashboard title', async () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(container.querySelector('.dashboard-page .page-hero')).toBeInTheDocument();
     await waitForAsyncEffects();
   });
 
@@ -102,7 +103,7 @@ describe('DashboardPage', () => {
   it('renders admin quick actions when user is ADMIN', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('⚡ Thao tác nhanh')).toBeInTheDocument();
+      expect(screen.getByText('Thao tác nhanh')).toBeInTheDocument();
     });
   });
 
@@ -116,7 +117,7 @@ describe('DashboardPage', () => {
     });
     renderPage();
     await waitFor(() => {
-      expect(screen.queryByText('⚡ Thao tác nhanh')).not.toBeInTheDocument();
+      expect(screen.queryByText('Thao tác nhanh')).not.toBeInTheDocument();
     });
   });
 
@@ -135,9 +136,9 @@ describe('DashboardPage', () => {
   it('renders standings and upcoming matches sections', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('🏆 Bảng xếp hạng (Top 5)')).toBeInTheDocument();
-      expect(screen.getByText('📅 Trận đấu sắp tới')).toBeInTheDocument();
-      expect(screen.getByText('⚽ Kết quả gần đây')).toBeInTheDocument();
+      expect(screen.getByText('Bảng xếp hạng (Top 5)')).toBeInTheDocument();
+      expect(screen.getByText('Trận đấu sắp tới')).toBeInTheDocument();
+      expect(screen.getByText('Kết quả gần đây')).toBeInTheDocument();
     });
   });
 
@@ -174,10 +175,11 @@ describe('DashboardPage', () => {
       team: { id: 'team-1', name: 'CLB Bình Định' },
     });
 
-    renderPage();
+    const { container } = renderPage();
 
     expect(await screen.findByText('Hồ sơ tham dự mùa giải')).toBeInTheDocument();
-    expect(screen.getByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
+    expect(container.querySelector('.dashboard-manager-page .page-hero')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
   });
 });

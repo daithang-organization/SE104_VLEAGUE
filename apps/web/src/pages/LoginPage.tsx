@@ -74,6 +74,26 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <div
+        className="login-football-background"
+        data-testid="login-football-background"
+        aria-hidden="true"
+      >
+        <div className="login-pitch-lines">
+          <span className="login-pitch-center" />
+          <span className="login-pitch-box login-pitch-box-left" />
+          <span className="login-pitch-box login-pitch-box-right" />
+        </div>
+        <div className="login-goal-line">
+          <span />
+          <span />
+          <span />
+        </div>
+        <span className="login-ball login-ball-one" />
+        <span className="login-ball login-ball-two" />
+        <span className="login-ball login-ball-three" />
+      </div>
+
       <section className="login-showcase" aria-labelledby="login-system-title">
         <div className="login-brand-row">
           <div className="login-brand-mark" aria-hidden="true">

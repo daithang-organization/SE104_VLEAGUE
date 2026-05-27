@@ -69,6 +69,17 @@ describe('LoginPage', () => {
     expect(screen.getByText('Báo cáo thống kê')).toBeInTheDocument();
   });
 
+  it('renders the decorative football background outside the accessible content', () => {
+    renderPage();
+
+    const background = screen.getByTestId('login-football-background');
+
+    expect(background).toHaveAttribute('aria-hidden', 'true');
+    expect(background.querySelector('.login-pitch-lines')).toBeInTheDocument();
+    expect(background.querySelector('.login-goal-line')).toBeInTheDocument();
+    expect(background.querySelectorAll('.login-ball')).toHaveLength(3);
+  });
+
   it('renders email and password fields', () => {
     renderPage();
     expect(screen.getByPlaceholderText('admin@vleague.local')).toBeInTheDocument();

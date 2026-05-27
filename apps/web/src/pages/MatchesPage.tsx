@@ -1,4 +1,5 @@
 ﻿import {
+  CalendarOutlined,
   EditOutlined,
   EyeOutlined,
   FieldTimeOutlined,
@@ -17,12 +18,12 @@ import {
   Modal,
   Select,
   Space,
-  Table,
+  Tabs,
   Tag,
   Timeline,
+  Tooltip,
   Typography,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,39 @@ import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
+type MatchTeam = NonNullable<Match['homeTeam']>;
+type MatchTeamDisplay = {
+  id?: string;
+  name: string;
+  logoUrl?: string;
+};
+
+function formatMatchDateLabel(kickoffAt?: string | null) {
+  if (!kickoffAt) return 'Chưa xếp lịch';
+  const date = dayjs(kickoffAt);
+  const weekday = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][date.day()];
+  return `${weekday}, ${date.format('D/M')}`;
+}
+
+function getMatchTeamDisplay(team: MatchTeam | undefined, fallbackId: string): MatchTeamDisplay {
+  const fallbackName = fallbackId.slice(0, 8);
+
+  return {
+    id: team?.id ?? fallbackId,
+    name: team?.shortName || team?.name || fallbackName,
+    logoUrl: getTeamLogoUrl(team),
+  };
+}
+
+function compareMatchesByKickoff(a: Match, b: Match) {
+  if (!a.kickoffAt && !b.kickoffAt) return a.id.localeCompare(b.id);
+  if (!a.kickoffAt) return 1;
+  if (!b.kickoffAt) return -1;
+
+  const timeDiff = new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime();
+  return timeDiff || a.id.localeCompare(b.id);
+}
+
 export default function MatchesPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -57,6 +91,7 @@ export default function MatchesPage() {
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterTeam, setFilterTeam] = useState<string | undefined>();
+  const [activeLeg, setActiveLeg] = useState<string>('all');
   const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
 
   // Detail modal
@@ -149,6 +184,11 @@ export default function MatchesPage() {
   };
 
   // Group matches by round
+  const filteredMatches = useMemo(() => {
+    if (activeLeg === 'all') return matches;
+    return matches.filter((m) => m.leg === Number(activeLeg));
+  }, [matches, activeLeg]);
+
   const availableTeams = useMemo(() => {
     const teamMap = new Map<string, string>();
     // We want to see all teams in the filter, so we use the full list of matches
@@ -162,13 +202,13 @@ export default function MatchesPage() {
   // Use roundGroups for the round navigator
   const roundGroups = useMemo(() => {
     const grouped = new Map<number, Match[]>();
-    for (const match of matches) {
+    for (const match of filteredMatches) {
       const round = match.roundNo ?? 0;
       if (!grouped.has(round)) grouped.set(round, []);
       grouped.get(round)!.push(match);
     }
     return Array.from(grouped.entries()).sort(([a], [b]) => a - b);
-  }, [matches]);
+  }, [filteredMatches]);
 
   useEffect(() => {
     if (roundGroups.length === 0) {
@@ -185,7 +225,7 @@ export default function MatchesPage() {
 
   const activeRoundIndex = roundGroups.findIndex(([roundNo]) => roundNo === activeRoundNo);
   const activeRound = activeRoundIndex >= 0 ? roundGroups[activeRoundIndex] : undefined;
-  const activeRoundMatches = activeRound?.[1] ?? [];
+  const activeRoundMatches = useMemo(() => activeRound?.[1] ?? [], [activeRound]);
   const activeRoundFinishedCount = activeRoundMatches.filter((m) => m.status === 'FINISHED').length;
   const activeRoundDates = activeRoundMatches
     .filter((m) => m.kickoffAt)
@@ -194,6 +234,21 @@ export default function MatchesPage() {
     activeRoundDates.length > 0
       ? activeRoundDates.reduce((a, b) => (a.isBefore(b) ? a : b)).format('DD/MM/YYYY')
       : '';
+  const activeRoundMatchGroups = useMemo(() => {
+    const map = new Map<string, Match[]>();
+    [...activeRoundMatches].sort(compareMatchesByKickoff).forEach((match) => {
+      const key = match.kickoffAt ? dayjs(match.kickoffAt).format('YYYY-MM-DD') : 'unscheduled';
+      const list = map.get(key) ?? [];
+      list.push(match);
+      map.set(key, list);
+    });
+
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return a.localeCompare(b);
+    });
+  }, [activeRoundMatches]);
 
   const loadRosters = async (match: Match) => {
     setRosterLoading(true);
@@ -314,127 +369,98 @@ export default function MatchesPage() {
     return transitions[match.status] ?? [];
   };
 
-  // Per-round table columns
-  const roundColumns: ColumnsType<Match> = [
-    {
-      title: t('matches.colHome'),
-      key: 'home',
-      width: '22%',
-      align: 'center',
-      render: (_, r) => (
-        <strong style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
-          {r.homeTeam?.name ?? '—'}
-        </strong>
-      ),
-    },
-    {
-      title: t('matches.colScore'),
-      key: 'score',
-      width: 120,
-      align: 'center',
-      render: (_, r) => {
-        const homeLogoUrl = getTeamLogoUrl(r.homeTeam);
-        const awayLogoUrl = getTeamLogoUrl(r.awayTeam);
-        const score =
-          r.homeScore == null && r.awayScore == null
-            ? '— : —'
-            : `${r.homeScore ?? 0} - ${r.awayScore ?? 0}`;
-        const scoreColor = r.homeScore == null && r.awayScore == null ? '#bbb' : undefined;
+  const renderMatchLogo = (displayTeam: MatchTeamDisplay) =>
+    displayTeam.logoUrl ? (
+      <img
+        src={displayTeam.logoUrl}
+        alt={`${displayTeam.name} logo`}
+        className="schedule-match-logo"
+      />
+    ) : (
+      <div className="schedule-match-logo schedule-match-logo-fallback">
+        {displayTeam.name.slice(0, 2).toUpperCase()}
+      </div>
+    );
 
-        return (
-          <Flex align="center" justify="center" gap={10} style={{ whiteSpace: 'nowrap' }}>
-            {homeLogoUrl && (
-              <img
-                src={homeLogoUrl}
-                alt={`${r.homeTeam?.name ?? 'Home team'} logo`}
-                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
-              />
-            )}
-            <strong style={{ minWidth: 48, textAlign: 'center', fontSize: 15, color: scoreColor }}>
-              {score}
-            </strong>
-            {awayLogoUrl && (
-              <img
-                src={awayLogoUrl}
-                alt={`${r.awayTeam?.name ?? 'Away team'} logo`}
-                style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }}
-              />
-            )}
-          </Flex>
-        );
-      },
-    },
-    {
-      title: t('matches.colAway'),
-      key: 'away',
-      width: '22%',
-      align: 'center',
-      render: (_, r) => (
-        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          {r.awayTeam?.name ?? '—'}
-        </span>
-      ),
-    },
-    {
-      title: t('matches.colStadium'),
-      key: 'stadium',
-      width: '20%',
-      align: 'center',
-      render: (_, r) => <span style={{ color: '#666' }}>{r.stadium?.name ?? '—'}</span>,
-    },
-    {
-      title: t('matches.colTime'),
-      dataIndex: 'kickoffAt',
-      width: 130,
-      align: 'center',
-      render: (v: string | null) =>
-        v ? (
-          <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-            {dayjs(v).format('DD/MM/YYYY HH:mm')}
+  const renderResultFixture = (match: Match) => {
+    const homeTeam = getMatchTeamDisplay(match.homeTeam, match.homeTeamId);
+    const awayTeam = getMatchTeamDisplay(match.awayTeam, match.awayTeamId);
+    const hasScore = match.homeScore != null && match.awayScore != null;
+    const scoreText = hasScore ? `${match.homeScore} - ${match.awayScore}` : '— : —';
+    const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
+
+    return (
+      <div key={match.id} className="schedule-fixture-row results-fixture-row">
+        <div className="schedule-fixture-meta">
+          <span className="schedule-fixture-round">
+            {t('matches.roundLabel', { round: match.roundNo })}
           </span>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      title: t('matches.colStatus'),
-      dataIndex: 'status',
-      width: 100,
-      align: 'center',
-      render: (status: string) => {
-        const s = STATUS_MAP[status] ?? { label: status, color: 'default' };
-        return <Tag color={s.color}>{s.label}</Tag>;
-      },
-    },
-    {
-      title: '',
-      key: 'actions',
-      width: 120,
-      align: 'center',
-      render: (_, r) => (
-        <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/matches/${r.id}`)}
-          >
-            {t('matches.btnDetail')}
-          </Button>
-          {canEdit && (
+          <Tag color={status.color}>{status.label}</Tag>
+        </div>
+
+        <button
+          type="button"
+          className="schedule-fixture-team schedule-fixture-team-left"
+          onClick={() => homeTeam.id && navigate(`/teams/${homeTeam.id}`)}
+        >
+          <span>{homeTeam.name}</span>
+          {renderMatchLogo(homeTeam)}
+        </button>
+
+        <button
+          type="button"
+          className={`schedule-fixture-score${hasScore ? ' is-final' : ''}`}
+          onClick={() => navigate(`/matches/${match.id}`)}
+        >
+          {scoreText}
+        </button>
+
+        <button
+          type="button"
+          className="schedule-fixture-team schedule-fixture-team-right"
+          onClick={() => awayTeam.id && navigate(`/teams/${awayTeam.id}`)}
+        >
+          {renderMatchLogo(awayTeam)}
+          <span>{awayTeam.name}</span>
+        </button>
+
+        <div className="schedule-fixture-detail">
+          <span>{match.stadium?.name ?? t('schedule.stadiumNotSet')}</span>
+          <span>
+            <CalendarOutlined aria-hidden="true" />
+            {match.kickoffAt
+              ? dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm')
+              : t('schedule.kickoffNotSet')}
+          </span>
+        </div>
+
+        <div className="schedule-fixture-action results-fixture-action">
+          <Tooltip title={t('matches.btnDetail')}>
             <Button
               type="link"
               size="small"
-              icon={<EditOutlined />}
-              onClick={() => viewDetail(r.id)}
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/matches/${match.id}`)}
             >
-              {t('matches.btnEdit')}
+              {t('matches.btnDetail')}
             </Button>
+          </Tooltip>
+          {canEdit && (
+            <Tooltip title={t('matches.btnEdit')}>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => viewDetail(match.id)}
+              >
+                {t('matches.btnEdit')}
+              </Button>
+            </Tooltip>
           )}
-        </Space>
-      ),
-    },
-  ];
+        </div>
+      </div>
+    );
+  };
   const finishedMatches = matches.filter((match) => match.status === 'FINISHED').length;
   const openMatches = matches.length - finishedMatches;
 
@@ -534,7 +560,23 @@ export default function MatchesPage() {
         }
       />
 
-      <Card>
+      <Card className="schedule-page-card">
+        <Tabs
+          activeKey={activeLeg}
+          onChange={setActiveLeg}
+          items={[
+            { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+            {
+              key: '1',
+              label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
+            },
+            {
+              key: '2',
+              label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
+            },
+          ]}
+          style={{ marginBottom: 12 }}
+        />
         {loading && matches.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
             {t('common.loading')}
@@ -577,13 +619,18 @@ export default function MatchesPage() {
                 onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
               />
             </Flex>
-            <Table
-              columns={roundColumns}
-              dataSource={activeRoundMatches}
-              rowKey="id"
-              pagination={false}
-              size="small"
-            />
+            <div className="schedule-fixture-list">
+              {activeRoundMatchGroups.map(([dayKey, dayMatches]) => (
+                <div key={dayKey} className="schedule-fixture-day-group">
+                  <Typography.Title level={5} className="schedule-fixture-date">
+                    {formatMatchDateLabel(dayMatches[0]?.kickoffAt)}
+                  </Typography.Title>
+                  <div className="schedule-fixture-day-list">
+                    {dayMatches.map((match) => renderResultFixture(match))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>
