@@ -409,7 +409,7 @@ export default function MatchesPage() {
 
         <button
           type="button"
-          className={`schedule-fixture-score${hasScore ? ' is-final' : ''}`}
+          className={`schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}`}
           onClick={() => navigate(`/matches/${match.id}`)}
         >
           {scoreText}

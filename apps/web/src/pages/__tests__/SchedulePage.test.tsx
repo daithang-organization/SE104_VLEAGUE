@@ -27,9 +27,9 @@ const mockScheduleApi = vi.hoisted(() => ({
         awayTeam: { name: 'Hai Phong FC', shortName: 'HP' },
         stadium: { name: 'Hang Day', city: 'Ha Noi' },
         stadiumId: 's1',
-        homeScore: null,
-        awayScore: null,
-        status: 'DRAFT',
+        homeScore: 2,
+        awayScore: 0,
+        status: 'FINISHED',
         kickoffAt: '2025-03-15T17:00:00Z',
       },
     ],
@@ -126,6 +126,9 @@ describe('SchedulePage', () => {
     expect(container.querySelector('.schedule-fixture-day-group')).toBeInTheDocument();
     expect(container.querySelector('.schedule-fixture-row')).toBeInTheDocument();
     expect(container.querySelector('.schedule-fixture-score')).toBeInTheDocument();
+    expect(
+      container.querySelector('.schedule-fixture-score.is-final.is-score-card'),
+    ).toHaveTextContent('2 - 0');
     expect(screen.getByText('HP')).toBeInTheDocument();
     expect(screen.getByText('Hang Day')).toBeInTheDocument();
   });

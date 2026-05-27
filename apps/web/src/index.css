@@ -166,14 +166,18 @@ select {
 }
 
 .app-sidebar .ant-menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   height: 50px;
   line-height: 50px;
   margin: 4px 0;
   width: 100%;
+  overflow: hidden;
   border-radius: 8px;
+  border: 1px solid transparent;
   color: var(--text-muted);
+  isolation: isolate;
 }
 
 .app-sidebar .ant-menu-item::after {
@@ -181,6 +185,8 @@ select {
 }
 
 .app-sidebar .ant-menu-item .ant-menu-item-icon {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -188,6 +194,8 @@ select {
 }
 
 .app-sidebar .ant-menu-item .ant-menu-title-content {
+  position: relative;
+  z-index: 1;
   margin-inline-start: 12px;
   color: inherit;
   font-size: 16px;
@@ -202,9 +210,38 @@ select {
 
 .app-sidebar .ant-menu-item-selected,
 .app-sidebar .ant-menu-item-selected:hover {
-  background: var(--primary) !important;
+  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 44%),
+    linear-gradient(140deg, #c73535 0%, #b82020 48%, #7f1d1d 100%) !important;
   color: #ffffff !important;
-  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 12px 24px rgba(127, 29, 29, 0.24);
+}
+
+.app-sidebar .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      48deg,
+      transparent 0%,
+      transparent 54%,
+      rgba(255, 255, 255, 0.09) 54%,
+      rgba(255, 255, 255, 0.09) 63%,
+      transparent 63%
+    ),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size:
+    auto,
+    18px 18px,
+    18px 18px;
+  opacity: 0.5;
 }
 
 .sidebar-menu-icon {
@@ -1406,17 +1443,32 @@ select {
   min-width: 92px;
   height: 48px;
   padding: 0 16px;
+  border: 1px solid transparent;
   border-radius: 7px;
   background: var(--surface-soft);
   cursor: pointer;
   font-weight: 850;
   line-height: 1;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
   white-space: nowrap;
 }
 
-.schedule-fixture-score.is-final {
-  background: var(--primary);
-  color: #ffffff;
+.schedule-fixture-score.is-final,
+.schedule-fixture-score.is-score-card {
+  border-color: rgba(227, 34, 33, 0.22);
+  background:
+    linear-gradient(135deg, rgba(227, 34, 33, 0.14), rgba(37, 99, 235, 0.09)), var(--surface);
+  color: var(--text-main);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.schedule-fixture-score.is-score-card:hover {
+  border-color: rgba(227, 34, 33, 0.34);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
 }
 
 .schedule-fixture-detail {

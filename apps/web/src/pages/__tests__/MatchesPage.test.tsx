@@ -137,9 +137,9 @@ describe('MatchesPage', () => {
         expect(container.querySelector('.schedule-fixture-list')).toBeInTheDocument();
         expect(container.querySelector('.schedule-fixture-day-group')).toBeInTheDocument();
         expect(container.querySelectorAll('.schedule-fixture-row')).toHaveLength(2);
-        expect(container.querySelector('.schedule-fixture-score.is-final')).toHaveTextContent(
-          '2 - 1',
-        );
+        expect(
+          container.querySelector('.schedule-fixture-score.is-final.is-score-card'),
+        ).toHaveTextContent('2 - 1');
       },
       { timeout: 5000 },
     );
