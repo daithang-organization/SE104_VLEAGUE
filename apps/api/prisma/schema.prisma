@@ -91,6 +91,18 @@ enum PlayerSuspensionStatus {
   CANCELLED
 }
 
+enum OfficialStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MatchOfficialRole {
+  MAIN_REFEREE
+  ASSISTANT_REFEREE
+  FOURTH_OFFICIAL
+  SUPERVISOR
+}
+
 enum UserRole {
   ADMIN
   TEAM_MANAGER
@@ -235,6 +247,7 @@ model Player {
   relatedEvents MatchEvent[] @relation("RelatedPlayer")
   lineupSelections MatchLineupPlayer[]
   suspensions PlayerSuspension[]
+  bestPlayerReports MatchReport[]
 
   @@index([fullName], map: "players_full_name_idx")
   @@index([nationality], map: "players_nationality_idx")
@@ -372,6 +385,9 @@ model Match {
   teamRegistrations MatchTeamRegistration[]
   sourceSuspensions PlayerSuspension[] @relation("SuspensionSourceMatch")
   effectiveSuspensions PlayerSuspension[] @relation("SuspensionEffectiveMatch")
+  officialAssignments MatchOfficialAssignment[]
+  matchReport MatchReport?
+  disciplineReport DisciplineReport?
 
   @@index([roundNo], map: "matches_round_no_idx")
   @@index([status], map: "matches_status_idx")
@@ -484,6 +500,89 @@ model PlayerSuspension {
   @@index([effectiveMatchId])
   @@index([status])
   @@map("player_suspensions")
+}
+
+model Official {
+  id       String         @id @default(uuid()) @db.Uuid
+  fullName String         @map("full_name")
+  email    String?
+  phone    String?
+  status   OfficialStatus @default(ACTIVE)
+
+  assignments MatchOfficialAssignment[]
+  disciplineReports DisciplineReport[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("officials")
+}
+
+model MatchOfficialAssignment {
+  id         String            @id @default(uuid()) @db.Uuid
+  matchId    String            @map("match_id") @db.Uuid
+  match      Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  officialId String            @map("official_id") @db.Uuid
+  official   Official          @relation(fields: [officialId], references: [id], onDelete: Restrict)
+  role       MatchOfficialRole
+
+  publishedAt DateTime @default(now()) @map("published_at")
+  note        String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, officialId, role])
+  @@index([matchId])
+  @@index([officialId])
+  @@index([role])
+  @@map("match_official_assignments")
+}
+
+model MatchReport {
+  id                String   @id @default(uuid()) @db.Uuid
+  matchId           String   @unique @map("match_id") @db.Uuid
+  match             Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  submittedByUserId String?  @map("submitted_by_user_id") @db.Uuid
+
+  homeScore    Int    @map("home_score")
+  awayScore    Int    @map("away_score")
+  bestPlayerId String? @map("best_player_id") @db.Uuid
+  bestPlayer   Player? @relation(fields: [bestPlayerId], references: [id], onDelete: SetNull)
+
+  technicalStats Json?    @map("technical_stats")
+  note           String?  @db.Text
+  submittedAt    DateTime @default(now()) @map("submitted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([bestPlayerId])
+  @@index([submittedByUserId])
+  @@map("match_reports")
+}
+
+model DisciplineReport {
+  id           String   @id @default(uuid()) @db.Uuid
+  matchId      String   @unique @map("match_id") @db.Uuid
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  supervisorId String   @map("supervisor_id") @db.Uuid
+  supervisor   Official @relation(fields: [supervisorId], references: [id], onDelete: Restrict)
+
+  organizationRating String  @map("organization_rating")
+  refereeIssues      String? @map("referee_issues") @db.Text
+  playerIssues       String? @map("player_issues") @db.Text
+  organizerIssues    String? @map("organizer_issues") @db.Text
+  notes              String? @db.Text
+  sentToDisciplinaryAt DateTime? @map("sent_to_disciplinary_at")
+  submittedAt          DateTime  @default(now()) @map("submitted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([supervisorId])
+  @@map("discipline_reports")
 }
 
 // ─── Regulation & Standings ─────────────────────────────────

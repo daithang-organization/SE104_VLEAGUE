@@ -210,14 +210,15 @@ select {
 
 .app-sidebar .ant-menu-item-selected,
 .app-sidebar .ant-menu-item-selected:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(220, 38, 38, 0.36);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 44%),
-    linear-gradient(140deg, #c73535 0%, #b82020 48%, #7f1d1d 100%) !important;
+    linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 46%),
+    linear-gradient(140deg, rgba(220, 38, 38, 0.42) 0%, rgba(153, 27, 27, 0.34) 100%),
+    rgba(15, 23, 42, 0.34) !important;
   color: #ffffff !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 12px 24px rgba(127, 29, 29, 0.24);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 22px rgba(127, 29, 29, 0.16);
 }
 
 .app-sidebar .ant-menu-item-selected::before {
@@ -231,17 +232,17 @@ select {
       48deg,
       transparent 0%,
       transparent 54%,
-      rgba(255, 255, 255, 0.09) 54%,
-      rgba(255, 255, 255, 0.09) 63%,
+      rgba(255, 255, 255, 0.055) 54%,
+      rgba(255, 255, 255, 0.055) 63%,
       transparent 63%
     ),
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   background-size:
     auto,
     18px 18px,
     18px 18px;
-  opacity: 0.5;
+  opacity: 0.42;
 }
 
 .sidebar-menu-icon {
