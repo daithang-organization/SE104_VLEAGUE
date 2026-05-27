@@ -80,6 +80,7 @@ describe('MatchesPage', () => {
   it('renders the page title', () => {
     const { container } = renderPage();
     expect(screen.getAllByText(/Kết quả trận đấu/)[0]).toBeInTheDocument();
+    expect(screen.queryByText('⚽ Kết quả trận đấu')).not.toBeInTheDocument();
     expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
   });
 

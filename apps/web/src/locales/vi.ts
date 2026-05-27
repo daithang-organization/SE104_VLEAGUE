@@ -235,7 +235,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   matches: {
-    title: '⚽ Kết quả trận đấu',
+    title: 'Kết quả trận đấu',
     searchPlaceholder: 'Tìm đội bóng...',
     seasonPlaceholder: 'Mùa giải',
     statusPlaceholder: 'Trạng thái',

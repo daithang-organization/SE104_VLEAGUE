@@ -212,7 +212,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   matches: {
-    title: '⚽ Match Results',
+    title: 'Match Results',
     searchPlaceholder: 'Search team...',
     seasonPlaceholder: 'Season',
     statusPlaceholder: 'Status',

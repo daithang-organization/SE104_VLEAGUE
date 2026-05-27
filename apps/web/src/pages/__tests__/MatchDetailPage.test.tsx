@@ -73,6 +73,45 @@ const mockMatchApi = vi.hoisted(() => ({
       sourceMatch: { id: 'm0', roundNo: 0 },
     },
   ]),
+  apiGetOfficials: vi.fn().mockResolvedValue([
+    { id: 'official-1', fullName: 'Nguyễn Văn Trọng', status: 'ACTIVE' },
+    { id: 'official-2', fullName: 'Trần Văn Giám', status: 'ACTIVE' },
+  ]),
+  apiGetMatchOfficials: vi.fn().mockResolvedValue([
+    {
+      id: 'assignment-1',
+      matchId: 'm1',
+      officialId: 'official-1',
+      role: 'MAIN_REFEREE',
+      official: { id: 'official-1', fullName: 'Nguyễn Văn Trọng', status: 'ACTIVE' },
+    },
+    {
+      id: 'assignment-2',
+      matchId: 'm1',
+      officialId: 'official-2',
+      role: 'SUPERVISOR',
+      official: { id: 'official-2', fullName: 'Trần Văn Giám', status: 'ACTIVE' },
+    },
+  ]),
+  apiAssignMatchOfficial: vi.fn().mockResolvedValue({}),
+  apiGetMatchReport: vi.fn().mockResolvedValue({
+    id: 'report-1',
+    matchId: 'm1',
+    homeScore: 2,
+    awayScore: 1,
+    bestPlayerId: 'h-player-1',
+    bestPlayer: { id: 'h-player-1', fullName: 'Home Player 1' },
+  }),
+  apiSubmitMatchReport: vi.fn().mockResolvedValue({}),
+  apiGetDisciplineReport: vi.fn().mockResolvedValue({
+    id: 'discipline-1',
+    matchId: 'm1',
+    supervisorId: 'official-2',
+    organizationRating: 'GOOD',
+    playerIssues: 'Một cầu thủ phản ứng trọng tài',
+    supervisor: { id: 'official-2', fullName: 'Trần Văn Giám', status: 'ACTIVE' },
+  }),
+  apiSubmitDisciplineReport: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
@@ -108,5 +147,25 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText('Đăng ký thi đấu')).toBeInTheDocument();
     expect(screen.getByText('Treo giò trận này')).toBeInTheDocument();
     expect(screen.getByText(/11 chính thức \/ 5 dự bị/)).toBeInTheDocument();
+  });
+
+  it('loads match officials and reports in the officials tab', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiGetOfficials).toHaveBeenCalled();
+      expect(mockMatchApi.apiGetMatchOfficials).toHaveBeenCalledWith('m1');
+      expect(mockMatchApi.apiGetMatchReport).toHaveBeenCalledWith('m1');
+      expect(mockMatchApi.apiGetDisciplineReport).toHaveBeenCalledWith('m1');
+    });
+
+    expect(screen.getAllByText('Nguyễn Văn Trọng').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Trọng tài chính').length).toBeGreaterThan(0);
+    expect(screen.getByText('Cầu thủ xuất sắc')).toBeInTheDocument();
+    expect(screen.getByText('Home Player 1')).toBeInTheDocument();
+    expect(screen.getByText('Một cầu thủ phản ứng trọng tài')).toBeInTheDocument();
   });
 });

@@ -154,6 +154,91 @@ export type MatchSuspension = {
   sourceMatch?: { id: string; roundNo: number } | null;
 };
 
+export type OfficialStatus = 'ACTIVE' | 'INACTIVE';
+export type MatchOfficialRole =
+  | 'MAIN_REFEREE'
+  | 'ASSISTANT_REFEREE'
+  | 'FOURTH_OFFICIAL'
+  | 'SUPERVISOR';
+
+export type Official = {
+  id: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  status: OfficialStatus;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type CreateOfficialPayload = {
+  fullName: string;
+  email?: string;
+  phone?: string;
+};
+
+export type AssignMatchOfficialPayload = {
+  officialId: string;
+  role: MatchOfficialRole;
+  note?: string;
+};
+
+export type MatchOfficialAssignment = {
+  id: string;
+  matchId: string;
+  officialId: string;
+  role: MatchOfficialRole;
+  publishedAt?: string;
+  note?: string | null;
+  official?: Official | null;
+};
+
+export type SubmitMatchReportPayload = {
+  homeScore: number;
+  awayScore: number;
+  bestPlayerId?: string;
+  technicalStats?: Record<string, unknown>;
+  note?: string;
+  events?: AddMatchEventPayload[];
+};
+
+export type MatchReport = {
+  id: string;
+  matchId: string;
+  submittedByUserId?: string | null;
+  homeScore: number;
+  awayScore: number;
+  bestPlayerId?: string | null;
+  bestPlayer?: { id: string; fullName: string } | null;
+  technicalStats?: Record<string, unknown> | null;
+  note?: string | null;
+  submittedAt?: string;
+};
+
+export type SubmitDisciplineReportPayload = {
+  supervisorId: string;
+  organizationRating: string;
+  refereeIssues?: string;
+  playerIssues?: string;
+  organizerIssues?: string;
+  notes?: string;
+  sendToDisciplinary?: boolean;
+};
+
+export type DisciplineReport = {
+  id: string;
+  matchId: string;
+  supervisorId: string;
+  supervisor?: Official | null;
+  organizationRating: string;
+  refereeIssues?: string | null;
+  playerIssues?: string | null;
+  organizerIssues?: string | null;
+  notes?: string | null;
+  sentToDisciplinaryAt?: string | null;
+  submittedAt?: string;
+};
+
 // ─────────── API calls ───────────
 export function apiGetMatches(seasonId?: string, page = 1, limit = 20) {
   const params: Record<string, string | number> = { page, limit };
@@ -219,4 +304,44 @@ export function apiReviewMatchLineup(
 
 export function apiGetMatchSuspensions(matchId: string) {
   return api.get<MatchSuspension[]>(`/matches/${matchId}/suspensions`).then((res) => res.data);
+}
+
+export function apiGetOfficials() {
+  return api.get<Official[]>('/officials').then((res) => res.data);
+}
+
+export function apiCreateOfficial(data: CreateOfficialPayload) {
+  return api.post<Official>('/officials', data).then((res) => res.data);
+}
+
+export function apiGetMatchOfficials(matchId: string) {
+  return api
+    .get<MatchOfficialAssignment[]>(`/matches/${matchId}/officials`)
+    .then((res) => res.data);
+}
+
+export function apiAssignMatchOfficial(matchId: string, data: AssignMatchOfficialPayload) {
+  return api
+    .post<MatchOfficialAssignment>(`/matches/${matchId}/officials`, data)
+    .then((res) => res.data);
+}
+
+export function apiSubmitMatchReport(matchId: string, data: SubmitMatchReportPayload) {
+  return api.post<MatchReport>(`/matches/${matchId}/report`, data).then((res) => res.data);
+}
+
+export function apiGetMatchReport(matchId: string) {
+  return api.get<MatchReport | null>(`/matches/${matchId}/report`).then((res) => res.data);
+}
+
+export function apiSubmitDisciplineReport(matchId: string, data: SubmitDisciplineReportPayload) {
+  return api
+    .post<DisciplineReport>(`/matches/${matchId}/discipline-report`, data)
+    .then((res) => res.data);
+}
+
+export function apiGetDisciplineReport(matchId: string) {
+  return api
+    .get<DisciplineReport | null>(`/matches/${matchId}/discipline-report`)
+    .then((res) => res.data);
 }
