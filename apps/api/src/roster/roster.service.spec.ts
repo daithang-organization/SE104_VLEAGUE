@@ -65,7 +65,7 @@ describe('RosterService', () => {
           useValue: {
             getNumericValue: jest.fn().mockImplementation((_sid, key, fb) => {
               if (key === 'MAX_ROSTER') return Promise.resolve(22);
-              if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(3);
+              if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(5);
               return Promise.resolve(fb);
             }),
           },
@@ -211,7 +211,7 @@ describe('RosterService', () => {
       ).rejects.toThrow('22 cầu thủ');
     });
 
-    it('should reject when team has 3 foreign players and adding another', async () => {
+    it('should reject when team has 5 foreign players and adding another', async () => {
       jest
         .spyOn(prisma.team, 'findUnique')
         .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
@@ -222,14 +222,40 @@ describe('RosterService', () => {
       jest
         .spyOn(prisma.teamPlayer, 'count')
         .mockResolvedValueOnce(18) // active count < 22
-        .mockResolvedValueOnce(3); // foreign count = 3
+        .mockResolvedValueOnce(5); // foreign count = 5
 
       await expect(
         service.addPlayerToRoster('team-1', {
           playerId: 'player-new',
           jerseyNumber: 99,
         }),
-      ).rejects.toThrow('3 cầu thủ ngoại');
+      ).rejects.toThrow('5 cầu thủ ngoại');
+    });
+
+    it('should use a default registered foreign-player limit of 5', async () => {
+      jest
+        .spyOn(regulationHelper, 'getNumericValue')
+        .mockImplementation((_sid, _key, fallback) =>
+          Promise.resolve(fallback),
+        );
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ id: 'player-new', playerType: 'FOREIGN' } as any);
+      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockResolvedValueOnce(18)
+        .mockResolvedValueOnce(5);
+
+      await expect(
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-new',
+          jerseyNumber: 99,
+        }),
+      ).rejects.toThrow('5 cầu thủ ngoại');
     });
 
     it('should allow adding when roster has space and foreign limit not reached', async () => {
@@ -269,7 +295,7 @@ describe('RosterService', () => {
         .spyOn(regulationHelper, 'getNumericValue')
         .mockImplementation((_sid, key) => {
           if (key === 'MAX_ROSTER') return Promise.resolve(18);
-          if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(3);
+          if (key === 'MAX_FOREIGN_PLAYERS') return Promise.resolve(5);
           return Promise.resolve(0);
         });
 

@@ -52,14 +52,14 @@ const maxRoster = await this.regulationHelper.getNumericValue(
 const maxForeign = await this.regulationHelper.getNumericValue(
   dto.seasonId,
   'MAX_FOREIGN_PLAYERS',
-  3,
+  5,
 );
 ```
 
 | Rule            | Default | Regulation Key        | Description                             |
 | --------------- | ------- | --------------------- | --------------------------------------- |
 | Max roster size | 22      | `MAX_ROSTER`          | Reject if active players ≥ limit        |
-| Foreign limit   | 3       | `MAX_FOREIGN_PLAYERS` | Reject if FOREIGN players ≥ limit       |
+| Foreign limit   | 5       | `MAX_FOREIGN_PLAYERS` | Reject if FOREIGN players ≥ limit       |
 | Unique jersey   | —       | —                     | Số áo phải unique trong đội             |
 | One team only   | —       | —                     | Cầu thủ chỉ thuộc 1 đội tại 1 thời điểm |
 | Soft delete     | —       | —                     | Đánh dấu `leftAt` thay vì xóa record    |

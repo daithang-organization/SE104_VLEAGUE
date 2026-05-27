@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegulationService } from './regulation.service';
+import { DEFAULT_REGULATIONS, RegulationService } from './regulation.service';
 
 describe('RegulationService', () => {
   let service: RegulationService;
@@ -57,6 +57,21 @@ describe('RegulationService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('should define default league regulations from the assignment', () => {
+    const defaults = Object.fromEntries(
+      DEFAULT_REGULATIONS.map((reg) => [reg.key, reg.value]),
+    );
+
+    expect(defaults.MIN_AGE).toBe('16');
+    expect(defaults.MIN_ROSTER).toBe('16');
+    expect(defaults.MAX_ROSTER).toBe('22');
+    expect(defaults.MAX_FOREIGN_PLAYERS).toBe('5');
+    expect(defaults.MAX_FOREIGN_PLAYERS_ON_FIELD).toBe('3');
+    expect(defaults.MIN_STADIUM_CAPACITY).toBe('10000');
+    expect(defaults.MIN_STADIUM_FIFA_STARS).toBe('2');
+    expect(defaults.PARTICIPATION_FEE_VND).toBe('1000000000');
   });
 
   describe('findAll', () => {

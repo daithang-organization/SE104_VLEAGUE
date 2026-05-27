@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -50,9 +51,14 @@ export class StadiumService {
   }
 
   async create(dto: CreateStadiumDto): Promise<Stadium> {
+    this.assertEligibleStadium(dto);
+
     try {
       return await this.prisma.stadium.create({
-        data: dto,
+        data: {
+          ...dto,
+          country: dto.country ?? 'Việt Nam',
+        } as never,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -68,11 +74,12 @@ export class StadiumService {
 
   async update(id: string, dto: UpdateStadiumDto): Promise<Stadium> {
     await this.findOne(id);
+    this.assertEligibleStadium(dto);
 
     try {
       return await this.prisma.stadium.update({
         where: { id },
-        data: dto,
+        data: dto as never,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -94,5 +101,34 @@ export class StadiumService {
     });
 
     return { success: true };
+  }
+
+  private assertEligibleStadium(dto: CreateStadiumDto | UpdateStadiumDto) {
+    if (dto.capacity !== undefined && dto.capacity < 10000) {
+      throw new BadRequestException(
+        'Sân nhà phải có sức chứa tối thiểu 10.000 chỗ',
+      );
+    }
+
+    if (dto.country !== undefined && !this.isVietnam(dto.country)) {
+      throw new BadRequestException('Sân nhà phải nằm tại Việt Nam');
+    }
+
+    if (dto.fifaStars !== undefined && dto.fifaStars < 2) {
+      throw new BadRequestException(
+        'Sân nhà phải đạt tiêu chuẩn ít nhất 2 sao FIFA',
+      );
+    }
+  }
+
+  private isVietnam(country: string) {
+    const normalized = country
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return normalized === 'viet nam' || normalized === 'vietnam';
   }
 }

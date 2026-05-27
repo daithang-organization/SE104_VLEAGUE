@@ -29,6 +29,8 @@ const REAL_TEAMS = [
   'SHB Đà Nẵng',
 ];
 
+const REQUIRED_APPROVED_TEAMS = 10;
+
 async function main() {
   console.log('🏆 Setting up V.League 2024-25 Season...\n');
 
@@ -53,9 +55,13 @@ async function main() {
   const defaultRegulations = [
     { key: 'MIN_AGE', value: '16', valueType: 'number' },
     { key: 'MAX_AGE', value: '40', valueType: 'number' },
-    { key: 'MIN_ROSTER', value: '15', valueType: 'number' },
-    { key: 'MAX_ROSTER', value: '30', valueType: 'number' },
-    { key: 'MAX_FOREIGN_PLAYERS', value: '3', valueType: 'number' },
+    { key: 'MIN_ROSTER', value: '16', valueType: 'number' },
+    { key: 'MAX_ROSTER', value: '22', valueType: 'number' },
+    { key: 'MAX_FOREIGN_PLAYERS', value: '5', valueType: 'number' },
+    { key: 'MAX_FOREIGN_PLAYERS_ON_FIELD', value: '3', valueType: 'number' },
+    { key: 'MIN_STADIUM_CAPACITY', value: '10000', valueType: 'number' },
+    { key: 'MIN_STADIUM_FIFA_STARS', value: '2', valueType: 'number' },
+    { key: 'PARTICIPATION_FEE_VND', value: '1000000000', valueType: 'number' },
     { key: 'WIN_POINTS', value: '3', valueType: 'number' },
     { key: 'DRAW_POINTS', value: '1', valueType: 'number' },
     { key: 'LOSS_POINTS', value: '0', valueType: 'number' },
@@ -87,10 +93,13 @@ async function main() {
     );
   }
 
-  for (const team of teams) {
+  const approvedTeams = teams.slice(0, REQUIRED_APPROVED_TEAMS);
+  const reserveTeams = teams.slice(REQUIRED_APPROVED_TEAMS);
+
+  for (const team of approvedTeams) {
     await prisma.seasonTeam.upsert({
       where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
-      update: { status: SeasonTeamStatus.APPROVED },
+      update: { status: SeasonTeamStatus.APPROVED, approvedAt: new Date() },
       create: {
         seasonId: season.id,
         teamId: team.id,
@@ -101,8 +110,21 @@ async function main() {
     console.log(`  ✅ Registered & Approved: ${team.name}`);
   }
 
+  for (const team of reserveTeams) {
+    await prisma.seasonTeam.upsert({
+      where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
+      update: { status: SeasonTeamStatus.REGISTERED, approvedAt: null },
+      create: {
+        seasonId: season.id,
+        teamId: team.id,
+        status: SeasonTeamStatus.REGISTERED,
+      },
+    });
+    console.log(`  🕒 Reserve/registered only: ${team.name}`);
+  }
+
   // 3. Generate Schedule (Round Robin)
-  console.log('\n📅 Generating Round Robin Schedule (26 Rounds)...');
+  console.log('\n📅 Generating Round Robin Schedule (18 Rounds)...');
 
   // Clean up existing matches for this season if any
   const matchCount = await prisma.match.count({
@@ -113,7 +135,7 @@ async function main() {
     await prisma.match.deleteMany({ where: { seasonId: season.id } });
   }
 
-  const teamIds = teams.map((t) => t.id);
+  const teamIds = approvedTeams.map((t) => t.id);
   const n = teamIds.length;
   if (n % 2 !== 0) {
     console.error(

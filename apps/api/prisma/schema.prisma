@@ -204,11 +204,13 @@ model Player {
 }
 
 model Stadium {
-  id       String @id @default(uuid()) @db.Uuid
-  name     String @unique
-  address  String?
-  city     String
-  capacity Int?
+  id        String @id @default(uuid()) @db.Uuid
+  name      String @unique
+  address   String?
+  city      String
+  country   String @default("Việt Nam")
+  capacity  Int?
+  fifaStars Int?   @map("fifa_stars")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

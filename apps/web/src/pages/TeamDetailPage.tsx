@@ -289,6 +289,7 @@ export default function TeamDetailPage() {
   ];
 
   const currentStanding = (team.standings || []).length > 0 ? team.standings[0] : null;
+  const teamLogoUrl = getTeamLogoUrl(team);
 
   return (
     <div>
@@ -296,9 +297,9 @@ export default function TeamDetailPage() {
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teams')}>
           {t('teamDetail.back')}
         </Button>
-        {team.logoUrl && (
+        {teamLogoUrl && (
           <img
-            src={team.logoUrl}
+            src={teamLogoUrl}
             alt={team.name}
             style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8 }}
           />

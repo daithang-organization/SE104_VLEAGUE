@@ -131,30 +131,36 @@ describe('SchedulingService', () => {
   });
 
   describe('generate', () => {
-    it('should generate round-robin matches for 4 teams', async () => {
-      const teams = [
-        { id: 't1', name: 'A', stadiumId: 's1' },
-        { id: 't2', name: 'B', stadiumId: 's2' },
-        { id: 't3', name: 'C', stadiumId: 's3' },
-        { id: 't4', name: 'D', stadiumId: 's4' },
-      ];
+    it('should generate 18 rounds and 90 matches for exactly 10 approved teams', async () => {
+      const teams = Array.from({ length: 10 }, (_, index) => ({
+        id: `t${index + 1}`,
+        name: `Team ${index + 1}`,
+        stadiumId: `s${index + 1}`,
+      }));
 
       jest
         .spyOn(prisma.season, 'findFirst')
         .mockResolvedValue({ id: 'season-1', name: 'V.League 2024' } as any);
-      jest.spyOn(prisma.seasonTeam, 'findMany').mockResolvedValue([]);
-      jest.spyOn(prisma.team, 'findMany').mockResolvedValue(teams as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(teams.map((team) => ({ team })) as any);
       jest.spyOn(prisma.match, 'deleteMany').mockResolvedValue({ count: 0 });
-      jest.spyOn(prisma.match, 'createMany').mockResolvedValue({ count: 12 });
+      jest.spyOn(prisma.match, 'createMany').mockResolvedValue({ count: 90 });
       jest
         .spyOn(prisma.season, 'findUnique')
         .mockResolvedValue({ name: 'V.League 2024' } as any);
 
       const result = await service.generate();
 
-      // 4 teams: 3 rounds × 2 matches × 2 legs = 12 matches
       expect(result.ok).toBe(true);
-      expect(result.totalMatches).toBe(12);
+      expect(result.totalMatches).toBe(90);
+      expect(prisma.seasonTeam.findMany).toHaveBeenCalledWith({
+        where: { seasonId: 'season-1', status: 'APPROVED' },
+        include: {
+          team: { select: { id: true, name: true, stadiumId: true } },
+        },
+        orderBy: { registeredAt: 'asc' },
+      });
       expect(prisma.match.createMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.arrayContaining([
@@ -168,6 +174,44 @@ describe('SchedulingService', () => {
           ]),
         }),
       );
+
+      const data = (prisma.match.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(data).toHaveLength(90);
+      expect(new Set(data.map((match: any) => match.roundNo)).size).toBe(18);
+      for (let roundNo = 1; roundNo <= 18; roundNo++) {
+        expect(
+          data.filter((match: any) => match.roundNo === roundNo),
+        ).toHaveLength(5);
+      }
+      for (const team of teams) {
+        expect(
+          data.filter((match: any) => match.homeTeamId === team.id),
+        ).toHaveLength(9);
+        expect(
+          data.filter((match: any) => match.awayTeamId === team.id),
+        ).toHaveLength(9);
+      }
+    });
+
+    it('should reject schedule generation until exactly 10 teams are approved', async () => {
+      const teams = Array.from({ length: 9 }, (_, index) => ({
+        id: `t${index + 1}`,
+        name: `Team ${index + 1}`,
+        stadiumId: `s${index + 1}`,
+      }));
+
+      jest
+        .spyOn(prisma.season, 'findFirst')
+        .mockResolvedValue({ id: 'season-1', name: 'V.League 2024' } as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(teams.map((team) => ({ team })) as any);
+
+      await expect(service.generate()).rejects.toThrow(
+        'Cần đúng 10 đội đã được duyệt',
+      );
+      expect(prisma.match.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.match.createMany).not.toHaveBeenCalled();
     });
   });
 
