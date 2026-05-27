@@ -42,9 +42,18 @@ describe('StadiumsPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders title', async () => {
-    renderPage();
+    const { container } = renderPage();
     await waitFor(() => {
       expect(screen.getByText('stadiums.title')).toBeInTheDocument();
+      expect(container.querySelector('.page-hero')).toBeInTheDocument();
+    });
+  });
+
+  it('summarizes stadium inventory in the hero metrics', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('65.000')).toBeInTheDocument();
     });
   });
 

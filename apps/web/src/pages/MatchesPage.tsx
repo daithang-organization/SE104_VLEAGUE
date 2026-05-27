@@ -1,9 +1,11 @@
 ﻿import {
   EditOutlined,
   EyeOutlined,
+  FieldTimeOutlined,
   LeftOutlined,
   PlusOutlined,
   RightOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -27,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { EventFormRow } from '../components';
-import { EventModal, ScoreEditModal } from '../components';
+import { EventModal, PageHero, ScoreEditModal } from '../components';
 import {
   apiAddMatchEvent,
   apiGetMatch,
@@ -433,6 +435,9 @@ export default function MatchesPage() {
       ),
     },
   ];
+  const finishedMatches = matches.filter((match) => match.status === 'FINISHED').length;
+  const openMatches = matches.length - finishedMatches;
+
   const renderEventTimeline = (events: MatchEvent[]) => {
     if (!events || events.length === 0) {
       return <Typography.Text type="secondary">{t('matches.noEvents')}</Typography.Text>;
@@ -461,107 +466,127 @@ export default function MatchesPage() {
   };
 
   return (
-    <Card>
-      <Flex
-        justify="space-between"
-        align="center"
-        style={{ marginBottom: 16 }}
-        wrap="wrap"
-        gap={12}
-      >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('matches.title')}
-        </Typography.Title>
-        <Space wrap>
-          <Input.Search
-            placeholder={t('matches.searchPlaceholder')}
-            allowClear
-            onSearch={onSearch}
-            style={{ width: 220 }}
-            loading={loading}
-          />
-          <Select
-            value={selectedSeasonId}
-            onChange={onSeasonChange}
-            style={{ width: 200 }}
-            placeholder={t('matches.seasonPlaceholder')}
-            allowClear
-            options={seasons.map((s) => ({
-              value: s.id,
-              label: `${s.name} (${s.year}/${s.year + 1})`,
-            }))}
-          />
-          <Select
-            value={filterStatus}
-            onChange={onStatusChange}
-            style={{ width: 140 }}
-            placeholder={t('matches.statusPlaceholder')}
-            allowClear
-            options={Object.entries(STATUS_MAP).map(([value, { label }]) => ({
-              value,
-              label,
-            }))}
-          />
-          <Select
-            value={filterTeam}
-            onChange={onTeamChange}
-            style={{ width: 180 }}
-            placeholder={t('matches.teamFilterPlaceholder')}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={availableTeams}
-          />
-        </Space>
-      </Flex>
+    <div className="page-stack">
+      <PageHero
+        variant="compact"
+        eyebrow={t('menu.matches')}
+        title={t('matches.title')}
+        icon={<FieldTimeOutlined />}
+        metrics={[
+          {
+            label: t('common.total'),
+            value: matches.length.toLocaleString('vi-VN'),
+            icon: <TrophyOutlined />,
+          },
+          {
+            label: STATUS_MAP.FINISHED.label,
+            value: finishedMatches.toLocaleString('vi-VN'),
+            icon: <FieldTimeOutlined />,
+          },
+          {
+            label: t('matches.statusPlaceholder'),
+            value: openMatches.toLocaleString('vi-VN'),
+            icon: <FieldTimeOutlined />,
+          },
+        ]}
+        actions={
+          <Space wrap>
+            <Input.Search
+              placeholder={t('matches.searchPlaceholder')}
+              allowClear
+              onSearch={onSearch}
+              style={{ width: 220 }}
+              loading={loading}
+            />
+            <Select
+              value={selectedSeasonId}
+              onChange={onSeasonChange}
+              style={{ width: 200 }}
+              placeholder={t('matches.seasonPlaceholder')}
+              allowClear
+              options={seasons.map((s) => ({
+                value: s.id,
+                label: `${s.name} (${s.year}/${s.year + 1})`,
+              }))}
+            />
+            <Select
+              value={filterStatus}
+              onChange={onStatusChange}
+              style={{ width: 140 }}
+              placeholder={t('matches.statusPlaceholder')}
+              allowClear
+              options={Object.entries(STATUS_MAP).map(([value, { label }]) => ({
+                value,
+                label,
+              }))}
+            />
+            <Select
+              value={filterTeam}
+              onChange={onTeamChange}
+              style={{ width: 180 }}
+              placeholder={t('matches.teamFilterPlaceholder')}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={availableTeams}
+            />
+          </Space>
+        }
+      />
 
-      {loading && matches.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>{t('common.loading')}</div>
-      ) : roundGroups.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-          {searchText ? t('matches.noSearchResult', { query: searchText }) : t('matches.noMatches')}
-        </div>
-      ) : (
-        <div>
-          <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
-            <Button
-              shape="circle"
-              size="large"
-              icon={<LeftOutlined />}
-              disabled={activeRoundIndex <= 0}
-              onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
+      <Card>
+        {loading && matches.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+            {t('common.loading')}
+          </div>
+        ) : roundGroups.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+            {searchText
+              ? t('matches.noSearchResult', { query: searchText })
+              : t('matches.noMatches')}
+          </div>
+        ) : (
+          <div>
+            <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
+              <Button
+                shape="circle"
+                size="large"
+                icon={<LeftOutlined />}
+                disabled={activeRoundIndex <= 0}
+                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
+              />
+              <div style={{ minWidth: 240, textAlign: 'center' }}>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  {activeRound
+                    ? t('matches.roundLabel', { round: activeRound[0] })
+                    : t('matches.title')}
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  {activeRound
+                    ? `${activeRoundMatches.length} trận${
+                        activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
+                      } · ${activeRoundFinishedCount}/${activeRoundMatches.length} kết thúc`
+                    : ''}
+                </Typography.Text>
+              </div>
+              <Button
+                shape="circle"
+                size="large"
+                icon={<RightOutlined />}
+                disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
+                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
+              />
+            </Flex>
+            <Table
+              columns={roundColumns}
+              dataSource={activeRoundMatches}
+              rowKey="id"
+              pagination={false}
+              size="small"
             />
-            <div style={{ minWidth: 240, textAlign: 'center' }}>
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                {activeRound
-                  ? t('matches.roundLabel', { round: activeRound[0] })
-                  : t('matches.title')}
-              </Typography.Title>
-              <Typography.Text type="secondary">
-                {activeRound
-                  ? `${activeRoundMatches.length} trận${
-                      activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                    } · ${activeRoundFinishedCount}/${activeRoundMatches.length} kết thúc`
-                  : ''}
-              </Typography.Text>
-            </div>
-            <Button
-              shape="circle"
-              size="large"
-              icon={<RightOutlined />}
-              disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
-              onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
-            />
-          </Flex>
-          <Table
-            columns={roundColumns}
-            dataSource={activeRoundMatches}
-            rowKey="id"
-            pagination={false}
-            size="small"
-          />
-        </div>
-      )}
+          </div>
+        )}
+      </Card>
 
       {/* Match Detail Modal */}
       <Modal
@@ -848,6 +873,6 @@ export default function MatchesPage() {
           rosterLoading={rosterLoading}
         />
       )}
-    </Card>
+    </div>
   );
 }

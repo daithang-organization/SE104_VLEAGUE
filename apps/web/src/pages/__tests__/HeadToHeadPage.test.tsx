@@ -32,8 +32,9 @@ describe('HeadToHeadPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('headToHead.title')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
   it('renders team selectors', () => {

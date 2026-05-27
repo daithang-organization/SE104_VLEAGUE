@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
 const mockPdfExport = vi.hoisted(() => {
+  let pageSize = { width: 595, height: 842 };
   const doc = {
     addImage: vi.fn(),
     addPage: vi.fn(),
@@ -11,8 +12,8 @@ const mockPdfExport = vi.hoisted(() => {
     text: vi.fn(),
     internal: {
       pageSize: {
-        getWidth: () => 595,
-        getHeight: () => 842,
+        getWidth: () => pageSize.width,
+        getHeight: () => pageSize.height,
       },
     },
   };
@@ -20,7 +21,11 @@ const mockPdfExport = vi.hoisted(() => {
   return {
     autoTable: vi.fn(),
     doc,
-    jsPDF: vi.fn(function jsPDF() {
+    jsPDF: vi.fn(function jsPDF(options?: { orientation?: string }) {
+      pageSize =
+        options?.orientation === 'landscape'
+          ? { width: 842, height: 595 }
+          : { width: 595, height: 842 };
       return doc;
     }),
   };
@@ -80,6 +85,17 @@ const mockStandingsApi = vi.hoisted(() => ({
       goalDifference: 15,
       points: 25,
     },
+    {
+      teamName: 'MerryLand Quy Nhơn Bình Định',
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDifference: 0,
+      points: 0,
+    },
   ]),
 }));
 
@@ -120,8 +136,17 @@ describe('ReportsPage', () => {
   });
 
   it('renders title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('reports.title')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
+  });
+
+  it('shows loaded report counts in the hero metrics', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
   });
 
   it('fetches all data on mount', async () => {
@@ -169,5 +194,32 @@ describe('ReportsPage', () => {
         'Bình Dương',
       ]),
     );
+  });
+
+  it('uses landscape layout and keeps team-stat text inside the page', async () => {
+    renderPage();
+
+    const button = screen.getByRole('button', { name: /reports.exportTeamStatsPdf/ });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+
+    await waitFor(() => expect(mockPdfExport.doc.addImage).toHaveBeenCalled());
+
+    expect(mockPdfExport.jsPDF).toHaveBeenCalledWith(
+      expect.objectContaining({ format: 'a4', orientation: 'landscape', unit: 'pt' }),
+    );
+
+    const titleCall = mockCanvas.context.fillText.mock.calls.find(
+      ([text]) => text === 'VLeague - Thống kê đội bóng',
+    );
+    expect(titleCall?.[3]).toBeLessThanOrEqual(762);
+
+    const teamNameCall = mockCanvas.context.fillText.mock.calls.find(
+      ([text]) => text === 'Hà Nội FC',
+    );
+    expect(teamNameCall?.[1]).toBeLessThanOrEqual(48);
+
+    const firstColumnWidth = mockCanvas.context.strokeRect.mock.calls[0]?.[2];
+    expect(firstColumnWidth).toBeGreaterThanOrEqual(180);
   });
 });

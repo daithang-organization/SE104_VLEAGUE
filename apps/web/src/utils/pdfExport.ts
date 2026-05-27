@@ -20,6 +20,22 @@ type ColumnLayout = {
   width: number;
 };
 
+function getColumnAlign(headers: string[], rows: string[][], columnIndex: number): CanvasTextAlign {
+  if (headers[columnIndex] === '#') {
+    return 'center';
+  }
+
+  return isNumericColumn(rows, columnIndex) ? 'right' : 'left';
+}
+
+function getColumnExpansionWeight(headers: string[], rows: string[][], columnIndex: number) {
+  if (headers[columnIndex] === '#') {
+    return 0.15;
+  }
+
+  return isNumericColumn(rows, columnIndex) ? 0.25 : 2;
+}
+
 function setFont(
   context: CanvasRenderingContext2D,
   size: number,
@@ -50,13 +66,13 @@ function createPage(pageWidth: number, pageHeight: number): Page {
   return { canvas, context, cursorY: PAGE_MARGIN };
 }
 
-function drawReportHeader(page: Page, title: string, pageNumber: number) {
+function drawReportHeader(page: Page, title: string, pageNumber: number, maxWidth: number) {
   const { context } = page;
   const renderedTitle = pageNumber === 1 ? title : `${title} (tiếp)`;
 
   context.fillStyle = '#111827';
   setFont(context, TITLE_SIZE, '700');
-  context.fillText(renderedTitle, PAGE_MARGIN, page.cursorY + 8);
+  context.fillText(renderedTitle, PAGE_MARGIN, page.cursorY + 8, maxWidth);
 
   context.fillStyle = '#4b5563';
   setFont(context, META_SIZE);
@@ -107,14 +123,17 @@ function measureColumnLayouts(
       overflow = totalWidth - tableWidth;
     }
   } else if (totalWidth < tableWidth) {
-    const extra = (tableWidth - totalWidth) / widths.length;
+    const extra = tableWidth - totalWidth;
+    const weights = headers.map((_, index) => getColumnExpansionWeight(headers, rows, index));
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
     widths.forEach((_, index) => {
-      widths[index] += extra;
+      widths[index] += extra * (weights[index] / totalWeight);
     });
   }
 
   return widths.map((width, index) => ({
-    align: index === 0 ? 'center' : isNumericColumn(rows, index) ? 'right' : 'left',
+    align: getColumnAlign(headers, rows, index),
     width,
   }));
 }
@@ -274,14 +293,14 @@ function toPdfFilename(title: string) {
 
 export async function exportPdf(title: string, headers: string[], rows: string[][]) {
   const { default: jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ format: 'a4', unit: 'pt' });
+  const doc = new jsPDF({ format: 'a4', orientation: 'landscape', unit: 'pt' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableWidth = pageWidth - PAGE_MARGIN * 2;
   let pageNumber = 1;
   let page = createPage(pageWidth, pageHeight);
 
-  drawReportHeader(page, title, pageNumber);
+  drawReportHeader(page, title, pageNumber, tableWidth);
   const columns = measureColumnLayouts(page.context, headers, rows, tableWidth);
   drawTableHeader(page, headers, columns, tableWidth);
 
@@ -293,10 +312,10 @@ export async function exportPdf(title: string, headers: string[], rows: string[]
     const rowHeight = getRowHeight(page.context, row, columns);
     if (page.cursorY + rowHeight > pageHeight - PAGE_MARGIN) {
       flushPage();
-      doc.addPage();
+      doc.addPage('a4', 'landscape');
       pageNumber += 1;
       page = createPage(pageWidth, pageHeight);
-      drawReportHeader(page, title, pageNumber);
+      drawReportHeader(page, title, pageNumber, tableWidth);
       drawTableHeader(page, headers, columns, tableWidth);
     }
 

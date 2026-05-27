@@ -1,4 +1,12 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  BankOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EnvironmentOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -12,7 +20,6 @@ import {
   Row,
   Space,
   Table,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { TableSkeleton } from '../components';
+import { PageHero } from '../components/PageHero';
 import {
   apiCreateStadium,
   apiDeleteStadium,
@@ -122,6 +130,50 @@ export default function StadiumsPage() {
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.city.toLowerCase().includes(search.toLowerCase()),
   );
+  const totalCapacity = stadiums.reduce((sum, stadium) => sum + (stadium.capacity ?? 0), 0);
+  const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
+  const hero = (
+    <PageHero
+      eyebrow={t('menu.stadiums')}
+      title={t('stadiums.title')}
+      description={t('stadiums.searchPlaceholder')}
+      icon={<BankOutlined />}
+      metrics={[
+        {
+          label: t('menu.stadiums'),
+          value: stadiums.length.toLocaleString('vi-VN'),
+          icon: <BankOutlined />,
+        },
+        {
+          label: t('stadiumDetail.statCapacity'),
+          value: totalCapacity.toLocaleString('vi-VN'),
+          icon: <TeamOutlined />,
+        },
+        {
+          label: t('stadiums.colCity'),
+          value: cityCount.toLocaleString('vi-VN'),
+          icon: <EnvironmentOutlined />,
+        },
+      ]}
+      actions={
+        <Space wrap>
+          <Input
+            placeholder={t('stadiums.searchPlaceholder')}
+            prefix={<SearchOutlined />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 250 }}
+            allowClear
+          />
+          {isAdmin && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              {t('stadiums.addBtn')}
+            </Button>
+          )}
+        </Space>
+      }
+    />
+  );
 
   const columns: ColumnsType<Stadium> = [
     {
@@ -188,50 +240,30 @@ export default function StadiumsPage() {
 
   if (initialLoad) {
     return (
-      <Card>
-        <TableSkeleton rows={8} />
-      </Card>
+      <div className="page-stack">
+        {hero}
+        <Card>
+          <TableSkeleton rows={8} />
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-      >
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('stadiums.title')}
-        </Typography.Title>
-        <Space>
-          <Input
-            placeholder={t('stadiums.searchPlaceholder')}
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 250 }}
-            allowClear
+    <>
+      <div className="page-stack">
+        {hero}
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={filtered}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 15, showSizeChanger: true }}
+            size="middle"
           />
-          {isAdmin && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              {t('stadiums.addBtn')}
-            </Button>
-          )}
-        </Space>
+        </Card>
       </div>
-
-      <Table
-        columns={columns}
-        dataSource={filtered}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 15, showSizeChanger: true }}
-        size="middle"
-      />
 
       <Modal
         title={editing ? t('stadiums.modalEditTitle') : t('stadiums.modalCreateTitle')}
@@ -280,6 +312,6 @@ export default function StadiumsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

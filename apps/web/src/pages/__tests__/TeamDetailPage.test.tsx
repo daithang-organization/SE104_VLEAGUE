@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -53,5 +53,17 @@ describe('TeamDetailPage', () => {
     const hero = logo.closest('.club-detail-hero');
 
     expect(hero?.getAttribute('style')).toContain('--club-accent: #f5c542');
+  });
+
+  it('renders the short name as a low badge near the club facts', async () => {
+    renderPage();
+
+    const logo = await screen.findByRole('img', { name: 'Công An Hà Nội' });
+    const hero = logo.closest('.club-detail-hero');
+    const code = within(hero as HTMLElement).getByText('CAHN');
+
+    expect(code).toHaveClass('club-detail-code-pill');
+    expect(code).not.toHaveClass('club-detail-eyebrow');
+    expect(code.closest('.club-detail-facts')).not.toBeNull();
   });
 });

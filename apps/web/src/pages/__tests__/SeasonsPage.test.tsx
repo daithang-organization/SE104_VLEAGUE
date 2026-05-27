@@ -68,8 +68,17 @@ describe('SeasonsPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the page title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getAllByText(/Quản lý mùa giải/)[0]).toBeInTheDocument();
+    expect(container.querySelector('.page-hero')).toBeInTheDocument();
+  });
+
+  it('summarizes season states in the hero metrics', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Đang diễn ra')).toBeInTheDocument();
+    });
   });
 
   it('calls apiGetSeasons on mount', async () => {

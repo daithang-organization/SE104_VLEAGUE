@@ -1,11 +1,11 @@
-import { CrownOutlined } from '@ant-design/icons';
-import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
+import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Card, Empty, Flex, message, Select, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { TableSkeleton } from '../components';
+import { PageHero, TableSkeleton } from '../components';
 import ExportButton from '../components/ExportButton';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
@@ -237,9 +237,14 @@ export default function StandingsPage() {
     if (record.teamId === managerTeamId) classes.push('standings-manager-team');
     return classes.join(' ');
   };
+  const standingsTitle = t('standings.title')
+    .replace(/^[^\p{L}\p{N}]+/u, '')
+    .trim();
+  const totalPlayed = standings.reduce((sum, standing) => sum + standing.played, 0);
+  const leaderPoints = standings[0]?.points ?? 0;
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <div className="page-stack">
       {/* Inline styles for row highlighting */}
       <style>{`
         .standings-rank-cell {
@@ -284,60 +289,70 @@ export default function StandingsPage() {
         }
       `}</style>
 
+      <PageHero
+        variant="compact"
+        eyebrow={t('menu.standings')}
+        title={standingsTitle}
+        icon={<TrophyOutlined />}
+        metrics={[
+          {
+            label: t('standings.colTeam'),
+            value: totalTeams.toLocaleString('vi-VN'),
+            icon: <TrophyOutlined />,
+          },
+          {
+            label: t('standings.colPlayed'),
+            value: totalPlayed.toLocaleString('vi-VN'),
+            icon: <TrophyOutlined />,
+          },
+          {
+            label: t('standings.colPoints'),
+            value: leaderPoints.toLocaleString('vi-VN'),
+            icon: <CrownOutlined />,
+          },
+        ]}
+        actions={
+          <>
+            <ExportButton
+              columns={[
+                { title: t('standings.colRank'), key: 'position' },
+                { title: t('standings.colTeam'), key: 'teamName' },
+                { title: t('standings.colPlayed'), key: 'played' },
+                { title: t('standings.colWon'), key: 'won' },
+                { title: t('standings.colDrawn'), key: 'drawn' },
+                { title: t('standings.colLost'), key: 'lost' },
+                { title: t('standings.colGoalsFor'), key: 'goalsFor' },
+                { title: t('standings.colGoalsAgainst'), key: 'goalsAgainst' },
+                { title: t('standings.colGoalDiff'), key: 'goalDifference' },
+                { title: t('standings.colPoints'), key: 'points' },
+                { title: t('standings.colLast5'), key: 'recentForm' },
+              ]}
+              dataSource={standings as unknown as Record<string, unknown>[]}
+              filename="bang-xep-hang"
+            />
+            <Select
+              placeholder={t('standings.seasonPlaceholder')}
+              value={selectedSeason}
+              onChange={handleSeasonChange}
+              style={{ width: 200 }}
+              allowClear
+            >
+              {seasons.map((s) => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </>
+        }
+      />
+
       {loading && standings.length === 0 ? (
         <Card>
-          <Typography.Title level={4} style={{ margin: '0 0 16px' }}>
-            {t('standings.title')}
-          </Typography.Title>
           <TableSkeleton />
         </Card>
       ) : (
         <Card>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 16,
-            }}
-          >
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {t('standings.title')}
-            </Typography.Title>
-            <Space>
-              <ExportButton
-                columns={[
-                  { title: t('standings.colRank'), key: 'position' },
-                  { title: t('standings.colTeam'), key: 'teamName' },
-                  { title: t('standings.colPlayed'), key: 'played' },
-                  { title: t('standings.colWon'), key: 'won' },
-                  { title: t('standings.colDrawn'), key: 'drawn' },
-                  { title: t('standings.colLost'), key: 'lost' },
-                  { title: t('standings.colGoalsFor'), key: 'goalsFor' },
-                  { title: t('standings.colGoalsAgainst'), key: 'goalsAgainst' },
-                  { title: t('standings.colGoalDiff'), key: 'goalDifference' },
-                  { title: t('standings.colPoints'), key: 'points' },
-                  { title: t('standings.colLast5'), key: 'recentForm' },
-                ]}
-                dataSource={standings as unknown as Record<string, unknown>[]}
-                filename="bang-xep-hang"
-              />
-              <Select
-                placeholder={t('standings.seasonPlaceholder')}
-                value={selectedSeason}
-                onChange={handleSeasonChange}
-                style={{ width: 200 }}
-                allowClear
-              >
-                {seasons.map((s) => (
-                  <Select.Option key={s.id} value={s.id}>
-                    {s.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Space>
-          </div>
-
           <Table
             columns={standingsColumns}
             dataSource={standings}
@@ -424,6 +439,6 @@ export default function StandingsPage() {
           }}
         />
       </Card>
-    </Space>
+    </div>
   );
 }

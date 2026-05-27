@@ -78,8 +78,9 @@ describe('MatchesPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the page title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getAllByText(/Kết quả trận đấu/)[0]).toBeInTheDocument();
+    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
   });
 
   it('calls apiGetSeasons on mount', async () => {

@@ -6,10 +6,11 @@ import {
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Flex, message, Space, Tabs, Typography } from 'antd';
+import { Alert, Button, Card, message, Space, Tabs } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton } from '../components';
+import { PageHero } from '../components/PageHero';
 import {
   apiGetCardStats,
   apiGetTeamStats,
@@ -135,80 +136,108 @@ export default function ReportsPage() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
 
-  return (
-    <Card>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-        <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
-          {t('reports.title')}
-        </Typography.Title>
-        <Space>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportScorersPdf}
-            disabled={scorers.length === 0}
-          >
-            {t('reports.exportScorersPdf')}
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportAssistsPdf}
-            disabled={assists.length === 0}
-          >
-            {t('reports.exportAssistsPdf')}
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportTeamStatsPdf}
-            disabled={teamStats.length === 0}
-          >
-            {t('reports.exportTeamStatsPdf')}
-          </Button>
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportCardStatsPdf}
-            disabled={cardStats.length === 0}
-          >
-            {t('reports.exportCardStatsPdf')}
-          </Button>
-        </Space>
-      </Flex>
+  const exportActions = (
+    <Space wrap>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportScorersPdf}
+        disabled={scorers.length === 0}
+      >
+        {t('reports.exportScorersPdf')}
+      </Button>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportAssistsPdf}
+        disabled={assists.length === 0}
+      >
+        {t('reports.exportAssistsPdf')}
+      </Button>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportTeamStatsPdf}
+        disabled={teamStats.length === 0}
+      >
+        {t('reports.exportTeamStatsPdf')}
+      </Button>
+      <Button
+        icon={<DownloadOutlined />}
+        onClick={handleExportCardStatsPdf}
+        disabled={cardStats.length === 0}
+      >
+        {t('reports.exportCardStatsPdf')}
+      </Button>
+    </Space>
+  );
 
-      {loading ? (
-        <TableSkeleton />
-      ) : (
-        <Tabs
-          defaultActiveKey="scorers"
-          items={[
-            {
-              key: 'scorers',
-              label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
-              children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
-            },
-            {
-              key: 'assists',
-              label: reportTabLabel(<RiseOutlined />, t('reports.tabAssists')),
-              children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
-            },
-            {
-              key: 'cards',
-              label: reportTabLabel(<WarningOutlined />, t('reports.tabCards')),
-              children: <CardStatsTab data={cardStats} loading={loading} />,
-            },
-            {
-              key: 'team-stats',
-              label: reportTabLabel(<TeamOutlined />, t('reports.tabTeamStats')),
-              children: <TeamStatsTab data={teamStats} loading={loading} />,
-            },
-            {
-              key: 'charts',
-              label: reportTabLabel(<BarChartOutlined />, t('reports.tabCharts')),
-              children: (
-                <ChartsTab scorers={scorers.slice(0, 10)} teamStats={teamStats} loading={loading} />
-              ),
-            },
-          ]}
-        />
-      )}
-    </Card>
+  return (
+    <div className="page-stack">
+      <PageHero
+        variant="compact"
+        eyebrow={t('menu.reports')}
+        title={t('reports.title')}
+        icon={<BarChartOutlined />}
+        metrics={[
+          {
+            label: cleanTabLabel(t('reports.tabScorers')),
+            value: scorers.length.toLocaleString('vi-VN'),
+            icon: <TrophyOutlined />,
+          },
+          {
+            label: cleanTabLabel(t('reports.tabAssists')),
+            value: assists.length.toLocaleString('vi-VN'),
+            icon: <RiseOutlined />,
+          },
+          {
+            label: cleanTabLabel(t('reports.tabTeamStats')),
+            value: teamStats.length.toLocaleString('vi-VN'),
+            icon: <TeamOutlined />,
+          },
+        ]}
+        actions={exportActions}
+      />
+
+      <Card>
+        {loading ? (
+          <TableSkeleton />
+        ) : (
+          <Tabs
+            defaultActiveKey="scorers"
+            items={[
+              {
+                key: 'scorers',
+                label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
+                children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
+              },
+              {
+                key: 'assists',
+                label: reportTabLabel(<RiseOutlined />, t('reports.tabAssists')),
+                children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
+              },
+              {
+                key: 'cards',
+                label: reportTabLabel(<WarningOutlined />, t('reports.tabCards')),
+                children: <CardStatsTab data={cardStats} loading={loading} />,
+              },
+              {
+                key: 'team-stats',
+                label: reportTabLabel(<TeamOutlined />, t('reports.tabTeamStats')),
+                children: <TeamStatsTab data={teamStats} loading={loading} />,
+              },
+              {
+                key: 'charts',
+                label: reportTabLabel(<BarChartOutlined />, t('reports.tabCharts')),
+                children: (
+                  <ChartsTab
+                    scorers={scorers.slice(0, 10)}
+                    teamStats={teamStats}
+                    loading={loading}
+                  />
+                ),
+              },
+            ]}
+          />
+        )}
+      </Card>
+    </div>
   );
 }

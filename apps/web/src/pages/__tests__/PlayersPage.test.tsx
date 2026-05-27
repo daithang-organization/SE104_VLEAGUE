@@ -26,7 +26,7 @@ const mockPlayerApi = vi.hoisted(() => ({
         heightCm: 168,
         weightKg: 65,
         birthPlace: 'Hà Nội',
-        teamPlayers: [{ team: { id: 't1', name: 'Hà Nội FC', shortName: 'HN', logoUrl: null } }],
+        roster: [{ team: { id: 't1', name: 'Hà Nội FC', shortName: 'HN', logoUrl: null } }],
       },
       {
         id: 'p2',
@@ -38,7 +38,7 @@ const mockPlayerApi = vi.hoisted(() => ({
         heightCm: 180,
         weightKg: 78,
         birthPlace: null,
-        teamPlayers: [],
+        roster: [],
       },
     ],
     total: 2,
@@ -75,8 +75,9 @@ describe('PlayersPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the page title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('Quản lý cầu thủ')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
   it('calls apiGetPlayers on mount', async () => {
@@ -116,6 +117,24 @@ describe('PlayersPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Tiền vệ')).toBeInTheDocument();
       expect(screen.getByText('Tiền đạo')).toBeInTheDocument();
+    });
+  });
+
+  it('renders club logos in the club column', async () => {
+    renderPage();
+
+    const logo = await screen.findByRole('img', { name: 'Hà Nội FC logo' });
+
+    expect(logo).toHaveAttribute('src', '/team-logos/Logo_H%C3%A0_N%E1%BB%99i_FC.png');
+    expect(logo).toHaveClass('player-club-logo');
+    expect(logo.closest('.player-club-cell')).toHaveTextContent('HN');
+  });
+
+  it('summarizes player counts in the hero metrics', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Ngoại binh')).toBeInTheDocument();
     });
   });
 });

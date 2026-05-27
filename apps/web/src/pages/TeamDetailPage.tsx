@@ -315,13 +315,11 @@ export default function TeamDetailPage() {
             )}
           </div>
           <div className="club-detail-copy">
-            <Typography.Text className="club-detail-eyebrow">
-              {team.shortName ?? 'V.League Club'}
-            </Typography.Text>
             <Title level={1} className="club-detail-title">
               {team.name}
             </Title>
             <div className="club-detail-facts">
+              {team.shortName && <span className="club-detail-code-pill">{team.shortName}</span>}
               <span>{team.city ?? 'Chưa cập nhật thành phố'}</span>
               <span>{team.stadium?.name ?? t('teamDetail.stadiumEmpty')}</span>
             </div>

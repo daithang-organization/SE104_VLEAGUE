@@ -89,6 +89,185 @@ select {
   border-right-color: var(--primary-hover);
 }
 
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.page-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, auto);
+  gap: 24px;
+  align-items: end;
+  min-height: 168px;
+  padding: 26px 28px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(227, 34, 33, 0.15), rgba(37, 99, 235, 0.08)), var(--surface);
+  color: var(--text-main);
+}
+
+.page-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      48deg,
+      transparent 0%,
+      transparent 55%,
+      rgba(255, 255, 255, 0.06) 55%,
+      rgba(255, 255, 255, 0.06) 64%,
+      transparent 64%
+    ),
+    linear-gradient(
+      48deg,
+      transparent 0%,
+      transparent 72%,
+      rgba(255, 255, 255, 0.04) 72%,
+      rgba(255, 255, 255, 0.04) 80%,
+      transparent 80%
+    );
+}
+
+.page-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.page-hero-main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.page-hero-icon {
+  display: grid;
+  flex: 0 0 56px;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(227, 34, 33, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(37, 99, 235, 0.08)), var(--surface-soft);
+  color: var(--primary);
+  font-size: 28px;
+}
+
+.page-hero-copy {
+  min-width: 0;
+}
+
+.page-hero-eyebrow.ant-typography {
+  display: block;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.page-hero-title.ant-typography {
+  margin: 2px 0 8px;
+  color: var(--text-main);
+  line-height: 1.08;
+}
+
+.page-hero-description.ant-typography {
+  max-width: 660px;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.page-hero-side {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.page-hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(92px, 1fr));
+  gap: 10px;
+  min-width: min(410px, 100%);
+}
+
+.page-hero-metric {
+  display: grid;
+  gap: 6px;
+  min-height: 76px;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.page-hero-metric strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 26px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-hero-metric-label.ant-typography {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.page-hero-metric-icon {
+  color: var(--info);
+  font-size: 15px;
+}
+
+.page-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.page-hero-compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 126px;
+  padding: 20px 22px;
+}
+
+.page-hero-compact .page-hero-icon {
+  flex-basis: 46px;
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+}
+
+.page-hero-compact .page-hero-title.ant-typography {
+  margin-bottom: 4px;
+}
+
+.page-hero-compact .page-hero-metrics {
+  grid-template-columns: repeat(3, minmax(82px, 1fr));
+  min-width: min(360px, 100%);
+}
+
+.page-hero-compact .page-hero-metric {
+  min-height: 64px;
+  padding: 11px 12px;
+}
+
+.page-hero-compact .page-hero-metric strong {
+  font-size: 22px;
+}
+
 .clubs-page,
 .club-detail-page {
   color: var(--text-main);
@@ -437,12 +616,28 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 18px;
+  align-items: center;
   color: var(--text-muted);
   font-size: 15px;
 }
 
 .club-detail-facts span {
   min-width: 0;
+}
+
+.club-detail-code-pill {
+  max-width: 100%;
+  padding: 4px 10px;
+  overflow: hidden;
+  border: 1px solid var(--club-border, var(--border));
+  border-radius: 999px;
+  background: var(--club-secondary, rgba(255, 255, 255, 0.08));
+  color: var(--club-accent, var(--primary));
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .club-detail-stat-strip {
@@ -639,6 +834,192 @@ select {
   flex-basis: 20px;
 }
 
+.player-club-cell {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.player-club-logo {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  object-fit: contain;
+}
+
+.player-club-logo-fallback {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.player-club-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-fixture-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 4px 0 6px;
+}
+
+.schedule-fixture-day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-fixture-date.ant-typography {
+  margin: 0 0 4px;
+  color: var(--text-main);
+}
+
+.schedule-fixture-day-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-fixture-row {
+  display: grid;
+  grid-template-columns:
+    minmax(104px, 150px) minmax(180px, 1fr) 116px minmax(180px, 1fr)
+    minmax(190px, 260px) 42px;
+  gap: 16px;
+  align-items: center;
+  min-height: 66px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-fixture-row:last-child {
+  border-bottom: 0;
+}
+
+.schedule-fixture-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.schedule-fixture-round {
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.schedule-fixture-team,
+.schedule-fixture-score {
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+}
+
+.schedule-fixture-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.schedule-fixture-team span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-fixture-team-left {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.schedule-fixture-team-right {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.schedule-match-logo {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  object-fit: contain;
+}
+
+.schedule-match-logo-fallback {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.schedule-fixture-score {
+  min-width: 92px;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 7px;
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.schedule-fixture-score.is-final {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.schedule-fixture-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.schedule-fixture-detail span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-fixture-detail .anticon {
+  color: var(--info);
+}
+
+.schedule-fixture-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .team-fixture-score {
   min-width: 72px;
   height: 38px;
@@ -697,6 +1078,21 @@ select {
 }
 
 @media (max-width: 900px) {
+  .page-hero,
+  .page-hero-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .page-hero-metrics,
+  .page-hero-compact .page-hero-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .page-hero-actions {
+    justify-content: flex-start;
+  }
+
   .clubs-hero-panel {
     grid-template-columns: 1fr;
   }
@@ -715,12 +1111,59 @@ select {
     gap: 10px;
   }
 
+  .schedule-fixture-row {
+    grid-template-columns: minmax(0, 1fr) 78px minmax(0, 1fr) 42px;
+    gap: 10px;
+  }
+
+  .schedule-fixture-meta {
+    grid-column: 1 / -1;
+  }
+
+  .schedule-fixture-detail {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+
+  .schedule-fixture-action {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
   .team-fixture-meta {
     grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 560px) {
+  .page-hero,
+  .page-hero-compact {
+    padding: 20px 16px;
+  }
+
+  .page-hero-main {
+    gap: 12px;
+  }
+
+  .page-hero-icon,
+  .page-hero-compact .page-hero-icon {
+    flex-basis: 42px;
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .page-hero-title.ant-typography {
+    font-size: 26px;
+  }
+
+  .page-hero-metrics,
+  .page-hero-compact .page-hero-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .clubs-hero-panel,
   .club-detail-hero {
     padding: 20px 16px;
@@ -793,6 +1236,31 @@ select {
 
   .team-fixture-row {
     grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
+  }
+
+  .schedule-fixture-row {
+    grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr) 34px;
+  }
+
+  .schedule-fixture-team {
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .schedule-match-logo {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .schedule-fixture-score {
+    min-width: 58px;
+    height: 34px;
+    padding: 0 8px;
+  }
+
+  .schedule-fixture-detail {
+    font-size: 12px;
   }
 
   .team-fixture-team {

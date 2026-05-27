@@ -53,6 +53,22 @@ describe('LoginPage', () => {
     expect(screen.getByText('VLeague Admin')).toBeInTheDocument();
   });
 
+  it('renders the V.League management system introduction', () => {
+    renderPage();
+
+    expect(
+      screen.getByText('Hệ thống quản lý giải vô địch bóng đá quốc gia V.League'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Nền tảng điều hành tập trung cho mùa giải, câu lạc bộ, cầu thủ, lịch thi đấu, kết quả và báo cáo thống kê.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Điều hành giải đấu')).toBeInTheDocument();
+    expect(screen.getByText('Dữ liệu đội bóng')).toBeInTheDocument();
+    expect(screen.getByText('Báo cáo thống kê')).toBeInTheDocument();
+  });
+
   it('renders email and password fields', () => {
     renderPage();
     expect(screen.getByPlaceholderText('admin@vleague.local')).toBeInTheDocument();

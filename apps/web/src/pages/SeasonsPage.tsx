@@ -30,6 +30,7 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { PageHero } from '../components';
 import {
   apiCreateSeason,
   apiDeleteSeason,
@@ -529,36 +530,65 @@ export default function SeasonsPage() {
         ]
       : []),
   ];
+  const inProgressCount = seasons.filter((season) => season.status === 'IN_PROGRESS').length;
+  const upcomingCount = seasons.filter((season) => season.status === 'UPCOMING').length;
 
   return (
-    <Card>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {t('seasons.title')}
-        </Typography.Title>
-        {isAdmin && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            {t('seasons.createBtn')}
-          </Button>
-        )}
-      </Flex>
+    <>
+      <div className="page-stack">
+        <PageHero
+          eyebrow={t('menu.seasons')}
+          title={t('seasons.title')}
+          description={t('seasons.teamPanelTitle', {
+            approved: inProgressCount,
+            total: seasons.length,
+          })}
+          icon={<CalendarOutlined />}
+          metrics={[
+            {
+              label: t('common.total'),
+              value: seasons.length.toLocaleString('vi-VN'),
+              icon: <CalendarOutlined />,
+            },
+            {
+              label: t('seasonStatus.IN_PROGRESS'),
+              value: inProgressCount.toLocaleString('vi-VN'),
+              icon: <CheckOutlined />,
+            },
+            {
+              label: t('seasonStatus.UPCOMING'),
+              value: upcomingCount.toLocaleString('vi-VN'),
+              icon: <TeamOutlined />,
+            },
+          ]}
+          actions={
+            isAdmin ? (
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                {t('seasons.createBtn')}
+              </Button>
+            ) : undefined
+          }
+        />
 
-      <Table
-        columns={columns}
-        dataSource={seasons}
-        rowKey="id"
-        loading={loading}
-        pagination={false}
-        size="middle"
-        expandable={
-          isAdmin
-            ? {
-                expandedRowRender: (record) => <SeasonTeamPanel seasonId={record.id} />,
-                expandRowByClick: false,
-              }
-            : undefined
-        }
-      />
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={seasons}
+            rowKey="id"
+            loading={loading}
+            pagination={false}
+            size="middle"
+            expandable={
+              isAdmin
+                ? {
+                    expandedRowRender: (record) => <SeasonTeamPanel seasonId={record.id} />,
+                    expandRowByClick: false,
+                  }
+                : undefined
+            }
+          />
+        </Card>
+      </div>
 
       {/* Create/Edit Modal */}
       <Modal
@@ -614,6 +644,6 @@ export default function SeasonsPage() {
           </Flex>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

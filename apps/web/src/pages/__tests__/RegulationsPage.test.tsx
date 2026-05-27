@@ -32,8 +32,9 @@ describe('RegulationsPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the page title', () => {
-    renderPage();
+    const { container } = renderPage();
     expect(screen.getByText('Quy định giải đấu')).toBeInTheDocument();
+    expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
   it('calls apiGetSeasons on mount', async () => {
