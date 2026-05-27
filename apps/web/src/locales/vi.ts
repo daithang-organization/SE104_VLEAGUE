@@ -846,6 +846,9 @@ const vi = {
     tabAssists: 'Top kiến tạo',
     tabCards: '🟨 Thẻ phạt',
     tabTeamStats: '📊 Thống kê đội',
+    tabPlayerOfMatch: '⭐ Cầu thủ xuất sắc trận',
+    tabSuspensions: '⛔ Treo giò',
+    tabAwards: '🏅 Giải thưởng',
     tabCharts: '📈 Biểu đồ',
   },
 
@@ -866,6 +869,13 @@ const vi = {
     empty: 'Chưa có dữ liệu kiến tạo',
   },
 
+  playerOfMatchTab: {
+    colRank: '#',
+    colPlayer: 'Cầu thủ',
+    colAwards: 'Số lần xuất sắc nhất',
+    empty: 'Chưa có dữ liệu cầu thủ xuất sắc trận',
+  },
+
   // ─── Card Stats Tab ───
   cardStatsTab: {
     colRank: '#',
@@ -879,6 +889,34 @@ const vi = {
     emptyYellow: 'Chưa có dữ liệu thẻ vàng',
     emptyRed: 'Chưa có dữ liệu thẻ đỏ',
     empty: 'Chưa có dữ liệu thẻ phạt',
+  },
+
+  suspensionsTab: {
+    colPlayer: 'Cầu thủ',
+    colTeam: 'Đội',
+    colReason: 'Lý do',
+    colStatus: 'Trạng thái',
+    colSourceRound: 'Vòng nhận thẻ',
+    colEffectiveRound: 'Vòng treo giò',
+    statusActive: 'Đang treo giò',
+    statusServed: 'Đã thi hành',
+    statusCancelled: 'Đã hủy',
+    empty: 'Chưa có cầu thủ bị treo giò',
+  },
+
+  seasonAwardsTab: {
+    colCategory: 'Hạng mục',
+    colWinner: 'Đội/Cầu thủ',
+    colDetail: 'Chi tiết',
+    champion: 'Vô địch',
+    runnerUp: 'Á quân',
+    topScorer: 'Vua phá lưới',
+    bestPlayer: 'Cầu thủ xuất sắc',
+    pointsDetail: '{{count}} điểm',
+    goalsDetail: '{{count}} bàn thắng',
+    awardsDetail: '{{count}} lần xuất sắc nhất trận',
+    drawLotWarning: 'BXH cuối mùa còn hạng mục cần rút thăm trước khi chốt giải.',
+    empty: 'Chưa có dữ liệu giải thưởng',
   },
 
   // ─── Team Stats Tab ───

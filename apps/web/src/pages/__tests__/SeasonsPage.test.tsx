@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { message } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -190,6 +191,39 @@ describe('SeasonsPage', () => {
     expect(await screen.findByText('CLB Bình Định')).toBeInTheDocument();
     expect(screen.getByText('Đã đồng ý')).toBeInTheDocument();
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
+  });
+
+  it('shows the backend validation reason when team approval fails', async () => {
+    const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+    mockSeasonTeamApi.apiUpdateSeasonTeamStatus.mockRejectedValueOnce({
+      response: { data: { message: 'Đội chỉ được đăng ký tối đa 22 cầu thủ' } },
+    });
+
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText('CLB Bình Định')).toBeInTheDocument();
+
+    const approveButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.style.color === 'rgb(82, 196, 26)' || button.style.color === '#52c41a',
+    );
+    expect(approveButton).toBeTruthy();
+    fireEvent.click(approveButton as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(mockSeasonTeamApi.apiUpdateSeasonTeamStatus).toHaveBeenCalledWith(
+        's1',
+        'team-1',
+        'APPROVED',
+      );
+    });
+    expect(messageErrorSpy).toHaveBeenCalledWith('Đội chỉ được đăng ký tối đa 22 cầu thủ');
   });
 
   it('shows the club decline reason in the admin season team panel', async () => {

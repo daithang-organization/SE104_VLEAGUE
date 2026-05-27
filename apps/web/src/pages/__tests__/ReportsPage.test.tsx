@@ -97,6 +97,34 @@ const mockStandingsApi = vi.hoisted(() => ({
       points: 0,
     },
   ]),
+  apiGetPlayerOfMatchStats: vi.fn().mockResolvedValue([
+    {
+      playerId: 'p3',
+      playerName: 'Cầu thủ xuất sắc',
+      position: 1,
+      awards: 3,
+    },
+  ]),
+  apiGetSuspensionStats: vi.fn().mockResolvedValue([
+    {
+      id: 'sus1',
+      playerId: 'p4',
+      playerName: 'Cầu thủ bị treo giò',
+      teamName: 'HAGL',
+      reason: '2 thẻ vàng',
+      status: 'ACTIVE',
+      sourceRound: 3,
+      effectiveRound: 4,
+    },
+  ]),
+  apiGetSeasonAwards: vi.fn().mockResolvedValue({
+    champion: { teamName: 'Hà Nội FC', points: 25 },
+    runnerUp: { teamName: 'Bình Dương', points: 22 },
+    topScorer: { playerName: 'Nguyễn Tiến Linh', teamName: 'Bình Dương', goals: 12 },
+    bestPlayer: { playerName: 'Cầu thủ xuất sắc', awards: 3 },
+    requiresDrawLot: false,
+    standings: [],
+  }),
 }));
 
 vi.mock('jspdf', () => ({ default: mockPdfExport.jsPDF }));
@@ -156,13 +184,19 @@ describe('ReportsPage', () => {
       expect(mockStandingsApi.apiGetTopAssists).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetCardStats).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetPlayerOfMatchStats).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetSuspensionStats).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetSeasonAwards).toHaveBeenCalled();
     });
   });
 
   it('renders tab labels', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('reports.tabScorers')).toBeInTheDocument();
+      expect(screen.getAllByText('reports.tabScorers').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('reports.tabPlayerOfMatch').length).toBeGreaterThan(0);
+      expect(screen.getByText('reports.tabSuspensions')).toBeInTheDocument();
+      expect(screen.getByText('reports.tabAwards')).toBeInTheDocument();
     });
   });
 

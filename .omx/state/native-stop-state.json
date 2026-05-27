@@ -52,11 +52,11 @@
     },
     "019e68c4-cb7f-7470-be1f-5eacefe88524": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã bỏ emoji trái bóng khỏi tiêu đề trang `/matches`. đã sửa: - [vi.ts](c:/se104_vleague/apps/web/src/locales/vi.ts:238): `kết quả trận đấu` - [en.ts](c:/se104_vleague/apps/web/src/locales/en.ts:215): `match results` - thêm test chống hồi quy ở [matchespage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/matchespage.test.tsx:83) verify: - `pnpm --filter web test -- matchespage.test.tsx`: 7/7 pass - `pnpm --filter web lint`: 0 error, còn 21 warning cũ ngoài phạm vi.",
-        "first_seen_at": "2026-05-27T14:49:37.515Z",
-        "last_seen_at": "2026-05-27T14:49:37.515Z",
+        "fingerprint": "ordinary|đã thêm hiển thị lý do clb từ chối cho admin. root cause: api đã lưu/trả `responsereason`, nhưng bảng admin trong `seasonspage` chưa render field này. giờ trong `/seasons`, admin mở rộng mùa giải, ở cột “lời mời btc” nếu trạng thái là “đã từ chối” sẽ thấy thêm dòng `lý do: ...`. đã sửa: - [seasonspage.tsx](c:/se104_vleague/apps/web/src/pages/seasonspage.tsx:247) - [seasonspage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/seasonspage.test.tsx:195) verify: - `pnpm --filter web test -- seasonspage.test.tsx`: 9/9 pass - `pnpm --filter api test -- team-invitation.service.spec.ts`: 7/7 pass - `pnpm --filter web lint`: 0 error, còn warning cũ - `pnpm --filter web build`: pass",
+        "first_seen_at": "2026-05-27T15:52:42.601Z",
+        "last_seen_at": "2026-05-27T15:52:42.601Z",
         "repeat_count": 1,
-        "last_turn_id": "019e69de-92f8-7ec2-90cb-c9816ec6a3ef",
+        "last_turn_id": "019e6a0d-9235-7d70-ac27-4c50c107afdf",
         "last_thread_id": null
       }
     }

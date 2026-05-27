@@ -17,7 +17,8 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { toCsv } from '../common/utils/csv';
-import { StandingsMode, StandingsService } from './standings.service';
+import { StandingsService } from './standings.service';
+import type { StandingsMode } from './standings.service';
 
 @ApiTags('Standings')
 @Controller('standings')

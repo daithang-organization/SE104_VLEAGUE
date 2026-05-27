@@ -2,6 +2,8 @@ import {
   BarChartOutlined,
   DownloadOutlined,
   RiseOutlined,
+  StarOutlined,
+  StopOutlined,
   TeamOutlined,
   TrophyOutlined,
   WarningOutlined,
@@ -13,16 +15,25 @@ import { TableSkeleton } from '../components';
 import { PageHero } from '../components/PageHero';
 import {
   apiGetCardStats,
+  apiGetPlayerOfMatchStats,
+  apiGetSeasonAwards,
   apiGetTeamStats,
   apiGetTopAssists,
   apiGetTopScorers,
   type CardStat,
+  type PlayerOfMatchStat,
+  type SeasonAwards,
+  type SuspensionStat,
   type TeamStat,
   type TopAssist,
   type TopScorer,
+  apiGetSuspensionStats,
 } from '../services/standingsApi';
 import CardStatsTab from './reports/CardStatsTab';
 import ChartsTab from './reports/ChartsTab';
+import PlayerOfMatchTab from './reports/PlayerOfMatchTab';
+import SeasonAwardsTab from './reports/SeasonAwardsTab';
+import SuspensionsTab from './reports/SuspensionsTab';
 import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
@@ -47,6 +58,9 @@ export default function ReportsPage() {
   const [assists, setAssists] = useState<TopAssist[]>([]);
   const [cardStats, setCardStats] = useState<CardStat[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStat[]>([]);
+  const [playerOfMatchStats, setPlayerOfMatchStats] = useState<PlayerOfMatchStat[]>([]);
+  const [suspensions, setSuspensions] = useState<SuspensionStat[]>([]);
+  const [seasonAwards, setSeasonAwards] = useState<SeasonAwards | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -56,19 +70,34 @@ export default function ReportsPage() {
       apiGetTopAssists(undefined, 50),
       apiGetCardStats(undefined, 30),
       apiGetTeamStats(),
+      apiGetPlayerOfMatchStats(undefined, 30),
+      apiGetSuspensionStats(),
+      apiGetSeasonAwards(),
     ])
-      .then(([scorerRes, assistRes, cardRes, teamRes]) => {
-        if (scorerRes.status === 'fulfilled') setScorers(scorerRes.value);
-        if (assistRes.status === 'fulfilled') setAssists(assistRes.value);
-        if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
-        if (teamRes.status === 'fulfilled') setTeamStats(teamRes.value);
-        const failed = [scorerRes, assistRes, cardRes, teamRes].filter(
-          (r) => r.status === 'rejected',
-        );
-        if (failed.length === 4) setError(t('reports.loadError'));
-      })
+      .then(
+        ([scorerRes, assistRes, cardRes, teamRes, playerOfMatchRes, suspensionRes, awardRes]) => {
+          if (scorerRes.status === 'fulfilled') setScorers(scorerRes.value);
+          if (assistRes.status === 'fulfilled') setAssists(assistRes.value);
+          if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
+          if (teamRes.status === 'fulfilled') setTeamStats(teamRes.value);
+          if (playerOfMatchRes.status === 'fulfilled')
+            setPlayerOfMatchStats(playerOfMatchRes.value);
+          if (suspensionRes.status === 'fulfilled') setSuspensions(suspensionRes.value);
+          if (awardRes.status === 'fulfilled') setSeasonAwards(awardRes.value);
+          const failed = [
+            scorerRes,
+            assistRes,
+            cardRes,
+            teamRes,
+            playerOfMatchRes,
+            suspensionRes,
+            awardRes,
+          ].filter((r) => r.status === 'rejected');
+          if (failed.length === 7) setError(t('reports.loadError'));
+        },
+      )
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const handleExportScorersPdf = async () => {
     try {
@@ -192,6 +221,11 @@ export default function ReportsPage() {
             value: teamStats.length.toLocaleString('vi-VN'),
             icon: <TeamOutlined />,
           },
+          {
+            label: cleanTabLabel(t('reports.tabPlayerOfMatch')),
+            value: playerOfMatchStats.length.toLocaleString('vi-VN'),
+            icon: <StarOutlined />,
+          },
         ]}
         actions={exportActions}
       />
@@ -214,14 +248,31 @@ export default function ReportsPage() {
                 children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
               },
               {
+                key: 'player-of-match',
+                label: reportTabLabel(<StarOutlined />, t('reports.tabPlayerOfMatch')),
+                children: (
+                  <PlayerOfMatchTab data={playerOfMatchStats.slice(0, 20)} loading={loading} />
+                ),
+              },
+              {
                 key: 'cards',
                 label: reportTabLabel(<WarningOutlined />, t('reports.tabCards')),
                 children: <CardStatsTab data={cardStats} loading={loading} />,
               },
               {
+                key: 'suspensions',
+                label: reportTabLabel(<StopOutlined />, t('reports.tabSuspensions')),
+                children: <SuspensionsTab data={suspensions} loading={loading} />,
+              },
+              {
                 key: 'team-stats',
                 label: reportTabLabel(<TeamOutlined />, t('reports.tabTeamStats')),
                 children: <TeamStatsTab data={teamStats} loading={loading} />,
+              },
+              {
+                key: 'awards',
+                label: reportTabLabel(<TrophyOutlined />, t('reports.tabAwards')),
+                children: <SeasonAwardsTab awards={seasonAwards} loading={loading} />,
               },
               {
                 key: 'charts',

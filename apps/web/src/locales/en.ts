@@ -812,6 +812,9 @@ const en = {
     tabAssists: 'Top Assists',
     tabCards: '🟨 Card Stats',
     tabTeamStats: '📊 Team Stats',
+    tabPlayerOfMatch: '⭐ Player of Match',
+    tabSuspensions: '⛔ Suspensions',
+    tabAwards: '🏅 Awards',
     tabCharts: '📈 Charts',
   },
 
@@ -830,6 +833,13 @@ const en = {
     empty: 'No assist data yet',
   },
 
+  playerOfMatchTab: {
+    colRank: '#',
+    colPlayer: 'Player',
+    colAwards: 'Player of match awards',
+    empty: 'No player-of-match data yet',
+  },
+
   cardStatsTab: {
     colRank: '#',
     colPlayer: 'Player',
@@ -842,6 +852,34 @@ const en = {
     emptyYellow: 'No yellow card data yet',
     emptyRed: 'No red card data yet',
     empty: 'No card data yet',
+  },
+
+  suspensionsTab: {
+    colPlayer: 'Player',
+    colTeam: 'Team',
+    colReason: 'Reason',
+    colStatus: 'Status',
+    colSourceRound: 'Card round',
+    colEffectiveRound: 'Suspended round',
+    statusActive: 'Active',
+    statusServed: 'Served',
+    statusCancelled: 'Cancelled',
+    empty: 'No suspended players',
+  },
+
+  seasonAwardsTab: {
+    colCategory: 'Award',
+    colWinner: 'Team/Player',
+    colDetail: 'Detail',
+    champion: 'Champion',
+    runnerUp: 'Runner-up',
+    topScorer: 'Top scorer',
+    bestPlayer: 'Best player',
+    pointsDetail: '{{count}} points',
+    goalsDetail: '{{count}} goals',
+    awardsDetail: '{{count}} player-of-match awards',
+    drawLotWarning: 'Final standings still require draw-lot resolution before awards are final.',
+    empty: 'No award data yet',
   },
 
   teamStatsTab: {
