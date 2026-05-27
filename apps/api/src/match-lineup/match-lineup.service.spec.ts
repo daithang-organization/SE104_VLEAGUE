@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import type { SubmitMatchLineupDto } from './dto/match-lineup.dto';
 import { MatchLineupService } from './match-lineup.service';
 
 const match = {
@@ -15,7 +16,7 @@ const match = {
 
 function lineupPayload(
   playerIds = Array.from({ length: 16 }, (_, index) => `player-${index + 1}`),
-) {
+): SubmitMatchLineupDto {
   return {
     teamId: 'team-1',
     kitType: 'PRIMARY',

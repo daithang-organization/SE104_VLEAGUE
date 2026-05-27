@@ -12,11 +12,11 @@
     },
     "019e6855-4288-7bc2-8dac-74daabc219f9": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã bổ sung phần p2 còn thiếu. cụ thể: - backend giờ sinh danh sách mời dự kiến gồm `8 đội top mùa trước + 2 đội thăng hạng`: [team-invitation.service.ts](c:/se104_vleague/apps/api/src/team-invitation/team-invitation.service.ts:94). - lời mời quá hạn được cập nhật thành `expired` trước khi list/xem/phản hồi: [team-invitation.service.ts](c:/se104_vleague/apps/api/src/team-invitation/team-invitation.service.ts:527). - fe đổi bảng từ “top 8 mùa trước” sang “danh sách mời dự kiến”, hiển thị đếm `top 8` và `thăng hạng`, đồng thời nút gửi dùng đúng `sourcetype` của từng dòng: [seasonspage.tsx](c:/se104_vleague/apps/web/src/pages/seasonspage.tsx:497). - test fe đã tách rõ gửi top 8 và gửi thăng hạng: [seasonspage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/seasonspage.test.tsx:244). đã verify: - `pnpm --filter api run test -- --runinband team-invitation.service.spec.ts season.service.spec.ts scheduling.service.spec.ts match-lineup.service.spec.ts match-official.service.spec.ts standings.service.spec.ts` → 6 suite, 64 test pass. - `pnpm --filter web run test -- teaminvitationapi.test.ts teaminvitationpopup.test.tsx seasonspage.test.tsx dashboardpage.test.tsx reportspage.test.tsx standingsapi.test.ts` → 6 file, 48 test pass. - `pnpm --filter api run build` → pass. - `pnpm --filter web run build` → pass. có vài warning sẵn của repo khi test/build: duplicate `packagemanager`, jsdom `getcomputedstyle`, css parse warning, và vite chunk lớn. không chặn build/test. worktree vẫn còn nhiều file khác đã sửa ngoài phạm vi p2, tôi không đụng tới các phần đó.",
-        "first_seen_at": "2026-05-27T18:19:27.055Z",
-        "last_seen_at": "2026-05-27T18:19:27.055Z",
+        "fingerprint": "ordinary|đã tạo file handoff tại: [.omx/plans/vleague-handoff-status-2026-05-28.md](c:/se104_vleague/.omx/plans/vleague-handoff-status-2026-05-28.md) file này có: - tổng hợp p0-p6: phần đã làm, phần còn thiếu/cần cải thiện. - danh sách module/file quan trọng. - việc nên ưu tiên tiếp theo cho thành viên khác. - lệnh seed bằng docker compose và local. - tài khoản demo, password, manager accounts để test popup. - checklist test thủ công. - lệnh test/build nên chạy trước khi bàn giao. lưu ý: `.omx/` đang bị ignore trong `.git/info/exclude`, nên file này sẽ không tự hiện trong `git status`. nếu muốn commit để team pull được, cần force add: ```powershell git add -f .omx/plans/vleague-handoff-status-2026-05-28.md ```",
+        "first_seen_at": "2026-05-27T18:26:18.797Z",
+        "last_seen_at": "2026-05-27T18:26:18.797Z",
         "repeat_count": 1,
-        "last_turn_id": "019e6a8c-a079-7f61-9b24-ac6b320404c2",
+        "last_turn_id": "019e6aab-1c38-73a1-8bc3-c536d8a8905d",
         "last_thread_id": null
       }
     },
@@ -52,11 +52,11 @@
     },
     "019e68c4-cb7f-7470-be1f-5eacefe88524": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|ok, mình hiểu. do bạn đã push code lên rồi nên khi mình kiểm tra diff/status có thể không còn thấy đúng các thay đổi local nữa. phần mình đã triển khai/kiểm tra trước đó gồm: - api sinh danh sách ứng viên top 8 từ mùa trước đã `completed`. - chặn sinh top 8 nếu mùa trước chưa kết thúc. - ui admin trong trang mùa giải hiển thị bảng “top 8 mùa trước”. - gửi lời mời top 8 với `previous_top_8`. - cho admin chọn nguồn `promoted` hoặc `replacement` khi mời thủ công 2 đội thăng hạng/đội thay thế. - không thêm bảng hạng nhất, giữ đúng hướng tối giản. đã verify: - `pnpm --filter api test -- team-invitation.service.spec.ts`: pass 9/9 - `pnpm --filter api build`: pass - `pnpm --filter web test -- teaminvitationapi.test.ts seasonspage.test.tsx`: pass 16/16 - `pnpm --filter web lint`: 0 error, còn warning cũ - `pnpm --filter web build`: pass",
-        "first_seen_at": "2026-05-27T17:33:23.297Z",
-        "last_seen_at": "2026-05-27T17:33:23.297Z",
+        "fingerprint": "ordinary|đã fix lỗi typecheck trong [match-lineup.service.spec.ts](/c:/se104_vleague/apps/api/src/match-lineup/match-lineup.service.spec.ts:4). nguyên nhân là helper `lineuppayload()` không có return type nên typescript suy rộng `kittype: 'primary'` thành `string`. mình annotate helper này trả về `submitmatchlineupdto`, nên `kittype`, `role`, `position` được giữ đúng literal union theo dto. đã verify: - `pnpm exec tsc --noemit` trong `apps/api`: exit 0 - `pnpm --filter api test -- match-lineup.service.spec.ts`: 5/5 pass",
+        "first_seen_at": "2026-05-27T18:26:07.656Z",
+        "last_seen_at": "2026-05-27T18:26:07.656Z",
         "repeat_count": 1,
-        "last_turn_id": "019e6a7f-2648-75f2-8864-0a59c7256b0e",
+        "last_turn_id": "019e6aae-3118-7c51-9d0f-3861a7cdbd85",
         "last_thread_id": null
       }
     }
