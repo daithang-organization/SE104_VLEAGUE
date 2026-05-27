@@ -64,7 +64,7 @@ describe('MatchFixtureCard', () => {
         awayTeamId="custom-away"
         homeTeam={{ id: 'custom-home', name: 'Custom Home', shortName: 'CH' }}
         awayTeam={{ id: 'custom-away', name: 'Custom Away', shortName: 'CA' }}
-        kickoffAt="2025-03-16T13:15:00Z"
+        kickoffAt="2025-03-16T20:15:00"
         stadiumFallback="Chua co san"
         kickoffFallback="Chua xep gio"
       />,
