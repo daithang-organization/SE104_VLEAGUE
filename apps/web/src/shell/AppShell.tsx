@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import NotificationBell from '../components/NotificationBell';
+import TeamInvitationPopup from '../components/TeamInvitationPopup';
 import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import { useTheme } from './ThemeContext';
 import { MENU } from './menu';
@@ -331,6 +332,7 @@ export default function AppShell() {
           <div key={location.pathname} className="page-animate">
             <Outlet />
           </div>
+          <TeamInvitationPopup />
         </Content>
       </Layout>
     </Layout>

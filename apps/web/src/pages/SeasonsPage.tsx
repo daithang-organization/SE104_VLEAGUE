@@ -5,6 +5,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
+  SendOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import {
@@ -46,6 +47,7 @@ import {
   type SeasonTeam,
 } from '../services/seasonTeamApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
+import { apiSendTeamInvitation } from '../services/teamInvitationApi';
 
 const STATUS_OPTIONS = [
   { value: 'UPCOMING', label: 'Sắp diễn ra', color: 'blue' },
@@ -80,6 +82,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>();
 
   const fetchTeams = useCallback(async () => {
@@ -119,6 +122,22 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       message.error(t('seasons.teamPanelRegError'));
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleSendInvitation = async (teamId = selectedTeamId) => {
+    if (!teamId) return;
+    setInviting(true);
+    try {
+      await apiSendTeamInvitation(seasonId, {
+        teamId,
+        sourceType: 'REPLACEMENT',
+      });
+      message.success('Đã gửi lời mời tham dự đến manager CLB');
+    } catch (_err) {
+      message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có manager trong mùa giải.');
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -185,9 +204,17 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     {
       title: '',
       key: 'actions',
-      width: 140,
+      width: 180,
       render: (_, r) => (
         <Space size={4}>
+          <Tooltip title="Gửi lời mời/popup cho manager CLB">
+            <Button
+              type="text"
+              size="small"
+              icon={<SendOutlined />}
+              onClick={() => handleSendInvitation(r.teamId)}
+            />
+          </Tooltip>
           {r.status === 'REGISTERED' && (
             <>
               <Tooltip title={t('seasons.teamPanelApproveTooltip')}>
@@ -256,6 +283,15 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             onClick={handleAdd}
           >
             {t('seasons.teamPanelAddBtn')}
+          </Button>
+          <Button
+            size="small"
+            icon={<SendOutlined />}
+            disabled={!selectedTeamId}
+            loading={inviting}
+            onClick={() => handleSendInvitation()}
+          >
+            Gửi lời mời
           </Button>
         </Space>
       </Flex>

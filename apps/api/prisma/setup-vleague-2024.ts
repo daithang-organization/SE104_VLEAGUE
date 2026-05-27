@@ -4,7 +4,11 @@ import {
   PrismaClient,
   SeasonStatus,
   SeasonTeamStatus,
+  TeamInvitationSourceType,
+  TeamInvitationStatus,
+  UserRole,
 } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import pg from 'pg';
 
@@ -12,6 +16,7 @@ const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const DEMO_PASSWORD = 'Demo@12345';
 const REAL_TEAMS = [
   'Thép Xanh Nam Định',
   'Hà Nội FC',
@@ -30,6 +35,35 @@ const REAL_TEAMS = [
 ];
 
 const REQUIRED_APPROVED_TEAMS = 10;
+const INVITATION_REGULATION_KEYS = [
+  'MIN_ROSTER',
+  'MAX_ROSTER',
+  'MAX_FOREIGN_PLAYERS',
+  'MAX_FOREIGN_PLAYERS_ON_FIELD',
+  'MIN_STADIUM_CAPACITY',
+  'MIN_STADIUM_FIFA_STARS',
+  'PARTICIPATION_FEE_VND',
+];
+
+function slugTeamName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/đ/g, 'd')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.+|\.+$/g, '');
+}
+
+function getManagerEmail(teamName: string) {
+  return `manager.${slugTeamName(teamName)}@demo.local`;
+}
+
+function getInvitationSource(index: number) {
+  if (index < 8) return TeamInvitationSourceType.PREVIOUS_TOP_8;
+  if (index < REQUIRED_APPROVED_TEAMS) return TeamInvitationSourceType.PROMOTED;
+  return TeamInvitationSourceType.REPLACEMENT;
+}
 
 async function main() {
   console.log('🏆 Setting up V.League 2024-25 Season...\n');
@@ -93,6 +127,57 @@ async function main() {
     );
   }
 
+  const teamOrder = new Map(REAL_TEAMS.map((name, index) => [name, index]));
+  teams.sort(
+    (a, b) =>
+      (teamOrder.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
+      (teamOrder.get(b.name) ?? Number.MAX_SAFE_INTEGER),
+  );
+
+  // 2.1 Seed manager accounts and assignments for invitation popup demo
+  console.log('\n👤 Seeding team manager demo accounts...');
+  const teamManagerRole = await prisma.role.upsert({
+    where: { name: 'TEAM_MANAGER' },
+    update: { description: 'Quản lý đội bóng' },
+    create: { name: 'TEAM_MANAGER', description: 'Quản lý đội bóng' },
+  });
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+
+  for (const team of teams) {
+    const email = getManagerEmail(team.name);
+    const manager = await prisma.user.upsert({
+      where: { email },
+      update: {
+        role: UserRole.TEAM_MANAGER,
+        roleId: teamManagerRole.id,
+        passwordHash,
+        emailVerified: true,
+        name: `Manager ${team.shortName ?? team.name}`,
+      },
+      create: {
+        email,
+        role: UserRole.TEAM_MANAGER,
+        roleId: teamManagerRole.id,
+        passwordHash,
+        emailVerified: true,
+        name: `Manager ${team.shortName ?? team.name}`,
+      },
+    });
+
+    await prisma.teamManagerAssignment.upsert({
+      where: {
+        userId_seasonId: { userId: manager.id, seasonId: season.id },
+      },
+      update: { teamId: team.id },
+      create: {
+        userId: manager.id,
+        seasonId: season.id,
+        teamId: team.id,
+      },
+    });
+    console.log(`  ✅ ${team.name}: ${email}`);
+  }
+
   const approvedTeams = teams.slice(0, REQUIRED_APPROVED_TEAMS);
   const reserveTeams = teams.slice(REQUIRED_APPROVED_TEAMS);
 
@@ -121,6 +206,77 @@ async function main() {
       },
     });
     console.log(`  🕒 Reserve/registered only: ${team.name}`);
+  }
+
+  // 2.2 Seed invitations: approved teams are treated as accepted; reserve teams stay pending
+  console.log('\n📨 Seeding team invitations and popup notifications...');
+  const invitationSnapshot = Object.fromEntries(
+    defaultRegulations
+      .filter((reg) => INVITATION_REGULATION_KEYS.includes(reg.key))
+      .map((reg) => [reg.key, reg.value]),
+  );
+  const sentAt = new Date();
+  const deadlineAt = new Date(sentAt);
+  deadlineAt.setDate(deadlineAt.getDate() + 14);
+
+  for (const [index, team] of teams.entries()) {
+    const isApprovedTeam = index < REQUIRED_APPROVED_TEAMS;
+    const status = isApprovedTeam
+      ? TeamInvitationStatus.ACCEPTED
+      : TeamInvitationStatus.SENT;
+    const invitation = await prisma.teamInvitation.upsert({
+      where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
+      update: {
+        sourceType: getInvitationSource(index),
+        status,
+        sentAt,
+        deadlineAt,
+        responseAt: isApprovedTeam ? sentAt : null,
+        responseReason: null,
+        regulationsSnapshot: invitationSnapshot,
+      },
+      create: {
+        seasonId: season.id,
+        teamId: team.id,
+        sourceType: getInvitationSource(index),
+        status,
+        sentAt,
+        deadlineAt,
+        responseAt: isApprovedTeam ? sentAt : null,
+        regulationsSnapshot: invitationSnapshot,
+      },
+    });
+
+    if (status === TeamInvitationStatus.SENT) {
+      const managerAssignment = await prisma.teamManagerAssignment.findFirst({
+        where: { seasonId: season.id, teamId: team.id },
+      });
+      if (managerAssignment) {
+        const existingNotification = await prisma.notification.findFirst({
+          where: {
+            userId: managerAssignment.userId,
+            entityType: 'team_invitation',
+            entityId: invitation.id,
+          },
+        });
+        if (!existingNotification) {
+          await prisma.notification.create({
+            data: {
+              userId: managerAssignment.userId,
+              title: `Lời mời tham dự ${season.name}`,
+              message: `BTC mời ${team.name} tham dự ${season.name}. Hạn phản hồi: 14 ngày sau ngày gửi. Lệ phí tham dự: 1.000.000.000 VND.`,
+              type: 'TEAM_INVITATION',
+              entityType: 'team_invitation',
+              entityId: invitation.id,
+            },
+          });
+        }
+      }
+    }
+
+    console.log(
+      `  ${status === TeamInvitationStatus.SENT ? '📩' : '✅'} ${team.name}: ${status}`,
+    );
   }
 
   // 3. Generate Schedule (Round Robin)
@@ -285,6 +441,12 @@ async function main() {
   console.log('✅ Seeded Round 1 results and goals.');
 
   console.log('\n🚀 V.League 2024-25 Setup Complete!');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📧 Team manager demo accounts use password:', DEMO_PASSWORD);
+  console.log(
+    `   Example pending invitation account: ${getManagerEmail(reserveTeams[0]?.name ?? teams[0].name)}`,
+  );
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   await prisma.$disconnect();
   await pool.end();

@@ -1,7 +1,53 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
+const mockPdfExport = vi.hoisted(() => {
+  const doc = {
+    addImage: vi.fn(),
+    addPage: vi.fn(),
+    save: vi.fn(),
+    setFontSize: vi.fn(),
+    text: vi.fn(),
+    internal: {
+      pageSize: {
+        getWidth: () => 595,
+        getHeight: () => 842,
+      },
+    },
+  };
+
+  return {
+    autoTable: vi.fn(),
+    doc,
+    jsPDF: vi.fn(function jsPDF() {
+      return doc;
+    }),
+  };
+});
+
+const mockCanvas = vi.hoisted(() => {
+  const context = {
+    beginPath: vi.fn(),
+    clearRect: vi.fn(),
+    fillRect: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    measureText: vi.fn((text: string) => ({ width: text.length * 2.5 })),
+    moveTo: vi.fn(),
+    restore: vi.fn(),
+    save: vi.fn(),
+    scale: vi.fn(),
+    stroke: vi.fn(),
+    strokeRect: vi.fn(),
+  };
+
+  return {
+    context,
+    toDataURL: vi.fn(() => 'data:image/png;base64,report-page'),
+  };
+});
+
 const mockStandingsApi = vi.hoisted(() => ({
   apiGetTopScorers: vi.fn().mockResolvedValue([
     {
@@ -37,6 +83,8 @@ const mockStandingsApi = vi.hoisted(() => ({
   ]),
 }));
 
+vi.mock('jspdf', () => ({ default: mockPdfExport.jsPDF }));
+vi.mock('jspdf-autotable', () => ({ default: mockPdfExport.autoTable }));
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -59,7 +107,17 @@ function renderPage() {
 }
 
 describe('ReportsPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value: vi.fn(() => mockCanvas.context),
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, 'toDataURL', {
+      configurable: true,
+      value: mockCanvas.toDataURL,
+    });
+  });
 
   it('renders title', () => {
     renderPage();
@@ -87,5 +145,29 @@ describe('ReportsPage', () => {
     renderPage();
     expect(screen.getByText('reports.exportScorersPdf')).toBeInTheDocument();
     expect(screen.getByText('reports.exportTeamStatsPdf')).toBeInTheDocument();
+  });
+
+  it('renders Vietnamese text into PDF image pages when exporting scorers', async () => {
+    renderPage();
+
+    const button = screen.getByRole('button', { name: /reports.exportScorersPdf/ });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+
+    await waitFor(() => expect(mockPdfExport.doc.addImage).toHaveBeenCalled());
+    const renderedText = mockCanvas.context.fillText.mock.calls.map(([text]) => String(text));
+
+    expect(mockPdfExport.autoTable).not.toHaveBeenCalled();
+    expect(mockPdfExport.doc.text).not.toHaveBeenCalled();
+    expect(renderedText).toEqual(
+      expect.arrayContaining([
+        'VLeague - Vua phá lưới',
+        'Cầu thủ',
+        'Đội',
+        'Bàn thắng',
+        'Nguyễn Tiến Linh',
+        'Bình Dương',
+      ]),
+    );
   });
 });

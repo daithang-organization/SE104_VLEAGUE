@@ -25,6 +25,7 @@ import ChartsTab from './reports/ChartsTab';
 import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
+import { exportPdf } from '../utils/pdfExport';
 
 const cleanTabLabel = (label: string) => label.replace(/^[^\p{L}\p{N}]+/u, '').trim();
 
@@ -35,28 +36,6 @@ function reportTabLabel(icon: ReactNode, label: string) {
       <span>{cleanTabLabel(label)}</span>
     </Space>
   );
-}
-
-/* ────────── Dynamic PDF Export ────────── */
-
-async function exportPdf(title: string, headers: string[], rows: string[][]) {
-  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-    import('jspdf'),
-    import('jspdf-autotable'),
-  ]);
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text(title, 14, 20);
-  doc.setFontSize(10);
-  doc.text(`${new Date().toLocaleDateString('vi-VN')}`, 14, 28);
-  autoTable(doc, {
-    startY: 34,
-    head: [headers],
-    body: rows,
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: [0, 21, 41] },
-  });
-  doc.save(`${title.replace(/\s+/g, '-').toLowerCase()}.pdf`);
 }
 
 /* ────────── Main Page ────────── */
@@ -93,8 +72,8 @@ export default function ReportsPage() {
   const handleExportScorersPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Vua pha luoi',
-        ['#', 'Cau thu', 'Doi', 'Ban thang'],
+        'VLeague - Vua phá lưới',
+        ['#', 'Cầu thủ', 'Đội', 'Bàn thắng'],
         scorers.map((s) => [String(s.position), s.playerName, s.teamName, String(s.goals)]),
       );
     } catch (_err) {
@@ -105,8 +84,8 @@ export default function ReportsPage() {
   const handleExportTeamStatsPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Thong ke doi bong',
-        ['Doi', 'Tran', 'Thang', 'Hoa', 'Thua', 'BT', 'BN', 'HS', 'Diem'],
+        'VLeague - Thống kê đội bóng',
+        ['Đội', 'Trận', 'Thắng', 'Hòa', 'Thua', 'BT', 'BN', 'HS', 'Điểm'],
         teamStats.map((s) => [
           s.teamName,
           String(s.played),
@@ -127,8 +106,8 @@ export default function ReportsPage() {
   const handleExportAssistsPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Top kien tao',
-        ['#', 'Cau thu', 'Doi', 'Kien tao'],
+        'VLeague - Top kiến tạo',
+        ['#', 'Cầu thủ', 'Đội', 'Kiến tạo'],
         assists.map((s) => [String(s.position), s.playerName, s.teamName, String(s.assists)]),
       );
     } catch (_err) {
@@ -139,8 +118,8 @@ export default function ReportsPage() {
   const handleExportCardStatsPdf = async () => {
     try {
       await exportPdf(
-        'VLeague - Thong ke the phat',
-        ['#', 'Cau thu', 'Doi', 'The vang', 'The do'],
+        'VLeague - Thống kê thẻ phạt',
+        ['#', 'Cầu thủ', 'Đội', 'Thẻ vàng', 'Thẻ đỏ'],
         cardStats.map((s, i) => [
           String(i + 1),
           s.playerName,
