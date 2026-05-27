@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
+  Season,
   SeasonTeamStatus,
   TeamInvitationSourceType,
   TeamInvitationStatus,
@@ -13,6 +14,10 @@ import {
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DEFAULT_REGULATIONS } from '../regulation/regulation.service';
+import {
+  StandingsService,
+  type TeamStanding,
+} from '../standings/standings.service';
 import {
   RespondTeamInvitationDto,
   SendTeamInvitationDto,
@@ -23,11 +28,34 @@ const RESPONSE_STATUSES = [
   TeamInvitationStatus.DECLINED,
 ] as const;
 
+type InvitationCandidate = {
+  teamId: string;
+  teamName: string;
+  sourceType: TeamInvitationSourceType;
+  sourceRank: number;
+  points: number;
+  goalDifference: number;
+  played: number;
+  invitationId: string | null;
+  invitationStatus: TeamInvitationStatus | null;
+  responseReason: string | null;
+  deadlineAt: Date | null;
+  team: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    city: string | null;
+    logoUrl: string | null;
+    status: string;
+  } | null;
+};
+
 @Injectable()
 export class TeamInvitationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly standingsService: StandingsService,
   ) {}
 
   private invitationInclude = {
@@ -60,6 +88,64 @@ export class TeamInvitationService {
       include: this.invitationInclude,
       orderBy: [{ sentAt: 'desc' }, { createdAt: 'desc' }],
     });
+  }
+
+  async getInvitationCandidates(
+    seasonId: string,
+    previousSeasonId?: string,
+  ): Promise<{
+    targetSeason: Season;
+    previousSeason: Season;
+    requiredTopLeagueSlots: number;
+    requiredPromotedSlots: number;
+    candidates: InvitationCandidate[];
+  }> {
+    const targetSeason = await this.ensureSeasonExists(seasonId);
+    const previousSeason = previousSeasonId
+      ? await this.prisma.season.findUnique({ where: { id: previousSeasonId } })
+      : await this.prisma.season.findFirst({
+          where: { year: targetSeason.year - 1 },
+          orderBy: { year: 'desc' },
+        });
+
+    if (!previousSeason) {
+      throw new NotFoundException(
+        'Không tìm thấy mùa giải trước để sinh danh sách top 8.',
+      );
+    }
+
+    if (previousSeason.status !== 'COMPLETED') {
+      throw new BadRequestException(
+        `Mùa giải "${previousSeason.name}" chưa kết thúc. Cần chốt COMPLETED trước khi sinh danh sách top 8 mùa trước.`,
+      );
+    }
+
+    const standings = await this.standingsService.getStandings(
+      previousSeason.id,
+      'final',
+    );
+    const topLeagueSlots = 8;
+    const promotedSlots = 2;
+    const topStandings = standings.slice(0, topLeagueSlots);
+
+    if (topStandings.length < topLeagueSlots) {
+      throw new BadRequestException(
+        `BXH cuối mùa "${previousSeason.name}" chưa đủ ${topLeagueSlots} đội để sinh danh sách mời.`,
+      );
+    }
+
+    const candidates = await this.buildTopLeagueCandidates(
+      seasonId,
+      topStandings,
+    );
+
+    return {
+      targetSeason,
+      previousSeason,
+      requiredTopLeagueSlots: topLeagueSlots,
+      requiredPromotedSlots: promotedSlots,
+      candidates,
+    };
   }
 
   async sendInvitation(seasonId: string, dto: SendTeamInvitationDto) {
@@ -237,6 +323,61 @@ export class TeamInvitationService {
     }
 
     return updatedInvitation;
+  }
+
+  private async buildTopLeagueCandidates(
+    seasonId: string,
+    standings: TeamStanding[],
+  ): Promise<InvitationCandidate[]> {
+    const teamIds = standings.map((standing) => standing.teamId);
+    const [teams, invitations] = await Promise.all([
+      this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          city: true,
+          logoUrl: true,
+          status: true,
+        },
+      }),
+      this.prisma.teamInvitation.findMany({
+        where: { seasonId, teamId: { in: teamIds } },
+        select: {
+          id: true,
+          teamId: true,
+          status: true,
+          responseReason: true,
+          deadlineAt: true,
+        },
+      }),
+    ]);
+
+    const teamsById = new Map(teams.map((team) => [team.id, team]));
+    const invitationsByTeamId = new Map(
+      invitations.map((invitation) => [invitation.teamId, invitation]),
+    );
+
+    return standings.map((standing, index) => {
+      const team = teamsById.get(standing.teamId) ?? null;
+      const invitation = invitationsByTeamId.get(standing.teamId);
+
+      return {
+        teamId: standing.teamId,
+        teamName: team?.name ?? standing.teamName,
+        sourceType: TeamInvitationSourceType.PREVIOUS_TOP_8,
+        sourceRank: standing.position || index + 1,
+        points: standing.points,
+        goalDifference: standing.goalDifference,
+        played: standing.played,
+        invitationId: invitation?.id ?? null,
+        invitationStatus: invitation?.status ?? null,
+        responseReason: invitation?.responseReason ?? null,
+        deadlineAt: invitation?.deadlineAt ?? null,
+        team,
+      };
+    });
   }
 
   private async ensureSeasonExists(seasonId: string) {

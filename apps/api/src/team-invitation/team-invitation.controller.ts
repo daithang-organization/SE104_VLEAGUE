@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -36,6 +37,24 @@ export class TeamInvitationController {
   @ApiOkResponse({ description: 'Danh sách lời mời theo mùa giải' })
   listForSeason(@Param('seasonId') seasonId: string) {
     return this.invitationService.listForSeason(seasonId);
+  }
+
+  @Get('seasons/:seasonId/invitation-candidates')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'BTC lấy danh sách đề xuất top 8 mùa trước để chuẩn bị lời mời mùa mới',
+  })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiOkResponse({ description: 'Danh sách ứng viên top 8 mùa trước' })
+  getInvitationCandidates(
+    @Param('seasonId') seasonId: string,
+    @Query('previousSeasonId') previousSeasonId?: string,
+  ) {
+    return this.invitationService.getInvitationCandidates(
+      seasonId,
+      previousSeasonId,
+    );
   }
 
   @Post('seasons/:seasonId/invitations')

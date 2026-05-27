@@ -22,6 +22,29 @@ export type TeamInvitation = {
   updatedAt: string;
 };
 
+export type InvitationCandidate = {
+  teamId: string;
+  teamName: string;
+  sourceType: TeamInvitationSourceType;
+  sourceRank: number;
+  points: number;
+  goalDifference: number;
+  played: number;
+  invitationId: string | null;
+  invitationStatus: TeamInvitationStatus | null;
+  responseReason: string | null;
+  deadlineAt: string | null;
+  team?: Team | null;
+};
+
+export type InvitationCandidateResult = {
+  targetSeason: Season;
+  previousSeason: Season;
+  requiredTopLeagueSlots: number;
+  requiredPromotedSlots: number;
+  candidates: InvitationCandidate[];
+};
+
 export type SendTeamInvitationPayload = {
   teamId: string;
   sourceType: TeamInvitationSourceType;
@@ -34,6 +57,13 @@ export type RespondTeamInvitationPayload = {
 
 export function apiGetSeasonInvitations(seasonId: string) {
   return api.get<TeamInvitation[]>(`/seasons/${seasonId}/invitations`).then((res) => res.data);
+}
+
+export function apiGetInvitationCandidates(seasonId: string, previousSeasonId?: string) {
+  const params = previousSeasonId ? { previousSeasonId } : undefined;
+  return api
+    .get<InvitationCandidateResult>(`/seasons/${seasonId}/invitation-candidates`, { params })
+    .then((res) => res.data);
 }
 
 export function apiSendTeamInvitation(seasonId: string, payload: SendTeamInvitationPayload) {

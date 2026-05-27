@@ -203,7 +203,7 @@ describe('SeasonsPage', () => {
       expect(mockSeasonTeamApi.apiGetSeasonTeams).toHaveBeenCalledWith('s1');
       expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledWith('s1');
     });
-    expect(await screen.findByText('CLB Bình Định')).toBeInTheDocument();
+    expect((await screen.findAllByText('CLB Bình Định')).length).toBeGreaterThan(0);
     expect(screen.getByText('Đã đồng ý')).toBeInTheDocument();
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
@@ -244,7 +244,7 @@ describe('SeasonsPage', () => {
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
     fireEvent.click(expandButton);
 
-    expect(await screen.findByText('CLB Bình Định')).toBeInTheDocument();
+    expect((await screen.findAllByText('CLB Bình Định')).length).toBeGreaterThan(0);
 
     const approveButton = Array.from(container.querySelectorAll('button')).find(
       (button) => button.style.color === 'rgb(82, 196, 26)' || button.style.color === '#52c41a',

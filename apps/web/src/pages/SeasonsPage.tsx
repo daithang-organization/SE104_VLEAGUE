@@ -10,6 +10,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Card,
   DatePicker,
@@ -51,9 +52,13 @@ import {
 } from '../services/seasonTeamApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
 import {
+  apiGetInvitationCandidates,
   apiGetSeasonInvitations,
   apiSendTeamInvitation,
+  type InvitationCandidate,
+  type InvitationCandidateResult,
   type TeamInvitation,
+  type TeamInvitationSourceType,
 } from '../services/teamInvitationApi';
 
 const STATUS_OPTIONS = [
@@ -94,6 +99,10 @@ const INVITATION_SOURCE_MAP: Record<string, string> = {
   PROMOTED: 'Thăng hạng',
   REPLACEMENT: 'Thay thế',
 };
+const INVITATION_SOURCE_OPTIONS: { value: TeamInvitationSourceType; label: string }[] = [
+  { value: 'PROMOTED', label: 'Thăng hạng' },
+  { value: 'REPLACEMENT', label: 'Thay thế' },
+];
 
 function getSeasonTeamApplicationStatus(record: SeasonTeam, invitation?: TeamInvitation) {
   if (record.status === 'APPROVED') return { label: 'Đã duyệt hồ sơ', color: 'success' };
@@ -123,6 +132,10 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const [inviting, setInviting] = useState(false);
   const [viewingTeam, setViewingTeam] = useState<SeasonTeam | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>();
+  const [selectedInvitationSource, setSelectedInvitationSource] =
+    useState<TeamInvitationSourceType>('PROMOTED');
+  const [candidateResult, setCandidateResult] = useState<InvitationCandidateResult | null>(null);
+  const [candidateError, setCandidateError] = useState<string | null>(null);
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
@@ -135,6 +148,18 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       setTeams(seasonTeams);
       setAllTeams(teamRes.data);
       setInvitations(invitationData);
+
+      try {
+        const candidateData = await apiGetInvitationCandidates(seasonId);
+        setCandidateResult(candidateData);
+        setCandidateError(null);
+      } catch (err: unknown) {
+        setCandidateResult(null);
+        setCandidateError(
+          getBackendErrorMessage(err) ||
+            'Chưa thể sinh top 8 mùa trước cho mùa giải này. Hãy kiểm tra mùa nguồn đã kết thúc.',
+        );
+      }
     } catch (_err) {
       message.error(t('seasons.teamPanelLoadError'));
     } finally {
@@ -169,13 +194,16 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     }
   };
 
-  const handleSendInvitation = async (teamId = selectedTeamId) => {
+  const handleSendInvitation = async (
+    teamId = selectedTeamId,
+    sourceType = selectedInvitationSource,
+  ) => {
     if (!teamId) return;
     setInviting(true);
     try {
       await apiSendTeamInvitation(seasonId, {
         teamId,
-        sourceType: 'REPLACEMENT',
+        sourceType,
       });
       message.success('Đã gửi lời mời tham dự đến manager CLB');
       fetchTeams();
@@ -185,6 +213,77 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       setInviting(false);
     }
   };
+
+  const candidateColumns: ColumnsType<InvitationCandidate> = [
+    {
+      title: 'Hạng',
+      dataIndex: 'sourceRank',
+      width: 64,
+      align: 'center',
+      render: (rank: number) => <Tag color="blue">#{rank}</Tag>,
+    },
+    {
+      title: 'CLB',
+      key: 'team',
+      render: (_, r) => (
+        <Space size={6}>
+          {r.team?.logoUrl && (
+            <img
+              src={r.team.logoUrl}
+              alt=""
+              style={{ width: 20, height: 20, objectFit: 'contain' }}
+            />
+          )}
+          <strong>{r.teamName}</strong>
+          {r.team?.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
+        </Space>
+      ),
+    },
+    {
+      title: 'Điểm',
+      dataIndex: 'points',
+      width: 80,
+      align: 'center',
+    },
+    {
+      title: 'Hiệu số',
+      dataIndex: 'goalDifference',
+      width: 90,
+      align: 'center',
+      render: (goalDifference: number) =>
+        goalDifference > 0 ? `+${goalDifference}` : goalDifference,
+    },
+    {
+      title: 'Lời mời',
+      key: 'invitationStatus',
+      width: 140,
+      render: (_, r) => {
+        if (!r.invitationStatus) return <Tag>Chưa gửi</Tag>;
+        const status = INVITATION_STATUS_MAP[r.invitationStatus] ?? {
+          label: r.invitationStatus,
+          color: 'default',
+        };
+        return <Tag color={status.color}>{status.label}</Tag>;
+      },
+    },
+    {
+      title: '',
+      key: 'actions',
+      width: 120,
+      align: 'right',
+      render: (_, r) => (
+        <Button
+          size="small"
+          icon={<SendOutlined />}
+          loading={inviting}
+          disabled={r.invitationStatus === 'ACCEPTED'}
+          onClick={() => handleSendInvitation(r.teamId, 'PREVIOUS_TOP_8')}
+        >
+          {r.invitationStatus === 'SENT' ? 'Gửi lại top 8' : 'Gửi top 8'}
+        </Button>
+      ),
+    },
+  ];
 
   const handleStatus = async (teamId: string, status: string) => {
     try {
@@ -301,62 +400,95 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       title: '',
       key: 'actions',
       width: 180,
-      render: (_, r) => (
-        <Space size={4}>
-          <Tooltip title="Gửi lời mời/popup cho manager CLB">
-            <Button
-              type="text"
-              size="small"
-              icon={<SendOutlined />}
-              onClick={() => handleSendInvitation(r.teamId)}
-            />
-          </Tooltip>
-          <Tooltip title="Xem hồ sơ tham dự">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              disabled={!r.applicationSubmittedAt}
-              onClick={() => setViewingTeam(r)}
-            />
-          </Tooltip>
-          {r.status === 'REGISTERED' && (
-            <>
-              <Tooltip title={t('seasons.teamPanelApproveTooltip')}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CheckOutlined />}
-                  style={{ color: '#52c41a' }}
-                  onClick={() => handleStatus(r.teamId, 'APPROVED')}
-                />
-              </Tooltip>
-              <Tooltip title={t('seasons.teamPanelRejectTooltip')}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CloseOutlined />}
-                  danger
-                  onClick={() => handleStatus(r.teamId, 'REJECTED')}
-                />
-              </Tooltip>
-            </>
-          )}
-          <Popconfirm
-            title={t('seasons.teamPanelRemoveConfirm')}
-            onConfirm={() => handleRemove(r.teamId)}
-            okText={t('seasons.deleteOk')}
-            cancelText={t('seasons.deleteCancel')}
-          >
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_, r) => {
+        const invitationSource =
+          invitationsByTeamId.get(r.teamId)?.sourceType ?? selectedInvitationSource;
+        return (
+          <Space size={4}>
+            <Tooltip title="Gửi lời mời/popup cho manager CLB">
+              <Button
+                type="text"
+                size="small"
+                icon={<SendOutlined />}
+                onClick={() => handleSendInvitation(r.teamId, invitationSource)}
+              />
+            </Tooltip>
+            <Tooltip title="Xem hồ sơ tham dự">
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined />}
+                disabled={!r.applicationSubmittedAt}
+                onClick={() => setViewingTeam(r)}
+              />
+            </Tooltip>
+            {r.status === 'REGISTERED' && (
+              <>
+                <Tooltip title={t('seasons.teamPanelApproveTooltip')}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CheckOutlined />}
+                    style={{ color: '#52c41a' }}
+                    onClick={() => handleStatus(r.teamId, 'APPROVED')}
+                  />
+                </Tooltip>
+                <Tooltip title={t('seasons.teamPanelRejectTooltip')}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined />}
+                    danger
+                    onClick={() => handleStatus(r.teamId, 'REJECTED')}
+                  />
+                </Tooltip>
+              </>
+            )}
+            <Popconfirm
+              title={t('seasons.teamPanelRemoveConfirm')}
+              onConfirm={() => handleRemove(r.teamId)}
+              okText={t('seasons.deleteOk')}
+              cancelText={t('seasons.deleteCancel')}
+            >
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
   return (
     <div style={{ padding: '8px 0' }}>
+      <div style={{ marginBottom: 12 }}>
+        {candidateResult ? (
+          <>
+            <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+              <Typography.Text strong>Top 8 mùa trước</Typography.Text>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Nguồn: {candidateResult.previousSeason.name}
+              </Typography.Text>
+            </Flex>
+            <Table
+              columns={candidateColumns}
+              dataSource={candidateResult.candidates}
+              rowKey="teamId"
+              pagination={false}
+              size="small"
+            />
+          </>
+        ) : (
+          candidateError && (
+            <Alert
+              showIcon
+              type="warning"
+              message="Top 8 mùa trước"
+              description={candidateError}
+              style={{ marginBottom: 12 }}
+            />
+          )
+        )}
+      </div>
       <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
         <Typography.Text strong>
           <TeamOutlined />{' '}
@@ -366,6 +498,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           })}
         </Typography.Text>
         <Space>
+          <Select
+            value={selectedInvitationSource}
+            onChange={setSelectedInvitationSource}
+            style={{ width: 140 }}
+            options={INVITATION_SOURCE_OPTIONS}
+          />
           <Select
             value={selectedTeamId}
             onChange={setSelectedTeamId}
