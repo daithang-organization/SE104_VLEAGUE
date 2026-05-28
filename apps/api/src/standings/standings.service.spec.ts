@@ -59,6 +59,12 @@ describe('StandingsService', () => {
             playerSuspension: {
               findMany: jest.fn(),
             },
+            drawLotResult: {
+              findMany: jest.fn().mockResolvedValue([]),
+              upsert: jest.fn(),
+              deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+              updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            },
           },
         },
       ],

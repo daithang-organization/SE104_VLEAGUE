@@ -151,6 +151,57 @@ export function apiGetSeasonAwards(seasonId?: string) {
   return api.get<SeasonAwards>(`/standings/awards${query}`).then((res) => res.data);
 }
 
+// ─────────── Draw Lot ───────────
+export type DrawLotResultItem = {
+  id: string;
+  seasonId: string;
+  teamId: string;
+  team: { id: string; name: string; shortName?: string | null };
+  resolvedRank: number;
+  note: string | null;
+  confirmed: boolean;
+  resolvedAt: string;
+  resolvedBy: string | null;
+};
+
+export type DrawLotStatus = {
+  seasonId: string | null;
+  teamsRequiringDrawLot: TeamStanding[];
+  isResolved: boolean;
+  results: DrawLotResultItem[];
+};
+
+export type DrawLotExecuteResult = {
+  message: string;
+  results: Array<{ teamId: string; teamName: string; resolvedRank: number }>;
+};
+
+export function apiGetDrawLotStatus(seasonId?: string) {
+  const query = buildQuery({ seasonId });
+  return api.get<DrawLotStatus>(`/standings/draw-lot/status${query}`).then((res) => res.data);
+}
+
+export function apiExecuteDrawLot(seasonId: string) {
+  return api
+    .post<DrawLotExecuteResult>(`/standings/draw-lot/${seasonId}/execute`)
+    .then((res) => res.data);
+}
+
+export function apiConfirmDrawLot(
+  seasonId: string,
+  overrides?: Array<{ teamId: string; resolvedRank: number }>,
+) {
+  return api
+    .post<{ message: string }>(`/standings/draw-lot/${seasonId}/confirm`, { overrides })
+    .then((res) => res.data);
+}
+
+export function apiResetDrawLot(seasonId: string) {
+  return api
+    .delete<{ message: string; deletedCount: number }>(`/standings/draw-lot/${seasonId}`)
+    .then((res) => res.data);
+}
+
 // Re-export from searchApi for convenience
 export { apiGetHeadToHead, apiGetPlayerStats } from './searchApi';
 export type { HeadToHeadResult, PlayerStats } from './searchApi';

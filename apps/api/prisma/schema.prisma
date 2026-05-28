@@ -229,6 +229,7 @@ model Team {
   managerAssignments TeamManagerAssignment[]
   managedUsers User[] @relation("ManagedTeam")
   invitations TeamInvitation[]
+  drawLotResults DrawLotResult[]
 
   @@map("teams")
 }
@@ -300,6 +301,7 @@ model Season {
   managerAssignments TeamManagerAssignment[]
   invitations TeamInvitation[]
   playerSuspensions PlayerSuspension[]
+  drawLotResults DrawLotResult[]
 
   @@map("seasons")
 }
@@ -630,6 +632,27 @@ model Standing {
   @@unique([seasonId, teamId])
   @@index([seasonId])
   @@map("standings")
+}
+
+model DrawLotResult {
+  id           String   @id @default(uuid()) @db.Uuid
+  seasonId     String   @map("season_id") @db.Uuid
+  season       Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId       String   @map("team_id") @db.Uuid
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  resolvedRank Int      @map("resolved_rank")
+  note         String?  @db.Text
+  resolvedAt   DateTime @default(now()) @map("resolved_at")
+  resolvedBy   String?  @map("resolved_by")
+  confirmed    Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId])
+  @@map("draw_lot_results")
 }
 
 model TeamManagerAssignment {
