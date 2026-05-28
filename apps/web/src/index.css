@@ -1092,6 +1092,114 @@ select {
   padding: 16px;
 }
 
+.match-stats-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.match-stats-teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, auto) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      105deg,
+      var(--match-home-primary, rgba(227, 34, 33, 0.12)) 0%,
+      rgba(255, 255, 255, 0) 48%,
+      var(--match-away-primary, rgba(37, 99, 235, 0.1)) 100%
+    ),
+    var(--surface);
+}
+
+.match-stats-teams > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-stats-teams > strong:last-child {
+  text-align: right;
+}
+
+.match-stats-teams > span {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  min-width: 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.match-stats-teams small {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.match-stats-teams b {
+  color: var(--text-main);
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.match-stats-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.match-stats-row {
+  display: grid;
+  grid-template-columns: minmax(62px, 1fr) minmax(140px, 1.45fr) minmax(62px, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+:root[data-theme='dark'] .match-stats-row {
+  background: rgba(21, 34, 56, 0.68);
+}
+
+.match-stats-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-stats-row strong:last-child {
+  text-align: right;
+}
+
+.match-stats-row span {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
 .lineup-pitch {
   display: grid;
   gap: 12px;
@@ -1562,6 +1670,22 @@ select {
     font-size: 11px;
   }
 
+  .match-stats-teams {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    text-align: center;
+  }
+
+  .match-stats-teams > strong:last-child {
+    text-align: center;
+  }
+
+  .match-stats-row {
+    grid-template-columns: minmax(52px, 0.8fr) minmax(108px, 1.25fr) minmax(52px, 0.8fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
   .lineup-pitch-side {
     min-height: 360px;
     padding: 16px 12px;
@@ -1589,6 +1713,14 @@ select {
 }
 
 @media (max-width: 480px) {
+  .match-stats-row strong {
+    font-size: 16px;
+  }
+
+  .match-stats-row span {
+    font-size: 12px;
+  }
+
   .lineup-bench-player {
     grid-template-columns: 38px minmax(0, 1fr);
   }
