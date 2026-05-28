@@ -150,6 +150,7 @@ async function main() {
       update: {
         role: UserRole.TEAM_MANAGER,
         roleId: teamManagerRole.id,
+        managedTeamId: team.id,
         passwordHash,
         emailVerified: true,
         name: `Manager ${team.shortName ?? team.name}`,
@@ -158,6 +159,7 @@ async function main() {
         email,
         role: UserRole.TEAM_MANAGER,
         roleId: teamManagerRole.id,
+        managedTeamId: team.id,
         passwordHash,
         emailVerified: true,
         name: `Manager ${team.shortName ?? team.name}`,

@@ -1,7 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import { TeamManagerScopeService } from '../team-manager/team-manager-scope.service';
 import type { SubmitMatchLineupDto } from './dto/match-lineup.dto';
 import { MatchLineupService } from './match-lineup.service';
 
@@ -46,6 +47,7 @@ describe('MatchLineupService', () => {
   let service: MatchLineupService;
   let prisma: PrismaService;
   let regulationHelper: RegulationHelper;
+  let teamManagerScope: TeamManagerScopeService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -82,12 +84,19 @@ describe('MatchLineupService', () => {
             getNumericValue: jest.fn().mockResolvedValue(3),
           },
         },
+        {
+          provide: TeamManagerScopeService,
+          useValue: {
+            assertCanManageTeam: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(MatchLineupService);
     prisma = module.get(PrismaService);
     regulationHelper = module.get(RegulationHelper);
+    teamManagerScope = module.get(TeamManagerScopeService);
 
     jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
     jest
@@ -102,9 +111,18 @@ describe('MatchLineupService', () => {
   });
 
   it('submits a valid 11 starter and 5 substitute lineup', async () => {
-    const result = await service.submitLineup('match-1', lineupPayload());
+    const actor = { id: 'manager-1', role: 'TEAM_MANAGER' };
+    const result = await service.submitLineup(
+      'match-1',
+      lineupPayload(),
+      actor,
+    );
 
     expect(result.id).toBe('registration-1');
+    expect(teamManagerScope.assertCanManageTeam).toHaveBeenCalledWith(
+      actor,
+      'team-1',
+    );
     expect(prisma.matchTeamRegistration.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { matchId_teamId: { matchId: 'match-1', teamId: 'team-1' } },
@@ -128,6 +146,22 @@ describe('MatchLineupService', () => {
         }),
       }),
     );
+  });
+
+  it('rejects team managers submitting a lineup for another club', async () => {
+    jest
+      .spyOn(teamManagerScope, 'assertCanManageTeam')
+      .mockRejectedValue(new ForbiddenException('wrong club'));
+
+    await expect(
+      service.submitLineup(
+        'match-1',
+        { ...lineupPayload(), teamId: 'team-2' },
+        { id: 'manager-1', role: 'TEAM_MANAGER' },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(prisma.matchTeamRegistration.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects lineups that do not contain exactly 16 players', async () => {

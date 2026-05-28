@@ -6,12 +6,14 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import { TeamManagerScopeService } from '../team-manager/team-manager-scope.service';
 import { RosterService } from './roster.service';
 
 describe('RosterService', () => {
   let service: RosterService;
   let prisma: PrismaService;
   let regulationHelper: RegulationHelper;
+  let teamManagerScope: TeamManagerScopeService;
 
   const mockTeam = {
     id: 'team-1',
@@ -70,12 +72,21 @@ describe('RosterService', () => {
             }),
           },
         },
+        {
+          provide: TeamManagerScopeService,
+          useValue: {
+            assertCanManageTeam: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<RosterService>(RosterService);
     prisma = module.get<PrismaService>(PrismaService);
     regulationHelper = module.get<RegulationHelper>(RegulationHelper);
+    teamManagerScope = module.get<TeamManagerScopeService>(
+      TeamManagerScopeService,
+    );
   });
 
   it('should be defined', () => {
@@ -117,12 +128,20 @@ describe('RosterService', () => {
         .spyOn(prisma.teamPlayer, 'create')
         .mockResolvedValue(mockTeamPlayer as any);
 
-      const result = await service.addPlayerToRoster('team-1', {
-        playerId: 'player-1',
-        jerseyNumber: 19,
-      });
+      const result = await service.addPlayerToRoster(
+        'team-1',
+        {
+          playerId: 'player-1',
+          jerseyNumber: 19,
+        } as any,
+        { id: 'manager-1', role: 'TEAM_MANAGER' } as any,
+      );
 
       expect(result.success).toBe(true);
+      expect(teamManagerScope.assertCanManageTeam).toHaveBeenCalledWith(
+        { id: 'manager-1', role: 'TEAM_MANAGER' },
+        'team-1',
+      );
     });
 
     it('should throw NotFoundException if player not found', async () => {

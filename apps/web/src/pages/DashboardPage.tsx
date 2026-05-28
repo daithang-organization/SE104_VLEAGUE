@@ -48,9 +48,8 @@ import {
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
-import { apiGetTeam, apiGetTeams, type Team, type TeamDetail } from '../services/teamApi';
+import { apiGetTeam, apiGetTeams, type TeamDetail } from '../services/teamApi';
 import {
-  apiCreateTeamManagerAssignment,
   apiGetTeamManagerAssignment,
   apiGetTeamManagerApplication,
   apiSubmitTeamManagerApplication,
@@ -128,7 +127,6 @@ function getApplicationStatus(application: TeamManagerApplication | null) {
 function TeamManagerDashboard() {
   const [applicationForm] = Form.useForm<SubmitTeamManagerApplicationPayload>();
   const [loading, setLoading] = useState(true);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [application, setApplication] = useState<TeamManagerApplication | null>(null);
@@ -143,15 +141,14 @@ function TeamManagerDashboard() {
     const loadBootstrap = async () => {
       setLoading(true);
       try {
-        const [teamsData, seasonsData] = await Promise.all([apiGetTeams(1, 100), apiGetSeasons()]);
+        const seasonsData = await apiGetSeasons();
         const season = getDashboardSeason(seasonsData);
         const assignment = season?.id ? await apiGetTeamManagerAssignment(season.id) : null;
 
-        setTeams(teamsData.data);
         setCurrentSeason(season);
         setSelectedTeamId(assignment?.teamId ?? null);
       } catch (_err) {
-        message.error('Không tải được dữ liệu chọn đội bóng');
+        message.error('Không tải được dữ liệu CLB quản lý');
       } finally {
         setLoading(false);
       }
@@ -229,21 +226,6 @@ function TeamManagerDashboard() {
     });
   }, [application, applicationForm, currentSeason]);
 
-  const handleSelectTeam = async (teamId: string) => {
-    if (!currentSeason?.id) return;
-
-    setLoading(true);
-    try {
-      const assignment = await apiCreateTeamManagerAssignment(currentSeason.id, teamId);
-      setSelectedTeamId(assignment.teamId);
-      message.success('Đã chọn CLB quản lý cho mùa giải này');
-    } catch (_err) {
-      message.error('Không thể chọn CLB. Tài khoản này có thể đã chọn CLB cho mùa giải.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmitApplication = async (values: SubmitTeamManagerApplicationPayload) => {
     if (!currentSeason?.id) return;
 
@@ -305,15 +287,10 @@ function TeamManagerDashboard() {
       <div className="page-stack dashboard-page dashboard-manager-page">
         <PageHero
           eyebrow="VLeague"
-          title="Chọn CLB quản lý"
-          description="Vui lòng chọn đội bóng của bạn để bắt đầu trang quản lý CLB. Lựa chọn này chỉ được thực hiện một lần cho mùa giải hiện tại."
+          title="Chưa được gắn CLB"
+          description="Tài khoản TEAM_MANAGER cần được admin gắn với một CLB cố định trước khi sử dụng trang quản lý đội bóng."
           icon={<TeamOutlined />}
           metrics={[
-            {
-              label: 'CLB khả dụng',
-              value: teams.length.toLocaleString('vi-VN'),
-              icon: <TeamOutlined />,
-            },
             {
               label: 'Mùa giải',
               value: currentSeason?.name ?? '...',
@@ -322,31 +299,12 @@ function TeamManagerDashboard() {
           ]}
         />
 
-        <div className="dashboard-team-select-grid">
-          {teams.map((candidate) => {
-            const logoUrl = getTeamLogoUrl(candidate);
-            return (
-              <Card
-                key={candidate.id}
-                hoverable
-                loading={loading}
-                className="dashboard-team-select-card"
-                onClick={() => handleSelectTeam(candidate.id)}
-              >
-                <div className="dashboard-team-select-logo">
-                  {logoUrl ? (
-                    <img src={logoUrl} alt={`${candidate.name} logo`} />
-                  ) : (
-                    <TeamOutlined />
-                  )}
-                </div>
-                <Typography.Text strong className="dashboard-team-select-name">
-                  {candidate.name}
-                </Typography.Text>
-              </Card>
-            );
-          })}
-        </div>
+        <Alert
+          type="warning"
+          showIcon
+          message="Tài khoản chưa có CLB cố định"
+          description="Vui lòng liên hệ admin để gắn tài khoản này với đúng CLB trong màn hình Quản lý người dùng."
+        />
       </div>
     );
   }

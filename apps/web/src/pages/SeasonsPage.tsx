@@ -214,7 +214,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       message.success('Đã gửi lời mời tham dự đến manager CLB');
       await fetchTeams();
     } catch (_err) {
-      message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có manager trong mùa giải.');
+      message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có tài khoản manager cố định.');
     } finally {
       setInviting(false);
     }

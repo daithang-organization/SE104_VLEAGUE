@@ -1,4 +1,5 @@
 import { api } from '../lib/api';
+import type { Team } from './teamApi';
 
 // ─────────── Types ───────────
 export type User = {
@@ -10,6 +11,8 @@ export type User = {
   avatarUrl?: string | null;
   googleId?: string | null;
   facebookId?: string | null;
+  managedTeamId?: string | null;
+  managedTeam?: Team | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -19,6 +22,7 @@ export type CreateUserPayload = {
   password: string;
   role: string;
   name?: string;
+  managedTeamId?: string;
 };
 
 // ─────────── API calls ───────────

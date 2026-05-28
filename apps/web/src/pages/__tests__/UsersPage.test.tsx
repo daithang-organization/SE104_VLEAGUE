@@ -23,8 +23,14 @@ const mockUserApi = vi.hoisted(() => ({
   apiUpdateUserRole: vi.fn(),
   apiDeleteUser: vi.fn(),
 }));
+const mockTeamApi = vi.hoisted(() => ({
+  apiGetTeams: vi.fn().mockResolvedValue({
+    data: [{ id: 'team-1', name: 'Hà Nội FC', status: 'ACTIVE' }],
+  }),
+}));
 
 vi.mock('../../services/userApi', () => mockUserApi);
+vi.mock('../../services/teamApi', () => mockTeamApi);
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -51,6 +57,7 @@ describe('UsersPage', () => {
     renderPage();
     await waitFor(() => {
       expect(mockUserApi.apiGetUsers).toHaveBeenCalled();
+      expect(mockTeamApi.apiGetTeams).toHaveBeenCalled();
     });
   });
 

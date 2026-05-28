@@ -10,6 +10,7 @@ import {
   SeasonTeamStatus,
   TeamInvitationSourceType,
   TeamInvitationStatus,
+  UserRole,
 } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -79,6 +80,10 @@ export class TeamInvitationService {
       },
     },
   } satisfies Prisma.TeamInvitationInclude;
+
+  private managerAssignmentInclude = {
+    user: { select: { id: true, email: true, name: true } },
+  } satisfies Prisma.TeamManagerAssignmentInclude;
 
   async listForSeason(seasonId: string) {
     await this.ensureSeasonExists(seasonId);
@@ -161,14 +166,8 @@ export class TeamInvitationService {
       this.ensureTeamExists(dto.teamId),
     ]);
 
-    const managerAssignments = await this.prisma.teamManagerAssignment.findMany(
-      {
-        where: { seasonId, teamId: dto.teamId },
-        include: {
-          user: { select: { id: true, email: true, name: true } },
-        },
-      },
-    );
+    const managerAssignments =
+      await this.resolveManagerAssignmentsForInvitation(seasonId, dto.teamId);
 
     if (managerAssignments.length === 0) {
       throw new BadRequestException(
@@ -227,24 +226,26 @@ export class TeamInvitationService {
   }
 
   async getPendingForManager(userId: string) {
-    const assignments = await this.prisma.teamManagerAssignment.findMany({
-      where: { userId },
-      select: { seasonId: true, teamId: true },
+    const manager = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, managedTeamId: true },
     });
 
-    if (assignments.length === 0) return [];
+    if (
+      !manager ||
+      manager.role !== UserRole.TEAM_MANAGER ||
+      !manager.managedTeamId
+    ) {
+      return [];
+    }
 
-    const assignmentFilter = assignments.map((assignment) => ({
-      seasonId: assignment.seasonId,
-      teamId: assignment.teamId,
-    }));
-    await this.markExpiredInvitations({ OR: assignmentFilter });
+    await this.markExpiredInvitations({ teamId: manager.managedTeamId });
 
     return this.prisma.teamInvitation.findMany({
       where: {
         status: TeamInvitationStatus.SENT,
         deadlineAt: { gte: new Date() },
-        OR: assignmentFilter,
+        teamId: manager.managedTeamId,
       },
       include: this.invitationInclude,
       orderBy: { deadlineAt: 'asc' },
@@ -278,17 +279,29 @@ export class TeamInvitationService {
       throw new BadRequestException('Lời mời đã quá hạn phản hồi.');
     }
 
-    const assignment = await this.prisma.teamManagerAssignment.findFirst({
+    const manager = await this.prisma.user.findFirst({
       where: {
+        id: userId,
+        role: UserRole.TEAM_MANAGER,
+        managedTeamId: invitation.teamId,
+      },
+      select: { id: true },
+    });
+
+    if (!manager) {
+      throw new ForbiddenException('Bạn không có quyền phản hồi lời mời này.');
+    }
+
+    await this.prisma.teamManagerAssignment.upsert({
+      where: { userId_seasonId: { userId, seasonId: invitation.seasonId } },
+      update: { teamId: invitation.teamId },
+      create: {
         userId,
         seasonId: invitation.seasonId,
         teamId: invitation.teamId,
       },
+      include: this.managerAssignmentInclude,
     });
-
-    if (!assignment) {
-      throw new ForbiddenException('Bạn không có quyền phản hồi lời mời này.');
-    }
 
     const responseStatus = dto.responseStatus as TeamInvitationStatus;
     const updatedInvitation = await this.prisma.teamInvitation.update({
@@ -453,6 +466,29 @@ export class TeamInvitationService {
       goalDifference: 0,
       played: 0,
     }));
+  }
+
+  private async resolveManagerAssignmentsForInvitation(
+    seasonId: string,
+    teamId: string,
+  ) {
+    const managers = await this.prisma.user.findMany({
+      where: { role: UserRole.TEAM_MANAGER, managedTeamId: teamId },
+      select: { id: true, email: true, name: true },
+    });
+
+    return Promise.all(
+      managers.map((manager) =>
+        this.prisma.teamManagerAssignment.upsert({
+          where: {
+            userId_seasonId: { userId: manager.id, seasonId },
+          },
+          update: { teamId },
+          create: { userId: manager.id, seasonId, teamId },
+          include: this.managerAssignmentInclude,
+        }),
+      ),
+    );
   }
 
   private async buildTopLeagueCandidates(

@@ -137,6 +137,10 @@ model User {
   roleId String? @map("role_id") @db.Uuid
   roleRef Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
 
+  // Fixed club assignment for TEAM_MANAGER accounts.
+  managedTeamId String? @map("managed_team_id") @db.Uuid
+  managedTeam   Team?   @relation("ManagedTeam", fields: [managedTeamId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -145,6 +149,7 @@ model User {
   teamManagerAssignments TeamManagerAssignment[]
 
   @@index([roleId])
+  @@index([managedTeamId])
   @@map("users")
 }
 
@@ -222,6 +227,7 @@ model Team {
   playerSuspensions PlayerSuspension[]
   standings    Standing[]
   managerAssignments TeamManagerAssignment[]
+  managedUsers User[] @relation("ManagedTeam")
   invitations TeamInvitation[]
 
   @@map("teams")
