@@ -29,7 +29,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { EventFormRow } from '../components';
-import { EventModal, MatchFixtureCard, PageHero, ScoreEditModal } from '../components';
+import {
+  AppMenuIcon,
+  EventModal,
+  MatchFixtureCard,
+  PageCover,
+  ScoreEditModal,
+} from '../components';
 import {
   apiAddMatchEvent,
   apiGetMatch,
@@ -437,11 +443,11 @@ export default function MatchesPage() {
 
   return (
     <div className="page-stack">
-      <PageHero
-        variant="compact"
+      <PageCover
         eyebrow={t('menu.matches')}
         title={t('matches.title')}
-        icon={<FieldTimeOutlined />}
+        description={t('matches.subtitle')}
+        icon={<AppMenuIcon menuKey="matches" />}
         metrics={[
           {
             label: t('common.total'),
@@ -459,50 +465,51 @@ export default function MatchesPage() {
             icon: <FieldTimeOutlined />,
           },
         ]}
-        actions={
-          <Space wrap>
-            <Input.Search
-              placeholder={t('matches.searchPlaceholder')}
-              allowClear
-              onSearch={onSearch}
-              style={{ width: 220 }}
-              loading={loading}
-            />
-            <Select
-              value={selectedSeasonId}
-              onChange={onSeasonChange}
-              style={{ width: 200 }}
-              placeholder={t('matches.seasonPlaceholder')}
-              allowClear
-              options={seasons.map((s) => ({
-                value: s.id,
-                label: `${s.name} (${s.year}/${s.year + 1})`,
-              }))}
-            />
-            <Select
-              value={filterStatus}
-              onChange={onStatusChange}
-              style={{ width: 140 }}
-              placeholder={t('matches.statusPlaceholder')}
-              allowClear
-              options={Object.entries(STATUS_MAP).map(([value, { label }]) => ({
-                value,
-                label,
-              }))}
-            />
-            <Select
-              value={filterTeam}
-              onChange={onTeamChange}
-              style={{ width: 180 }}
-              placeholder={t('matches.teamFilterPlaceholder')}
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              options={availableTeams}
-            />
-          </Space>
-        }
       />
+
+      <div className="page-toolbar">
+        <Space wrap>
+          <Input.Search
+            placeholder={t('matches.searchPlaceholder')}
+            allowClear
+            onSearch={onSearch}
+            style={{ width: 220 }}
+            loading={loading}
+          />
+          <Select
+            value={selectedSeasonId}
+            onChange={onSeasonChange}
+            style={{ width: 200 }}
+            placeholder={t('matches.seasonPlaceholder')}
+            allowClear
+            options={seasons.map((s) => ({
+              value: s.id,
+              label: `${s.name} (${s.year}/${s.year + 1})`,
+            }))}
+          />
+          <Select
+            value={filterStatus}
+            onChange={onStatusChange}
+            style={{ width: 140 }}
+            placeholder={t('matches.statusPlaceholder')}
+            allowClear
+            options={Object.entries(STATUS_MAP).map(([value, { label }]) => ({
+              value,
+              label,
+            }))}
+          />
+          <Select
+            value={filterTeam}
+            onChange={onTeamChange}
+            style={{ width: 180 }}
+            placeholder={t('matches.teamFilterPlaceholder')}
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            options={availableTeams}
+          />
+        </Space>
+      </div>
 
       <Card className="schedule-page-card">
         <Tabs
@@ -549,9 +556,12 @@ export default function MatchesPage() {
                 </Typography.Title>
                 <Typography.Text type="secondary">
                   {activeRound
-                    ? `${activeRoundMatches.length} trận${
+                    ? `${t('matches.roundMatches', { count: activeRoundMatches.length })}${
                         activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                      } · ${activeRoundFinishedCount}/${activeRoundMatches.length} kết thúc`
+                      } · ${t('matches.roundProgress', {
+                        finished: activeRoundFinishedCount,
+                        total: activeRoundMatches.length,
+                      })}`
                     : ''}
                 </Typography.Text>
               </div>

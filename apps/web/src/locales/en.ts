@@ -164,6 +164,8 @@ const en = {
   dashboard: {
     title: 'Dashboard',
     welcome: 'Welcome to VLeague Admin! System overview:',
+    refereeWelcome: 'Official match operations dashboard for referees',
+    supervisorWelcome: 'Match supervision and discipline reporting dashboard',
     errorLoad: 'Failed to load dashboard data',
     statTeams: 'Teams',
     statPlayers: 'Players',
@@ -181,6 +183,7 @@ const en = {
     standingsColTeam: 'Team',
     standingsColPlayed: 'Played',
     standingsColPoints: 'Pts',
+    standingsColLast5: 'Last 5',
     standingsEmpty: 'No standings data yet',
     upcomingTitle: 'Upcoming Matches',
     upcomingColRound: 'Round',
@@ -192,6 +195,7 @@ const en = {
     recentColRound: 'R',
     recentColMatch: 'Match',
     recentColDate: 'Date',
+    roundShort: 'R{round}',
     recentEmpty: 'No match results yet',
     topScorersTitle: 'Top Scorers (Top 5)',
     topScorersColPlayer: 'Player',
@@ -212,6 +216,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   matches: {
+    subtitle: 'Track scores, statuses, and match events across the season.',
     title: 'Match Results',
     searchPlaceholder: 'Search team...',
     seasonPlaceholder: 'Season',
@@ -236,6 +241,8 @@ const en = {
     btnDetail: 'Detail',
     btnEdit: 'Edit',
     roundLabel: 'Round {round}',
+    roundMatches: '{count} matches',
+    roundProgress: '{finished}/{total} finished',
     legLabel: '{leg}',
     matchCount: '{count} matches · {finished}/{total} finished',
     noEvents: 'No events yet',
@@ -275,6 +282,7 @@ const en = {
     tabOverview: '📋 Overview',
     tabEvents: '⚽ Events ({count})',
     tabLineups: '👥 Lineups',
+    tabOfficials: 'Officials & reports',
     matchInfoTitle: 'Match Information',
     matchStatsTitle: 'Match Statistics',
     descRound: 'Round',
@@ -300,6 +308,62 @@ const en = {
     colJersey: 'Jersey',
     colPlayer: 'Player',
     colPosition: 'Position',
+    colRole: 'Role',
+    colTeam: 'Team',
+    colReason: 'Reason',
+    colSourceMatch: 'Source match',
+    colFullName: 'Full name',
+    colNote: 'Note',
+    lineupStatusSubmitted: 'Submitted',
+    lineupStatusApproved: 'Approved',
+    lineupStatusRejected: 'Rejected',
+    kitPrimary: 'Primary kit',
+    kitBackup: 'Backup kit',
+    suspensionRedCard: 'Red card',
+    suspensionAccumulatedYellows: 'Two yellow cards',
+    officialRoleMainReferee: 'Main referee',
+    officialRoleAssistantReferee: 'Assistant referee',
+    officialRoleFourthOfficial: 'Fourth official',
+    officialRoleSupervisor: 'Supervisor',
+    foreignPlayerTag: 'Foreign player',
+    suspendedTag: 'Suspended',
+    lineupRoleNone: 'Not selected',
+    lineupRoleStarter: 'Starter',
+    lineupRoleSubstitute: 'Substitute',
+    officialAssignmentsTitle: 'Official assignments',
+    officialAssignmentsEmpty: 'No officials assigned yet.',
+    assignOfficialsTitle: 'Pre-match assignment',
+    officialSelectPlaceholder: 'Select official or supervisor',
+    officialNotePlaceholder: 'Assignment note',
+    publishAssignmentBtn: 'Publish assignment',
+    assignOfficialsReadonly: 'Only the organizer can assign officials and supervisors.',
+    refereeReportTitle: 'Referee report',
+    reportedScore: 'Reported score: {home} - {away}',
+    bestPlayer: 'Player of the match',
+    notSelected: 'Not selected',
+    bestPlayerPlaceholder: 'Player of the match',
+    technicalStatsPlaceholder: 'Technical stats JSON, e.g. {"shots":{"home":8,"away":5}}',
+    refereeReportNotePlaceholder: 'Referee report note',
+    submitRefereeReportBtn: 'Submit referee report',
+    refereeReportReadonly: 'Only the organizer or an assigned referee can submit this report.',
+    supervisorReportTitle: 'Supervisor report',
+    organizationRatingReported: 'Organization rating: {rating}',
+    supervisorLabel: 'Supervisor:',
+    refereeIssuesLabel: 'Referee issues:',
+    playerIssuesLabel: 'Player issues:',
+    organizerIssuesLabel: 'Venue organizer issues:',
+    supervisorSelectPlaceholder: 'Select assigned supervisor',
+    ratingGood: 'Good',
+    ratingAcceptable: 'Acceptable',
+    ratingIssuesFound: 'Issues found',
+    refereeIssuesPlaceholder: 'Referee issues, if any',
+    playerIssuesPlaceholder: 'Player issues, if any',
+    organizerIssuesPlaceholder: 'Venue organizer issues, if any',
+    supervisorNotesPlaceholder: 'Supervisor notes',
+    sendToDiscipline: 'Send to disciplinary board',
+    submitSupervisorReportBtn: 'Submit supervisor report',
+    supervisorReportReadonly:
+      'Only the organizer or an assigned supervisor can submit this report.',
     statTotalEvents: 'Total events',
     statTotalGoals: 'Total goals',
     statTotalCards: 'Total cards',
@@ -353,6 +417,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   teams: {
+    subtitle: 'Manage clubs, home stadiums, and registration status in the system.',
     title: 'Team Management',
     searchPlaceholder: 'Search teams...',
     addBtn: 'Add Team',
@@ -518,6 +583,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   schedule: {
+    subtitle: 'Manage fixtures, draft status, and kickoff times for each round.',
     title: 'Match Schedule',
     seasonPlaceholder: 'Select season',
     matchCount: '{total} matches',
@@ -568,6 +634,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   standings: {
+    subtitle: 'Review rankings, points, goal difference, and recent team form.',
     title: '🏆 Standings',
     seasonPlaceholder: 'Select season',
     loadError: 'Failed to load standings',
@@ -814,6 +881,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   reports: {
+    subtitle: 'Summarize goals, assists, cards, awards, and team performance.',
     title: 'Reports & Statistics',
     loadError: 'Failed to load report data',
     exportScorersPdf: 'PDF Top Scorers',
@@ -889,9 +957,9 @@ const en = {
     runnerUp: 'Runner-up',
     topScorer: 'Top scorer',
     bestPlayer: 'Best player',
-    pointsDetail: '{{count}} points',
-    goalsDetail: '{{count}} goals',
-    awardsDetail: '{{count}} player-of-match awards',
+    pointsDetail: '{count} points',
+    goalsDetail: '{count} goals',
+    awardsDetail: '{count} player-of-match awards',
     drawLotWarning: 'Final standings still require draw-lot resolution before awards are final.',
     empty: 'No award data yet',
   },
@@ -926,6 +994,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   headToHead: {
+    subtitle: 'Compare match history, wins, goals, and results between two teams.',
     title: 'Head-to-Head',
     team1Placeholder: 'Select Team 1',
     team2Placeholder: 'Select Team 2',

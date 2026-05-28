@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -35,7 +35,7 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { PageHero } from '../components';
+import { AppMenuIcon, PageCover } from '../components';
 import {
   apiCreateSeason,
   apiDeleteSeason,
@@ -71,14 +71,14 @@ const STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Đã kết thúc', color: 'default' },
 ];
 
-// Generate season year options: e.g. "2024/2025", "2025/2026", etc.
+// Generate season year options: e.g. "2024-2025", "2025-2026", etc.
 function generateYearOptions() {
   const currentYear = new Date().getFullYear();
   const options = [];
   for (let y = currentYear - 3; y <= currentYear + 3; y++) {
     options.push({
       value: y,
-      label: `Mùa giải ${y}/${y + 1}`,
+      label: `Mùa giải ${y}-${y + 1}`,
     });
   }
   return options;
@@ -878,7 +878,7 @@ export default function SeasonsPage() {
     const currentYear = new Date().getFullYear();
     form.setFieldsValue({
       year: currentYear,
-      name: `VLeague ${currentYear}/${currentYear + 1}`,
+      name: `VLeague ${currentYear}-${currentYear + 1}`,
       status: 'UPCOMING',
     });
     setModalOpen(true);
@@ -898,7 +898,7 @@ export default function SeasonsPage() {
 
   const handleYearChange = (year: number) => {
     if (!editing) {
-      form.setFieldValue('name', `VLeague ${year}/${year + 1}`);
+      form.setFieldValue('name', `VLeague ${year}-${year + 1}`);
     }
   };
 
@@ -984,7 +984,7 @@ export default function SeasonsPage() {
       dataIndex: 'year',
       width: 120,
       align: 'center',
-      render: (year: number) => `${year}/${year + 1}`,
+      render: (year: number) => `${year}-${year + 1}`,
     },
     {
       title: t('seasons.colStatus'),
@@ -1070,14 +1070,14 @@ export default function SeasonsPage() {
   return (
     <>
       <div className="page-stack">
-        <PageHero
+        <PageCover
           eyebrow={t('menu.seasons')}
           title={t('seasons.title')}
           description={t('seasons.teamPanelTitle', {
             approved: inProgressCount,
             total: seasons.length,
           })}
-          icon={<CalendarOutlined />}
+          icon={<AppMenuIcon menuKey="seasons" />}
           metrics={[
             {
               label: t('common.total'),
@@ -1095,14 +1095,15 @@ export default function SeasonsPage() {
               icon: <TeamOutlined />,
             },
           ]}
-          actions={
-            isAdmin ? (
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                {t('seasons.createBtn')}
-              </Button>
-            ) : undefined
-          }
         />
+
+        {isAdmin && (
+          <div className="page-toolbar page-toolbar-end">
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              {t('seasons.createBtn')}
+            </Button>
+          </div>
+        )}
 
         <Card>
           <Table

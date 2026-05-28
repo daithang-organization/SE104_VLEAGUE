@@ -1,8 +1,8 @@
-import { BarChartOutlined, SwapOutlined, TeamOutlined, TrophyOutlined } from '@ant-design/icons';
+﻿import { BarChartOutlined, SwapOutlined, TeamOutlined, TrophyOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Empty, Row, Select, Space, Spin, Statistic, Table } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PageHero } from '../components';
+import { AppMenuIcon, PageCover } from '../components';
 import { api } from '../lib/api';
 import { apiGetHeadToHead, type HeadToHeadResult } from '../services/searchApi';
 
@@ -53,10 +53,11 @@ export default function HeadToHeadPage() {
 
   return (
     <div className="page-stack">
-      <PageHero
+      <PageCover
         eyebrow={t('menu.headToHead')}
         title={t('headToHead.title')}
-        icon={<BarChartOutlined />}
+        description={t('headToHead.subtitle')}
+        icon={<AppMenuIcon menuKey="head-to-head" />}
         metrics={[
           {
             label: t('menu.teams'),
@@ -76,8 +77,8 @@ export default function HeadToHeadPage() {
         ]}
       />
 
-      <Card>
-        <Space wrap style={{ marginBottom: 24 }}>
+      <div className="page-toolbar">
+        <Space wrap>
           <Select
             placeholder={t('headToHead.team1Placeholder')}
             value={team1Id}
@@ -129,17 +130,14 @@ export default function HeadToHeadPage() {
               </Select.Option>
             ))}
           </Select>
-
-          <Button
-            type="primary"
-            onClick={fetchH2H}
-            disabled={!team1Id || !team2Id}
-            loading={loading}
-          >
-            {t('headToHead.compareBtn')}
-          </Button>
         </Space>
 
+        <Button type="primary" onClick={fetchH2H} disabled={!team1Id || !team2Id} loading={loading}>
+          {t('headToHead.compareBtn')}
+        </Button>
+      </div>
+
+      <Card>
         {loading && (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <Spin size="large" />

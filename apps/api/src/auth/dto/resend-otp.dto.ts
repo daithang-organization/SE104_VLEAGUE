@@ -7,5 +7,5 @@ export class ResendOtpDto {
     description: 'Email cần gửi lại OTP',
   })
   @IsEmail({}, { message: 'Email không hợp lệ' })
-  email: string;
+  email!: string;
 }

@@ -32,14 +32,14 @@ export class CreatePlayerDto {
   })
   @IsString()
   @IsNotEmpty()
-  fullName: string;
+  fullName!: string;
 
   @ApiProperty({
     description: 'Ngày sinh (ISO 8601)',
     example: '1997-04-12',
   })
   @IsDateString()
-  dob: string;
+  dob!: string;
 
   @ApiProperty({
     description: 'Quốc tịch',
@@ -47,7 +47,7 @@ export class CreatePlayerDto {
   })
   @IsString()
   @IsNotEmpty()
-  nationality: string;
+  nationality!: string;
 
   @ApiProperty({
     description: 'Vị trí thi đấu',
@@ -55,7 +55,7 @@ export class CreatePlayerDto {
     example: 'MF',
   })
   @IsEnum(PlayerPosition)
-  position: PlayerPosition;
+  position!: PlayerPosition;
 
   @ApiPropertyOptional({
     description: 'Loại cầu thủ',
@@ -240,25 +240,25 @@ export class ListPlayersQueryDto extends PaginationQueryDto {
 
 export class PlayerResponseDto {
   @ApiProperty({ description: 'ID cầu thủ', format: 'uuid' })
-  id: string;
+  id!: string;
 
   @ApiProperty({
     description: 'Họ và tên',
     example: 'Nguyễn Quang Hải',
   })
-  fullName: string;
+  fullName!: string;
 
   @ApiProperty({ description: 'Ngày sinh' })
-  dob: Date;
+  dob!: Date;
 
   @ApiProperty({ description: 'Quốc tịch', example: 'Vietnam' })
-  nationality: string;
+  nationality!: string;
 
   @ApiProperty({ description: 'Vị trí', enum: PlayerPosition })
-  position: PlayerPosition;
+  position!: PlayerPosition;
 
   @ApiProperty({ description: 'Loại cầu thủ', enum: PlayerType })
-  playerType: PlayerType;
+  playerType!: PlayerType;
 
   @ApiPropertyOptional({ description: 'Nơi sinh' })
   birthPlace?: string;
@@ -273,8 +273,8 @@ export class PlayerResponseDto {
   teamId?: string;
 
   @ApiProperty({ description: 'Ngày tạo' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty({ description: 'Ngày cập nhật' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

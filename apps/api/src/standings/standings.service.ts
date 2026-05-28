@@ -704,9 +704,37 @@ export class StandingsService {
   private async resolveSeasonId(seasonId?: string) {
     if (seasonId) return seasonId;
 
-    const currentSeason = await this.prisma.season.findFirst({
+    const seasonDelegate = this.prisma.season as typeof this.prisma.season & {
+      findMany?: typeof this.prisma.season.findMany;
+      findFirst?: typeof this.prisma.season.findFirst;
+    };
+    if (!seasonDelegate.findMany) {
+      const currentSeason = await seasonDelegate.findFirst?.({
+        where: { status: 'IN_PROGRESS' },
+      });
+      return currentSeason?.id;
+    }
+
+    const currentSeasons = await seasonDelegate.findMany({
       where: { status: 'IN_PROGRESS' },
+      include: {
+        _count: {
+          select: {
+            matches: true,
+            seasonTeams: true,
+          },
+        },
+      },
     });
+    const currentSeason = currentSeasons.sort((a, b) => {
+      const brandedDelta =
+        Number(b.name.startsWith('V.League')) -
+        Number(a.name.startsWith('V.League'));
+      if (brandedDelta !== 0) return brandedDelta;
+      const matchDelta = b._count.matches - a._count.matches;
+      if (matchDelta !== 0) return matchDelta;
+      return b._count.seasonTeams - a._count.seasonTeams;
+    })[0];
     return currentSeason?.id;
   }
 

@@ -142,6 +142,14 @@ const defaultRegulations = [
   { key: 'MATCHES_PER_ROUND', value: '5', valueType: 'number' },
 ];
 
+const defaultSeasonData = {
+  name: 'V.League 2024-2025',
+  year: 2024,
+  status: SeasonStatus.IN_PROGRESS,
+  startDate: new Date('2024-09-14'),
+  endDate: new Date('2025-06-30'),
+} as const;
+
 async function main() {
   console.log('🌱 Starting idempotent seed...');
 
@@ -214,9 +222,22 @@ async function main() {
 
   // 5) Seed season nếu chưa có
   console.log('📅 Seeding season...');
-  let season = await prisma.season.findFirst({
-    where: { status: SeasonStatus.IN_PROGRESS },
+  let season = await prisma.season.findUnique({
+    where: { name: defaultSeasonData.name },
   });
+  const legacySeason = season
+    ? null
+    : ((await prisma.season.findUnique({
+        where: { name: 'VLeague 2024-2025' },
+      })) ??
+      (await prisma.season.findUnique({ where: { name: 'VLeague 2024' } })));
+  const activeSeason =
+    season || legacySeason
+      ? null
+      : await prisma.season.findFirst({
+          where: { status: SeasonStatus.IN_PROGRESS },
+        });
+  season = season ?? legacySeason ?? activeSeason;
   if (!season) {
     season = await prisma.season.findUnique({
       where: { name: 'VLeague 2024' },
@@ -224,17 +245,15 @@ async function main() {
   }
   if (!season) {
     season = await prisma.season.create({
-      data: {
-        name: 'VLeague 2024',
-        year: 2024,
-        status: SeasonStatus.IN_PROGRESS,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
-      },
+      data: defaultSeasonData,
     });
     console.log('   ✓ Season created');
   } else {
-    console.log(`   ⏭️  Skipped (season "${season.name}" already exists)`);
+    season = await prisma.season.update({
+      where: { id: season.id },
+      data: defaultSeasonData,
+    });
+    console.log(`   ✓ Season updated (${season.name})`);
   }
 
   // 6) Seed regulations cho mùa giải (idempotent by season_id + key)

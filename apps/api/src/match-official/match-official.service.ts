@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import type { CurrentUserPayload } from '../auth';
 import {
   AssignOfficialDto,
   CreateOfficialDto,
@@ -102,10 +104,11 @@ export class MatchOfficialService {
 
   async submitMatchReport(
     matchId: string,
-    submittedByUserId: string | undefined,
+    submittedByUser: CurrentUserPayload | undefined,
     dto: SubmitMatchReportDto,
   ) {
     await this.ensureMatch(matchId);
+    await this.ensureRefereeCanReport(matchId, submittedByUser);
 
     await this.prisma.match.update({
       where: { id: matchId },
@@ -131,7 +134,7 @@ export class MatchOfficialService {
 
     const submittedAt = new Date();
     const reportData = {
-      submittedByUserId: submittedByUserId ?? null,
+      submittedByUserId: submittedByUser?.id ?? null,
       homeScore: dto.homeScore,
       awayScore: dto.awayScore,
       bestPlayerId: dto.bestPlayerId ?? null,
@@ -164,11 +167,17 @@ export class MatchOfficialService {
 
   async submitDisciplineReport(
     matchId: string,
+    submittedByUser: CurrentUserPayload | undefined,
     dto: SubmitDisciplineReportDto,
   ) {
     await this.ensureMatch(matchId);
-    await this.ensureOfficial(dto.supervisorId);
+    const supervisor = await this.ensureOfficial(dto.supervisorId);
     await this.ensureSupervisorAssignment(matchId, dto.supervisorId);
+    this.ensureOfficialMatchesUser(
+      supervisor.email,
+      submittedByUser,
+      'SUPERVISOR',
+    );
 
     const sentToDisciplinaryAt = dto.sendToDisciplinary ? new Date() : null;
     const reportData = {
@@ -234,6 +243,48 @@ export class MatchOfficialService {
     if (assignmentCount === 0) {
       throw new BadRequestException(
         'Giám sát viên phải được phân công cho trận trước khi nộp báo cáo.',
+      );
+    }
+  }
+
+  private async ensureRefereeCanReport(
+    matchId: string,
+    user: CurrentUserPayload | undefined,
+  ) {
+    if (user?.role === 'ADMIN') return;
+
+    const assignment = await this.prisma.matchOfficialAssignment.findFirst({
+      where: {
+        matchId,
+        role: { in: ['MAIN_REFEREE', 'ASSISTANT_REFEREE', 'FOURTH_OFFICIAL'] },
+        official: {
+          email: { equals: user?.email ?? '', mode: 'insensitive' },
+          status: 'ACTIVE',
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new ForbiddenException(
+        'Trọng tài phải được phân công cho trận trước khi nộp báo cáo.',
+      );
+    }
+  }
+
+  private ensureOfficialMatchesUser(
+    officialEmail: string | null | undefined,
+    user: CurrentUserPayload | undefined,
+    expectedRole: string,
+  ) {
+    if (user?.role === 'ADMIN') return;
+
+    if (
+      user?.role !== expectedRole ||
+      !officialEmail ||
+      officialEmail.toLowerCase() !== user.email.toLowerCase()
+    ) {
+      throw new ForbiddenException(
+        'Người dùng hiện tại không khớp với trọng tài/giám sát viên được phân công.',
       );
     }
   }

@@ -146,15 +146,21 @@ describe('PlayersPage', () => {
   });
 
   it('renders club logos in the club column', async () => {
-    renderPage();
+    const { container } = renderPage();
 
     await waitFor(() => {
       expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalled();
     });
-    await screen.findByText('Nguyễn Quang Hải', undefined, { timeout: 5_000 });
-    const logo = await screen.findByRole('img', { name: 'Hà Nội FC logo' }, { timeout: 5_000 });
+    await screen.findByText('Nguyễn Quang Hải');
+
+    const logo = await waitFor(() => {
+      const element = container.querySelector('img.player-club-logo');
+      expect(element).toBeInTheDocument();
+      return element as HTMLImageElement;
+    });
 
     expect(logo).toHaveAttribute('src', '/team-logos/Logo_H%C3%A0_N%E1%BB%99i_FC.png');
+    expect(logo).toHaveAttribute('alt', 'Hà Nội FC logo');
     expect(logo).toHaveClass('player-club-logo');
     expect(logo.closest('.player-club-cell')).toHaveTextContent('HN');
   });

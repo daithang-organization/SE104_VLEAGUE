@@ -1,11 +1,11 @@
-import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
-import { Card, Empty, Flex, message, Select, Table, Typography } from 'antd';
+﻿import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { PageHero, TableSkeleton } from '../components';
+import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import ExportButton from '../components/ExportButton';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
@@ -289,11 +289,11 @@ export default function StandingsPage() {
         }
       `}</style>
 
-      <PageHero
-        variant="compact"
+      <PageCover
         eyebrow="VLeague"
         title={standingsTitle}
-        icon={<TrophyOutlined />}
+        description={t('standings.subtitle')}
+        icon={<AppMenuIcon menuKey="standings" />}
         metrics={[
           {
             label: t('standings.colTeam'),
@@ -311,41 +311,42 @@ export default function StandingsPage() {
             icon: <CrownOutlined />,
           },
         ]}
-        actions={
-          <>
-            <ExportButton
-              columns={[
-                { title: t('standings.colRank'), key: 'position' },
-                { title: t('standings.colTeam'), key: 'teamName' },
-                { title: t('standings.colPlayed'), key: 'played' },
-                { title: t('standings.colWon'), key: 'won' },
-                { title: t('standings.colDrawn'), key: 'drawn' },
-                { title: t('standings.colLost'), key: 'lost' },
-                { title: t('standings.colGoalsFor'), key: 'goalsFor' },
-                { title: t('standings.colGoalsAgainst'), key: 'goalsAgainst' },
-                { title: t('standings.colGoalDiff'), key: 'goalDifference' },
-                { title: t('standings.colPoints'), key: 'points' },
-                { title: t('standings.colLast5'), key: 'recentForm' },
-              ]}
-              dataSource={standings as unknown as Record<string, unknown>[]}
-              filename="bang-xep-hang"
-            />
-            <Select
-              placeholder={t('standings.seasonPlaceholder')}
-              value={selectedSeason}
-              onChange={handleSeasonChange}
-              style={{ width: 200 }}
-              allowClear
-            >
-              {seasons.map((s) => (
-                <Select.Option key={s.id} value={s.id}>
-                  {s.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </>
-        }
       />
+
+      <div className="page-toolbar">
+        <Space wrap>
+          <Select
+            placeholder={t('standings.seasonPlaceholder')}
+            value={selectedSeason}
+            onChange={handleSeasonChange}
+            style={{ width: 200 }}
+            allowClear
+          >
+            {seasons.map((s) => (
+              <Select.Option key={s.id} value={s.id}>
+                {s.name}
+              </Select.Option>
+            ))}
+          </Select>
+        </Space>
+        <ExportButton
+          columns={[
+            { title: t('standings.colRank'), key: 'position' },
+            { title: t('standings.colTeam'), key: 'teamName' },
+            { title: t('standings.colPlayed'), key: 'played' },
+            { title: t('standings.colWon'), key: 'won' },
+            { title: t('standings.colDrawn'), key: 'drawn' },
+            { title: t('standings.colLost'), key: 'lost' },
+            { title: t('standings.colGoalsFor'), key: 'goalsFor' },
+            { title: t('standings.colGoalsAgainst'), key: 'goalsAgainst' },
+            { title: t('standings.colGoalDiff'), key: 'goalDifference' },
+            { title: t('standings.colPoints'), key: 'points' },
+            { title: t('standings.colLast5'), key: 'recentForm' },
+          ]}
+          dataSource={standings as unknown as Record<string, unknown>[]}
+          filename="bang-xep-hang"
+        />
+      </div>
 
       {loading && standings.length === 0 ? (
         <Card>

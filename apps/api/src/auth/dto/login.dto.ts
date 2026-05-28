@@ -10,12 +10,12 @@ import {
 export class LoginDto {
   @ApiProperty({ example: 'admin@vleague.local' })
   @IsEmail()
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'Admin@12345' })
   @IsString()
   @MinLength(6)
-  password: string;
+  password!: string;
 
   @ApiPropertyOptional({
     example: false,

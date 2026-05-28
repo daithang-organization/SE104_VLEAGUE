@@ -73,6 +73,7 @@ describe('MatchLineupService', () => {
             },
             matchTeamRegistration: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
               upsert: jest.fn(),
               update: jest.fn(),
             },

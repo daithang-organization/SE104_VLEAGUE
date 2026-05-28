@@ -13,5 +13,5 @@ export class UpdateRoleDto {
   @ApiProperty({ enum: UserRoleEnum, example: 'TEAM_MANAGER' })
   @IsNotEmpty()
   @IsEnum(UserRoleEnum)
-  role: UserRoleEnum;
+  role!: UserRoleEnum;
 }

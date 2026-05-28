@@ -1,8 +1,7 @@
-import {
+﻿import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
-  IdcardOutlined,
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
@@ -24,13 +23,14 @@ import {
   Table,
   Tag,
 } from 'antd';
+import type { FilterValue } from 'antd/es/table/interface';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { PageHero, TableSkeleton } from '../components';
+import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import {
   apiCreatePlayer,
   apiDeletePlayer,
@@ -59,6 +59,16 @@ const POSITION_COLORS: Record<string, string> = {
 
 const CAN_EDIT_ROLES = ['ADMIN', 'TEAM_MANAGER'];
 
+type PlayerColumnFilters = {
+  teamId?: string;
+  nationality?: string;
+  position?: string;
+  playerType?: string;
+};
+
+const firstFilterValue = (value?: FilterValue | null) =>
+  value?.[0] !== undefined ? String(value[0]) : undefined;
+
 export default function PlayersPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -71,6 +81,8 @@ export default function PlayersPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [columnFilters, setColumnFilters] = useState<PlayerColumnFilters>({});
+  const [filterSourcePlayers, setFilterSourcePlayers] = useState<Player[]>([]);
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
   const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
   const [form] = Form.useForm();
@@ -80,8 +92,9 @@ export default function PlayersPage() {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
   const totalPlayers = pagination.total || players.length;
-  const foreignPlayers = players.filter((player) => player.playerType === 'FOREIGN').length;
-  const rosteredPlayers = players.filter((player) => player.roster?.[0]?.team).length;
+  const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
+  const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
+  const rosteredPlayers = metricPlayers.filter((player) => player.roster?.[0]?.team).length;
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -121,7 +134,10 @@ export default function PlayersPage() {
       try {
         const res = await apiGetPlayers(page, limit, {
           search: searchQuery || undefined,
-          teamId: managerTeamId || undefined,
+          teamId: managerTeamId || columnFilters.teamId || undefined,
+          nationality: columnFilters.nationality,
+          position: columnFilters.position,
+          playerType: columnFilters.playerType,
         });
         setPlayers(res.data);
         setPagination((prev) => {
@@ -136,7 +152,14 @@ export default function PlayersPage() {
         setLoading(false);
       }
     },
-    [managerTeamId, t],
+    [
+      columnFilters.nationality,
+      columnFilters.playerType,
+      columnFilters.position,
+      columnFilters.teamId,
+      managerTeamId,
+      t,
+    ],
   );
 
   useEffect(() => {
@@ -159,6 +182,27 @@ export default function PlayersPage() {
   ]);
 
   useEffect(() => {
+    if (isTeamManager && !managerTeamLoaded) return;
+    if (isTeamManager && !managerTeamId) {
+      setFilterSourcePlayers([]);
+      return;
+    }
+
+    let cancelled = false;
+    apiGetPlayers(1, 1000, { teamId: managerTeamId || undefined })
+      .then((res) => {
+        if (!cancelled) setFilterSourcePlayers(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setFilterSourcePlayers([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeamManager, managerTeamId, managerTeamLoaded]);
+
+  useEffect(() => {
     apiGetTeams()
       .then((res) =>
         setTeams(
@@ -174,6 +218,23 @@ export default function PlayersPage() {
     const cleanValue = value.trim();
     setSearch(cleanValue);
     setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleTableChange = (
+    nextPagination: { current?: number; pageSize?: number },
+    filters: Record<string, FilterValue | null>,
+  ) => {
+    setColumnFilters({
+      teamId: managerTeamId || firstFilterValue(filters.club),
+      nationality: firstFilterValue(filters.nationality),
+      position: firstFilterValue(filters.position),
+      playerType: firstFilterValue(filters.playerType),
+    });
+    setPagination((prev) => ({
+      ...prev,
+      page: nextPagination.current ?? 1,
+      limit: nextPagination.pageSize ?? prev.limit,
+    }));
   };
 
   const openCreateModal = () => {
@@ -298,13 +359,16 @@ export default function PlayersPage() {
       },
       filters: (() => {
         const clubs = new Map<string, string>();
-        players.forEach((p) => {
+        filterSourcePlayers.forEach((p) => {
           const tp = p.roster?.[0];
           if (tp?.team) clubs.set(tp.team.id, tp.team.name);
         });
+        if (clubs.size === 0) {
+          teams.forEach((team) => clubs.set(team.id, team.name));
+        }
         return [...clubs.entries()].map(([id, name]) => ({ text: name, value: id }));
       })(),
-      onFilter: (value, record) => record.roster?.[0]?.team?.id === value,
+      filteredValue: columnFilters.teamId ? [columnFilters.teamId] : null,
     },
     {
       title: t('players.colDob'),
@@ -317,11 +381,13 @@ export default function PlayersPage() {
       title: t('players.colNationality'),
       dataIndex: 'nationality',
       width: 120,
-      filters: [...new Set(players.map((p) => p.nationality))].map((n) => ({
-        text: n,
-        value: n,
-      })),
-      onFilter: (value, record) => record.nationality === value,
+      filters: [...new Set(filterSourcePlayers.map((p) => p.nationality).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((n) => ({
+          text: n,
+          value: n,
+        })),
+      filteredValue: columnFilters.nationality ? [columnFilters.nationality] : null,
     },
     {
       title: t('players.colPosition'),
@@ -334,7 +400,7 @@ export default function PlayersPage() {
         text,
         value,
       })),
-      onFilter: (value, record) => record.position === value,
+      filteredValue: columnFilters.position ? [columnFilters.position] : null,
     },
     {
       title: t('players.colType'),
@@ -349,7 +415,7 @@ export default function PlayersPage() {
         { text: t('players.formTypeDomestic'), value: 'DOMESTIC' },
         { text: t('players.formTypeForeign'), value: 'FOREIGN' },
       ],
-      onFilter: (value, record) => record.playerType === value,
+      filteredValue: columnFilters.playerType ? [columnFilters.playerType] : null,
     },
     {
       title: t('players.colHeight'),
@@ -399,11 +465,11 @@ export default function PlayersPage() {
   return (
     <>
       <div className="page-stack">
-        <PageHero
+        <PageCover
           eyebrow={t('menu.players')}
           title={t('players.title')}
           description={t('players.searchPlaceholder')}
-          icon={<IdcardOutlined />}
+          icon={<AppMenuIcon menuKey="players" />}
           metrics={[
             {
               label: t('common.total'),
@@ -421,23 +487,24 @@ export default function PlayersPage() {
               icon: <TeamOutlined />,
             },
           ]}
-          actions={
-            <Space wrap>
-              <Input.Search
-                placeholder={t('players.searchPlaceholder')}
-                onSearch={onSearch}
-                style={{ width: 300 }}
-                allowClear
-                loading={loading}
-              />
-              {canEdit && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  {t('players.addBtn')}
-                </Button>
-              )}
-            </Space>
-          }
         />
+
+        <div className="page-toolbar">
+          <Space wrap>
+            <Input.Search
+              placeholder={t('players.searchPlaceholder')}
+              onSearch={onSearch}
+              style={{ width: 300 }}
+              allowClear
+              loading={loading}
+            />
+          </Space>
+          {canEdit && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+              {t('players.addBtn')}
+            </Button>
+          )}
+        </div>
 
         <Card>
           {loading && players.length === 0 ? (
@@ -455,10 +522,8 @@ export default function PlayersPage() {
                 total: pagination.total,
                 showSizeChanger: true,
                 showTotal: (total) => t('players.totalCount', { total }),
-                onChange: (page, pageSize) => {
-                  setPagination((prev) => ({ ...prev, page, limit: pageSize }));
-                },
               }}
+              onChange={handleTableChange}
               size="middle"
               locale={{ emptyText: t('common.noData') }}
             />

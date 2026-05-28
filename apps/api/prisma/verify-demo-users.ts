@@ -15,7 +15,12 @@ async function main() {
   console.log(`✅ Verified ${result.count} demo users`);
 }
 
-main().finally(async () => {
-  await prisma.$disconnect();
-  await pool.end();
-});
+void main()
+  .catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
+  });

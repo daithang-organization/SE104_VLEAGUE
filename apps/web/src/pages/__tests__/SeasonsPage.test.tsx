@@ -18,7 +18,7 @@ const mockSeasonApi = vi.hoisted(() => ({
   apiGetSeasons: vi.fn().mockResolvedValue([
     {
       id: 's1',
-      name: 'VLeague 2025/2026',
+      name: 'VLeague 2025-2026',
       year: 2025,
       status: 'IN_PROGRESS',
       startDate: '2025-01-15T00:00:00Z',
@@ -26,7 +26,7 @@ const mockSeasonApi = vi.hoisted(() => ({
     },
     {
       id: 's2',
-      name: 'VLeague 2024/2025',
+      name: 'VLeague 2024-2025',
       year: 2024,
       status: 'COMPLETED',
       startDate: null,
@@ -75,8 +75,8 @@ const mockTeamApi = vi.hoisted(() => ({
 }));
 const mockTeamInvitationApi = vi.hoisted(() => ({
   apiGetInvitationCandidates: vi.fn().mockResolvedValue({
-    targetSeason: { id: 's1', name: 'VLeague 2025/2026', year: 2025, status: 'IN_PROGRESS' },
-    previousSeason: { id: 's2', name: 'VLeague 2024/2025', year: 2024, status: 'COMPLETED' },
+    targetSeason: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+    previousSeason: { id: 's2', name: 'VLeague 2024-2025', year: 2024, status: 'COMPLETED' },
     requiredTopLeagueSlots: 8,
     requiredPromotedSlots: 2,
     candidates: [
@@ -164,8 +164,8 @@ describe('SeasonsPage', () => {
   it('renders season names from API', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
-      expect(screen.getByText('VLeague 2024/2025')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2024-2025')).toBeInTheDocument();
     });
   });
 
@@ -189,8 +189,8 @@ describe('SeasonsPage', () => {
   it('renders season years', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('2025/2026')).toBeInTheDocument();
-      expect(screen.getByText('2024/2025')).toBeInTheDocument();
+      expect(screen.getByText('2025-2026')).toBeInTheDocument();
+      expect(screen.getByText('2024-2025')).toBeInTheDocument();
     });
   });
 
@@ -205,7 +205,7 @@ describe('SeasonsPage', () => {
     const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
     });
 
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
@@ -224,7 +224,7 @@ describe('SeasonsPage', () => {
     const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
     });
 
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
@@ -245,7 +245,7 @@ describe('SeasonsPage', () => {
     const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
     });
 
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
@@ -267,7 +267,7 @@ describe('SeasonsPage', () => {
     const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
     });
 
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
@@ -297,7 +297,7 @@ describe('SeasonsPage', () => {
     const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
     });
 
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
@@ -343,7 +343,7 @@ describe('SeasonsPage', () => {
     const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
     });
 
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;

@@ -74,7 +74,7 @@ describe('SchedulePage', () => {
   it('renders the page title', () => {
     const { container } = renderPage();
     expect(screen.getAllByText('Lịch thi đấu')[0]).toBeInTheDocument();
-    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
+    expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
   it('calls apiGetSeasons on mount', async () => {

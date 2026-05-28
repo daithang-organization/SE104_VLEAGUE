@@ -173,6 +173,14 @@ export class MatchLineupService {
   ) {
     await this.ensureMatch(matchId);
 
+    const existing = await this.prisma.matchTeamRegistration.findUnique({
+      where: { matchId_teamId: { matchId, teamId } },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Không tìm thấy danh sách đăng ký thi đấu.');
+    }
+
     const registration = await this.prisma.matchTeamRegistration.update({
       where: { matchId_teamId: { matchId, teamId } },
       data: {

@@ -1,8 +1,6 @@
 import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './common/logger';
@@ -34,31 +32,6 @@ import { UsersModule } from './users/users.module';
       max: 100,
       isGlobal: true,
     }),
-    // Rate limiting - default: 100 requests per 60 seconds
-    ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          name: 'default',
-          ttl: 60000, // 60 seconds
-          limit: 100, // 100 requests
-        },
-        {
-          name: 'short',
-          ttl: 1000, // 1 second
-          limit: 20, // 20 requests
-        },
-        {
-          name: 'medium',
-          ttl: 10000, // 10 seconds
-          limit: 50, // 50 requests
-        },
-        {
-          name: 'long',
-          ttl: 60000, // 60 seconds
-          limit: 30, // 30 requests (for login/register)
-        },
-      ],
-    }),
     LoggerModule,
     PrismaModule,
     HealthModule,
@@ -82,13 +55,6 @@ import { UsersModule } from './users/users.module';
     SearchModule,
     AuditModule,
     NotificationModule,
-  ],
-  providers: [
-    // Apply throttler globally
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
   ],
 })
 export class AppModule {}

@@ -134,6 +134,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock('../../components', () => ({
+  AppMenuIcon: ({ menuKey }: { menuKey: string }) => (
+    <span data-testid={`app-menu-icon-${menuKey}`} />
+  ),
   TableSkeleton: () => <div>Loading...</div>,
 }));
 // Mock sub-tab components
@@ -166,7 +169,7 @@ describe('ReportsPage', () => {
   it('renders title', () => {
     const { container } = renderPage();
     expect(screen.getByText('reports.title')).toBeInTheDocument();
-    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
+    expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
   it('shows loaded report counts in the hero metrics', async () => {
