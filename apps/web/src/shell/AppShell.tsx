@@ -48,6 +48,7 @@ export default function AppShell() {
   const [searchOptions, setSearchOptions] = useState<
     { value: string; label: React.ReactNode; result: SearchResult }[]
   >([]);
+  const [searchValue, setSearchValue] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,7 +64,7 @@ export default function AppShell() {
         const results = await apiGlobalSearch(value, 8);
         setSearchOptions(
           results.map((r) => ({
-            value: r.id,
+            value: r.title,
             label: (
               <Space>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -84,6 +85,8 @@ export default function AppShell() {
   };
 
   const onSelectSearch = (_: string, option: (typeof searchOptions)[number]) => {
+    setSearchValue(option.result.title);
+    setSearchOptions([]);
     if (option.result.url) nav(option.result.url);
   };
 
@@ -191,6 +194,8 @@ export default function AppShell() {
           <AutoComplete
             className="global-search"
             options={searchOptions}
+            value={searchValue}
+            onChange={setSearchValue}
             onSearch={onSearch}
             onSelect={onSelectSearch}
             style={{

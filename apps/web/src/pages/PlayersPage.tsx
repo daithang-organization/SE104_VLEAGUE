@@ -23,7 +23,7 @@ import {
   Table,
   Tag,
 } from 'antd';
-import type { FilterValue } from 'antd/es/table/interface';
+import type { FilterValue, SorterResult, SortOrder as AntSortOrder } from 'antd/es/table/interface';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,6 +38,8 @@ import {
   apiUpdatePlayer,
   type CreatePlayerPayload,
   type Player,
+  type PlayerSortBy,
+  type PlayerSortOrder,
 } from '../services/playerApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
@@ -66,8 +68,18 @@ type PlayerColumnFilters = {
   playerType?: string;
 };
 
+type PlayerSortState = {
+  sortBy: PlayerSortBy;
+  sortOrder: PlayerSortOrder;
+};
+
+const PLAYER_SORT_FIELDS = new Set<PlayerSortBy>(['fullName', 'dob', 'heightCm', 'weightKg']);
+
 const firstFilterValue = (value?: FilterValue | null) =>
   value?.[0] !== undefined ? String(value[0]) : undefined;
+
+const toAntSortOrder = (sortOrder: PlayerSortOrder): AntSortOrder =>
+  sortOrder === 'asc' ? 'ascend' : 'descend';
 
 export default function PlayersPage() {
   const { user } = useAuth();
@@ -82,6 +94,10 @@ export default function PlayersPage() {
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
   const [columnFilters, setColumnFilters] = useState<PlayerColumnFilters>({});
+  const [sortState, setSortState] = useState<PlayerSortState>({
+    sortBy: 'fullName',
+    sortOrder: 'asc',
+  });
   const [filterSourcePlayers, setFilterSourcePlayers] = useState<Player[]>([]);
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
   const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
@@ -138,6 +154,8 @@ export default function PlayersPage() {
           nationality: columnFilters.nationality,
           position: columnFilters.position,
           playerType: columnFilters.playerType,
+          sortBy: sortState.sortBy,
+          sortOrder: sortState.sortOrder,
         });
         setPlayers(res.data);
         setPagination((prev) => {
@@ -158,6 +176,8 @@ export default function PlayersPage() {
       columnFilters.position,
       columnFilters.teamId,
       managerTeamId,
+      sortState.sortBy,
+      sortState.sortOrder,
       t,
     ],
   );
@@ -223,7 +243,19 @@ export default function PlayersPage() {
   const handleTableChange = (
     nextPagination: { current?: number; pageSize?: number },
     filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<Player> | SorterResult<Player>[],
   ) => {
+    const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+    const field = typeof activeSorter?.field === 'string' ? activeSorter.field : undefined;
+    const nextSortState: PlayerSortState =
+      field && PLAYER_SORT_FIELDS.has(field as PlayerSortBy) && activeSorter.order
+        ? {
+            sortBy: field as PlayerSortBy,
+            sortOrder: activeSorter.order === 'descend' ? 'desc' : 'asc',
+          }
+        : { sortBy: 'fullName', sortOrder: 'asc' };
+
+    setSortState(nextSortState);
     setColumnFilters({
       teamId: managerTeamId || firstFilterValue(filters.club),
       nationality: firstFilterValue(filters.nationality),
@@ -343,7 +375,8 @@ export default function PlayersPage() {
     {
       title: t('players.colFullName'),
       dataIndex: 'fullName',
-      sorter: (a, b) => a.fullName.localeCompare(b.fullName),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'fullName' ? toAntSortOrder(sortState.sortOrder) : null,
       render: (name: string, record: Player) => (
         <a onClick={() => navigate(`/players/${record.id}`)}>{name}</a>
       ),
@@ -375,7 +408,8 @@ export default function PlayersPage() {
       dataIndex: 'dob',
       width: 120,
       render: (dob: string) => dayjs(dob).format('DD/MM/YYYY'),
-      sorter: (a, b) => new Date(a.dob).getTime() - new Date(b.dob).getTime(),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'dob' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     {
       title: t('players.colNationality'),
@@ -422,14 +456,16 @@ export default function PlayersPage() {
       dataIndex: 'heightCm',
       width: 90,
       render: (v: number | null) => (v ? `${v} cm` : '—'),
-      sorter: (a, b) => (a.heightCm ?? 0) - (b.heightCm ?? 0),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'heightCm' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     {
       title: t('players.colWeight'),
       dataIndex: 'weightKg',
       width: 90,
       render: (v: number | null) => (v ? `${v} kg` : '—'),
-      sorter: (a, b) => (a.weightKg ?? 0) - (b.weightKg ?? 0),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'weightKg' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     ...(canEdit
       ? [

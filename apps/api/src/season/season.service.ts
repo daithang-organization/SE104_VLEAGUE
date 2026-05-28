@@ -462,13 +462,15 @@ export class SeasonService {
 
     return (
       seasons.sort((a, b) => {
+        const matchDelta = b._count.matches - a._count.matches;
+        if (matchDelta !== 0) return matchDelta;
+        const teamDelta = b._count.seasonTeams - a._count.seasonTeams;
+        if (teamDelta !== 0) return teamDelta;
         const brandedDelta =
           Number(b.name.startsWith('V.League')) -
           Number(a.name.startsWith('V.League'));
         if (brandedDelta !== 0) return brandedDelta;
-        const matchDelta = b._count.matches - a._count.matches;
-        if (matchDelta !== 0) return matchDelta;
-        return b._count.seasonTeams - a._count.seasonTeams;
+        return b.year - a.year;
       })[0] ?? null
     );
   }
