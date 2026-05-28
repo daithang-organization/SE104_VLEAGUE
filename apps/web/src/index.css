@@ -782,6 +782,106 @@ select {
   white-space: nowrap;
 }
 
+.match-timeline-hero {
+  position: relative;
+  isolation: isolate;
+  margin-bottom: 14px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      105deg,
+      var(--match-home-primary, rgba(227, 34, 33, 0.12)) 0%,
+      rgba(255, 255, 255, 0) 48%,
+      var(--match-away-primary, rgba(37, 99, 235, 0.1)) 100%
+    ),
+    var(--surface);
+}
+
+.match-timeline-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 46%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size:
+    auto,
+    24px 24px,
+    24px 24px;
+}
+
+.match-timeline-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, 180px) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.match-timeline-grid-card {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 78px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme='dark'] .match-timeline-grid-card {
+  background: rgba(21, 34, 56, 0.76);
+}
+
+.match-timeline-team-card-home {
+  border-color: var(--match-home-border, var(--border));
+}
+
+.match-timeline-team-card-away {
+  border-color: var(--match-away-border, var(--border));
+  text-align: right;
+}
+
+.match-timeline-center-card {
+  justify-items: center;
+  text-align: center;
+  border-color: rgba(148, 163, 184, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(37, 99, 235, 0.07)), var(--surface);
+}
+
+.match-timeline-card-label.ant-typography {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.match-timeline-grid-card strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 17px;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-timeline-center-card strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.match-timeline-grid-card span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
   .match-detail-score-grid {
     grid-template-columns: 1fr;
@@ -794,6 +894,14 @@ select {
 
   .match-detail-score-meta-grid {
     grid-template-columns: 1fr;
+  }
+
+  .match-timeline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-timeline-team-card-away {
+    text-align: left;
   }
 }
 

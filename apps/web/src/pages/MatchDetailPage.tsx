@@ -168,6 +168,7 @@ export default function MatchDetailPage() {
   // Modal visibility
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<MatchEvent | null>(null);
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
   const canViewLineupData = useMemo(
@@ -539,6 +540,21 @@ export default function MatchDetailPage() {
     } finally {
       setOfficialAssigning(false);
     }
+  };
+
+  const handleOpenAddEvent = () => {
+    setEditingEvent(null);
+    setEventModalOpen(true);
+  };
+
+  const handleOpenEditEvent = (event: MatchEvent) => {
+    setEditingEvent(event);
+    setEventModalOpen(true);
+  };
+
+  const handleEventModalCancel = () => {
+    setEditingEvent(null);
+    setEventModalOpen(false);
   };
 
   const parseTechnicalStats = () => {
@@ -1091,7 +1107,7 @@ export default function MatchDetailPage() {
             <Button type="primary" icon={<EditOutlined />} onClick={() => setScoreModalOpen(true)}>
               {t('matchDetail.updateScoreBtn')}
             </Button>
-            <Button icon={<PlusOutlined />} onClick={() => setEventModalOpen(true)}>
+            <Button icon={<PlusOutlined />} onClick={handleOpenAddEvent}>
               {t('matchDetail.addEventBtn')}
             </Button>
             {getStatusActions(match).map((nextStatus) => {
@@ -1216,35 +1232,47 @@ export default function MatchDetailPage() {
                         return {
                           color: meta.color,
                           children: (
-                            <div>
-                              <strong>
-                                {meta.icon} {e.minute}'
-                              </strong>{' '}
-                              — <Tag color={meta.color}>{meta.label}</Tag>
-                              {e.player && (
-                                <a onClick={() => navigate(`/players/${e.playerId}`)}>
-                                  {e.player.fullName}
-                                </a>
+                            <Flex justify="space-between" align="flex-start" gap={8}>
+                              <div>
+                                <strong>
+                                  {meta.icon} {e.minute}'
+                                </strong>{' '}
+                                — <Tag color={meta.color}>{meta.label}</Tag>
+                                {e.player && (
+                                  <a onClick={() => navigate(`/players/${e.playerId}`)}>
+                                    {e.player.fullName}
+                                  </a>
+                                )}
+                                {e.relatedPlayer && (
+                                  <span style={{ color: '#888', marginLeft: 4 }}>
+                                    (
+                                    {e.type === 'SUBSTITUTION'
+                                      ? t('matchDetail.relatedSub', {
+                                          name: e.relatedPlayer.fullName,
+                                        })
+                                      : t('matchDetail.relatedAssist', {
+                                          name: e.relatedPlayer.fullName,
+                                        })}
+                                    )
+                                  </span>
+                                )}
+                                {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
+                                {e.goalType && <Tag style={{ marginLeft: 4 }}>{e.goalType}</Tag>}
+                                {e.note && (
+                                  <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>
+                                )}
+                              </div>
+                              {canEdit && (
+                                <Button
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  aria-label={`Sửa sự kiện ${e.minute}'`}
+                                  onClick={() => handleOpenEditEvent(e)}
+                                >
+                                  Sửa
+                                </Button>
                               )}
-                              {e.relatedPlayer && (
-                                <span style={{ color: '#888', marginLeft: 4 }}>
-                                  (
-                                  {e.type === 'SUBSTITUTION'
-                                    ? t('matchDetail.relatedSub', {
-                                        name: e.relatedPlayer.fullName,
-                                      })
-                                    : t('matchDetail.relatedAssist', {
-                                        name: e.relatedPlayer.fullName,
-                                      })}
-                                  )
-                                </span>
-                              )}
-                              {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
-                              {e.goalType && <Tag style={{ marginLeft: 4 }}>{e.goalType}</Tag>}
-                              {e.note && (
-                                <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>
-                              )}
-                            </div>
+                            </Flex>
                           ),
                         };
                       })}
@@ -1781,10 +1809,11 @@ export default function MatchDetailPage() {
       <EventFormModal
         match={match}
         open={eventModalOpen}
+        editingEvent={editingEvent}
         homeRoster={homeRoster}
         awayRoster={awayRoster}
         rosterLoading={rosterLoading}
-        onCancel={() => setEventModalOpen(false)}
+        onCancel={handleEventModalCancel}
         onSuccess={fetchMatch}
       />
 

@@ -260,6 +260,16 @@ export function apiAddMatchEvent(matchId: string, data: AddMatchEventPayload) {
     .then((res) => res.data);
 }
 
+export function apiUpdateMatchEvent(matchId: string, eventId: string, data: AddMatchEventPayload) {
+  return api
+    .patch<{
+      ok: boolean;
+      matchId: string;
+      updatedEvent: MatchEvent;
+    }>(`/matches/${matchId}/events/${eventId}`, data)
+    .then((res) => res.data);
+}
+
 export function apiRemoveMatchEvent(matchId: string, eventId: string) {
   return api.delete(`/matches/${matchId}/events/${eventId}`).then((res) => res.data);
 }

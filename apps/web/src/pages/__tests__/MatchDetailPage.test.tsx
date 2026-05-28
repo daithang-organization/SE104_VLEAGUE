@@ -49,6 +49,7 @@ const mockMatchApi = vi.hoisted(() => ({
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
   }),
+  apiUpdateMatchEvent: vi.fn().mockResolvedValue({ ok: true }),
   apiGetTeamRoster: vi.fn((teamId: string) =>
     Promise.resolve({
       teamId,
@@ -158,6 +159,73 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText('Đăng ký thi đấu')).toBeInTheDocument();
     expect(screen.getByText('Treo giò trận này')).toBeInTheDocument();
     expect(screen.getByText(/11 chính thức \/ 5 dự bị/)).toBeInTheDocument();
+  });
+
+  it('renders the timeline area as a hero with grid cards', async () => {
+    const { container } = renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Diễn biến trận đấu/ }));
+
+    expect(container.querySelector('.match-timeline-hero')).toBeInTheDocument();
+    expect(container.querySelector('.match-timeline-grid')).toBeInTheDocument();
+    expect(container.querySelectorAll('.match-timeline-grid-card')).toHaveLength(3);
+  });
+
+  it('opens an existing event for editing and saves it through update API', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      id: 'm1',
+      roundNo: 1,
+      leg: 1,
+      seasonId: 's1',
+      season: { id: 's1', name: 'V.League 2025' },
+      homeTeamId: 'home-team',
+      awayTeamId: 'away-team',
+      homeTeam: { id: 'home-team', name: 'Ha Noi FC', shortName: 'HN' },
+      awayTeam: { id: 'away-team', name: 'Hai Phong FC', shortName: 'HP' },
+      homeScore: 1,
+      awayScore: 0,
+      status: 'PUBLISHED',
+      events: [
+        {
+          id: 'event-1',
+          minute: 23,
+          type: 'GOAL',
+          teamId: 'home-team',
+          playerId: 'h-player-1',
+          player: { id: 'h-player-1', fullName: 'Home Player 1' },
+          team: { id: 'home-team', name: 'Ha Noi FC' },
+          note: 'Old note',
+        },
+      ],
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    });
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Sự kiện/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Sửa sự kiện 23/ }));
+
+    const minuteInput = screen.getByPlaceholderText('Phút');
+    await userEvent.clear(minuteInput);
+    await userEvent.type(minuteInput, '55');
+    await userEvent.click(screen.getByRole('button', { name: 'Cập nhật' }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiUpdateMatchEvent).toHaveBeenCalledWith(
+        'm1',
+        'event-1',
+        expect.objectContaining({
+          minute: 55,
+          type: 'GOAL',
+          teamId: 'home-team',
+          playerId: 'h-player-1',
+          note: 'Old note',
+        }),
+      );
+    });
   });
 
   it('loads match officials and reports in the officials tab', async () => {
