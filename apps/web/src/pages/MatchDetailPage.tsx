@@ -70,6 +70,7 @@ import {
 } from '../services/matchApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
 import EventFormModal from './match-detail/EventFormModal';
+import MatchCenter from './match-detail/MatchCenter';
 import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
 import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
@@ -1549,6 +1550,14 @@ export default function MatchDetailPage() {
             label: t('matchDetail.tabLineups'),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <MatchCenter
+                  match={match}
+                  events={events}
+                  lineups={lineups}
+                  matchReport={matchReport}
+                  loading={lineupLoading}
+                  onPlayerClick={(pid) => navigate(`/players/${pid}`)}
+                />
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={16}>
                     <Card title="Danh sách đã nộp" size="small" loading={lineupLoading}>
