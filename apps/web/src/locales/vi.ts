@@ -19,7 +19,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   menu: {
-    dashboard: 'Dashboard',
+    dashboard: 'Trang chủ',
     seasons: 'Mùa giải',
     teams: 'Đội bóng',
     stadiums: 'Sân vận động',
@@ -185,9 +185,9 @@ const vi = {
   // ─────────────────────────────────────────────
 
   dashboard: {
-    title: 'Dashboard',
+    title: 'Trang chủ',
     welcome: 'Chào mừng đến với VLeague Admin! Tổng quan hệ thống:',
-    errorLoad: 'Không thể tải dữ liệu dashboard',
+    errorLoad: 'Không thể tải dữ liệu trang chủ',
     statTeams: 'Đội bóng',
     statPlayers: 'Cầu thủ',
     statMatches: 'Trận đấu',
@@ -235,6 +235,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   matches: {
+    subtitle: 'Theo dõi tỉ số, trạng thái và sự kiện của các trận đấu trong mùa giải.',
     title: 'Kết quả trận đấu',
     searchPlaceholder: 'Tìm đội bóng...',
     seasonPlaceholder: 'Mùa giải',
@@ -385,6 +386,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   teams: {
+    subtitle: 'Danh sách câu lạc bộ, sân nhà và trạng thái đăng ký trong hệ thống.',
     title: 'Quản lý đội bóng',
     searchPlaceholder: 'Tìm kiếm đội bóng...',
     addBtn: 'Thêm đội bóng',
@@ -471,15 +473,15 @@ const vi = {
     formNationalityRequired: 'Vui lòng nhập quốc tịch',
     formNationalityPlaceholder: 'VD: Vietnam',
     formType: 'Loại cầu thủ',
-    formTypeDomestic: '🇻🇳 Nội binh',
-    formTypeForeign: '🌍 Ngoại binh',
+    formTypeDomestic: 'Nội binh',
+    formTypeForeign: 'Ngoại binh',
     formPosition: 'Vị trí',
     formPositionRequired: 'Vui lòng chọn vị trí',
     formPositionPlaceholder: 'Chọn vị trí',
-    formPositionGK: '🧤 Thủ môn (GK)',
-    formPositionDF: '🛡️ Hậu vệ (DF)',
-    formPositionMF: '⚙️ Tiền vệ (MF)',
-    formPositionFW: '⚽ Tiền đạo (FW)',
+    formPositionGK: 'Thủ môn (GK)',
+    formPositionDF: 'Hậu vệ (DF)',
+    formPositionMF: 'Tiền vệ (MF)',
+    formPositionFW: 'Tiền đạo (FW)',
     formHeight: 'Chiều cao (cm)',
     formHeightPlaceholder: 'VD: 168',
     formWeight: 'Cân nặng (kg)',
@@ -491,7 +493,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   seasons: {
-    title: '📅 Quản lý mùa giải',
+    title: 'Quản lý mùa giải',
     createBtn: 'Tạo mùa giải',
     loadError: 'Không thể tải danh sách mùa giải',
     createSuccess: 'Đã tạo mùa giải mới',
@@ -551,6 +553,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   schedule: {
+    subtitle: 'Quản lý lịch thi đấu, trạng thái nháp và thời gian tổ chức từng vòng.',
     title: 'Lịch thi đấu',
     seasonPlaceholder: 'Chọn mùa giải',
     matchCount: '{total} trận',
@@ -601,6 +604,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   standings: {
+    subtitle: 'Cập nhật thứ hạng, điểm số, hiệu số và phong độ của các đội bóng.',
     title: '🏆 Bảng xếp hạng',
     seasonPlaceholder: 'Chọn mùa giải',
     loadError: 'Không thể tải bảng xếp hạng',
@@ -623,7 +627,7 @@ const vi = {
     loading: 'Đang tải...',
     afcLegend: 'AFC Champions League ({count} đội đầu)',
     relegationLegend: 'Xuống hạng ({count} đội cuối)',
-    topScorersTitle: '⚽ Vua phá lưới (Top 10)',
+    topScorersTitle: 'Vua phá lưới (Top 10)',
     scorerColRank: '#',
     scorerColPlayer: 'Cầu thủ',
     scorerColTeam: 'Đội bóng',
@@ -636,7 +640,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   stadiums: {
-    title: '🏟️ Quản lý sân vận động',
+    title: 'Quản lý sân vận động',
     searchPlaceholder: 'Tìm kiếm sân...',
     addBtn: 'Thêm sân',
     loadError: 'Không thể tải danh sách sân vận động',
@@ -842,6 +846,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   reports: {
+    subtitle: 'Tổng hợp thống kê ghi bàn, kiến tạo, thẻ phạt và thành tích đội bóng.',
     title: 'Báo cáo & Thống kê',
     loadError: 'Không thể tải dữ liệu báo cáo',
     exportScorersPdf: 'PDF Vua phá lưới',
@@ -850,14 +855,14 @@ const vi = {
     exportCardStatsPdf: 'PDF Thẻ phạt',
     exportError: 'Lỗi xuất PDF',
     pdfExportDate: 'Ngày xuất: {date}',
-    tabScorers: '🏆 Vua phá lưới',
+    tabScorers: 'Vua phá lưới',
     tabAssists: 'Top kiến tạo',
-    tabCards: '🟨 Thẻ phạt',
-    tabTeamStats: '📊 Thống kê đội',
-    tabPlayerOfMatch: '⭐ Cầu thủ xuất sắc trận',
-    tabSuspensions: '⛔ Treo giò',
-    tabAwards: '🏅 Giải thưởng',
-    tabCharts: '📈 Biểu đồ',
+    tabCards: 'Thẻ phạt',
+    tabTeamStats: 'Thống kê đội',
+    tabPlayerOfMatch: 'Cầu thủ xuất sắc',
+    tabSuspensions: 'Treo giò',
+    tabAwards: 'Giải thưởng',
+    tabCharts: 'Biểu đồ',
   },
 
   // ─── Top Scorers Tab ───
@@ -959,6 +964,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   headToHead: {
+    subtitle: 'So sánh lịch sử đối đầu, số trận thắng, bàn thắng và kết quả giữa hai đội.',
     title: 'Đối đầu (Head-to-Head)',
     team1Placeholder: 'Chọn đội 1',
     team2Placeholder: 'Chọn đội 2',

@@ -1,10 +1,11 @@
-import {
+﻿import {
   ArrowRightOutlined,
   DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
   PlusOutlined,
   SearchOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -19,12 +20,12 @@ import {
   Select,
   Space,
   Tag,
-  Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { AppMenuIcon, PageCover } from '../components';
 import ImageUpload from '../components/ImageUpload';
 import { TableSkeleton } from '../components/LoadingSkeleton';
 import {
@@ -176,33 +177,29 @@ export default function TeamsPage() {
   };
 
   return (
-    <div className="clubs-page">
-      <section className="clubs-hero-panel" aria-labelledby="clubs-page-title">
-        <div className="clubs-hero-copy">
-          <Typography.Text className="clubs-eyebrow">V.League 1 2025/26</Typography.Text>
-          <Typography.Title id="clubs-page-title" level={2} className="clubs-title">
-            {t('teams.title')}
-          </Typography.Title>
-          <Typography.Paragraph className="clubs-subtitle">
-            Danh sách câu lạc bộ, sân nhà và trạng thái đăng ký trong hệ thống.
-          </Typography.Paragraph>
-        </div>
-        <div className="clubs-hero-stats" aria-label="Tổng quan đội bóng">
-          <div className="clubs-hero-stat">
-            <strong>{teams.length}</strong>
-            <span>Tổng đội</span>
-          </div>
-          <div className="clubs-hero-stat">
-            <strong>{activeTeams}</strong>
-            <span>Hoạt động</span>
-          </div>
-          <div className="clubs-hero-stat">
-            <strong>{inactiveTeams}</strong>
-            <span>Ngưng</span>
-          </div>
-        </div>
-      </section>
-
+    <div className="clubs-page page-stack">
+      <PageCover
+        title={t('teams.title')}
+        description={t('teams.subtitle')}
+        icon={<AppMenuIcon menuKey="teams" />}
+        metrics={[
+          {
+            label: t('common.total'),
+            value: teams.length.toLocaleString('vi-VN'),
+            icon: <TeamOutlined />,
+          },
+          {
+            label: t('teams.filterActive'),
+            value: activeTeams.toLocaleString('vi-VN'),
+            icon: <TeamOutlined />,
+          },
+          {
+            label: t('teams.filterInactive'),
+            value: inactiveTeams.toLocaleString('vi-VN'),
+            icon: <TeamOutlined />,
+          },
+        ]}
+      />
       <div className="clubs-toolbar">
         <Space wrap className="clubs-toolbar-controls">
           <Input

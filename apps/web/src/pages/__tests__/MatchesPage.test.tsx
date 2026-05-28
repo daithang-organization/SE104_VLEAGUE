@@ -81,7 +81,7 @@ describe('MatchesPage', () => {
     const { container } = renderPage();
     expect(screen.getAllByText(/Kết quả trận đấu/)[0]).toBeInTheDocument();
     expect(screen.queryByText('⚽ Kết quả trận đấu')).not.toBeInTheDocument();
-    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
+    expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
   it('calls apiGetSeasons on mount', async () => {

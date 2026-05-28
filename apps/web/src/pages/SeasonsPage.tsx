@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -33,7 +33,7 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { PageHero } from '../components';
+import { AppMenuIcon, PageCover } from '../components';
 import {
   apiCreateSeason,
   apiDeleteSeason,
@@ -851,14 +851,14 @@ export default function SeasonsPage() {
   return (
     <>
       <div className="page-stack">
-        <PageHero
+        <PageCover
           eyebrow={t('menu.seasons')}
           title={t('seasons.title')}
           description={t('seasons.teamPanelTitle', {
             approved: inProgressCount,
             total: seasons.length,
           })}
-          icon={<CalendarOutlined />}
+          icon={<AppMenuIcon menuKey="seasons" />}
           metrics={[
             {
               label: t('common.total'),
@@ -876,14 +876,15 @@ export default function SeasonsPage() {
               icon: <TeamOutlined />,
             },
           ]}
-          actions={
-            isAdmin ? (
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                {t('seasons.createBtn')}
-              </Button>
-            ) : undefined
-          }
         />
+
+        {isAdmin && (
+          <div className="page-toolbar page-toolbar-end">
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              {t('seasons.createBtn')}
+            </Button>
+          </div>
+        )}
 
         <Card>
           <Table

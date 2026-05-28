@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckCircleOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -24,7 +24,8 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PageHero } from '../components/PageHero';
+import { AppMenuIcon } from '../components';
+import { PageCover } from '../components/PageCover';
 import { TableSkeleton } from '../components/LoadingSkeleton';
 import {
   apiCreateUser,
@@ -214,11 +215,11 @@ export default function UsersPage() {
 
   return (
     <div className="page-stack">
-      <PageHero
+      <PageCover
         eyebrow={t('menu.users')}
         title={t('users.title')}
         description={t('users.searchPlaceholder')}
-        icon={<UserOutlined />}
+        icon={<AppMenuIcon menuKey="users" />}
         metrics={[
           {
             label: t('common.total'),
@@ -236,22 +237,23 @@ export default function UsersPage() {
             icon: <SafetyCertificateOutlined />,
           },
         ]}
-        actions={
-          <Space wrap>
-            <Input
-              placeholder={t('users.searchPlaceholder')}
-              prefix={<SearchOutlined />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-              style={{ width: 260 }}
-            />
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-              {t('users.createBtn')}
-            </Button>
-          </Space>
-        }
       />
+
+      <div className="page-toolbar">
+        <Space wrap>
+          <Input
+            placeholder={t('users.searchPlaceholder')}
+            prefix={<SearchOutlined />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            allowClear
+            style={{ width: 260 }}
+          />
+        </Space>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+          {t('users.createBtn')}
+        </Button>
+      </div>
 
       <Card>
         {loading && filteredUsers.length === 0 ? (

@@ -79,12 +79,22 @@ select {
 }
 
 .global-search.ant-select {
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  line-height: normal;
+  overflow: visible;
   border-radius: 999px;
   background: transparent;
 }
 
 .global-search.ant-select .ant-select-selector {
+  display: flex !important;
+  align-items: center !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  line-height: normal !important;
+  padding: 0 !important;
   overflow: hidden;
   border: 0 !important;
   border-radius: 999px !important;
@@ -92,13 +102,29 @@ select {
   box-shadow: none !important;
 }
 
+.global-search.ant-select-focused .ant-select-selector,
+.global-search.ant-select-open .ant-select-selector {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 .global-search.ant-select .ant-select-selection-search {
-  inset-inline-start: 0 !important;
-  inset-inline-end: 0 !important;
+  position: relative !important;
+  inset: auto !important;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px !important;
+  line-height: normal !important;
 }
 
 .global-search .global-search-input.ant-input-affix-wrapper {
-  height: 32px;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  line-height: normal;
+  padding: 0 12px;
   border-radius: 999px !important;
   background: var(--surface);
   color: var(--text-main);
@@ -117,8 +143,15 @@ select {
 }
 
 .global-search .global-search-input .ant-input {
+  height: 34px;
+  line-height: 34px;
   background: transparent;
   color: inherit;
+}
+
+.global-search.ant-select .ant-select-selection-search-input {
+  height: 36px !important;
+  line-height: 36px !important;
 }
 
 .global-search .global-search-input .ant-input::placeholder {
@@ -255,6 +288,28 @@ select {
   opacity: 0.94;
 }
 
+.sidebar-menu-ant-icon.anticon {
+  flex: 0 0 auto;
+  width: 22px;
+  color: currentColor;
+  font-size: 20px;
+  opacity: 0.94;
+}
+
+.page-cover-ant-icon.anticon {
+  color: currentColor;
+  font-size: 28px;
+}
+
+.page-cover-mask-icon {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  vertical-align: middle;
+  background: currentColor;
+  opacity: 0.94;
+}
+
 .app-sidebar .ant-layout-sider-trigger {
   height: 60px;
   border-top: 1px solid var(--sidebar-border);
@@ -312,12 +367,29 @@ select {
   width: 100%;
 }
 
+.page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.page-toolbar-end {
+  justify-content: flex-end;
+}
+
+.page-toolbar .ant-space {
+  max-width: 100%;
+}
+
 .page-hero {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, auto);
   gap: 24px;
-  align-items: end;
+  align-items: start;
   min-height: 168px;
   padding: 26px 28px;
   overflow: hidden;
@@ -382,18 +454,11 @@ select {
   min-width: 0;
 }
 
-.page-hero-eyebrow.ant-typography {
-  display: block;
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
 .page-hero-title.ant-typography {
-  margin: 2px 0 8px;
+  margin: 0 0 8px;
   color: var(--text-main);
+  font-size: 34px;
+  font-weight: 800;
   line-height: 1.08;
 }
 
@@ -401,6 +466,9 @@ select {
   max-width: 660px;
   margin: 0;
   color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .page-hero-side {
@@ -526,6 +594,7 @@ select {
 
 .page-hero-compact .page-hero-title.ant-typography {
   margin-bottom: 4px;
+  font-size: 34px;
 }
 
 .page-hero-compact .page-hero-metrics {
@@ -634,6 +703,42 @@ select {
 .dashboard-panel-card,
 .dashboard-season-card {
   overflow: hidden;
+}
+
+.dashboard-season-actions-row > .ant-col {
+  display: flex;
+}
+
+.dashboard-equal-card-row > .ant-col {
+  display: flex;
+}
+
+.dashboard-season-actions-row .dashboard-season-card,
+.dashboard-season-actions-row .dashboard-actions-card,
+.dashboard-equal-card-row .dashboard-panel-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.dashboard-season-actions-row .dashboard-season-card .ant-card-body,
+.dashboard-season-actions-row .dashboard-actions-card .ant-card-body,
+.dashboard-equal-card-row .dashboard-panel-card .ant-card-body {
+  flex: 1;
+}
+
+.dashboard-season-card,
+.dashboard-actions-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.dashboard-season-card .ant-card-body,
+.dashboard-actions-card .ant-card-body {
+  flex: 1;
 }
 
 .dashboard-panel-card .ant-card-head,
@@ -802,7 +907,7 @@ select {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 24px;
-  align-items: end;
+  align-items: start;
   min-height: 190px;
   padding: 28px 30px;
   margin-bottom: 20px;
@@ -839,6 +944,7 @@ select {
     );
 }
 
+.clubs-hero-main,
 .clubs-hero-copy,
 .clubs-hero-stats,
 .club-card > *,
@@ -847,7 +953,27 @@ select {
   z-index: 1;
 }
 
-.clubs-eyebrow,
+.clubs-hero-main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.clubs-hero-icon {
+  display: grid;
+  flex: 0 0 56px;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(227, 34, 33, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(37, 99, 235, 0.08)), var(--surface-soft);
+  color: var(--primary);
+  font-size: 28px;
+}
+
 .club-detail-eyebrow {
   display: block;
   color: var(--club-accent, var(--primary));
@@ -859,14 +985,23 @@ select {
 
 .clubs-title.ant-typography,
 .club-detail-title.ant-typography {
-  margin: 4px 0 8px;
+  margin: 0 0 8px;
   color: var(--text-main);
+}
+
+.clubs-title.ant-typography {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.08;
 }
 
 .clubs-subtitle.ant-typography {
   max-width: 620px;
   margin: 0;
   color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .clubs-hero-stats {
@@ -907,6 +1042,10 @@ select {
   gap: 12px;
   align-items: center;
   margin-bottom: 18px;
+}
+
+.clubs-page.page-stack .clubs-toolbar {
+  margin-bottom: 0;
 }
 
 .clubs-toolbar-controls {
@@ -2231,6 +2370,11 @@ select {
   }
 
   .page-hero-actions {
+    justify-content: flex-start;
+  }
+
+  .page-toolbar,
+  .page-toolbar-end {
     justify-content: flex-start;
   }
 

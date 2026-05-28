@@ -34,13 +34,15 @@ describe('HeadToHeadPage', () => {
   it('renders title', () => {
     const { container } = renderPage();
     expect(screen.getByText('headToHead.title')).toBeInTheDocument();
+    expect(screen.getByText('headToHead.subtitle')).toBeInTheDocument();
     expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
   it('renders team selectors', () => {
-    renderPage();
+    const { container } = renderPage();
     // Team 1 and Team 2 selectors should exist
     expect(screen.getByText('headToHead.compareBtn')).toBeInTheDocument();
+    expect(container.querySelector('.page-toolbar')).toBeInTheDocument();
   });
 
   it('shows empty hint when no result', () => {

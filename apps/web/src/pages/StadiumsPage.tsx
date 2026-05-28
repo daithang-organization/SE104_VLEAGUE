@@ -1,4 +1,4 @@
-import {
+﻿import {
   BankOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -26,8 +26,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { TableSkeleton } from '../components';
-import { PageHero } from '../components/PageHero';
+import { AppMenuIcon, TableSkeleton } from '../components';
+import { PageCover } from '../components/PageCover';
 import {
   apiCreateStadium,
   apiDeleteStadium,
@@ -139,11 +139,11 @@ export default function StadiumsPage() {
   const totalCapacity = stadiums.reduce((sum, stadium) => sum + (stadium.capacity ?? 0), 0);
   const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
   const hero = (
-    <PageHero
+    <PageCover
       eyebrow={t('menu.stadiums')}
       title={t('stadiums.title')}
       description={t('stadiums.searchPlaceholder')}
-      icon={<BankOutlined />}
+      icon={<AppMenuIcon menuKey="stadiums" />}
       metrics={[
         {
           label: t('menu.stadiums'),
@@ -161,24 +161,26 @@ export default function StadiumsPage() {
           icon: <EnvironmentOutlined />,
         },
       ]}
-      actions={
-        <Space wrap>
-          <Input
-            placeholder={t('stadiums.searchPlaceholder')}
-            prefix={<SearchOutlined />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 250 }}
-            allowClear
-          />
-          {isAdmin && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              {t('stadiums.addBtn')}
-            </Button>
-          )}
-        </Space>
-      }
     />
+  );
+  const toolbar = (
+    <div className="page-toolbar">
+      <Space wrap>
+        <Input
+          placeholder={t('stadiums.searchPlaceholder')}
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: 250 }}
+          allowClear
+        />
+      </Space>
+      {isAdmin && (
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          {t('stadiums.addBtn')}
+        </Button>
+      )}
+    </div>
   );
 
   const columns: ColumnsType<Stadium> = [
@@ -272,6 +274,7 @@ export default function StadiumsPage() {
     return (
       <div className="page-stack">
         {hero}
+        {toolbar}
         <Card>
           <TableSkeleton rows={8} />
         </Card>
@@ -283,6 +286,7 @@ export default function StadiumsPage() {
     <>
       <div className="page-stack">
         {hero}
+        {toolbar}
         <Card>
           <Table
             columns={columns}

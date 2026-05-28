@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -23,7 +23,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PageHero, TableSkeleton } from '../components';
+import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import {
   apiDeleteRegulation,
   apiGetRegulations,
@@ -205,11 +205,11 @@ export default function RegulationsPage() {
     },
   ];
   const hero = (
-    <PageHero
+    <PageCover
       eyebrow={t('menu.regulations')}
       title={t('regulations.title')}
       description={t('regulations.subtitle')}
-      icon={<SettingOutlined />}
+      icon={<AppMenuIcon menuKey="regulations" />}
       metrics={[
         {
           label: t('common.total'),
@@ -227,42 +227,45 @@ export default function RegulationsPage() {
           icon: <SettingOutlined />,
         },
       ]}
-      actions={
-        <Space wrap>
-          <Select
-            style={{ width: 240 }}
-            value={selectedSeason || undefined}
-            onChange={setSelectedSeason}
-            placeholder={t('regulations.seasonPlaceholder')}
-            options={seasons.map((s) => ({
-              label: `${s.name} (${s.year})`,
-              value: s.id,
-            }))}
-          />
-          <Button
-            icon={<ThunderboltOutlined />}
-            onClick={handleSeedDefaults}
-            disabled={!selectedSeason}
-          >
-            {t('regulations.seedDefaultsBtn')}
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={openCreateModal}
-            disabled={!selectedSeason}
-          >
-            {t('regulations.addBtn')}
-          </Button>
-        </Space>
-      }
     />
+  );
+  const toolbar = (
+    <div className="page-toolbar">
+      <Space wrap>
+        <Select
+          style={{ width: 240 }}
+          value={selectedSeason || undefined}
+          onChange={setSelectedSeason}
+          placeholder={t('regulations.seasonPlaceholder')}
+          options={seasons.map((s) => ({
+            label: `${s.name} (${s.year})`,
+            value: s.id,
+          }))}
+        />
+        <Button
+          icon={<ThunderboltOutlined />}
+          onClick={handleSeedDefaults}
+          disabled={!selectedSeason}
+        >
+          {t('regulations.seedDefaultsBtn')}
+        </Button>
+      </Space>
+      <Button
+        type="primary"
+        icon={<PlusOutlined />}
+        onClick={openCreateModal}
+        disabled={!selectedSeason}
+      >
+        {t('regulations.addBtn')}
+      </Button>
+    </div>
   );
 
   if (initialLoad) {
     return (
       <div className="page-stack">
         {hero}
+        {toolbar}
         <Card>
           <TableSkeleton rows={6} />
         </Card>
@@ -273,6 +276,7 @@ export default function RegulationsPage() {
   return (
     <div className="page-stack">
       {hero}
+      {toolbar}
 
       <Card>
         <Table

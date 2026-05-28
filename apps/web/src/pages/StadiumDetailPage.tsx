@@ -227,7 +227,7 @@ export default function StadiumDetailPage() {
             label: renderTabLabel(<FileTextOutlined />, t('stadiumDetail.tabInfo')),
             children: (
               <Card>
-                <Descriptions bordered column={{ xs: 1, sm: 2 }}>
+                <Descriptions bordered column={1}>
                   <Descriptions.Item label={t('stadiumDetail.descName')}>
                     {stadium.name}
                   </Descriptions.Item>
