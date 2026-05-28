@@ -38,4 +38,20 @@ export class TeamManagerScopeService {
       );
     }
   }
+
+  async resolveWritableTeamId(
+    actor: TeamScopeActor,
+    requestedTeamId?: string | null,
+  ) {
+    const managedTeamId = await this.resolveManagedTeamId(actor);
+    if (!managedTeamId) return requestedTeamId ?? undefined;
+
+    if (requestedTeamId && requestedTeamId !== managedTeamId) {
+      throw new ForbiddenException(
+        'Tài khoản này chỉ được thao tác với CLB đã được admin gắn.',
+      );
+    }
+
+    return managedTeamId;
+  }
 }

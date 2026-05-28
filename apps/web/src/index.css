@@ -542,6 +542,300 @@ select {
   font-size: 22px;
 }
 
+.match-detail-score-hero {
+  position: relative;
+  isolation: isolate;
+  margin-bottom: 16px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      105deg,
+      var(--match-home-primary, rgba(227, 34, 33, 0.14)) 0%,
+      rgba(255, 255, 255, 0) 48%,
+      var(--match-away-primary, rgba(37, 99, 235, 0.12)) 100%
+    ),
+    var(--surface);
+  color: var(--text-main);
+}
+
+.match-detail-score-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size:
+    auto,
+    26px 26px,
+    26px 26px;
+}
+
+.match-detail-score-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.match-detail-score-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.match-detail-score-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.match-detail-score-grid-card {
+  min-width: 0;
+  min-height: 156px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme='dark'] .match-detail-score-grid-card {
+  background: rgba(21, 34, 56, 0.76);
+}
+
+.match-detail-team-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.match-detail-team-card-home {
+  border-color: var(--match-home-border, var(--border));
+}
+
+.match-detail-team-card-away {
+  border-color: var(--match-away-border, var(--border));
+}
+
+.match-detail-team-card-main {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.match-detail-team-card-away .match-detail-team-card-main {
+  grid-template-columns: minmax(0, 1fr) 58px;
+  text-align: right;
+}
+
+.match-detail-team-logo {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.match-detail-team-logo-fallback {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.match-detail-team-copy {
+  min-width: 0;
+}
+
+.match-detail-team-role.ant-typography {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.match-detail-team-name.ant-typography {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--text-main);
+  line-height: 1.18;
+}
+
+.match-detail-team-events {
+  min-height: 28px;
+}
+
+.match-detail-event-stack {
+  margin-top: 6px;
+}
+
+.match-detail-card-stack {
+  margin-top: 4px;
+}
+
+.match-detail-event-line {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.match-detail-card-stack .match-detail-event-line {
+  font-size: 11px;
+}
+
+.match-detail-event-player {
+  color: var(--text-main);
+  font-weight: 650;
+}
+
+.match-detail-event-minute {
+  color: var(--text-muted);
+}
+
+.match-detail-score-card {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  border-color: rgba(148, 163, 184, 0.34);
+  background:
+    linear-gradient(
+      135deg,
+      var(--match-home-secondary, rgba(227, 34, 33, 0.1)),
+      var(--match-away-secondary, rgba(37, 99, 235, 0.08))
+    ),
+    var(--surface);
+}
+
+.match-detail-score-label.ant-typography,
+.match-detail-score-caption.ant-typography {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.match-detail-score-value.ant-typography {
+  margin: 4px 0 6px;
+  color: var(--text-main);
+  font-size: 44px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.match-detail-score-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.match-detail-score-meta-card {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+:root[data-theme='dark'] .match-detail-score-meta-card {
+  background: rgba(21, 34, 56, 0.62);
+}
+
+.match-detail-score-meta-card > .anticon {
+  color: var(--info);
+  font-size: 16px;
+}
+
+.match-detail-score-meta-card span {
+  display: grid;
+  min-width: 0;
+}
+
+.match-detail-score-meta-card .ant-typography {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.match-detail-score-meta-card strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .match-detail-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .match-detail-score-card {
+    order: -1;
+    min-height: 132px;
+  }
+
+  .match-detail-score-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .match-detail-score-hero {
+    padding: 14px;
+  }
+
+  .match-detail-score-hero-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .match-detail-score-grid-card {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .match-detail-team-card-away .match-detail-team-card-main,
+  .match-detail-team-card-main {
+    grid-template-columns: 48px minmax(0, 1fr);
+    text-align: left;
+  }
+
+  .match-detail-team-card-away .match-detail-team-card-main .match-detail-team-copy {
+    order: 2;
+  }
+
+  .match-detail-team-card-away .match-detail-team-card-main .match-detail-team-logo {
+    order: 1;
+  }
+
+  .match-detail-team-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .match-detail-score-value.ant-typography {
+    font-size: 34px;
+  }
+}
+
 .dashboard-page {
   color: var(--text-main);
 }

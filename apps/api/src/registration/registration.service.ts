@@ -1,12 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, type Player, type Team } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import {
+  TeamManagerScopeService,
+  type TeamScopeActor,
+} from '../team-manager/team-manager-scope.service';
 import type { CreatePlayerDto, UpdatePlayerDto } from './dto/player.dto';
 import type { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 
@@ -19,6 +24,7 @@ export class RegistrationService {
   constructor(
     private prisma: PrismaService,
     private regulationHelper: RegulationHelper,
+    private readonly teamManagerScope: TeamManagerScopeService,
   ) {}
 
   // ───────────────── TEAMS ─────────────────
@@ -305,7 +311,14 @@ export class RegistrationService {
     return player;
   }
 
-  async createPlayer(dto: CreatePlayerDto): Promise<Player> {
+  async createPlayer(
+    dto: CreatePlayerDto,
+    actor?: TeamScopeActor,
+  ): Promise<Player> {
+    const writableTeamId = actor
+      ? await this.teamManagerScope.resolveWritableTeamId(actor, dto.teamId)
+      : dto.teamId;
+
     // Query age limits from regulations (or use defaults)
     const minAge = await this.regulationHelper.getNumericValue(
       dto.seasonId,
@@ -353,11 +366,11 @@ export class RegistrationService {
     });
 
     // Assign to team if teamId provided
-    if (dto.teamId) {
+    if (writableTeamId) {
       try {
         await this.prisma.teamPlayer.create({
           data: {
-            teamId: dto.teamId,
+            teamId: writableTeamId,
             playerId: player.id,
           },
         });
@@ -374,8 +387,20 @@ export class RegistrationService {
     return player;
   }
 
-  async updatePlayer(id: string, dto: UpdatePlayerDto): Promise<Player> {
+  async updatePlayer(
+    id: string,
+    dto: UpdatePlayerDto,
+    actor?: TeamScopeActor,
+  ): Promise<Player> {
     await this.findOnePlayer(id);
+    if (actor) {
+      await this.assertCanManagePlayer(actor, id);
+    }
+
+    const writableTeamId =
+      dto.teamId !== undefined && actor
+        ? await this.teamManagerScope.resolveWritableTeamId(actor, dto.teamId)
+        : dto.teamId;
 
     const data: Record<string, unknown> = {};
     if (dto.fullName !== undefined) data.fullName = dto.fullName;
@@ -401,10 +426,10 @@ export class RegistrationService {
       });
 
       // Create new assignment if teamId is not null
-      if (dto.teamId) {
+      if (writableTeamId) {
         await this.prisma.teamPlayer.create({
           data: {
-            teamId: dto.teamId,
+            teamId: writableTeamId,
             playerId: id,
           },
         });
@@ -414,10 +439,37 @@ export class RegistrationService {
     return player;
   }
 
-  async deletePlayer(id: string): Promise<{ success: boolean }> {
+  async deletePlayer(
+    id: string,
+    actor?: TeamScopeActor,
+  ): Promise<{ success: boolean }> {
     await this.findOnePlayer(id);
+    if (actor) {
+      await this.assertCanManagePlayer(actor, id);
+    }
 
     await this.prisma.player.delete({ where: { id } });
     return { success: true };
+  }
+
+  private async assertCanManagePlayer(actor: TeamScopeActor, playerId: string) {
+    const managedTeamId =
+      await this.teamManagerScope.resolveManagedTeamId(actor);
+    if (!managedTeamId) return;
+
+    const rosterRow = await this.prisma.teamPlayer.findFirst({
+      where: {
+        playerId,
+        teamId: managedTeamId,
+        leftAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!rosterRow) {
+      throw new ForbiddenException(
+        'Tài khoản này chỉ được thao tác với cầu thủ thuộc CLB đã được admin gắn.',
+      );
+    }
   }
 }

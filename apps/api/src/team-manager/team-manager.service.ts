@@ -74,7 +74,9 @@ export class TeamManagerService {
 
     const assignment = await this.getAssignment(userId, dto.seasonId);
     if (!assignment) {
-      throw new ForbiddenException('Bạn chưa được gán CLB trong mùa giải này.');
+      throw new ForbiddenException(
+        'Tài khoản này chưa được admin gắn với CLB nào.',
+      );
     }
 
     const seasonTeam = await this.prisma.seasonTeam.findUnique({

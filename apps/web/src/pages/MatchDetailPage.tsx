@@ -1,8 +1,11 @@
 import {
   ArrowLeftOutlined,
+  CalendarOutlined,
   CheckOutlined,
   CloseOutlined,
   EditOutlined,
+  EnvironmentOutlined,
+  HomeOutlined,
   PlusOutlined,
   SendOutlined,
 } from '@ant-design/icons';
@@ -30,7 +33,7 @@ import {
   Typography,
 } from 'antd';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -69,6 +72,7 @@ import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './matc
 import EventFormModal from './match-detail/EventFormModal';
 import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
+import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
 
 const { Title, Text } = Typography;
 
@@ -685,15 +689,27 @@ export default function MatchDetailPage() {
   const awaySubs = events.filter(
     (e) => e.type === 'SUBSTITUTION' && e.team?.id === match.awayTeamId,
   ).length;
+  const homeTheme = getTeamTheme(match.homeTeam);
+  const awayTheme = getTeamTheme(match.awayTeam);
+  const scoreHeroStyle = {
+    '--match-home-primary': homeTheme.primary,
+    '--match-home-secondary': homeTheme.secondary,
+    '--match-home-accent': homeTheme.accent,
+    '--match-home-border': homeTheme.border,
+    '--match-away-primary': awayTheme.primary,
+    '--match-away-secondary': awayTheme.secondary,
+    '--match-away-accent': awayTheme.accent,
+    '--match-away-border': awayTheme.border,
+  } as CSSProperties;
 
   const renderScorers = (goals: MatchEvent[], align: 'left' | 'right' | 'center') => {
     if (goals.length === 0) return null;
     return (
-      <div style={{ marginTop: 6 }}>
+      <div className="match-detail-event-stack">
         {groupByPlayer(goals).map(([pid, { name, minutes }]) => (
-          <div key={pid} style={{ fontSize: 12, color: '#555', textAlign: align, lineHeight: 1.7 }}>
-            ⚽ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
-            <span style={{ color: '#999' }}>
+          <div key={pid} className="match-detail-event-line" style={{ textAlign: align }}>
+            ⚽ <span className="match-detail-event-player">{name}</span>{' '}
+            <span className="match-detail-event-minute">
               {minutes
                 .sort((a, b) => a.minute - b.minute)
                 .map((m) => {
@@ -712,9 +728,9 @@ export default function MatchDetailPage() {
   const renderCards = (cards: MatchEvent[], align: 'left' | 'right' | 'center') => {
     if (cards.length === 0) return null;
     return (
-      <div style={{ marginTop: 4 }}>
+      <div className="match-detail-event-stack match-detail-card-stack">
         {groupByPlayer(cards).map(([pid, { name, minutes }]) => (
-          <div key={pid} style={{ fontSize: 11, color: '#777', textAlign: align, lineHeight: 1.7 }}>
+          <div key={pid} className="match-detail-event-line" style={{ textAlign: align }}>
             {minutes
               .sort((a, b) => a.minute - b.minute)
               .map((m, i) => (
@@ -723,8 +739,8 @@ export default function MatchDetailPage() {
                   {m.type === 'RED_CARD' ? '🟥' : '🟨'}
                 </span>
               ))}{' '}
-            <span style={{ fontWeight: 500 }}>{name}</span>{' '}
-            <span style={{ color: '#aaa' }}>
+            <span className="match-detail-event-player">{name}</span>{' '}
+            <span className="match-detail-event-minute">
               {minutes
                 .sort((a, b) => a.minute - b.minute)
                 .map((m) => `${m.minute}'`)
@@ -941,6 +957,26 @@ export default function MatchDetailPage() {
     },
   ];
 
+  const renderTeamLogo = (team: Match['homeTeam'], fallback: string) => {
+    const logoUrl = getTeamLogoUrl(team);
+
+    if (logoUrl) {
+      return (
+        <img
+          src={logoUrl}
+          alt={`${team?.name ?? fallback} logo`}
+          className="match-detail-team-logo"
+        />
+      );
+    }
+
+    return (
+      <span className="match-detail-team-logo match-detail-team-logo-fallback" aria-hidden="true">
+        {(team?.shortName ?? team?.name ?? fallback).slice(0, 3).toUpperCase()}
+      </span>
+    );
+  };
+
   return (
     <div>
       {/* Header */}
@@ -955,56 +991,95 @@ export default function MatchDetailPage() {
       </Space>
 
       {/* Scoreboard */}
-      <Card
-        style={{
-          marginBottom: 16,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          border: 'none',
-        }}
+      <section
+        className="match-detail-score-hero"
+        style={scoreHeroStyle}
+        aria-label="Bảng tỉ số trận đấu"
       >
-        <Flex justify="center" align="flex-start" gap={32}>
-          <div style={{ textAlign: 'center', minWidth: 180, flex: 1 }}>
-            <Title level={4} style={{ color: '#fff', margin: 0 }}>
-              {match.homeTeam?.name ?? '—'}
-            </Title>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 4 }}>
-              {t('matchDetail.homeLabel')}
+        <div className="match-detail-score-hero-top">
+          <Space size={8} wrap>
+            <Tag color="blue">Vòng {match.roundNo}</Tag>
+            <Tag>{match.leg === 1 ? 'Lượt đi' : 'Lượt về'}</Tag>
+          </Space>
+          <Tag color={STATUS_MAP[match.status]?.color ?? 'default'}>
+            {STATUS_MAP[match.status]?.label ?? match.status}
+          </Tag>
+        </div>
+
+        <div className="match-detail-score-grid">
+          <article className="match-detail-score-grid-card match-detail-team-card match-detail-team-card-home">
+            <div className="match-detail-team-card-main">
+              {renderTeamLogo(match.homeTeam, t('matchDetail.homeLabel'))}
+              <div className="match-detail-team-copy">
+                <Text className="match-detail-team-role">
+                  <HomeOutlined /> {t('matchDetail.homeLabel')}
+                </Text>
+                <Title level={4} className="match-detail-team-name">
+                  {match.homeTeam?.name ?? '—'}
+                </Title>
+              </div>
             </div>
-            <div style={{ filter: 'brightness(2)' }}>
-              {renderScorers(homeGoals, 'center')}
-              {renderCards(homeCards, 'center')}
+            <div className="match-detail-team-events">
+              {renderScorers(homeGoals, 'left')}
+              {renderCards(homeCards, 'left')}
             </div>
-          </div>
-          <div style={{ textAlign: 'center', minWidth: 100 }}>
-            <Title level={1} style={{ color: '#fff', margin: 0, fontSize: 48 }}>
+          </article>
+
+          <article className="match-detail-score-grid-card match-detail-score-card">
+            <Text className="match-detail-score-label">Tỉ số</Text>
+            <Title level={1} className="match-detail-score-value">
               {match.homeScore ?? '—'} : {match.awayScore ?? '—'}
             </Title>
-            <Tag
-              color={STATUS_MAP[match.status]?.color ?? 'default'}
-              style={{ marginTop: 8, fontSize: 13 }}
-            >
-              {STATUS_MAP[match.status]?.label ?? match.status}
-            </Tag>
-            {match.kickoffAt && (
-              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 6 }}>
-                📅 {dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm')}
+            <Text className="match-detail-score-caption">
+              {homeGoals.length + awayGoals.length} bàn thắng
+            </Text>
+          </article>
+
+          <article className="match-detail-score-grid-card match-detail-team-card match-detail-team-card-away">
+            <div className="match-detail-team-card-main">
+              <div className="match-detail-team-copy">
+                <Text className="match-detail-team-role">
+                  <SendOutlined /> {t('matchDetail.awayLabel')}
+                </Text>
+                <Title level={4} className="match-detail-team-name">
+                  {match.awayTeam?.name ?? '—'}
+                </Title>
               </div>
-            )}
-          </div>
-          <div style={{ textAlign: 'center', minWidth: 180, flex: 1 }}>
-            <Title level={4} style={{ color: '#fff', margin: 0 }}>
-              {match.awayTeam?.name ?? '—'}
-            </Title>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 4 }}>
-              {t('matchDetail.awayLabel')}
+              {renderTeamLogo(match.awayTeam, t('matchDetail.awayLabel'))}
             </div>
-            <div style={{ filter: 'brightness(2)' }}>
-              {renderScorers(awayGoals, 'center')}
-              {renderCards(awayCards, 'center')}
+            <div className="match-detail-team-events">
+              {renderScorers(awayGoals, 'right')}
+              {renderCards(awayCards, 'right')}
             </div>
+          </article>
+        </div>
+
+        <div className="match-detail-score-meta-grid">
+          <div className="match-detail-score-meta-card">
+            <CalendarOutlined />
+            <span>
+              <Text>Thời gian</Text>
+              <strong>
+                {match.kickoffAt ? dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm') : '—'}
+              </strong>
+            </span>
           </div>
-        </Flex>
-      </Card>
+          <div className="match-detail-score-meta-card">
+            <EnvironmentOutlined />
+            <span>
+              <Text>Sân vận động</Text>
+              <strong>{match.stadium?.name ?? '—'}</strong>
+            </span>
+          </div>
+          <div className="match-detail-score-meta-card">
+            <HomeOutlined />
+            <span>
+              <Text>Mùa giải</Text>
+              <strong>{match.season?.name ?? '—'}</strong>
+            </span>
+          </div>
+        </div>
+      </section>
 
       {/* Admin Actions */}
       {canEdit && (

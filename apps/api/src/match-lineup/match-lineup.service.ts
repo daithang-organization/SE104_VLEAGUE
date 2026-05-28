@@ -13,6 +13,10 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
+  TeamManagerScopeService,
+  type TeamScopeActor,
+} from '../team-manager/team-manager-scope.service';
+import {
   ReviewMatchLineupDto,
   SubmitMatchLineupDto,
 } from './dto/match-lineup.dto';
@@ -27,6 +31,7 @@ export class MatchLineupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly regulationHelper: RegulationHelper,
+    private readonly teamManagerScope: TeamManagerScopeService,
   ) {}
 
   async listLineups(matchId: string) {
@@ -39,8 +44,15 @@ export class MatchLineupService {
     });
   }
 
-  async submitLineup(matchId: string, dto: SubmitMatchLineupDto) {
+  async submitLineup(
+    matchId: string,
+    dto: SubmitMatchLineupDto,
+    actor?: TeamScopeActor,
+  ) {
     this.assertLineupShape(dto);
+    if (actor) {
+      await this.teamManagerScope.assertCanManageTeam(actor, dto.teamId);
+    }
 
     const match = await this.ensureMatch(matchId);
     if (dto.teamId !== match.homeTeamId && dto.teamId !== match.awayTeamId) {

@@ -133,6 +133,17 @@ function renderPage() {
 describe('MatchDetailPage', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('renders the score area as a hero with grid cards', async () => {
+    const { container } = renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+
+    expect(container.querySelector('.match-detail-score-hero')).toBeInTheDocument();
+    expect(container.querySelector('.match-detail-score-grid')).toBeInTheDocument();
+    expect(container.querySelectorAll('.match-detail-score-grid-card')).toHaveLength(3);
+    expect(container.querySelector('.match-detail-score-card')).toHaveTextContent('— : —');
+  });
+
   it('loads match lineups and suspensions and shows the lineup registration panel', async () => {
     renderPage();
 

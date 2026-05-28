@@ -112,6 +112,11 @@ describe('RegistrationService', () => {
           provide: TeamManagerScopeService,
           useValue: {
             resolveManagedTeamId: jest.fn().mockResolvedValue(null),
+            resolveWritableTeamId: jest
+              .fn()
+              .mockImplementation((_actor, requestedTeamId) =>
+                Promise.resolve(requestedTeamId),
+              ),
             assertCanManageTeam: jest.fn().mockResolvedValue(undefined),
           },
         },
@@ -308,7 +313,7 @@ describe('RegistrationService', () => {
         position: PlayerPosition.FW,
       };
       jest
-        .spyOn(teamManagerScope, 'resolveManagedTeamId')
+        .spyOn(teamManagerScope, 'resolveWritableTeamId')
         .mockResolvedValue('team-1');
       jest.spyOn(prisma.player, 'create').mockResolvedValue({
         ...mockPlayers[0],
@@ -322,10 +327,10 @@ describe('RegistrationService', () => {
         role: 'TEAM_MANAGER',
       } as any);
 
-      expect(teamManagerScope.resolveManagedTeamId).toHaveBeenCalledWith({
-        id: 'manager-1',
-        role: 'TEAM_MANAGER',
-      });
+      expect(teamManagerScope.resolveWritableTeamId).toHaveBeenCalledWith(
+        { id: 'manager-1', role: 'TEAM_MANAGER' },
+        undefined,
+      );
       expect(prisma.teamPlayer.create).toHaveBeenCalledWith({
         data: { teamId: 'team-1', playerId: 'player-new' },
       });

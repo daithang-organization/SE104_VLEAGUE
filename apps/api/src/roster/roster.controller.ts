@@ -21,7 +21,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { CurrentUser, JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { AddPlayerToRosterDto, UpdateRosterPlayerDto } from './dto';
 import { RosterService } from './roster.service';
 
@@ -94,8 +95,9 @@ export class RosterController {
   addPlayer(
     @Param('teamId') teamId: string,
     @Body() dto: AddPlayerToRosterDto,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.rosterService.addPlayerToRoster(teamId, dto);
+    return this.rosterService.addPlayerToRoster(teamId, dto, user);
   }
 
   @Patch(':playerId')
@@ -115,8 +117,9 @@ export class RosterController {
     @Param('teamId') teamId: string,
     @Param('playerId') playerId: string,
     @Body() dto: UpdateRosterPlayerDto,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.rosterService.updateRosterPlayer(teamId, playerId, dto);
+    return this.rosterService.updateRosterPlayer(teamId, playerId, dto, user);
   }
 
   @Delete(':playerId')
@@ -134,7 +137,8 @@ export class RosterController {
   removePlayer(
     @Param('teamId') teamId: string,
     @Param('playerId') playerId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.rosterService.removePlayerFromRoster(teamId, playerId);
+    return this.rosterService.removePlayerFromRoster(teamId, playerId, user);
   }
 }
