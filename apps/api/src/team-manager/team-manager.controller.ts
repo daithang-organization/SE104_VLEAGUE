@@ -23,10 +23,21 @@ import { TeamManagerService } from './team-manager.service';
 export class TeamManagerController {
   constructor(private readonly teamManagerService: TeamManagerService) {}
 
+  @Get('managed-team')
+  @ApiOperation({ summary: 'Lấy CLB cố định của team manager' })
+  @ApiOkResponse({
+    description: 'CLB được admin gắn cho manager hoặc null nếu chưa có',
+  })
+  getManagedTeam(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.getManagedTeam(user.id);
+  }
+
   @Get('assignment')
-  @ApiOperation({ summary: 'Lấy CLB team manager đã chọn trong mùa giải' })
+  @ApiOperation({ summary: 'Lấy CLB cố định của team manager trong mùa giải' })
   @ApiQuery({ name: 'seasonId', type: 'string', required: true })
-  @ApiOkResponse({ description: 'Assignment hoặc null nếu chưa chọn' })
+  @ApiOkResponse({
+    description: 'Assignment hoặc null nếu tài khoản chưa được gắn CLB',
+  })
   getAssignment(
     @CurrentUser() user: CurrentUserPayload,
     @Query('seasonId') seasonId: string,
@@ -35,10 +46,12 @@ export class TeamManagerController {
   }
 
   @Post('assignment')
-  @ApiOperation({ summary: 'Team manager chọn CLB quản lý cho mùa giải' })
+  @ApiOperation({
+    summary: 'Đồng bộ CLB cố định của team manager cho mùa giải',
+  })
   @ApiOkResponse({ description: 'Assignment đã được tạo' })
   @ApiConflictResponse({
-    description: 'Manager đã chọn CLB khác cho mùa giải này',
+    description: 'Manager gửi CLB khác với CLB cố định',
   })
   createAssignment(
     @CurrentUser() user: CurrentUserPayload,

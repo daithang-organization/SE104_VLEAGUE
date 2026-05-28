@@ -201,6 +201,39 @@ export class MatchController {
     return this.match.addEvent(id, dto);
   }
 
+  @Patch(':id/events/:eventId')
+  @Roles(Role.ADMIN, Role.REFEREE)
+  @ApiOperation({
+    summary: 'Cập nhật sự kiện trận đấu',
+    description:
+      'Cập nhật một sự kiện trong trận đấu. Không thể cập nhật sự kiện của trận đã kết thúc. Chỉ ADMIN và REFEREE có quyền.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của trận đấu',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiParam({
+    name: 'eventId',
+    description: 'ID của sự kiện',
+    type: 'string',
+    format: 'uuid',
+  })
+  @ApiBody({ type: AddMatchEventDto })
+  @ApiOkResponse({ description: 'Sự kiện đã được cập nhật thành công' })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy sự kiện' })
+  @ApiBadRequestResponse({
+    description: 'Không thể cập nhật sự kiện của trận đấu đã kết thúc',
+  })
+  updateEvent(
+    @Param('id') id: string,
+    @Param('eventId') eventId: string,
+    @Body() dto: AddMatchEventDto,
+  ) {
+    return this.match.updateEvent(id, eventId, dto);
+  }
+
   @Delete(':id/events/:eventId')
   @Roles(Role.ADMIN, Role.REFEREE)
   @ApiOperation({

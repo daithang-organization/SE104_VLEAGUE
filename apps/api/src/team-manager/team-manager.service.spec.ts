@@ -13,6 +13,11 @@ describe('TeamManagerService application workflow', () => {
     seasonId: 'season-1',
     teamId: 'team-1',
   };
+  const managerUser = {
+    id: 'manager-1',
+    role: 'TEAM_MANAGER',
+    managedTeamId: 'team-1',
+  };
 
   const applicationPayload = {
     seasonId: 'season-1',
@@ -38,8 +43,10 @@ describe('TeamManagerService application workflow', () => {
               findUnique: jest.fn(),
               findFirst: jest.fn(),
               create: jest.fn(),
+              upsert: jest.fn(),
             },
             user: { findUnique: jest.fn() },
+            team: { findUnique: jest.fn() },
             seasonTeam: {
               findUnique: jest.fn(),
               update: jest.fn(),
@@ -51,12 +58,14 @@ describe('TeamManagerService application workflow', () => {
 
     service = module.get<TeamManagerService>(TeamManagerService);
     prisma = module.get<PrismaService>(PrismaService);
+
+    jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(managerUser as any);
+    jest
+      .spyOn(prisma.teamManagerAssignment, 'upsert')
+      .mockResolvedValue(assignment as any);
   });
 
   it('loads the current manager application for a season', async () => {
-    jest
-      .spyOn(prisma.teamManagerAssignment, 'findUnique')
-      .mockResolvedValue(assignment as any);
     jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
       id: 'season-team-1',
       seasonId: 'season-1',
@@ -68,6 +77,15 @@ describe('TeamManagerService application workflow', () => {
     const result = await service.getApplication('manager-1', 'season-1');
 
     expect(result?.id).toBe('season-team-1');
+    expect(prisma.teamManagerAssignment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId_seasonId: { userId: 'manager-1', seasonId: 'season-1' },
+        },
+        create: { userId: 'manager-1', seasonId: 'season-1', teamId: 'team-1' },
+        update: { teamId: 'team-1' },
+      }),
+    );
     expect(prisma.seasonTeam.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' } },
@@ -75,10 +93,26 @@ describe('TeamManagerService application workflow', () => {
     );
   });
 
+  it('loads the fixed managed club without requiring a season', async () => {
+    jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+      id: 'team-1',
+      name: 'Hà Nội FC',
+      shortName: 'HN',
+      status: 'ACTIVE',
+    } as any);
+
+    const result = await service.getManagedTeam('manager-1');
+
+    expect(result?.id).toBe('team-1');
+    expect(prisma.team.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'team-1' },
+      }),
+    );
+    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
+  });
+
   it('submits application information for the assigned team', async () => {
-    jest
-      .spyOn(prisma.teamManagerAssignment, 'findUnique')
-      .mockResolvedValue(assignment as any);
     jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
       id: 'season-team-1',
       seasonId: 'season-1',
@@ -110,14 +144,22 @@ describe('TeamManagerService application workflow', () => {
     );
   });
 
-  it('rejects application submission when manager has no team assignment', async () => {
-    jest
-      .spyOn(prisma.teamManagerAssignment, 'findUnique')
-      .mockResolvedValue(null);
+  it('rejects application submission when manager has no fixed CLB', async () => {
+    jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+      ...managerUser,
+      managedTeamId: null,
+    } as any);
 
     await expect(
       service.submitApplication('manager-1', applicationPayload),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('prevents a manager account from choosing another CLB', async () => {
+    await expect(
+      service.createAssignment('manager-1', 'season-1', 'team-2'),
+    ).rejects.toThrow(ForbiddenException);
+    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects application submission when required fields are missing', async () => {

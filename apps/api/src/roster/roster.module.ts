@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RegulationModule } from '../regulation/regulation.module';
+import { TeamManagerModule } from '../team-manager/team-manager.module';
 import { RosterController } from './roster.controller';
 import { RosterService } from './roster.service';
 
 @Module({
-  imports: [PrismaModule, RegulationModule],
+  imports: [PrismaModule, RegulationModule, TeamManagerModule],
   controllers: [RosterController],
   providers: [RosterService],
   exports: [RosterService],

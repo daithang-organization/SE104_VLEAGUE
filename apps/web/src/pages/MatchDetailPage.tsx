@@ -1,8 +1,11 @@
 import {
   ArrowLeftOutlined,
+  CalendarOutlined,
   CheckOutlined,
   CloseOutlined,
   EditOutlined,
+  EnvironmentOutlined,
+  HomeOutlined,
   PlusOutlined,
   SendOutlined,
 } from '@ant-design/icons';
@@ -30,7 +33,7 @@ import {
   Typography,
 } from 'antd';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -67,8 +70,10 @@ import {
 } from '../services/matchApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
 import EventFormModal from './match-detail/EventFormModal';
+import MatchCenter from './match-detail/MatchCenter';
 import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
+import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
 
 const { Title, Text } = Typography;
 
@@ -84,6 +89,18 @@ function isForeignNationality(nationality?: string | null) {
     .trim();
 
   return normalized !== 'viet nam' && normalized !== 'vietnam';
+}
+
+function normalizeSearchText(value?: string | number | null) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export default function MatchDetailPage() {
@@ -127,6 +144,7 @@ export default function MatchDetailPage() {
   const [lineupKitType, setLineupKitType] = useState<MatchKitType>('PRIMARY');
   const [lineupFormation, setLineupFormation] = useState('4-4-2');
   const [lineupRoles, setLineupRoles] = useState<Record<string, MatchLineupRole | undefined>>({});
+  const [lineupRosterSearch, setLineupRosterSearch] = useState('');
   const [lineupSubmitting, setLineupSubmitting] = useState(false);
   const [lineupReviewNotes, setLineupReviewNotes] = useState<Record<string, string>>({});
   const [lineupReviewingKey, setLineupReviewingKey] = useState<string | null>(null);
@@ -160,6 +178,7 @@ export default function MatchDetailPage() {
   // Modal visibility
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<MatchEvent | null>(null);
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
   const canViewLineupData = useMemo(
@@ -357,6 +376,7 @@ export default function MatchDetailPage() {
   };
 
   const canSubmitLineup = user?.role === 'ADMIN' || user?.role === 'TEAM_MANAGER';
+  const canSubmitLineupForMatch = match?.status === 'PUBLISHED';
   const canReviewLineup = user?.role === 'ADMIN' || user?.role === 'REFEREE';
   const canAssignOfficials = user?.role === 'ADMIN';
   const canSubmitMatchReport = user?.role === 'ADMIN' || user?.role === 'REFEREE';
@@ -366,6 +386,18 @@ export default function MatchDetailPage() {
     if (!match || !selectedLineupTeamId) return [];
     return selectedLineupTeamId === match.homeTeamId ? homeRoster : awayRoster;
   }, [awayRoster, homeRoster, match, selectedLineupTeamId]);
+
+  const filteredSelectedRoster = useMemo(() => {
+    const query = normalizeSearchText(lineupRosterSearch);
+    if (!query) return selectedRoster;
+
+    return selectedRoster.filter((player) => {
+      const haystack = normalizeSearchText(
+        [player.fullName, player.position, player.nationality, player.jerseyNumber].join(' '),
+      );
+      return haystack.includes(query);
+    });
+  }, [lineupRosterSearch, selectedRoster]);
 
   const selectedTeamName = useMemo(() => {
     if (!match || !selectedLineupTeamId) return '—';
@@ -427,6 +459,7 @@ export default function MatchDetailPage() {
   const handleLineupTeamChange = (teamId: string) => {
     setSelectedLineupTeamId(teamId);
     setLineupRoles({});
+    setLineupRosterSearch('');
   };
 
   const handleLineupRoleChange = (playerId: string, role: MatchLineupRole | 'NONE') => {
@@ -441,12 +474,28 @@ export default function MatchDetailPage() {
       (player) => !suspendedPlayerIdsForSelectedTeam.has(player.playerId),
     );
     const nextRoles: Record<string, MatchLineupRole> = {};
-    availablePlayers.slice(0, 11).forEach((player) => {
-      nextRoles[player.playerId] = 'STARTER';
-    });
-    availablePlayers.slice(11, 16).forEach((player) => {
-      nextRoles[player.playerId] = 'SUBSTITUTE';
-    });
+    const starterIds = new Set<string>();
+    let foreignStarterCount = 0;
+
+    for (const player of availablePlayers) {
+      if (starterIds.size >= 11) break;
+      const isForeign = isForeignNationality(player.nationality);
+      if (isForeign && foreignStarterCount >= 3) continue;
+      starterIds.add(player.playerId);
+      if (isForeign) foreignStarterCount += 1;
+    }
+
+    availablePlayers
+      .filter((player) => starterIds.has(player.playerId))
+      .forEach((player) => {
+        nextRoles[player.playerId] = 'STARTER';
+      });
+    availablePlayers
+      .filter((player) => !starterIds.has(player.playerId))
+      .slice(0, 5)
+      .forEach((player) => {
+        nextRoles[player.playerId] = 'SUBSTITUTE';
+      });
     setLineupRoles(nextRoles);
   };
 
@@ -475,6 +524,7 @@ export default function MatchDetailPage() {
       });
       message.success('Đã nộp danh sách đăng ký thi đấu.');
       setLineupRoles({});
+      setLineupRosterSearch('');
       loadLineupData(match.id);
     } catch (err: unknown) {
       const msg =
@@ -535,6 +585,21 @@ export default function MatchDetailPage() {
     } finally {
       setOfficialAssigning(false);
     }
+  };
+
+  const handleOpenAddEvent = () => {
+    setEditingEvent(null);
+    setEventModalOpen(true);
+  };
+
+  const handleOpenEditEvent = (event: MatchEvent) => {
+    setEditingEvent(event);
+    setEventModalOpen(true);
+  };
+
+  const handleEventModalCancel = () => {
+    setEditingEvent(null);
+    setEventModalOpen(false);
   };
 
   const parseTechnicalStats = () => {
@@ -685,15 +750,27 @@ export default function MatchDetailPage() {
   const awaySubs = events.filter(
     (e) => e.type === 'SUBSTITUTION' && e.team?.id === match.awayTeamId,
   ).length;
+  const homeTheme = getTeamTheme(match.homeTeam);
+  const awayTheme = getTeamTheme(match.awayTeam);
+  const scoreHeroStyle = {
+    '--match-home-primary': homeTheme.primary,
+    '--match-home-secondary': homeTheme.secondary,
+    '--match-home-accent': homeTheme.accent,
+    '--match-home-border': homeTheme.border,
+    '--match-away-primary': awayTheme.primary,
+    '--match-away-secondary': awayTheme.secondary,
+    '--match-away-accent': awayTheme.accent,
+    '--match-away-border': awayTheme.border,
+  } as CSSProperties;
 
   const renderScorers = (goals: MatchEvent[], align: 'left' | 'right' | 'center') => {
     if (goals.length === 0) return null;
     return (
-      <div style={{ marginTop: 6 }}>
+      <div className="match-detail-event-stack">
         {groupByPlayer(goals).map(([pid, { name, minutes }]) => (
-          <div key={pid} style={{ fontSize: 12, color: '#555', textAlign: align, lineHeight: 1.7 }}>
-            ⚽ <span style={{ fontWeight: 500 }}>{name}</span>{' '}
-            <span style={{ color: '#999' }}>
+          <div key={pid} className="match-detail-event-line" style={{ textAlign: align }}>
+            ⚽ <span className="match-detail-event-player">{name}</span>{' '}
+            <span className="match-detail-event-minute">
               {minutes
                 .sort((a, b) => a.minute - b.minute)
                 .map((m) => {
@@ -712,9 +789,9 @@ export default function MatchDetailPage() {
   const renderCards = (cards: MatchEvent[], align: 'left' | 'right' | 'center') => {
     if (cards.length === 0) return null;
     return (
-      <div style={{ marginTop: 4 }}>
+      <div className="match-detail-event-stack match-detail-card-stack">
         {groupByPlayer(cards).map(([pid, { name, minutes }]) => (
-          <div key={pid} style={{ fontSize: 11, color: '#777', textAlign: align, lineHeight: 1.7 }}>
+          <div key={pid} className="match-detail-event-line" style={{ textAlign: align }}>
             {minutes
               .sort((a, b) => a.minute - b.minute)
               .map((m, i) => (
@@ -723,8 +800,8 @@ export default function MatchDetailPage() {
                   {m.type === 'RED_CARD' ? '🟥' : '🟨'}
                 </span>
               ))}{' '}
-            <span style={{ fontWeight: 500 }}>{name}</span>{' '}
-            <span style={{ color: '#aaa' }}>
+            <span className="match-detail-event-player">{name}</span>{' '}
+            <span className="match-detail-event-minute">
               {minutes
                 .sort((a, b) => a.minute - b.minute)
                 .map((m) => `${m.minute}'`)
@@ -945,6 +1022,26 @@ export default function MatchDetailPage() {
     },
   ];
 
+  const renderTeamLogo = (team: Match['homeTeam'], fallback: string) => {
+    const logoUrl = getTeamLogoUrl(team);
+
+    if (logoUrl) {
+      return (
+        <img
+          src={logoUrl}
+          alt={`${team?.name ?? fallback} logo`}
+          className="match-detail-team-logo"
+        />
+      );
+    }
+
+    return (
+      <span className="match-detail-team-logo match-detail-team-logo-fallback" aria-hidden="true">
+        {(team?.shortName ?? team?.name ?? fallback).slice(0, 3).toUpperCase()}
+      </span>
+    );
+  };
+
   return (
     <div>
       {/* Header */}
@@ -959,56 +1056,95 @@ export default function MatchDetailPage() {
       </Space>
 
       {/* Scoreboard */}
-      <Card
-        style={{
-          marginBottom: 16,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          border: 'none',
-        }}
+      <section
+        className="match-detail-score-hero"
+        style={scoreHeroStyle}
+        aria-label="Bảng tỉ số trận đấu"
       >
-        <Flex justify="center" align="flex-start" gap={32}>
-          <div style={{ textAlign: 'center', minWidth: 180, flex: 1 }}>
-            <Title level={4} style={{ color: '#fff', margin: 0 }}>
-              {match.homeTeam?.name ?? '—'}
-            </Title>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 4 }}>
-              {t('matchDetail.homeLabel')}
+        <div className="match-detail-score-hero-top">
+          <Space size={8} wrap>
+            <Tag color="blue">Vòng {match.roundNo}</Tag>
+            <Tag>{match.leg === 1 ? 'Lượt đi' : 'Lượt về'}</Tag>
+          </Space>
+          <Tag color={STATUS_MAP[match.status]?.color ?? 'default'}>
+            {STATUS_MAP[match.status]?.label ?? match.status}
+          </Tag>
+        </div>
+
+        <div className="match-detail-score-grid">
+          <article className="match-detail-score-grid-card match-detail-team-card match-detail-team-card-home">
+            <div className="match-detail-team-card-main">
+              {renderTeamLogo(match.homeTeam, t('matchDetail.homeLabel'))}
+              <div className="match-detail-team-copy">
+                <Text className="match-detail-team-role">
+                  <HomeOutlined /> {t('matchDetail.homeLabel')}
+                </Text>
+                <Title level={4} className="match-detail-team-name">
+                  {match.homeTeam?.name ?? '—'}
+                </Title>
+              </div>
             </div>
-            <div style={{ filter: 'brightness(2)' }}>
-              {renderScorers(homeGoals, 'center')}
-              {renderCards(homeCards, 'center')}
+            <div className="match-detail-team-events">
+              {renderScorers(homeGoals, 'left')}
+              {renderCards(homeCards, 'left')}
             </div>
-          </div>
-          <div style={{ textAlign: 'center', minWidth: 100 }}>
-            <Title level={1} style={{ color: '#fff', margin: 0, fontSize: 48 }}>
+          </article>
+
+          <article className="match-detail-score-grid-card match-detail-score-card">
+            <Text className="match-detail-score-label">Tỉ số</Text>
+            <Title level={1} className="match-detail-score-value">
               {match.homeScore ?? '—'} : {match.awayScore ?? '—'}
             </Title>
-            <Tag
-              color={STATUS_MAP[match.status]?.color ?? 'default'}
-              style={{ marginTop: 8, fontSize: 13 }}
-            >
-              {STATUS_MAP[match.status]?.label ?? match.status}
-            </Tag>
-            {match.kickoffAt && (
-              <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 6 }}>
-                📅 {dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm')}
+            <Text className="match-detail-score-caption">
+              {homeGoals.length + awayGoals.length} bàn thắng
+            </Text>
+          </article>
+
+          <article className="match-detail-score-grid-card match-detail-team-card match-detail-team-card-away">
+            <div className="match-detail-team-card-main">
+              <div className="match-detail-team-copy">
+                <Text className="match-detail-team-role">
+                  <SendOutlined /> {t('matchDetail.awayLabel')}
+                </Text>
+                <Title level={4} className="match-detail-team-name">
+                  {match.awayTeam?.name ?? '—'}
+                </Title>
               </div>
-            )}
-          </div>
-          <div style={{ textAlign: 'center', minWidth: 180, flex: 1 }}>
-            <Title level={4} style={{ color: '#fff', margin: 0 }}>
-              {match.awayTeam?.name ?? '—'}
-            </Title>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginBottom: 4 }}>
-              {t('matchDetail.awayLabel')}
+              {renderTeamLogo(match.awayTeam, t('matchDetail.awayLabel'))}
             </div>
-            <div style={{ filter: 'brightness(2)' }}>
-              {renderScorers(awayGoals, 'center')}
-              {renderCards(awayCards, 'center')}
+            <div className="match-detail-team-events">
+              {renderScorers(awayGoals, 'right')}
+              {renderCards(awayCards, 'right')}
             </div>
+          </article>
+        </div>
+
+        <div className="match-detail-score-meta-grid">
+          <div className="match-detail-score-meta-card">
+            <CalendarOutlined />
+            <span>
+              <Text>Thời gian</Text>
+              <strong>
+                {match.kickoffAt ? dayjs(match.kickoffAt).format('DD/MM/YYYY HH:mm') : '—'}
+              </strong>
+            </span>
           </div>
-        </Flex>
-      </Card>
+          <div className="match-detail-score-meta-card">
+            <EnvironmentOutlined />
+            <span>
+              <Text>Sân vận động</Text>
+              <strong>{match.stadium?.name ?? '—'}</strong>
+            </span>
+          </div>
+          <div className="match-detail-score-meta-card">
+            <HomeOutlined />
+            <span>
+              <Text>Mùa giải</Text>
+              <strong>{match.season?.name ?? '—'}</strong>
+            </span>
+          </div>
+        </div>
+      </section>
 
       {/* Admin Actions */}
       {canEdit && (
@@ -1020,7 +1156,7 @@ export default function MatchDetailPage() {
             <Button type="primary" icon={<EditOutlined />} onClick={() => setScoreModalOpen(true)}>
               {t('matchDetail.updateScoreBtn')}
             </Button>
-            <Button icon={<PlusOutlined />} onClick={() => setEventModalOpen(true)}>
+            <Button icon={<PlusOutlined />} onClick={handleOpenAddEvent}>
               {t('matchDetail.addEventBtn')}
             </Button>
             {getStatusActions(match).map((nextStatus) => {
@@ -1145,35 +1281,47 @@ export default function MatchDetailPage() {
                         return {
                           color: meta.color,
                           children: (
-                            <div>
-                              <strong>
-                                {meta.icon} {e.minute}'
-                              </strong>{' '}
-                              — <Tag color={meta.color}>{meta.label}</Tag>
-                              {e.player && (
-                                <a onClick={() => navigate(`/players/${e.playerId}`)}>
-                                  {e.player.fullName}
-                                </a>
+                            <Flex justify="space-between" align="flex-start" gap={8}>
+                              <div>
+                                <strong>
+                                  {meta.icon} {e.minute}'
+                                </strong>{' '}
+                                — <Tag color={meta.color}>{meta.label}</Tag>
+                                {e.player && (
+                                  <a onClick={() => navigate(`/players/${e.playerId}`)}>
+                                    {e.player.fullName}
+                                  </a>
+                                )}
+                                {e.relatedPlayer && (
+                                  <span style={{ color: '#888', marginLeft: 4 }}>
+                                    (
+                                    {e.type === 'SUBSTITUTION'
+                                      ? t('matchDetail.relatedSub', {
+                                          name: e.relatedPlayer.fullName,
+                                        })
+                                      : t('matchDetail.relatedAssist', {
+                                          name: e.relatedPlayer.fullName,
+                                        })}
+                                    )
+                                  </span>
+                                )}
+                                {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
+                                {e.goalType && <Tag style={{ marginLeft: 4 }}>{e.goalType}</Tag>}
+                                {e.note && (
+                                  <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>
+                                )}
+                              </div>
+                              {canEdit && (
+                                <Button
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  aria-label={`Sửa sự kiện ${e.minute}'`}
+                                  onClick={() => handleOpenEditEvent(e)}
+                                >
+                                  Sửa
+                                </Button>
                               )}
-                              {e.relatedPlayer && (
-                                <span style={{ color: '#888', marginLeft: 4 }}>
-                                  (
-                                  {e.type === 'SUBSTITUTION'
-                                    ? t('matchDetail.relatedSub', {
-                                        name: e.relatedPlayer.fullName,
-                                      })
-                                    : t('matchDetail.relatedAssist', {
-                                        name: e.relatedPlayer.fullName,
-                                      })}
-                                  )
-                                </span>
-                              )}
-                              {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
-                              {e.goalType && <Tag style={{ marginLeft: 4 }}>{e.goalType}</Tag>}
-                              {e.note && (
-                                <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>
-                              )}
-                            </div>
+                            </Flex>
                           ),
                         };
                       })}
@@ -1478,6 +1626,14 @@ export default function MatchDetailPage() {
             label: t('matchDetail.tabLineups'),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <MatchCenter
+                  match={match}
+                  events={events}
+                  lineups={lineups}
+                  matchReport={matchReport}
+                  loading={lineupLoading}
+                  onPlayerClick={(pid) => navigate(`/players/${pid}`)}
+                />
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={16}>
                     <Card title="Danh sách đã nộp" size="small" loading={lineupLoading}>
@@ -1592,7 +1748,15 @@ export default function MatchDetailPage() {
                   </Col>
                 </Row>
 
-                {canSubmitLineup && (
+                {canSubmitLineup && !canSubmitLineupForMatch && (
+                  <Alert
+                    showIcon
+                    type="info"
+                    message="Trận đã khóa đội hình; chỉ có thể xem hoặc xét duyệt danh sách đã nộp."
+                  />
+                )}
+
+                {canSubmitLineup && canSubmitLineupForMatch && (
                   <Card
                     title="Đăng ký thi đấu"
                     size="small"
@@ -1665,8 +1829,16 @@ export default function MatchDetailPage() {
                       </Button>
                     </Space>
 
+                    <Input.Search
+                      allowClear
+                      value={lineupRosterSearch}
+                      placeholder="Tìm cầu thủ trong roster"
+                      style={{ maxWidth: 360, marginBottom: 12 }}
+                      onChange={(event) => setLineupRosterSearch(event.target.value)}
+                    />
+
                     <Table
-                      dataSource={selectedRoster}
+                      dataSource={filteredSelectedRoster}
                       columns={lineupSelectionColumns}
                       rowKey="id"
                       pagination={false}
@@ -1738,10 +1910,11 @@ export default function MatchDetailPage() {
       <EventFormModal
         match={match}
         open={eventModalOpen}
+        editingEvent={editingEvent}
         homeRoster={homeRoster}
         awayRoster={awayRoster}
         rosterLoading={rosterLoading}
-        onCancel={() => setEventModalOpen(false)}
+        onCancel={handleEventModalCancel}
         onSuccess={fetchMatch}
       />
 

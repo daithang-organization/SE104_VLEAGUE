@@ -16,6 +16,11 @@ describe('PlayersController', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+  const mockUser = {
+    id: 'manager-1',
+    email: 'm@vl.local',
+    role: 'TEAM_MANAGER',
+  };
 
   const mockPaginated = {
     data: [mockPlayer],
@@ -93,29 +98,37 @@ describe('PlayersController', () => {
         nationality: 'Việt Nam',
         position: 'MF',
       };
-      const result = await controller.createPlayer(dto as any);
+      const result = await controller.createPlayer(dto as any, mockUser);
 
       expect(result).toEqual(mockPlayer);
-      expect(service.createPlayer).toHaveBeenCalledWith(dto);
+      expect(service.createPlayer).toHaveBeenCalledWith(dto, mockUser);
     });
   });
 
   describe('updatePlayer', () => {
     it('should update and return player', async () => {
       const dto = { fullName: 'Updated' };
-      const result = await controller.updatePlayer('player-1', dto as any);
+      const result = await controller.updatePlayer(
+        'player-1',
+        dto as any,
+        mockUser,
+      );
 
       expect(result.fullName).toBe('Updated');
-      expect(service.updatePlayer).toHaveBeenCalledWith('player-1', dto);
+      expect(service.updatePlayer).toHaveBeenCalledWith(
+        'player-1',
+        dto,
+        mockUser,
+      );
     });
   });
 
   describe('deletePlayer', () => {
     it('should delete player', async () => {
-      const result = await controller.deletePlayer('player-1');
+      const result = await controller.deletePlayer('player-1', mockUser);
 
       expect(result).toEqual({ success: true });
-      expect(service.deletePlayer).toHaveBeenCalledWith('player-1');
+      expect(service.deletePlayer).toHaveBeenCalledWith('player-1', mockUser);
     });
   });
 });

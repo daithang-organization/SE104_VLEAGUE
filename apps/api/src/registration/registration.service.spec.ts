@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import { TeamManagerScopeService } from '../team-manager/team-manager-scope.service';
 import { PlayerPosition } from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
@@ -9,6 +10,7 @@ describe('RegistrationService', () => {
   let service: RegistrationService;
   let prisma: PrismaService;
   let regulationHelper: RegulationHelper;
+  let teamManagerScope: TeamManagerScopeService;
 
   const mockTeams = [
     {
@@ -89,6 +91,11 @@ describe('RegistrationService', () => {
               delete: jest.fn(),
               count: jest.fn(),
             },
+            teamPlayer: {
+              create: jest.fn(),
+              findFirst: jest.fn(),
+              updateMany: jest.fn(),
+            },
           },
         },
         {
@@ -101,12 +108,27 @@ describe('RegistrationService', () => {
             }),
           },
         },
+        {
+          provide: TeamManagerScopeService,
+          useValue: {
+            resolveManagedTeamId: jest.fn().mockResolvedValue(null),
+            resolveWritableTeamId: jest
+              .fn()
+              .mockImplementation((_actor, requestedTeamId) =>
+                Promise.resolve(requestedTeamId),
+              ),
+            assertCanManageTeam: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<RegistrationService>(RegistrationService);
     prisma = module.get<PrismaService>(PrismaService);
     regulationHelper = module.get<RegulationHelper>(RegulationHelper);
+    teamManagerScope = module.get<TeamManagerScopeService>(
+      TeamManagerScopeService,
+    );
   });
 
   it('should be defined', () => {
@@ -281,6 +303,37 @@ describe('RegistrationService', () => {
 
       const result = await service.createPlayer(dto);
       expect(result.fullName).toBe('Test Player');
+    });
+
+    it('assigns team-manager-created players to the fixed club', async () => {
+      const dto = {
+        fullName: 'Manager Player',
+        dob: '2000-01-01',
+        nationality: 'Vietnam',
+        position: PlayerPosition.FW,
+      };
+      jest
+        .spyOn(teamManagerScope, 'resolveWritableTeamId')
+        .mockResolvedValue('team-1');
+      jest.spyOn(prisma.player, 'create').mockResolvedValue({
+        ...mockPlayers[0],
+        id: 'player-new',
+        fullName: dto.fullName,
+      } as any);
+      jest.spyOn(prisma.teamPlayer, 'create').mockResolvedValue({} as any);
+
+      await service.createPlayer(dto, {
+        id: 'manager-1',
+        role: 'TEAM_MANAGER',
+      } as any);
+
+      expect(teamManagerScope.resolveWritableTeamId).toHaveBeenCalledWith(
+        { id: 'manager-1', role: 'TEAM_MANAGER' },
+        undefined,
+      );
+      expect(prisma.teamPlayer.create).toHaveBeenCalledWith({
+        data: { teamId: 'team-1', playerId: 'player-new' },
+      });
     });
   });
 

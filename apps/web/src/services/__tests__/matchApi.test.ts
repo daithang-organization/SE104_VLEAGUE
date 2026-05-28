@@ -27,6 +27,7 @@ import {
   apiSubmitDisciplineReport,
   apiSubmitMatchLineup,
   apiSubmitMatchReport,
+  apiUpdateMatchEvent,
   apiUpdateMatch,
   apiUpdateMatchStatus,
 } from '../matchApi';
@@ -100,6 +101,21 @@ describe('matchApi', () => {
     const result = await apiRemoveMatchEvent('m1', 'e1');
     expect(mockApi.delete).toHaveBeenCalledWith('/matches/m1/events/e1');
     expect(result).toEqual({ success: true });
+  });
+
+  it('apiUpdateMatchEvent calls PATCH /matches/:id/events/:eventId', async () => {
+    const response = {
+      ok: true,
+      matchId: 'm1',
+      updatedEvent: { id: 'e1', minute: 55, type: 'PENALTY' },
+    };
+    const payload = { minute: 55, type: 'PENALTY' as const, teamId: 't1', playerId: 'p1' };
+    mockApi.patch.mockResolvedValue({ data: response });
+
+    const result = await apiUpdateMatchEvent('m1', 'e1', payload);
+
+    expect(mockApi.patch).toHaveBeenCalledWith('/matches/m1/events/e1', payload);
+    expect(result).toEqual(response);
   });
 
   it('apiGetMatchLineups calls GET /matches/:id/lineups', async () => {

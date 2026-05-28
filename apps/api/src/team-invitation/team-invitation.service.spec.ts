@@ -31,6 +31,13 @@ describe('TeamInvitationService', () => {
     teamId: team.id,
     user: { id: 'manager-1', email: 'manager.hanoi@demo.local' },
   };
+  const managerUser = {
+    id: 'manager-1',
+    email: 'manager.hanoi@demo.local',
+    name: null,
+    role: 'TEAM_MANAGER',
+    managedTeamId: team.id,
+  };
   const invitation = {
     id: 'invitation-1',
     seasonId: season.id,
@@ -62,12 +69,19 @@ describe('TeamInvitationService', () => {
           useValue: {
             season: { findUnique: jest.fn(), findFirst: jest.fn() },
             team: { findUnique: jest.fn(), findMany: jest.fn() },
+            user: {
+              findMany: jest.fn(),
+              findFirst: jest.fn(),
+              findUnique: jest.fn(),
+            },
             teamManagerAssignment: {
               findMany: jest.fn(),
               findFirst: jest.fn(),
+              upsert: jest.fn(),
             },
             regulation: { findMany: jest.fn() },
             teamInvitation: {
+              count: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
               upsert: jest.fn(),
@@ -75,6 +89,7 @@ describe('TeamInvitationService', () => {
               updateMany: jest.fn(),
             },
             seasonTeam: {
+              count: jest.fn(),
               findMany: jest.fn(),
               upsert: jest.fn(),
               updateMany: jest.fn(),
@@ -103,9 +118,15 @@ describe('TeamInvitationService', () => {
 
     jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(season as any);
     jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(team as any);
+    jest.spyOn(prisma.user, 'findMany').mockResolvedValue([managerUser] as any);
+    jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(managerUser as any);
+    jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(managerUser as any);
     jest
       .spyOn(prisma.teamManagerAssignment, 'findMany')
-      .mockResolvedValue([managerAssignment] as any);
+      .mockResolvedValue([] as any);
+    jest
+      .spyOn(prisma.teamManagerAssignment, 'upsert')
+      .mockResolvedValue(managerAssignment as any);
     jest.spyOn(prisma.regulation, 'findMany').mockResolvedValue([
       { key: 'MIN_ROSTER', value: '16', valueType: 'number' },
       { key: 'MAX_ROSTER', value: '22', valueType: 'number' },
@@ -140,6 +161,23 @@ describe('TeamInvitationService', () => {
       });
 
       expect(result).toEqual(invitation);
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { role: 'TEAM_MANAGER', managedTeamId: 'team-1' },
+        select: { id: true, email: true, name: true },
+      });
+      expect(prisma.teamManagerAssignment.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId_seasonId: { userId: 'manager-1', seasonId: 'season-1' },
+          },
+          create: {
+            userId: 'manager-1',
+            seasonId: 'season-1',
+            teamId: 'team-1',
+          },
+          update: { teamId: 'team-1' },
+        }),
+      );
       expect(prisma.teamInvitation.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
@@ -174,10 +212,8 @@ describe('TeamInvitationService', () => {
       );
     });
 
-    it('rejects sending when the team has no manager assignment for the season', async () => {
-      jest
-        .spyOn(prisma.teamManagerAssignment, 'findMany')
-        .mockResolvedValue([]);
+    it('rejects sending when the team has no fixed team-manager account', async () => {
+      jest.spyOn(prisma.user, 'findMany').mockResolvedValue([]);
 
       await expect(
         service.sendInvitation('season-1', {
@@ -186,6 +222,34 @@ describe('TeamInvitationService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.teamInvitation.upsert).not.toHaveBeenCalled();
+    });
+
+    it('creates the season assignment from the fixed CLB manager before sending', async () => {
+      const result = await service.sendInvitation('season-1', {
+        teamId: 'team-1',
+        sourceType: 'PROMOTED',
+      });
+
+      expect(result).toEqual(invitation);
+      expect(prisma.teamManagerAssignment.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId_seasonId: { userId: 'manager-1', seasonId: 'season-1' },
+          },
+          create: {
+            userId: 'manager-1',
+            seasonId: 'season-1',
+            teamId: 'team-1',
+          },
+          update: { teamId: 'team-1' },
+        }),
+      );
+      expect(notificationService.createForUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'manager-1',
+          type: 'TEAM_INVITATION',
+        }),
+      );
     });
   });
 
@@ -349,9 +413,6 @@ describe('TeamInvitationService', () => {
   describe('getPendingForManager', () => {
     it('loads pending invitations for teams assigned to the manager', async () => {
       jest
-        .spyOn(prisma.teamManagerAssignment, 'findMany')
-        .mockResolvedValue([{ seasonId: 'season-1', teamId: 'team-1' }] as any);
-      jest
         .spyOn(prisma.teamInvitation, 'findMany')
         .mockResolvedValue([invitation] as any);
 
@@ -363,10 +424,61 @@ describe('TeamInvitationService', () => {
           where: {
             status: 'SENT',
             deadlineAt: { gte: now },
-            OR: [{ seasonId: 'season-1', teamId: 'team-1' }],
+            teamId: 'team-1',
           },
         }),
       );
+    });
+  });
+
+  describe('getReplacementCandidates', () => {
+    it('counts distinct accepted and approved teams when calculating replacement slots', async () => {
+      jest.spyOn(prisma.teamInvitation, 'count').mockResolvedValue(8);
+      jest.spyOn(prisma.seasonTeam, 'count').mockResolvedValue(8);
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.status === 'ACCEPTED') {
+            return Promise.resolve(
+              Array.from({ length: 8 }, (_, index) => ({
+                teamId: `team-${index + 1}`,
+              })),
+            ) as any;
+          }
+
+          if (args.where?.status?.in) {
+            return Promise.resolve([]) as any;
+          }
+
+          return Promise.resolve(
+            Array.from({ length: 8 }, (_, index) => ({
+              teamId: `team-${index + 1}`,
+            })),
+          ) as any;
+        });
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.status === 'APPROVED') {
+            return Promise.resolve(
+              Array.from({ length: 8 }, (_, index) => ({
+                teamId: `team-${index + 3}`,
+              })),
+            ) as any;
+          }
+
+          return Promise.resolve(
+            Array.from({ length: 8 }, (_, index) => ({
+              teamId: `team-${index + 3}`,
+            })),
+          ) as any;
+        });
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([] as any);
+
+      const result = await service.getReplacementCandidates('season-1');
+
+      expect(result.filledSlots).toBe(10);
+      expect(result.slotsNeeded).toBe(0);
     });
   });
 
@@ -376,8 +488,8 @@ describe('TeamInvitationService', () => {
         .spyOn(prisma.teamInvitation, 'findUnique')
         .mockResolvedValue(invitation as any);
       jest
-        .spyOn(prisma.teamManagerAssignment, 'findFirst')
-        .mockResolvedValue(managerAssignment as any);
+        .spyOn(prisma.user, 'findFirst')
+        .mockResolvedValue(managerUser as any);
       jest.spyOn(prisma.teamInvitation, 'update').mockResolvedValue({
         ...invitation,
         status: 'ACCEPTED',
@@ -399,6 +511,27 @@ describe('TeamInvitationService', () => {
       );
 
       expect(result.status).toBe('ACCEPTED');
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'manager-1',
+          role: 'TEAM_MANAGER',
+          managedTeamId: 'team-1',
+        },
+        select: { id: true },
+      });
+      expect(prisma.teamManagerAssignment.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId_seasonId: { userId: 'manager-1', seasonId: 'season-1' },
+          },
+          create: {
+            userId: 'manager-1',
+            seasonId: 'season-1',
+            teamId: 'team-1',
+          },
+          update: { teamId: 'team-1' },
+        }),
+      );
       expect(prisma.seasonTeam.upsert).toHaveBeenCalledWith({
         where: { seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' } },
         create: {
@@ -414,9 +547,7 @@ describe('TeamInvitationService', () => {
     });
 
     it('prevents a manager from responding for another team', async () => {
-      jest
-        .spyOn(prisma.teamManagerAssignment, 'findFirst')
-        .mockResolvedValue(null);
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
 
       await expect(
         service.respondToInvitation('invitation-1', 'manager-2', {

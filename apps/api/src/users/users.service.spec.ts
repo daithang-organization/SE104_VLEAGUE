@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from './users.service';
@@ -50,6 +54,9 @@ describe('UsersService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
+            team: {
+              findUnique: jest.fn(),
+            },
             otpCode: {
               deleteMany: jest.fn(),
             },
@@ -87,6 +94,17 @@ describe('UsersService', () => {
           avatarUrl: true,
           googleId: true,
           facebookId: true,
+          managedTeamId: true,
+          managedTeam: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logoUrl: true,
+              city: true,
+              status: true,
+            },
+          },
           createdAt: true,
           updatedAt: true,
         },
@@ -122,6 +140,17 @@ describe('UsersService', () => {
           role: true,
           emailVerified: true,
           avatarUrl: true,
+          managedTeamId: true,
+          managedTeam: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logoUrl: true,
+              city: true,
+              status: true,
+            },
+          },
           createdAt: true,
           updatedAt: true,
         },
@@ -158,12 +187,24 @@ describe('UsersService', () => {
       expect(result.role).toBe('REFEREE');
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { role: 'REFEREE' },
+        data: { role: 'REFEREE', managedTeamId: null },
         select: {
           id: true,
           email: true,
           name: true,
           role: true,
+          avatarUrl: true,
+          managedTeamId: true,
+          managedTeam: {
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logoUrl: true,
+              city: true,
+              status: true,
+            },
+          },
           emailVerified: true,
           createdAt: true,
           updatedAt: true,
@@ -183,10 +224,15 @@ describe('UsersService', () => {
   describe('createUser', () => {
     it('should create a new user with hashed password', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        id: 'team-1',
+        name: 'Hà Nội FC',
+      } as any);
       jest.spyOn(prisma.user, 'create').mockResolvedValue({
         ...mockUserSelect,
         email: 'new@vleague.local',
         role: 'TEAM_MANAGER',
+        managedTeamId: 'team-1',
       } as any);
 
       const dto = {
@@ -194,24 +240,58 @@ describe('UsersService', () => {
         password: 'Password@123',
         role: 'TEAM_MANAGER' as any,
         name: 'New User',
+        managedTeamId: 'team-1',
       };
       const result = await service.createUser(dto);
 
       expect(result.email).toBe('new@vleague.local');
+      expect(prisma.team.findUnique).toHaveBeenCalledWith({
+        where: { id: 'team-1' },
+      });
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: {
           email: 'new@vleague.local',
           passwordHash: 'hashed-password',
           role: 'TEAM_MANAGER',
           name: 'New User',
+          managedTeamId: 'team-1',
           emailVerified: true,
         },
         select: expect.objectContaining({
           id: true,
           email: true,
           role: true,
+          managedTeamId: true,
+          managedTeam: expect.any(Object),
         }),
       });
+    });
+
+    it('requires a fixed CLB when creating a team manager account', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.createUser({
+          email: 'manager@vleague.local',
+          password: 'Password@123',
+          role: 'TEAM_MANAGER' as any,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a fixed CLB for non team-manager accounts', async () => {
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.createUser({
+          email: 'referee@vleague.local',
+          password: 'Password@123',
+          role: 'REFEREE' as any,
+          managedTeamId: 'team-1',
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
     it('should throw ConflictException if email already exists', async () => {

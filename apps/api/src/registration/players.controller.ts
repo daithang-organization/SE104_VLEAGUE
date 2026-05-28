@@ -20,7 +20,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { CurrentUser, JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import {
   CreatePlayerDto,
   ListPlayersQueryDto,
@@ -68,8 +69,11 @@ export class PlayersController {
   @ApiOkResponse({ description: 'Cầu thủ đã được tạo' })
   @ApiUnauthorizedResponse({ description: 'Chưa đăng nhập' })
   @ApiForbiddenResponse({ description: 'Không có quyền' })
-  async createPlayer(@Body() dto: CreatePlayerDto) {
-    return await this.reg.createPlayer(dto);
+  async createPlayer(
+    @Body() dto: CreatePlayerDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return await this.reg.createPlayer(dto, user);
   }
 
   @Patch(':id')
@@ -85,8 +89,12 @@ export class PlayersController {
   @ApiOkResponse({ description: 'Cầu thủ đã được cập nhật' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy cầu thủ' })
   @ApiForbiddenResponse({ description: 'Không có quyền' })
-  async updatePlayer(@Param('id') id: string, @Body() dto: UpdatePlayerDto) {
-    return await this.reg.updatePlayer(id, dto);
+  async updatePlayer(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlayerDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return await this.reg.updatePlayer(id, dto, user);
   }
 
   @Delete(':id')
@@ -101,7 +109,10 @@ export class PlayersController {
   @ApiOkResponse({ description: 'Cầu thủ đã được xóa' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy cầu thủ' })
   @ApiForbiddenResponse({ description: 'Không có quyền' })
-  async deletePlayer(@Param('id') id: string) {
-    return await this.reg.deletePlayer(id);
+  async deletePlayer(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return await this.reg.deletePlayer(id, user);
   }
 }

@@ -49,6 +49,7 @@ describe('MatchService', () => {
               create: jest.fn(),
               findFirst: jest.fn(),
               findMany: jest.fn(),
+              update: jest.fn(),
               delete: jest.fn(),
             },
           },
@@ -244,6 +245,84 @@ describe('MatchService', () => {
       await expect(service.removeEvent('match-1', 'event-1')).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('updateEvent', () => {
+    it('should update an event and recalculate score when goal state changes', async () => {
+      jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue({
+        id: 'event-1',
+        matchId: 'match-1',
+        type: 'YELLOW_CARD',
+      } as any);
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
+      jest.spyOn(prisma.matchEvent, 'update').mockResolvedValue({
+        id: 'event-1',
+        matchId: 'match-1',
+        minute: 55,
+        type: 'GOAL',
+        teamId: 'team-1',
+      } as any);
+      jest.spyOn(prisma.matchEvent, 'findMany').mockResolvedValue([
+        {
+          id: 'event-1',
+          matchId: 'match-1',
+          type: 'GOAL',
+          teamId: 'team-1',
+        },
+      ] as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...mockMatch,
+        homeScore: 1,
+        awayScore: 0,
+      } as any);
+
+      const result = await service.updateEvent('match-1', 'event-1', {
+        minute: 55,
+        type: 'GOAL' as any,
+        teamId: 'team-1',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.updatedEvent.minute).toBe(55);
+      expect(prisma.matchEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'event-1' },
+          data: expect.objectContaining({
+            minute: 55,
+            type: 'GOAL',
+            teamId: 'team-1',
+          }),
+        }),
+      );
+      expect(prisma.match.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'match-1' },
+          data: { homeScore: 1, awayScore: 0 },
+        }),
+      );
+    });
+
+    it('should reject updating event from FINISHED match', async () => {
+      jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue({
+        id: 'event-1',
+        matchId: 'match-1',
+        type: 'GOAL',
+      } as any);
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+        ...mockMatch,
+        status: 'FINISHED',
+      } as any);
+
+      await expect(
+        service.updateEvent('match-1', 'event-1', {
+          minute: 55,
+          type: 'GOAL' as any,
+          teamId: 'team-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

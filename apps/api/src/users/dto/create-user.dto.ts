@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsUUID,
   MinLength,
 } from 'class-validator';
 import { UserRoleEnum } from './update-role.dto';
@@ -27,4 +28,12 @@ export class CreateUserDto {
   @ApiPropertyOptional({ example: 'Nguyễn Văn A' })
   @IsOptional()
   name?: string;
+
+  @ApiPropertyOptional({
+    description: 'CLB cố định cho tài khoản TEAM_MANAGER',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsOptional()
+  @IsUUID()
+  managedTeamId?: string;
 }

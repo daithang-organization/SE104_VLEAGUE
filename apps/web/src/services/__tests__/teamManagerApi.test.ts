@@ -7,7 +7,11 @@ const mockApi = vi.hoisted(() => ({
 
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
-import { apiGetTeamManagerApplication, apiSubmitTeamManagerApplication } from '../teamManagerApi';
+import {
+  apiGetTeamManagerApplication,
+  apiGetTeamManagerManagedTeam,
+  apiSubmitTeamManagerApplication,
+} from '../teamManagerApi';
 
 describe('teamManagerApi application calls', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -22,6 +26,16 @@ describe('teamManagerApi application calls', () => {
       params: { seasonId: 'season-1' },
     });
     expect(result).toEqual(application);
+  });
+
+  it('apiGetTeamManagerManagedTeam calls GET /team-manager/managed-team', async () => {
+    const team = { id: 'team-1', name: 'Hà Nội FC' };
+    mockApi.get.mockResolvedValue({ data: team });
+
+    const result = await apiGetTeamManagerManagedTeam();
+
+    expect(mockApi.get).toHaveBeenCalledWith('/team-manager/managed-team');
+    expect(result).toEqual(team);
   });
 
   it('apiSubmitTeamManagerApplication calls POST /team-manager/application', async () => {

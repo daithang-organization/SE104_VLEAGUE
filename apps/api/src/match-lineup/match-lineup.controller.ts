@@ -13,7 +13,8 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { CurrentUser, JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import {
   ReviewMatchLineupDto,
   SubmitMatchLineupDto,
@@ -42,8 +43,9 @@ export class MatchLineupController {
   submitLineup(
     @Param('matchId') matchId: string,
     @Body() dto: SubmitMatchLineupDto,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.matchLineupService.submitLineup(matchId, dto);
+    return this.matchLineupService.submitLineup(matchId, dto, user);
   }
 
   @Patch('lineups/:teamId/review')

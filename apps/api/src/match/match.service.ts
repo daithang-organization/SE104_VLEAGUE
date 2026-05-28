@@ -47,6 +47,7 @@ export class MatchService {
         events: {
           include: {
             player: { select: { id: true, fullName: true } },
+            relatedPlayer: { select: { id: true, fullName: true } },
             team: { select: { id: true, name: true } },
           },
           orderBy: { minute: 'asc' },
@@ -243,6 +244,88 @@ export class MatchService {
       ok: true,
       matchId,
       createdEvent: event,
+    };
+  }
+
+  async updateEvent(matchId: string, eventId: string, dto: AddMatchEventDto) {
+    const event = await this.prisma.matchEvent.findFirst({
+      where: { id: eventId, matchId },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Không tìm thấy sự kiện');
+    }
+
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match) {
+      throw new NotFoundException(`Không tìm thấy trận đấu với ID ${matchId}`);
+    }
+
+    if (match.status === 'FINISHED') {
+      throw new BadRequestException(
+        'Không thể cập nhật sự kiện của trận đấu đã kết thúc',
+      );
+    }
+
+    if (['GOAL', 'OWN_GOAL', 'PENALTY'].includes(dto.type) && match.seasonId) {
+      const maxGoalTime = await this.regulationHelper.getNumericValue(
+        match.seasonId,
+        'MAX_GOAL_TIME',
+        DEFAULT_MAX_GOAL_TIME,
+      );
+
+      if (dto.minute > maxGoalTime) {
+        throw new BadRequestException(
+          `Phút ghi bàn không được vượt quá ${maxGoalTime} (hiện tại: phút ${dto.minute})`,
+        );
+      }
+    }
+
+    const updatedEvent = await this.prisma.matchEvent.update({
+      where: { id: eventId },
+      data: {
+        minute: dto.minute,
+        type: dto.type as never,
+        playerId: dto.playerId ?? null,
+        teamId: dto.teamId,
+        note: dto.note ?? null,
+        goalType: dto.goalType ?? null,
+        relatedPlayerId: dto.relatedPlayerId ?? null,
+      },
+      include: {
+        player: { select: { id: true, fullName: true } },
+        relatedPlayer: { select: { id: true, fullName: true } },
+        team: { select: { id: true, name: true } },
+      },
+    });
+
+    const wasGoal = ['GOAL', 'OWN_GOAL', 'PENALTY'].includes(
+      String(event.type),
+    );
+    const isGoal = ['GOAL', 'OWN_GOAL', 'PENALTY'].includes(dto.type);
+    if (wasGoal || isGoal) {
+      await this.recalculateScore(matchId);
+      const updatedScore = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { homeScore: true, awayScore: true },
+      });
+      if (updatedScore) {
+        this.matchGateway.emitScoreUpdate(matchId, updatedScore);
+      }
+    }
+
+    this.matchGateway.emitMatchEvent(
+      matchId,
+      updatedEvent as unknown as Record<string, unknown>,
+    );
+
+    return {
+      ok: true,
+      matchId,
+      updatedEvent,
     };
   }
 

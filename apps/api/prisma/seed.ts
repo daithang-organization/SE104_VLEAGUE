@@ -195,6 +195,19 @@ async function main() {
   }
   console.log(`   ✓ ${teams.length} teams upserted`);
 
+  const defaultManagedTeam = await prisma.team.findFirst({
+    where: { name: 'Hà Nội FC' },
+  });
+  if (defaultManagedTeam) {
+    await prisma.user.updateMany({
+      where: { email: 'teammanager@demo.local', role: UserRole.TEAM_MANAGER },
+      data: { managedTeamId: defaultManagedTeam.id },
+    });
+    console.log(
+      `   ✓ teammanager@demo.local linked to ${defaultManagedTeam.name}`,
+    );
+  }
+
   // 4) Seed players nếu chưa có (không có unique field nên check count)
   console.log('⚽ Seeding players...');
   const existingPlayersCount = await prisma.player.count();
@@ -225,6 +238,11 @@ async function main() {
           where: { status: SeasonStatus.IN_PROGRESS },
         });
   season = season ?? legacySeason ?? activeSeason;
+  if (!season) {
+    season = await prisma.season.findUnique({
+      where: { name: 'VLeague 2024' },
+    });
+  }
   if (!season) {
     season = await prisma.season.create({
       data: defaultSeasonData,

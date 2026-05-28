@@ -137,6 +137,10 @@ model User {
   roleId String? @map("role_id") @db.Uuid
   roleRef Role?   @relation(fields: [roleId], references: [id], onDelete: SetNull)
 
+  // Fixed club assignment for TEAM_MANAGER accounts.
+  managedTeamId String? @map("managed_team_id") @db.Uuid
+  managedTeam   Team?   @relation("ManagedTeam", fields: [managedTeamId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -145,6 +149,7 @@ model User {
   teamManagerAssignments TeamManagerAssignment[]
 
   @@index([roleId])
+  @@index([managedTeamId])
   @@map("users")
 }
 
@@ -222,7 +227,9 @@ model Team {
   playerSuspensions PlayerSuspension[]
   standings    Standing[]
   managerAssignments TeamManagerAssignment[]
+  managedUsers User[] @relation("ManagedTeam")
   invitations TeamInvitation[]
+  drawLotResults DrawLotResult[]
 
   @@map("teams")
 }
@@ -294,6 +301,7 @@ model Season {
   managerAssignments TeamManagerAssignment[]
   invitations TeamInvitation[]
   playerSuspensions PlayerSuspension[]
+  drawLotResults DrawLotResult[]
 
   @@map("seasons")
 }
@@ -626,6 +634,27 @@ model Standing {
   @@map("standings")
 }
 
+model DrawLotResult {
+  id           String   @id @default(uuid()) @db.Uuid
+  seasonId     String   @map("season_id") @db.Uuid
+  season       Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId       String   @map("team_id") @db.Uuid
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  resolvedRank Int      @map("resolved_rank")
+  note         String?  @db.Text
+  resolvedAt   DateTime @default(now()) @map("resolved_at")
+  resolvedBy   String?  @map("resolved_by")
+  confirmed    Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId])
+  @@map("draw_lot_results")
+}
+
 model TeamManagerAssignment {
   id       String @id @default(uuid()) @db.Uuid
   userId   String @map("user_id") @db.Uuid
@@ -659,6 +688,7 @@ model TeamInvitation {
   responseAt  DateTime? @map("response_at")
   responseReason String? @map("response_reason")
   regulationsSnapshot Json? @map("regulations_snapshot")
+  promotionNote       String? @map("promotion_note")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
