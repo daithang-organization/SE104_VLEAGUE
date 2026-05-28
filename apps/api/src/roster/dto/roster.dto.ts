@@ -16,7 +16,7 @@ export class AddPlayerToRosterDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  playerId: string;
+  playerId!: string;
 
   @ApiPropertyOptional({
     description: 'Số áo cầu thủ',

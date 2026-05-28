@@ -11,7 +11,7 @@ export class RegisterDto {
   @ApiProperty({ example: 'user@example.com', description: 'Email đăng ký' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @MaxLength(255, { message: 'Email không được vượt quá 255 ký tự' })
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: 'Password@123',
@@ -24,5 +24,5 @@ export class RegisterDto {
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
     message: 'Mật khẩu phải bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt',
   })
-  password: string;
+  password!: string;
 }

@@ -117,7 +117,7 @@ const FOREIGN_NAMES = [
 ];
 
 function randomItem<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]!;
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function generateVietnameseName(usedNames: Set<string>): string {
@@ -219,7 +219,7 @@ async function main() {
       PlayerPosition.FW,
     ];
     for (const pos of foreignPositions) {
-      const name = FOREIGN_NAMES[foreignNamesIdx % FOREIGN_NAMES.length]!;
+      const name = FOREIGN_NAMES[foreignNamesIdx % FOREIGN_NAMES.length];
       foreignNamesIdx++;
       const player = await prisma.player.create({
         data: {

@@ -8,7 +8,7 @@ export class CreateStadiumDto {
   })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     description: 'Thành phố',
@@ -16,7 +16,7 @@ export class CreateStadiumDto {
   })
   @IsString()
   @IsNotEmpty()
-  city: string;
+  city!: string;
 
   @ApiPropertyOptional({
     description: 'Địa chỉ',

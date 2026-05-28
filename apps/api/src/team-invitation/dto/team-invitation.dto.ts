@@ -12,14 +12,14 @@ import {
 export class SendTeamInvitationDto {
   @ApiProperty({ description: 'ID CLB được mời' })
   @IsUUID()
-  teamId: string;
+  teamId!: string;
 
   @ApiProperty({
     enum: TeamInvitationSourceType,
     description: 'Nguồn mời: top 8 mùa trước, thăng hạng, hoặc thay thế',
   })
   @IsEnum(TeamInvitationSourceType)
-  sourceType: TeamInvitationSourceType;
+  sourceType!: TeamInvitationSourceType;
 }
 
 export class RespondTeamInvitationDto {
@@ -28,7 +28,7 @@ export class RespondTeamInvitationDto {
     description: 'Phản hồi của manager CLB',
   })
   @IsIn([TeamInvitationStatus.ACCEPTED, TeamInvitationStatus.DECLINED])
-  responseStatus: 'ACCEPTED' | 'DECLINED';
+  responseStatus!: 'ACCEPTED' | 'DECLINED';
 
   @ApiPropertyOptional({ description: 'Lý do từ chối hoặc ghi chú phản hồi' })
   @IsOptional()

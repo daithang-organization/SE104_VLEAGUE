@@ -31,7 +31,7 @@ import { Server, Socket } from 'socket.io';
 })
 export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new Logger(MatchGateway.name);
   private readonly roomViewers = new Map<string, number>();
@@ -55,12 +55,12 @@ export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinMatch')
-  handleJoinMatch(
+  async handleJoinMatch(
     @ConnectedSocket() client: Socket,
     @MessageBody() matchId: string,
   ) {
     const room = `match:${matchId}`;
-    client.join(room);
+    await client.join(room);
     this.logger.log(`Client ${client.id} joined room ${room}`);
     this.updateViewerCount(room);
     return {
@@ -70,12 +70,12 @@ export class MatchGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('leaveMatch')
-  handleLeaveMatch(
+  async handleLeaveMatch(
     @ConnectedSocket() client: Socket,
     @MessageBody() matchId: string,
   ) {
     const room = `match:${matchId}`;
-    client.leave(room);
+    await client.leave(room);
     this.logger.log(`Client ${client.id} left room ${room}`);
     this.updateViewerCount(room);
     return { event: 'leftMatch', data: { matchId } };

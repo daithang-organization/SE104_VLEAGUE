@@ -12,17 +12,17 @@ export class CreateUserDto {
   @ApiProperty({ example: 'user@vleague.local' })
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @ApiProperty({ example: 'Password@123', minLength: 6 })
   @IsNotEmpty()
   @MinLength(6)
-  password: string;
+  password!: string;
 
   @ApiProperty({ enum: UserRoleEnum, example: 'TEAM_MANAGER' })
   @IsNotEmpty()
   @IsEnum(UserRoleEnum)
-  role: UserRoleEnum;
+  role!: UserRoleEnum;
 
   @ApiPropertyOptional({ example: 'Nguyễn Văn A' })
   @IsOptional()

@@ -2,7 +2,6 @@
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
-  IdcardOutlined,
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
