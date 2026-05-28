@@ -88,6 +88,12 @@ describe('TeamInvitationService', () => {
               update: jest.fn(),
               updateMany: jest.fn(),
             },
+            promotionCandidate: {
+              deleteMany: jest.fn(),
+              findMany: jest.fn(),
+              upsert: jest.fn(),
+              updateMany: jest.fn(),
+            },
             seasonTeam: {
               count: jest.fn(),
               findMany: jest.fn(),
@@ -146,6 +152,18 @@ describe('TeamInvitationService', () => {
     jest
       .spyOn(notificationService, 'createForUser')
       .mockResolvedValue({ id: 'notification-1' } as any);
+    jest
+      .spyOn((prisma as any).promotionCandidate, 'findMany')
+      .mockResolvedValue([] as any);
+    jest
+      .spyOn((prisma as any).promotionCandidate, 'updateMany')
+      .mockResolvedValue({ count: 0 } as any);
+    jest
+      .spyOn((prisma as any).promotionCandidate, 'upsert')
+      .mockResolvedValue({ id: 'promotion-candidate-1' } as any);
+    jest
+      .spyOn((prisma as any).promotionCandidate, 'deleteMany')
+      .mockResolvedValue({ count: 1 } as any);
   });
 
   afterEach(() => {
@@ -253,6 +271,66 @@ describe('TeamInvitationService', () => {
     });
   });
 
+  describe('promotion candidates', () => {
+    it('upserts a promotion ranking snapshot row with source metadata', async () => {
+      await service.upsertPromotionCandidate('season-1', {
+        teamId: 'team-1',
+        rank: 1,
+        sourceCompetition: ' V.League 2 2025 ',
+        qualificationType: 'CHAMPION' as any,
+        note: ' Vô địch V.League 2 2025 ',
+      });
+
+      expect((prisma as any).promotionCandidate.upsert).toHaveBeenCalledWith({
+        where: {
+          seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' },
+        },
+        create: expect.objectContaining({
+          seasonId: 'season-1',
+          teamId: 'team-1',
+          rank: 1,
+          sourceCompetition: 'V.League 2 2025',
+          qualificationType: 'CHAMPION',
+          status: 'ELIGIBLE',
+          note: 'Vô địch V.League 2 2025',
+        }),
+        update: expect.objectContaining({
+          rank: 1,
+          sourceCompetition: 'V.League 2 2025',
+          qualificationType: 'CHAMPION',
+          status: 'ELIGIBLE',
+          note: 'Vô địch V.League 2 2025',
+        }),
+        include: expect.objectContaining({ team: expect.any(Object) }),
+      });
+    });
+
+    it('rejects promotion ranking rows without a source competition', async () => {
+      await expect(
+        service.upsertPromotionCandidate('season-1', {
+          teamId: 'team-1',
+          rank: 1,
+          sourceCompetition: '   ',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect((prisma as any).promotionCandidate.upsert).not.toHaveBeenCalled();
+    });
+
+    it('deletes a promotion ranking snapshot row by season and team', async () => {
+      const result = await service.deletePromotionCandidate(
+        'season-1',
+        'team-1',
+      );
+
+      expect(
+        (prisma as any).promotionCandidate.deleteMany,
+      ).toHaveBeenCalledWith({
+        where: { seasonId: 'season-1', teamId: 'team-1' },
+      });
+      expect(result).toEqual({ count: 1 });
+    });
+  });
+
   describe('getInvitationCandidates', () => {
     const finalStandings = Array.from({ length: 9 }, (_, index) => ({
       position: index + 1,
@@ -344,6 +422,9 @@ describe('TeamInvitationService', () => {
       jest
         .spyOn(prisma.teamInvitation, 'updateMany')
         .mockResolvedValue({ count: 0 } as any);
+      jest
+        .spyOn((prisma as any).promotionCandidate, 'findMany')
+        .mockResolvedValue([] as any);
     });
 
     it('builds the initial invitation candidates from top 8 and two promoted teams', async () => {
@@ -395,6 +476,80 @@ describe('TeamInvitationService', () => {
           invitationStatus: null,
         }),
       );
+    });
+
+    it('uses the promotion ranking snapshot as the source for promoted candidates', async () => {
+      jest
+        .spyOn((prisma as any).promotionCandidate, 'findMany')
+        .mockResolvedValue([
+          {
+            teamId: 'promoted-ranked-2',
+            rank: 2,
+            sourceCompetition: 'V.League 2 2025',
+            qualificationType: 'RUNNER_UP',
+            status: 'ELIGIBLE',
+            note: 'Á quân V.League 2 2025',
+            team: {
+              id: 'promoted-ranked-2',
+              name: 'CLB Thăng hạng hạng 2',
+              shortName: 'TH2',
+              city: 'Huế',
+              logoUrl: null,
+              status: 'ACTIVE',
+            },
+          },
+          {
+            teamId: 'promoted-ranked-1',
+            rank: 1,
+            sourceCompetition: 'V.League 2 2025',
+            qualificationType: 'CHAMPION',
+            status: 'ELIGIBLE',
+            note: 'Vô địch V.League 2 2025',
+            team: {
+              id: 'promoted-ranked-1',
+              name: 'CLB Thăng hạng hạng 1',
+              shortName: 'TH1',
+              city: 'Đà Nẵng',
+              logoUrl: null,
+              status: 'ACTIVE',
+            },
+          },
+        ] as any);
+
+      const result = await service.getInvitationCandidates('season-1');
+
+      expect((prisma as any).promotionCandidate.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            seasonId: 'season-1',
+            teamId: expect.objectContaining({
+              notIn: expect.arrayContaining(['team-1', 'team-8']),
+            }),
+          }),
+          orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+        }),
+      );
+      expect(result.candidates[8]).toEqual(
+        expect.objectContaining({
+          teamId: 'promoted-ranked-1',
+          sourceType: 'PROMOTED',
+          sourceRank: 1,
+          sourceCompetition: 'V.League 2 2025',
+          qualificationType: 'CHAMPION',
+          promotionStatus: 'ELIGIBLE',
+        }),
+      );
+      expect(result.candidates[9]).toEqual(
+        expect.objectContaining({
+          teamId: 'promoted-ranked-2',
+          sourceType: 'PROMOTED',
+          sourceRank: 2,
+          sourceCompetition: 'V.League 2 2025',
+          qualificationType: 'RUNNER_UP',
+          promotionStatus: 'ELIGIBLE',
+        }),
+      );
+      expect(prisma.seasonTeam.findMany).not.toHaveBeenCalled();
     });
 
     it('rejects candidate generation until the previous season is completed', async () => {

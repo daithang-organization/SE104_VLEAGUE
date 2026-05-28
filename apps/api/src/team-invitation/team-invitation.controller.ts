@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -20,6 +21,7 @@ import type { CurrentUserPayload } from '../auth/decorators/current-user.decorat
 import {
   RespondTeamInvitationDto,
   SendTeamInvitationDto,
+  UpsertPromotionCandidateDto,
 } from './dto/team-invitation.dto';
 import { TeamInvitationService } from './team-invitation.service';
 
@@ -69,6 +71,45 @@ export class TeamInvitationController {
   })
   getReplacementCandidates(@Param('seasonId') seasonId: string) {
     return this.invitationService.getReplacementCandidates(seasonId);
+  }
+
+  @Get('seasons/:seasonId/promotion-candidates')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'BTC xem snapshot ranking đội thăng hạng/dự phòng cho mùa giải đích',
+  })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiOkResponse({ description: 'Danh sách đội thăng hạng theo ranking' })
+  listPromotionCandidates(@Param('seasonId') seasonId: string) {
+    return this.invitationService.listPromotionCandidates(seasonId);
+  }
+
+  @Post('seasons/:seasonId/promotion-candidates')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'BTC thêm hoặc cập nhật một đội trong snapshot thăng hạng',
+  })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiOkResponse({ description: 'Ứng viên thăng hạng sau khi lưu' })
+  upsertPromotionCandidate(
+    @Param('seasonId') seasonId: string,
+    @Body() dto: UpsertPromotionCandidateDto,
+  ) {
+    return this.invitationService.upsertPromotionCandidate(seasonId, dto);
+  }
+
+  @Delete('seasons/:seasonId/promotion-candidates/:teamId')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'BTC xóa một đội khỏi snapshot thăng hạng' })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiParam({ name: 'teamId', type: String })
+  @ApiOkResponse({ description: 'Số bản ghi đã xóa' })
+  deletePromotionCandidate(
+    @Param('seasonId') seasonId: string,
+    @Param('teamId') teamId: string,
+  ) {
+    return this.invitationService.deletePromotionCandidate(seasonId, teamId);
   }
 
   @Post('seasons/:seasonId/invitations')

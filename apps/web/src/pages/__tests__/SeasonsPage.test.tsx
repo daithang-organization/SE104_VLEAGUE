@@ -94,6 +94,10 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
         teamName: 'CLB Thăng hạng',
         sourceType: 'PROMOTED',
         sourceRank: 1,
+        sourceCompetition: 'V.League 2 2025',
+        qualificationType: 'CHAMPION',
+        promotionStatus: 'ELIGIBLE',
+        sourceNote: 'Vô địch V.League 2 2025',
         points: 0,
         goalDifference: 0,
         played: 0,
@@ -125,6 +129,30 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
     declinedTeams: [],
     candidates: [],
   }),
+  apiGetPromotionCandidates: vi.fn().mockResolvedValue([
+    {
+      id: 'promotion-1',
+      seasonId: 's1',
+      teamId: 'team-promoted-1',
+      rank: 1,
+      sourceCompetition: 'V.League 2 2025',
+      qualificationType: 'CHAMPION',
+      status: 'ELIGIBLE',
+      note: 'Vô địch V.League 2 2025',
+      team: {
+        id: 'team-promoted-1',
+        name: 'CLB Thăng hạng',
+        shortName: 'TH',
+        logoUrl: null,
+        city: 'Huế',
+        status: 'ACTIVE',
+      },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    },
+  ]),
+  apiUpsertPromotionCandidate: vi.fn().mockResolvedValue({}),
+  apiDeletePromotionCandidate: vi.fn().mockResolvedValue({ count: 1 }),
   apiSendTeamInvitation: vi.fn().mockResolvedValue({}),
 }));
 
@@ -175,6 +203,10 @@ function resetMockImplementations() {
         teamName: 'CLB Thăng hạng',
         sourceType: 'PROMOTED',
         sourceRank: 1,
+        sourceCompetition: 'V.League 2 2025',
+        qualificationType: 'CHAMPION',
+        promotionStatus: 'ELIGIBLE',
+        sourceNote: 'Vô địch V.League 2 2025',
         points: 0,
         goalDifference: 0,
         played: 0,
@@ -210,6 +242,34 @@ function resetMockImplementations() {
     declinedTeams: [],
     candidates: [],
   });
+
+  mockTeamInvitationApi.apiGetPromotionCandidates.mockReset();
+  mockTeamInvitationApi.apiGetPromotionCandidates.mockResolvedValue([
+    {
+      id: 'promotion-1',
+      seasonId: 's1',
+      teamId: 'team-promoted-1',
+      rank: 1,
+      sourceCompetition: 'V.League 2 2025',
+      qualificationType: 'CHAMPION',
+      status: 'ELIGIBLE',
+      note: 'Vô địch V.League 2 2025',
+      team: {
+        id: 'team-promoted-1',
+        name: 'CLB Thăng hạng',
+        shortName: 'TH',
+        logoUrl: null,
+        city: 'Huế',
+        status: 'ACTIVE',
+      },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    },
+  ]);
+  mockTeamInvitationApi.apiUpsertPromotionCandidate.mockReset();
+  mockTeamInvitationApi.apiUpsertPromotionCandidate.mockResolvedValue({});
+  mockTeamInvitationApi.apiDeletePromotionCandidate.mockReset();
+  mockTeamInvitationApi.apiDeletePromotionCandidate.mockResolvedValue({ count: 1 });
 
   mockTeamInvitationApi.apiSendTeamInvitation.mockReset();
   mockTeamInvitationApi.apiSendTeamInvitation.mockResolvedValue({});
@@ -301,6 +361,21 @@ describe('SeasonsPage', () => {
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
 
+  it('renders the promotion ranking snapshot in the admin season team panel', async () => {
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText('Nguồn đội thăng hạng')).toBeInTheDocument();
+    expect(await screen.findAllByText('V.League 2 2025')).not.toHaveLength(0);
+    expect(mockTeamInvitationApi.apiGetPromotionCandidates).toHaveBeenCalledWith('s1');
+  });
+
   it('sends top-8 invitation candidates with the previous top source type', async () => {
     const { container } = renderPage();
 
@@ -342,6 +417,7 @@ describe('SeasonsPage', () => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
         teamId: 'team-promoted-1',
         sourceType: 'PROMOTED',
+        promotionNote: 'Vô địch V.League 2 2025',
       });
     });
     await waitFor(() => {
@@ -387,6 +463,7 @@ describe('SeasonsPage', () => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenNthCalledWith(2, 's1', {
         teamId: 'team-promoted-1',
         sourceType: 'PROMOTED',
+        promotionNote: 'Vô địch V.League 2 2025',
       });
     });
     await waitFor(() => {

@@ -8,6 +8,8 @@ import {
   PlayerPosition,
   PlayerSuspensionStatus,
   PrismaClient,
+  PromotionCandidateStatus,
+  PromotionQualificationType,
   SeasonStatus,
   SeasonTeamStatus,
   TeamInvitationSourceType,
@@ -480,6 +482,53 @@ async function main() {
       },
     });
     console.log(`  🕒 Reserve/registered only: ${team.name}`);
+  }
+
+  console.log('\n🏅 Seeding promotion ranking snapshot...');
+  const promotedSnapshot = [
+    {
+      team: teams[8],
+      rank: 1,
+      qualificationType: PromotionQualificationType.CHAMPION,
+      status: PromotionCandidateStatus.ACCEPTED,
+      note: 'Vô địch V.League 2 2024',
+    },
+    {
+      team: teams[9],
+      rank: 2,
+      qualificationType: PromotionQualificationType.RUNNER_UP,
+      status: PromotionCandidateStatus.ACCEPTED,
+      note: 'Á quân V.League 2 2024',
+    },
+  ];
+
+  for (const entry of promotedSnapshot) {
+    if (!entry.team) continue;
+    await prisma.promotionCandidate.upsert({
+      where: {
+        seasonId_teamId: {
+          seasonId: season.id,
+          teamId: entry.team.id,
+        },
+      },
+      update: {
+        rank: entry.rank,
+        sourceCompetition: 'V.League 2 2024',
+        qualificationType: entry.qualificationType,
+        status: entry.status,
+        note: entry.note,
+      },
+      create: {
+        seasonId: season.id,
+        teamId: entry.team.id,
+        rank: entry.rank,
+        sourceCompetition: 'V.League 2 2024',
+        qualificationType: entry.qualificationType,
+        status: entry.status,
+        note: entry.note,
+      },
+    });
+    console.log(`  ✅ #${entry.rank} ${entry.team.name}: ${entry.note}`);
   }
 
   // 2.2 Seed invitations: approved teams are treated as accepted; reserve teams stay pending
