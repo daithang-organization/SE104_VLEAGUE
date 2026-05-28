@@ -271,6 +271,10 @@ export default function LineupPitch({ match, lineups }: LineupPitchProps) {
 
   return (
     <div className="lineup-pitch">
+      <div className="lineup-pitch-title">
+        <strong>Đội hình ra sân</strong>
+        <span>Sơ đồ xuất phát từ danh sách đã nộp</span>
+      </div>
       <div className="lineup-pitch-field">
         <span className="lineup-pitch-center-circle" aria-hidden="true" />
         <span className="lineup-pitch-penalty lineup-pitch-penalty-home" aria-hidden="true" />

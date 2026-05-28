@@ -178,7 +178,7 @@ export default function LineupBench({ match, lineups }: LineupBenchProps) {
   return (
     <div className="lineup-bench">
       <div className="lineup-bench-title">
-        <strong>Ghế dự bị</strong>
+        <strong>Bảng ghế dự bị</strong>
         <span>Danh sách cầu thủ có thể thay người</span>
       </div>
       <div className="lineup-bench-grid">

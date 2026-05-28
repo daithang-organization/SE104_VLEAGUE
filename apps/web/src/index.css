@@ -1093,6 +1093,8 @@ select {
 }
 
 .lineup-pitch {
+  display: grid;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -1370,6 +1372,7 @@ select {
   margin-top: 16px;
 }
 
+.lineup-pitch-title,
 .lineup-bench-title {
   display: flex;
   align-items: end;
@@ -1378,11 +1381,13 @@ select {
   min-width: 0;
 }
 
+.lineup-pitch-title strong,
 .lineup-bench-title strong {
   color: var(--text-main);
   font-size: 16px;
 }
 
+.lineup-pitch-title span,
 .lineup-bench-title span,
 .lineup-bench-team-header small,
 .lineup-bench-empty {
