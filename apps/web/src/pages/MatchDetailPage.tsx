@@ -91,6 +91,18 @@ function isForeignNationality(nationality?: string | null) {
   return normalized !== 'viet nam' && normalized !== 'vietnam';
 }
 
+function normalizeSearchText(value?: string | number | null) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -132,6 +144,7 @@ export default function MatchDetailPage() {
   const [lineupKitType, setLineupKitType] = useState<MatchKitType>('PRIMARY');
   const [lineupFormation, setLineupFormation] = useState('4-4-2');
   const [lineupRoles, setLineupRoles] = useState<Record<string, MatchLineupRole | undefined>>({});
+  const [lineupRosterSearch, setLineupRosterSearch] = useState('');
   const [lineupSubmitting, setLineupSubmitting] = useState(false);
   const [lineupReviewNotes, setLineupReviewNotes] = useState<Record<string, string>>({});
   const [lineupReviewingKey, setLineupReviewingKey] = useState<string | null>(null);
@@ -363,6 +376,7 @@ export default function MatchDetailPage() {
   };
 
   const canSubmitLineup = user?.role === 'ADMIN' || user?.role === 'TEAM_MANAGER';
+  const canSubmitLineupForMatch = match?.status === 'PUBLISHED';
   const canReviewLineup = user?.role === 'ADMIN' || user?.role === 'REFEREE';
   const canAssignOfficials = user?.role === 'ADMIN';
   const canSubmitMatchReport = user?.role === 'ADMIN' || user?.role === 'REFEREE';
@@ -372,6 +386,18 @@ export default function MatchDetailPage() {
     if (!match || !selectedLineupTeamId) return [];
     return selectedLineupTeamId === match.homeTeamId ? homeRoster : awayRoster;
   }, [awayRoster, homeRoster, match, selectedLineupTeamId]);
+
+  const filteredSelectedRoster = useMemo(() => {
+    const query = normalizeSearchText(lineupRosterSearch);
+    if (!query) return selectedRoster;
+
+    return selectedRoster.filter((player) => {
+      const haystack = normalizeSearchText(
+        [player.fullName, player.position, player.nationality, player.jerseyNumber].join(' '),
+      );
+      return haystack.includes(query);
+    });
+  }, [lineupRosterSearch, selectedRoster]);
 
   const selectedTeamName = useMemo(() => {
     if (!match || !selectedLineupTeamId) return '—';
@@ -433,6 +459,7 @@ export default function MatchDetailPage() {
   const handleLineupTeamChange = (teamId: string) => {
     setSelectedLineupTeamId(teamId);
     setLineupRoles({});
+    setLineupRosterSearch('');
   };
 
   const handleLineupRoleChange = (playerId: string, role: MatchLineupRole | 'NONE') => {
@@ -447,12 +474,28 @@ export default function MatchDetailPage() {
       (player) => !suspendedPlayerIdsForSelectedTeam.has(player.playerId),
     );
     const nextRoles: Record<string, MatchLineupRole> = {};
-    availablePlayers.slice(0, 11).forEach((player) => {
-      nextRoles[player.playerId] = 'STARTER';
-    });
-    availablePlayers.slice(11, 16).forEach((player) => {
-      nextRoles[player.playerId] = 'SUBSTITUTE';
-    });
+    const starterIds = new Set<string>();
+    let foreignStarterCount = 0;
+
+    for (const player of availablePlayers) {
+      if (starterIds.size >= 11) break;
+      const isForeign = isForeignNationality(player.nationality);
+      if (isForeign && foreignStarterCount >= 3) continue;
+      starterIds.add(player.playerId);
+      if (isForeign) foreignStarterCount += 1;
+    }
+
+    availablePlayers
+      .filter((player) => starterIds.has(player.playerId))
+      .forEach((player) => {
+        nextRoles[player.playerId] = 'STARTER';
+      });
+    availablePlayers
+      .filter((player) => !starterIds.has(player.playerId))
+      .slice(0, 5)
+      .forEach((player) => {
+        nextRoles[player.playerId] = 'SUBSTITUTE';
+      });
     setLineupRoles(nextRoles);
   };
 
@@ -481,6 +524,7 @@ export default function MatchDetailPage() {
       });
       message.success('Đã nộp danh sách đăng ký thi đấu.');
       setLineupRoles({});
+      setLineupRosterSearch('');
       loadLineupData(match.id);
     } catch (err: unknown) {
       const msg =
@@ -1704,7 +1748,15 @@ export default function MatchDetailPage() {
                   </Col>
                 </Row>
 
-                {canSubmitLineup && (
+                {canSubmitLineup && !canSubmitLineupForMatch && (
+                  <Alert
+                    showIcon
+                    type="info"
+                    message="Trận đã khóa đội hình; chỉ có thể xem hoặc xét duyệt danh sách đã nộp."
+                  />
+                )}
+
+                {canSubmitLineup && canSubmitLineupForMatch && (
                   <Card
                     title="Đăng ký thi đấu"
                     size="small"
@@ -1777,8 +1829,16 @@ export default function MatchDetailPage() {
                       </Button>
                     </Space>
 
+                    <Input.Search
+                      allowClear
+                      value={lineupRosterSearch}
+                      placeholder="Tìm cầu thủ trong roster"
+                      style={{ maxWidth: 360, marginBottom: 12 }}
+                      onChange={(event) => setLineupRosterSearch(event.target.value)}
+                    />
+
                     <Table
-                      dataSource={selectedRoster}
+                      dataSource={filteredSelectedRoster}
                       columns={lineupSelectionColumns}
                       rowKey="id"
                       pagination={false}

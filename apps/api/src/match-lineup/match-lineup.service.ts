@@ -7,6 +7,7 @@ import {
   EventType,
   MatchLineupRole,
   MatchLineupStatus,
+  MatchStatus,
   PlayerSuspensionStatus,
   Prisma,
 } from '@prisma/client';
@@ -55,6 +56,7 @@ export class MatchLineupService {
     }
 
     const match = await this.ensureMatch(matchId);
+    this.assertCanSubmitLineup(match.status);
     if (dto.teamId !== match.homeTeamId && dto.teamId !== match.awayTeamId) {
       throw new BadRequestException(
         'Chỉ hai đội tham gia trận đấu mới được đăng ký đội hình.',
@@ -171,7 +173,8 @@ export class MatchLineupService {
     teamId: string,
     dto: ReviewMatchLineupDto,
   ) {
-    await this.ensureMatch(matchId);
+    const match = await this.ensureMatch(matchId);
+    this.assertCanReviewLineup(match.status);
 
     const existing = await this.prisma.matchTeamRegistration.findUnique({
       where: { matchId_teamId: { matchId, teamId } },
@@ -305,6 +308,22 @@ export class MatchLineupService {
       throw new NotFoundException('Không tìm thấy trận đấu.');
     }
     return match;
+  }
+
+  private assertCanSubmitLineup(status: MatchStatus) {
+    if (status !== MatchStatus.PUBLISHED) {
+      throw new BadRequestException(
+        'Chỉ được nộp danh sách đăng ký khi trận đang mở.',
+      );
+    }
+  }
+
+  private assertCanReviewLineup(status: MatchStatus) {
+    if (status === MatchStatus.FINISHED) {
+      throw new BadRequestException(
+        'Không thể xét duyệt đội hình khi trận đã kết thúc.',
+      );
+    }
   }
 
   private assertLineupShape(dto: SubmitMatchLineupDto) {

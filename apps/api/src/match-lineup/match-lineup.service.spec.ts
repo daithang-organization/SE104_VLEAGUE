@@ -13,6 +13,7 @@ const match = {
   homeTeamId: 'team-1',
   awayTeamId: 'team-2',
   kickoffAt: new Date('2025-02-01T12:00:00Z'),
+  status: 'PUBLISHED',
 };
 
 function lineupPayload(
@@ -147,6 +148,32 @@ describe('MatchLineupService', () => {
         }),
       }),
     );
+  });
+
+  it('rejects lineup submission after the match is locked', async () => {
+    jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+      ...match,
+      status: 'LOCKED',
+    } as any);
+
+    await expect(
+      service.submitLineup('match-1', lineupPayload()),
+    ).rejects.toThrow('Chỉ được nộp danh sách đăng ký khi trận đang mở');
+
+    expect(prisma.matchTeamRegistration.upsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects lineup review after the match is finished', async () => {
+    jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+      ...match,
+      status: 'FINISHED',
+    } as any);
+
+    await expect(
+      service.reviewLineup('match-1', 'team-1', { status: 'APPROVED' } as any),
+    ).rejects.toThrow('Không thể xét duyệt đội hình khi trận đã kết thúc');
+
+    expect(prisma.matchTeamRegistration.update).not.toHaveBeenCalled();
   });
 
   it('rejects team managers submitting a lineup for another club', async () => {

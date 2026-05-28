@@ -296,6 +296,46 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText(/11 chính thức \/ 5 dự bị/)).toBeInTheDocument();
   });
 
+  it('hides lineup submission when the match is locked', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...defaultMatch,
+      status: 'LOCKED',
+    });
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiGetMatchLineups).toHaveBeenCalledWith('m1');
+    });
+
+    expect(screen.queryByText('Đăng ký thi đấu')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Trận đã khóa đội hình; chỉ có thể xem hoặc xét duyệt danh sách đã nộp.'),
+    ).toBeInTheDocument();
+  });
+
+  it('filters the lineup registration roster by player name', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    const registrationCard = screen
+      .getByText('Đăng ký thi đấu')
+      .closest('.ant-card') as HTMLElement;
+    const searchInput = within(registrationCard).getByPlaceholderText('Tìm cầu thủ trong roster');
+
+    await userEvent.type(searchInput, 'Home Player 8');
+
+    await waitFor(() => {
+      expect(within(registrationCard).getByText('Home Player 8')).toBeInTheDocument();
+      expect(within(registrationCard).queryByText('Home Player 1')).not.toBeInTheDocument();
+    });
+  });
+
   it('renders the timeline area as a hero with grid cards', async () => {
     const { container } = renderPage();
 

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TeamStanding } from '../../../services/standingsApi';
 import SeasonAwardsTab from '../SeasonAwardsTab';
 
 const mockAuth = vi.hoisted(() => ({
@@ -22,6 +23,22 @@ vi.mock('react-i18next', () => ({
     t: (key: string, params?: { count?: number }) => `${key}${params?.count ?? ''}`,
   }),
 }));
+
+const makeStanding = (overrides: Partial<TeamStanding>): TeamStanding => ({
+  position: 1,
+  teamId: 'team-a',
+  teamName: 'A FC',
+  played: 0,
+  won: 0,
+  drawn: 0,
+  lost: 0,
+  goalsFor: 0,
+  goalsAgainst: 0,
+  goalDifference: 0,
+  points: 0,
+  recentForm: [],
+  ...overrides,
+});
 
 describe('SeasonAwardsTab', () => {
   beforeEach(() => {
@@ -67,8 +84,8 @@ describe('SeasonAwardsTab', () => {
       <SeasonAwardsTab
         awards={{
           seasonId: 'season-1',
-          champion: { teamId: 'team-a', teamName: 'A FC', points: 40 } as any,
-          runnerUp: { teamId: 'team-b', teamName: 'B FC', points: 40 } as any,
+          champion: makeStanding({ teamId: 'team-a', teamName: 'A FC', points: 40 }),
+          runnerUp: makeStanding({ position: 2, teamId: 'team-b', teamName: 'B FC', points: 40 }),
           topScorer: null,
           bestPlayer: null,
           requiresDrawLot: true,
