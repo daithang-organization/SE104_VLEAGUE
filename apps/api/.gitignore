@@ -3,3 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+
+# Runtime uploads are persisted via docker-compose bind mount.
+/uploads/*
+!/uploads/.gitkeep
