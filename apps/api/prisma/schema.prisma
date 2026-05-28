@@ -665,6 +665,7 @@ model TeamInvitation {
   responseAt  DateTime? @map("response_at")
   responseReason String? @map("response_reason")
   regulationsSnapshot Json? @map("regulations_snapshot")
+  promotionNote       String? @map("promotion_note")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

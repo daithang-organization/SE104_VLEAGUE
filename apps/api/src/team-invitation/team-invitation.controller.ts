@@ -57,6 +57,20 @@ export class TeamInvitationController {
     );
   }
 
+  @Get('seasons/:seasonId/replacement-candidates')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'BTC xem danh sách đội có thể mời thay thế khi có đội từ chối/quá hạn',
+  })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiOkResponse({
+    description: 'Số slot cần, danh sách đội từ chối, và đội khả dụng',
+  })
+  getReplacementCandidates(@Param('seasonId') seasonId: string) {
+    return this.invitationService.getReplacementCandidates(seasonId);
+  }
+
   @Post('seasons/:seasonId/invitations')
   @Roles(Role.ADMIN)
   @ApiOperation({

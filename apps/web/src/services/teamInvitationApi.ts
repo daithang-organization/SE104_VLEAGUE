@@ -16,6 +16,7 @@ export type TeamInvitation = {
   responseAt: string | null;
   responseReason: string | null;
   regulationsSnapshot: Record<string, string> | null;
+  promotionNote: string | null;
   season?: Season;
   team?: Team;
   createdAt: string;
@@ -48,6 +49,7 @@ export type InvitationCandidateResult = {
 export type SendTeamInvitationPayload = {
   teamId: string;
   sourceType: TeamInvitationSourceType;
+  promotionNote?: string;
 };
 
 export type RespondTeamInvitationPayload = {
@@ -82,5 +84,19 @@ export function apiRespondTeamInvitation(
 ) {
   return api
     .patch<TeamInvitation>(`/team-invitations/${invitationId}/respond`, payload)
+    .then((res) => res.data);
+}
+
+export type ReplacementCandidateResult = {
+  totalRequired: number;
+  filledSlots: number;
+  slotsNeeded: number;
+  declinedTeams: TeamInvitation[];
+  candidates: Team[];
+};
+
+export function apiGetReplacementCandidates(seasonId: string) {
+  return api
+    .get<ReplacementCandidateResult>(`/seasons/${seasonId}/replacement-candidates`)
     .then((res) => res.data);
 }

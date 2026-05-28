@@ -7,7 +7,9 @@ import {
   EyeOutlined,
   PlusOutlined,
   SendOutlined,
+  SwapOutlined,
   TeamOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -53,10 +55,12 @@ import {
 import { apiGetTeams, type Team } from '../services/teamApi';
 import {
   apiGetInvitationCandidates,
+  apiGetReplacementCandidates,
   apiGetSeasonInvitations,
   apiSendTeamInvitation,
   type InvitationCandidate,
   type InvitationCandidateResult,
+  type ReplacementCandidateResult,
   type TeamInvitation,
   type TeamInvitationSourceType,
 } from '../services/teamInvitationApi';
@@ -136,6 +140,9 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     useState<TeamInvitationSourceType>('PROMOTED');
   const [candidateResult, setCandidateResult] = useState<InvitationCandidateResult | null>(null);
   const [candidateError, setCandidateError] = useState<string | null>(null);
+  const [replacementData, setReplacementData] = useState<ReplacementCandidateResult | null>(null);
+  const [replacementModalOpen, setReplacementModalOpen] = useState(false);
+  const [promotionNoteInput, setPromotionNoteInput] = useState('');
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
@@ -159,6 +166,14 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           getBackendErrorMessage(err) ||
             'Chưa thể sinh top 8 mùa trước cho mùa giải này. Hãy kiểm tra mùa nguồn đã kết thúc.',
         );
+      }
+
+      // Load replacement candidates
+      try {
+        const repData = await apiGetReplacementCandidates(seasonId);
+        setReplacementData(repData);
+      } catch (_) {
+        setReplacementData(null);
       }
     } catch (_err) {
       message.error(t('seasons.teamPanelLoadError'));
@@ -209,6 +224,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const handleSendInvitation = async (
     teamId = selectedTeamId,
     sourceType = selectedInvitationSource,
+    promotionNote?: string,
   ) => {
     if (!teamId) return;
     setInviting(true);
@@ -216,11 +232,39 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       await apiSendTeamInvitation(seasonId, {
         teamId,
         sourceType,
+        promotionNote: sourceType === 'PROMOTED' ? promotionNote : undefined,
       });
       message.success('Đã gửi lời mời tham dự đến manager CLB');
       await fetchTeams();
     } catch (_err) {
       message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có tài khoản manager cố định.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleOpenReplacementModal = () => {
+    setReplacementModalOpen(true);
+  };
+
+  const handleSendReplacement = async (teamId: string) => {
+    setInviting(true);
+    try {
+      await apiSendTeamInvitation(seasonId, {
+        teamId,
+        sourceType: 'REPLACEMENT',
+      });
+      message.success('Đã gửi lời mời thay thế');
+      await fetchTeams();
+      // Refresh replacement data
+      try {
+        const repData = await apiGetReplacementCandidates(seasonId);
+        setReplacementData(repData);
+      } catch (_) {
+        /* ignore */
+      }
+    } catch (_err) {
+      message.error('Không thể gửi lời mời. Hãy kiểm tra CLB có tài khoản manager.');
     } finally {
       setInviting(false);
     }
@@ -425,6 +469,9 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               {INVITATION_SOURCE_MAP[invitation.sourceType] ?? invitation.sourceType}
               {' · '}
               hạn {dayjs(invitation.deadlineAt).format('DD/MM/YYYY')}
+              {invitation.promotionNote && (
+                <span style={{ color: '#52c41a' }}> · {invitation.promotionNote}</span>
+              )}
             </div>
             {invitation.status === 'DECLINED' && declineReason && (
               <Tooltip title={declineReason}>
@@ -566,6 +613,41 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           )
         )}
       </div>
+      {/* Replacement alert when teams have declined/expired */}
+      {replacementData && replacementData.slotsNeeded > 0 && (
+        <Alert
+          showIcon
+          icon={<WarningOutlined />}
+          type="warning"
+          message={`Có ${replacementData.declinedTeams.length} đội đã từ chối/quá hạn. Cần mời thêm ${replacementData.slotsNeeded} đội thay thế để đủ ${replacementData.totalRequired} đội.`}
+          description={
+            <Space direction="vertical" size={4} style={{ marginTop: 4 }}>
+              {replacementData.declinedTeams.map((inv) => (
+                <Typography.Text key={inv.id} type="secondary" style={{ fontSize: 12 }}>
+                  <Tag
+                    color={inv.status === 'DECLINED' ? 'error' : 'default'}
+                    style={{ fontSize: 11 }}
+                  >
+                    {inv.status === 'DECLINED' ? 'Từ chối' : 'Quá hạn'}
+                  </Tag>
+                  {inv.team?.name ?? inv.teamId}
+                  {inv.responseReason ? ` — ${inv.responseReason}` : ''}
+                </Typography.Text>
+              ))}
+              <Button
+                type="primary"
+                size="small"
+                icon={<SwapOutlined />}
+                onClick={handleOpenReplacementModal}
+                style={{ marginTop: 4, width: 'fit-content' }}
+              >
+                Xem đội đề xuất thay thế ({replacementData.candidates.length} đội khả dụng)
+              </Button>
+            </Space>
+          }
+          style={{ marginBottom: 12 }}
+        />
+      )}
       <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
         <Typography.Text strong>
           <TeamOutlined />{' '}
@@ -620,12 +702,27 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             icon={<SendOutlined />}
             disabled={!selectedTeamId}
             loading={inviting}
-            onClick={() => handleSendInvitation()}
+            onClick={() =>
+              handleSendInvitation(undefined, undefined, promotionNoteInput || undefined)
+            }
           >
             Gửi lời mời
           </Button>
         </Space>
       </Flex>
+      {/* Promotion note input when source = PROMOTED */}
+      {selectedInvitationSource === 'PROMOTED' && (
+        <div style={{ marginBottom: 12 }}>
+          <Input
+            placeholder="Ghi chú thăng hạng (VD: Vô địch V.League 2 2024)"
+            value={promotionNoteInput}
+            onChange={(e) => setPromotionNoteInput(e.target.value)}
+            style={{ width: 400 }}
+            size="small"
+            allowClear
+          />
+        </div>
+      )}
       <Table
         columns={cols}
         dataSource={teams}
@@ -666,6 +763,80 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               {viewingTeam.externalCompetitionSchedule ?? '—'}
             </Descriptions.Item>
           </Descriptions>
+        )}
+      </Modal>
+      {/* Replacement candidates modal */}
+      <Modal
+        title={
+          <Space>
+            <SwapOutlined />
+            <span>Đề xuất đội thay thế</span>
+            {replacementData && (
+              <Tag color="orange">Cần thêm {replacementData.slotsNeeded} đội</Tag>
+            )}
+          </Space>
+        }
+        open={replacementModalOpen}
+        onCancel={() => setReplacementModalOpen(false)}
+        footer={null}
+        width={680}
+      >
+        {replacementData && replacementData.candidates.length > 0 ? (
+          <Table
+            dataSource={replacementData.candidates}
+            rowKey="id"
+            pagination={false}
+            size="small"
+            columns={[
+              {
+                title: 'CLB',
+                key: 'team',
+                render: (_, r) => (
+                  <Space size={6}>
+                    {r.logoUrl && (
+                      <img
+                        src={r.logoUrl}
+                        alt=""
+                        style={{ width: 20, height: 20, objectFit: 'contain' }}
+                      />
+                    )}
+                    <strong>{r.name}</strong>
+                    {r.shortName && <span style={{ color: '#888' }}>({r.shortName})</span>}
+                  </Space>
+                ),
+              },
+              {
+                title: 'Thành phố',
+                dataIndex: 'city',
+                width: 130,
+                render: (city: string | null) => city ?? '—',
+              },
+              {
+                title: '',
+                key: 'action',
+                width: 140,
+                align: 'right' as const,
+                render: (_: unknown, r: Team) => (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<SendOutlined />}
+                    loading={inviting}
+                    onClick={() => handleSendReplacement(r.id)}
+                  >
+                    Gửi thay thế
+                  </Button>
+                ),
+              },
+            ]}
+          />
+        ) : (
+          <Alert
+            type="info"
+            showIcon
+            message="Không có đội khả dụng để mời thay thế"
+            description="Tất cả đội trong hệ thống đã được mời hoặc đăng ký cho mùa giải này."
+          />
         )}
       </Modal>
     </div>

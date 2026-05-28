@@ -179,6 +179,11 @@ export class TeamInvitationService {
     const deadlineAt = this.addDays(sentAt, 14);
     const regulationsSnapshot = await this.buildRegulationsSnapshot(seasonId);
 
+    const promotionNote =
+      dto.sourceType === TeamInvitationSourceType.PROMOTED
+        ? dto.promotionNote?.trim() || null
+        : null;
+
     const invitation = await this.prisma.teamInvitation.upsert({
       where: { seasonId_teamId: { seasonId, teamId: dto.teamId } },
       create: {
@@ -189,6 +194,7 @@ export class TeamInvitationService {
         sentAt,
         deadlineAt,
         regulationsSnapshot,
+        promotionNote,
       },
       update: {
         sourceType: dto.sourceType,
@@ -198,6 +204,7 @@ export class TeamInvitationService {
         responseAt: null,
         responseReason: null,
         regulationsSnapshot,
+        promotionNote,
       },
       include: this.invitationInclude,
     });
@@ -223,6 +230,79 @@ export class TeamInvitationService {
     );
 
     return invitation;
+  }
+
+  async getReplacementCandidates(seasonId: string) {
+    await this.ensureSeasonExists(seasonId);
+    await this.markExpiredInvitations({ seasonId });
+
+    const TOTAL_REQUIRED = 10;
+
+    // Count teams that are already accepted/approved
+    const acceptedInvitations = await this.prisma.teamInvitation.count({
+      where: { seasonId, status: TeamInvitationStatus.ACCEPTED },
+    });
+    const approvedTeams = await this.prisma.seasonTeam.count({
+      where: { seasonId, status: SeasonTeamStatus.APPROVED },
+    });
+    const filledSlots = Math.max(acceptedInvitations, approvedTeams);
+    const slotsNeeded = Math.max(0, TOTAL_REQUIRED - filledSlots);
+
+    // Teams that declined or expired
+    const declinedExpiredInvitations =
+      await this.prisma.teamInvitation.findMany({
+        where: {
+          seasonId,
+          status: {
+            in: [TeamInvitationStatus.DECLINED, TeamInvitationStatus.EXPIRED],
+          },
+        },
+        include: this.invitationInclude,
+        orderBy: { responseAt: 'desc' },
+      });
+
+    // All team IDs already involved in this season
+    const involvedTeamIds = new Set(
+      (
+        await this.prisma.teamInvitation.findMany({
+          where: { seasonId },
+          select: { teamId: true },
+        })
+      ).map((i) => i.teamId),
+    );
+    // Also add season teams that were registered directly
+    const seasonTeamIds = (
+      await this.prisma.seasonTeam.findMany({
+        where: { seasonId },
+        select: { teamId: true },
+      })
+    ).map((st) => st.teamId);
+    for (const id of seasonTeamIds) involvedTeamIds.add(id);
+
+    // Available teams: ACTIVE, not already involved
+    const candidates = await this.prisma.team.findMany({
+      where: {
+        status: 'ACTIVE',
+        id: { notIn: [...involvedTeamIds] },
+      },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        city: true,
+        logoUrl: true,
+        status: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return {
+      totalRequired: TOTAL_REQUIRED,
+      filledSlots,
+      slotsNeeded,
+      declinedTeams: declinedExpiredInvitations,
+      candidates,
+    };
   }
 
   async getPendingForManager(userId: string) {

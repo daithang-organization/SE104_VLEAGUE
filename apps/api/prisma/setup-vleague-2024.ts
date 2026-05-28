@@ -259,26 +259,35 @@ async function main() {
     const status = isApprovedTeam
       ? TeamInvitationStatus.ACCEPTED
       : TeamInvitationStatus.SENT;
+    const sourceType = getInvitationSource(index);
+    const promotionNote =
+      sourceType === TeamInvitationSourceType.PROMOTED
+        ? index === 8
+          ? 'Vô địch V.League 2 2024'
+          : 'Á quân V.League 2 2024'
+        : null;
     const invitation = await prisma.teamInvitation.upsert({
       where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
       update: {
-        sourceType: getInvitationSource(index),
+        sourceType,
         status,
         sentAt,
         deadlineAt,
         responseAt: isApprovedTeam ? sentAt : null,
         responseReason: null,
         regulationsSnapshot: invitationSnapshot,
+        promotionNote,
       },
       create: {
         seasonId: season.id,
         teamId: team.id,
-        sourceType: getInvitationSource(index),
+        sourceType,
         status,
         sentAt,
         deadlineAt,
         responseAt: isApprovedTeam ? sentAt : null,
         regulationsSnapshot: invitationSnapshot,
+        promotionNote,
       },
     });
 

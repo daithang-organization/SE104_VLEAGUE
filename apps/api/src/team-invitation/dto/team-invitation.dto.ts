@@ -20,6 +20,15 @@ export class SendTeamInvitationDto {
   })
   @IsEnum(TeamInvitationSourceType)
   sourceType: TeamInvitationSourceType;
+
+  @ApiPropertyOptional({
+    description:
+      'Ghi chú thăng hạng (VD: "Vô địch V.League 2 2024"). Chỉ dùng khi sourceType = PROMOTED.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  promotionNote?: string;
 }
 
 export class RespondTeamInvitationDto {
