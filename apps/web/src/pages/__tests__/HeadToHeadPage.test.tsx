@@ -13,6 +13,11 @@ const mockSearchApi = vi.hoisted(() => ({
 }));
 
 vi.mock('../../services/searchApi', () => mockSearchApi);
+vi.mock('../../services/seasonApi', () => ({
+  apiGetSeasons: vi
+    .fn()
+    .mockResolvedValue([{ id: 's1', name: 'V.League 2025', year: 2025, status: 'IN_PROGRESS' }]),
+}));
 vi.mock('../../lib/api', () => ({
   api: {
     get: vi.fn().mockResolvedValue({ data: { data: [] } }),
