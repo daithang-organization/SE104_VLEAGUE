@@ -212,6 +212,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   matches: {
+    subtitle: 'Track scores, statuses, and match events across the season.',
     title: 'Match Results',
     searchPlaceholder: 'Search team...',
     seasonPlaceholder: 'Season',
@@ -353,6 +354,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   teams: {
+    subtitle: 'Manage clubs, home stadiums, and registration status in the system.',
     title: 'Team Management',
     searchPlaceholder: 'Search teams...',
     addBtn: 'Add Team',
@@ -518,6 +520,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   schedule: {
+    subtitle: 'Manage fixtures, draft status, and kickoff times for each round.',
     title: 'Match Schedule',
     seasonPlaceholder: 'Select season',
     matchCount: '{total} matches',
@@ -568,6 +571,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   standings: {
+    subtitle: 'Review rankings, points, goal difference, and recent team form.',
     title: '🏆 Standings',
     seasonPlaceholder: 'Select season',
     loadError: 'Failed to load standings',
@@ -808,6 +812,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   reports: {
+    subtitle: 'Summarize goals, assists, cards, awards, and team performance.',
     title: 'Reports & Statistics',
     loadError: 'Failed to load report data',
     exportScorersPdf: 'PDF Top Scorers',
@@ -920,6 +925,7 @@ const en = {
   // ─────────────────────────────────────────────
 
   headToHead: {
+    subtitle: 'Compare match history, wins, goals, and results between two teams.',
     title: 'Head-to-Head',
     team1Placeholder: 'Select Team 1',
     team2Placeholder: 'Select Team 2',

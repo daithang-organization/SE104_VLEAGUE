@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -137,7 +136,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
 
     await waitFor(() => {
       expect(mockMatchApi.apiGetMatchLineups).toHaveBeenCalledWith('m1');
@@ -153,7 +152,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
 
     await waitFor(() => {
       expect(mockMatchApi.apiGetOfficials).toHaveBeenCalled();

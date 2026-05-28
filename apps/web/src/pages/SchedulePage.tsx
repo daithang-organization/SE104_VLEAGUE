@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarOutlined,
   EditOutlined,
   LeftOutlined,
@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { MatchFixtureCard, PageHero } from '../components';
+import { AppMenuIcon, MatchFixtureCard, PageCover } from '../components';
 import { apiUpdateMatch } from '../services/matchApi';
 import {
   apiGenerateSchedule,
@@ -283,11 +283,11 @@ export default function SchedulePage() {
 
   return (
     <div className="page-stack">
-      <PageHero
-        variant="compact"
+      <PageCover
         eyebrow={t('menu.schedule')}
         title={t('schedule.title')}
-        icon={<CalendarOutlined />}
+        description={t('schedule.subtitle')}
+        icon={<AppMenuIcon menuKey="schedule" />}
         metrics={[
           {
             label: t('common.total'),
@@ -305,46 +305,43 @@ export default function SchedulePage() {
             icon: <CalendarOutlined />,
           },
         ]}
-        actions={
-          <Space wrap>
-            {seasons.length > 0 && (
-              <Select
-                value={selectedSeasonId}
-                onChange={(v) => setSelectedSeasonId(v)}
-                style={{ width: 200 }}
-                placeholder={t('schedule.seasonPlaceholder')}
-                options={seasons.map((s) => ({
-                  value: s.id,
-                  label: `${s.name} (${s.year}/${s.year + 1})`,
-                }))}
-              />
-            )}
-            <Button icon={<ReloadOutlined />} onClick={fetchSchedule} loading={loading}>
-              {t('schedule.reloadBtn')}
-            </Button>
-            {isAdmin && (
-              <>
-                <Button
-                  icon={<ThunderboltOutlined />}
-                  onClick={openGenerateModal}
-                  loading={generating}
-                >
-                  {t('schedule.generateBtn')}
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  onClick={handlePublish}
-                  loading={publishing}
-                  disabled={draftCount === 0}
-                >
-                  {t('schedule.publishBtn')}
-                </Button>
-              </>
-            )}
-          </Space>
-        }
       />
+
+      <div className="page-toolbar">
+        <Space wrap>
+          {seasons.length > 0 && (
+            <Select
+              value={selectedSeasonId}
+              onChange={(v) => setSelectedSeasonId(v)}
+              style={{ width: 200 }}
+              placeholder={t('schedule.seasonPlaceholder')}
+              options={seasons.map((s) => ({
+                value: s.id,
+                label: `${s.name} (${s.year}/${s.year + 1})`,
+              }))}
+            />
+          )}
+          <Button icon={<ReloadOutlined />} onClick={fetchSchedule} loading={loading}>
+            {t('schedule.reloadBtn')}
+          </Button>
+        </Space>
+        {isAdmin && (
+          <Space wrap>
+            <Button icon={<ThunderboltOutlined />} onClick={openGenerateModal} loading={generating}>
+              {t('schedule.generateBtn')}
+            </Button>
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handlePublish}
+              loading={publishing}
+              disabled={draftCount === 0}
+            >
+              {t('schedule.publishBtn')}
+            </Button>
+          </Space>
+        )}
+      </div>
 
       <Card className="schedule-page-card">
         {/* Leg tabs */}

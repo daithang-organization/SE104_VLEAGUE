@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChartOutlined,
   CalendarOutlined,
   FileDoneOutlined,
@@ -35,7 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../auth/AuthContext';
-import { CardSkeleton, PageHero } from '../components';
+import { AppMenuIcon, CardSkeleton, PageCover } from '../components';
 import { apiGetMatches, type Match } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule } from '../services/scheduleApi';
@@ -303,7 +303,7 @@ function TeamManagerDashboard() {
   if (!selectedTeamId) {
     return (
       <div className="page-stack dashboard-page dashboard-manager-page">
-        <PageHero
+        <PageCover
           eyebrow="VLeague"
           title="Chọn CLB quản lý"
           description="Vui lòng chọn đội bóng của bạn để bắt đầu trang quản lý CLB. Lựa chọn này chỉ được thực hiện một lần cho mùa giải hiện tại."
@@ -353,7 +353,7 @@ function TeamManagerDashboard() {
 
   return (
     <div className="page-stack dashboard-page dashboard-manager-page">
-      <PageHero
+      <PageCover
         eyebrow="Quản lý CLB"
         title={`CLB ${team?.name ?? '...'}`}
         description="Theo dõi hồ sơ tham dự, lực lượng, lịch thi đấu và chỉ số phong độ của đội bóng trong một màn hình."
@@ -1006,11 +1006,11 @@ export default function DashboardPage() {
 
   return (
     <div className="page-stack dashboard-page">
-      <PageHero
+      <PageCover
         eyebrow="VLeague"
         title={t('dashboard.title')}
         description={dashboardWelcome}
-        icon={<BarChartOutlined />}
+        icon={<AppMenuIcon menuKey="dashboard" />}
         metrics={[
           {
             label: t('dashboard.statTeams'),
@@ -1077,7 +1077,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} className="dashboard-season-actions-row">
             {currentSeason && (
               <Col xs={24} md={isAdmin ? 16 : 24}>
                 <Card
@@ -1163,7 +1163,7 @@ export default function DashboardPage() {
             )}
           </Row>
 
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} className="dashboard-equal-card-row">
             <Col xs={24} md={12}>
               <Card
                 title={

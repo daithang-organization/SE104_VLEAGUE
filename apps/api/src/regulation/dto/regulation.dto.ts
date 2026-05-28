@@ -5,12 +5,12 @@ export class CreateRegulationDto {
   @ApiProperty({ description: 'Khóa quy định', example: 'MAX_FOREIGN_PLAYERS' })
   @IsString()
   @IsNotEmpty()
-  key: string;
+  key!: string;
 
   @ApiProperty({ description: 'Giá trị quy định', example: '3' })
   @IsString()
   @IsNotEmpty()
-  value: string;
+  value!: string;
 
   @ApiPropertyOptional({
     description: 'Kiểu dữ liệu (number, string, boolean)',
@@ -26,7 +26,7 @@ export class UpdateRegulationDto {
   @ApiProperty({ description: 'Giá trị quy định', example: '3' })
   @IsString()
   @IsNotEmpty()
-  value: string;
+  value!: string;
 
   @ApiPropertyOptional({
     description: 'Kiểu dữ liệu',
@@ -39,23 +39,23 @@ export class UpdateRegulationDto {
 
 export class RegulationResponseDto {
   @ApiProperty({ format: 'uuid' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ format: 'uuid' })
-  seasonId: string;
+  seasonId!: string;
 
   @ApiProperty({ example: 'MAX_FOREIGN_PLAYERS' })
-  key: string;
+  key!: string;
 
   @ApiProperty({ example: '3' })
-  value: string;
+  value!: string;
 
   @ApiProperty({ example: 'number' })
-  valueType: string;
+  valueType!: string;
 
   @ApiProperty()
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

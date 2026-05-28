@@ -1,8 +1,7 @@
-import {
+﻿import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
-  IdcardOutlined,
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
@@ -30,7 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { PageHero, TableSkeleton } from '../components';
+import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import {
   apiCreatePlayer,
   apiDeletePlayer,
@@ -398,11 +397,11 @@ export default function PlayersPage() {
   return (
     <>
       <div className="page-stack">
-        <PageHero
+        <PageCover
           eyebrow={t('menu.players')}
           title={t('players.title')}
           description={t('players.searchPlaceholder')}
-          icon={<IdcardOutlined />}
+          icon={<AppMenuIcon menuKey="players" />}
           metrics={[
             {
               label: t('common.total'),
@@ -420,23 +419,24 @@ export default function PlayersPage() {
               icon: <TeamOutlined />,
             },
           ]}
-          actions={
-            <Space wrap>
-              <Input.Search
-                placeholder={t('players.searchPlaceholder')}
-                onSearch={onSearch}
-                style={{ width: 300 }}
-                allowClear
-                loading={loading}
-              />
-              {canEdit && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  {t('players.addBtn')}
-                </Button>
-              )}
-            </Space>
-          }
         />
+
+        <div className="page-toolbar">
+          <Space wrap>
+            <Input.Search
+              placeholder={t('players.searchPlaceholder')}
+              onSearch={onSearch}
+              style={{ width: 300 }}
+              allowClear
+              loading={loading}
+            />
+          </Space>
+          {canEdit && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+              {t('players.addBtn')}
+            </Button>
+          )}
+        </div>
 
         <Card>
           {loading && players.length === 0 ? (

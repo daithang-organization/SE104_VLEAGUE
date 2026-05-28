@@ -59,7 +59,16 @@ function renderPage() {
 }
 
 describe('TeamsPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
 
   it('renders the page title', () => {
     renderPage();
@@ -127,8 +136,8 @@ describe('TeamsPage', () => {
   it('applies a club color theme to each club card', async () => {
     renderPage();
 
-    const logo = await screen.findByRole('img', { name: 'Hà Nội FC logo' });
-    const card = logo.closest('.club-card');
+    const code = await screen.findByText('HN');
+    const card = code.closest('.club-card');
 
     expect(card?.getAttribute('style')).toContain('--club-accent: #f7c948');
   });

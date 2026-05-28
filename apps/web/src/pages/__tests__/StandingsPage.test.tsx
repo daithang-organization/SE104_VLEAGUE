@@ -87,12 +87,12 @@ describe('StandingsPage', () => {
   it('renders standings title', () => {
     const { container } = renderPage();
     expect(screen.getByText('Bảng xếp hạng')).toBeInTheDocument();
-    expect(container.querySelector('.page-hero-compact')).toBeInTheDocument();
+    expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
-  it('renders top scorers title', () => {
+  it('renders top scorers title', async () => {
     renderPage();
-    expect(screen.getByText('⚽ Vua phá lưới (Top 10)')).toBeInTheDocument();
+    expect(await screen.findByText('Vua phá lưới (Top 10)')).toBeInTheDocument();
   });
 
   it('fetches seasons on mount', async () => {

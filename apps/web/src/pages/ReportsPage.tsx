@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChartOutlined,
   DownloadOutlined,
   RiseOutlined,
@@ -11,8 +11,8 @@ import {
 import { Alert, Button, Card, message, Space, Tabs } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TableSkeleton } from '../components';
-import { PageHero } from '../components/PageHero';
+import { AppMenuIcon, TableSkeleton } from '../components';
+import { PageCover } from '../components/PageCover';
 import {
   apiGetCardStats,
   apiGetPlayerOfMatchStats,
@@ -200,11 +200,11 @@ export default function ReportsPage() {
 
   return (
     <div className="page-stack">
-      <PageHero
-        variant="compact"
+      <PageCover
         eyebrow={t('menu.reports')}
         title={t('reports.title')}
-        icon={<BarChartOutlined />}
+        description={t('reports.subtitle')}
+        icon={<AppMenuIcon menuKey="reports" />}
         metrics={[
           {
             label: cleanTabLabel(t('reports.tabScorers')),
@@ -227,8 +227,9 @@ export default function ReportsPage() {
             icon: <StarOutlined />,
           },
         ]}
-        actions={exportActions}
       />
+
+      <div className="page-toolbar page-toolbar-end">{exportActions}</div>
 
       <Card>
         {loading ? (

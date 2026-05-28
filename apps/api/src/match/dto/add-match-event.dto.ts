@@ -30,7 +30,7 @@ export class AddMatchEventDto {
   @IsInt()
   @Min(0)
   @Max(150)
-  minute: number;
+  minute!: number;
 
   @ApiProperty({
     description: 'Loại sự kiện',
@@ -55,7 +55,7 @@ export class AddMatchEventDto {
     'SUBSTITUTION',
   ])
   @IsNotEmpty()
-  type: EventType;
+  type!: EventType;
 
   @ApiPropertyOptional({
     description: 'ID cầu thủ liên quan',
@@ -73,7 +73,7 @@ export class AddMatchEventDto {
   })
   @IsUUID()
   @IsNotEmpty()
-  teamId: string;
+  teamId!: string;
 
   @ApiPropertyOptional({
     description: 'Ghi chú thêm',

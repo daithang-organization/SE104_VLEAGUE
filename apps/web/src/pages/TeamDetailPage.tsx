@@ -236,7 +236,8 @@ export default function TeamDetailPage() {
       title: t('teamDetail.rosterColJersey'),
       dataIndex: 'jerseyNumber',
       key: 'jerseyNumber',
-      width: 80,
+      width: 120,
+      align: 'center',
       filters: buildFilters(roster, (r) => r.jerseyNumber),
       onFilter: (value, record) => record.jerseyNumber === Number(value),
       sorter: (a: TeamDetail['roster'][0], b: TeamDetail['roster'][0]) =>
@@ -354,7 +355,7 @@ export default function TeamDetailPage() {
             label: t('teamDetail.tabInfo'),
             children: (
               <Card>
-                <Descriptions bordered column={{ xs: 1, sm: 2 }}>
+                <Descriptions bordered column={1}>
                   <Descriptions.Item label={t('teamDetail.descName')}>
                     {team.name}
                   </Descriptions.Item>

@@ -40,6 +40,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock('../../components', () => ({
+  AppMenuIcon: ({ menuKey }: { menuKey: string }) => (
+    <span data-testid={`app-menu-icon-${menuKey}`} />
+  ),
   TableSkeleton: () => <div>Loading...</div>,
 }));
 

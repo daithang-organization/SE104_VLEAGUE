@@ -1,48 +1,39 @@
 import { Space, Typography } from 'antd';
 import type { ReactNode } from 'react';
 
-export type PageHeroMetric = {
+export type PageCoverMetric = {
   label: ReactNode;
   value: ReactNode;
   icon?: ReactNode;
 };
 
-type PageHeroProps = {
+export type PageCoverProps = {
   title: ReactNode;
   eyebrow?: ReactNode;
   description?: ReactNode;
   icon?: ReactNode;
-  metrics?: PageHeroMetric[];
+  metrics?: PageCoverMetric[];
   actions?: ReactNode;
-  variant?: 'default' | 'compact';
   className?: string;
 };
 
-export function PageHero({
+export function PageCover({
   title,
-  eyebrow,
+  eyebrow: _eyebrow,
   description,
   icon,
   metrics = [],
   actions,
-  variant = 'default',
   className,
-}: PageHeroProps) {
-  const rootClassName = [
-    'page-hero',
-    variant === 'compact' ? 'page-hero-compact' : '',
-    className ?? '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+}: PageCoverProps) {
+  const rootClassName = ['page-cover', 'page-hero', className ?? ''].filter(Boolean).join(' ');
 
   return (
     <section className={rootClassName}>
       <div className="page-hero-main">
         {icon && <div className="page-hero-icon">{icon}</div>}
         <div className="page-hero-copy">
-          {eyebrow && <Typography.Text className="page-hero-eyebrow">{eyebrow}</Typography.Text>}
-          <Typography.Title level={variant === 'compact' ? 4 : 2} className="page-hero-title">
+          <Typography.Title level={2} className="page-hero-title">
             {title}
           </Typography.Title>
           {description && (
@@ -77,4 +68,4 @@ export function PageHero({
   );
 }
 
-export default PageHero;
+export default PageCover;

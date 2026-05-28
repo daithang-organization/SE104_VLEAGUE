@@ -20,7 +20,7 @@ export class SearchDto {
   @Transform(({ value }): string =>
     typeof value === 'string' ? value.trim() : (value as string),
   )
-  q: string;
+  q!: string;
 
   @ApiPropertyOptional({
     description: 'Giới hạn kết quả (1-50, mặc định: 10)',

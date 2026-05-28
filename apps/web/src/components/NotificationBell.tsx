@@ -32,7 +32,6 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- polling pattern: initial fetch + interval
     fetchNotifications();
     timerRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
     return () => {
@@ -88,7 +87,7 @@ export default function NotificationBell() {
           borderBottom: '1px solid var(--ant-color-border, #f0f0f0)',
         }}
       >
-        <Typography.Text strong>{t('notification.title')}</Typography.Text>
+        <Typography.Text strong>{t('Thông báo')}</Typography.Text>
         {unreadCount > 0 && (
           <Button type="link" size="small" onClick={handleMarkAll}>
             {t('notification.markAllRead')}
@@ -98,7 +97,7 @@ export default function NotificationBell() {
 
       {notifications.length === 0 ? (
         <Empty
-          description={t('notification.empty')}
+          description={t('Chưa có thông báo nào!')}
           style={{ padding: 24 }}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
@@ -154,7 +153,7 @@ export default function NotificationBell() {
         <Button
           type="text"
           icon={<BellOutlined style={{ color: 'white', fontSize: 16 }} />}
-          title={t('notification.title')}
+          title={t('Thông báo')}
         />
       </Badge>
     </Dropdown>

@@ -1,4 +1,4 @@
-import {
+﻿import {
   BulbFilled,
   BulbOutlined,
   GlobalOutlined,
@@ -23,53 +23,14 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { AppMenuIcon } from '../components';
 import NotificationBell from '../components/NotificationBell';
 import TeamInvitationPopup from '../components/TeamInvitationPopup';
 import { apiGlobalSearch, type SearchResult } from '../services/searchApi';
 import { useTheme } from './ThemeContext';
 import { MENU } from './menu';
-import dashboardIcon from '../assets/menu-icons/dashboard_icon.png';
-import seasonIcon from '../assets/menu-icons/season_icon.png';
-import teamIcon from '../assets/menu-icons/team_icon.png';
-import stadiumIcon from '../assets/menu-icons/stadium_icon.png';
-import playerIcon from '../assets/menu-icons/player_icon.png';
-import calendarIcon from '../assets/menu-icons/calendar_icon.png';
-import resultIcon from '../assets/menu-icons/result_icon.png';
-import rankIcon from '../assets/menu-icons/rank_icon.png';
-import headToHeadIcon from '../assets/menu-icons/1v1_icon.png';
-import reportIcon from '../assets/menu-icons/report_icon.png';
-import rulesIcon from '../assets/menu-icons/rules_icon.png';
-import roleIcon from '../assets/menu-icons/role_icon.png';
 
 const { Sider, Header, Content } = Layout;
-
-const menuIconByKey: Record<string, string> = {
-  dashboard: dashboardIcon,
-  seasons: seasonIcon,
-  teams: teamIcon,
-  stadiums: stadiumIcon,
-  players: playerIcon,
-  schedule: calendarIcon,
-  matches: resultIcon,
-  standings: rankIcon,
-  'head-to-head': headToHeadIcon,
-  reports: reportIcon,
-  regulations: rulesIcon,
-  users: roleIcon,
-};
-
-function MenuIcon({ src }: { src: string }) {
-  return (
-    <span
-      className="sidebar-menu-icon"
-      aria-hidden="true"
-      style={{
-        WebkitMask: `url(${src}) center / contain no-repeat`,
-        mask: `url(${src}) center / contain no-repeat`,
-      }}
-    />
-  );
-}
 
 export default function AppShell() {
   const { user, logout } = useAuth();
@@ -131,7 +92,7 @@ export default function AppShell() {
     const role = user?.role;
     return MENU.filter((m) => !m.roles || (role && m.roles.includes(role))).map((m) => ({
       key: m.key,
-      icon: menuIconByKey[m.key] ? <MenuIcon src={menuIconByKey[m.key]} /> : undefined,
+      icon: <AppMenuIcon menuKey={m.key} variant="sidebar" />,
       label: t(m.labelKey),
     }));
   }, [user, t]);
@@ -216,8 +177,9 @@ export default function AppShell() {
             display: 'flex',
             justifyContent: 'flex-end',
             alignItems: 'center',
-            height: '40px', // Giả sử ông muốn hẹp hẳn xuống 48px
-            lineHeight: '40px', // QUAN TRỌNG: Phải khớp với height để không bị khuyết
+            height: '56px',
+            minHeight: '56px',
+            lineHeight: '56px',
             padding: '0 24px',
             background: 'transparent',
             borderBottom: isDark
@@ -232,9 +194,9 @@ export default function AppShell() {
             onSearch={onSearch}
             onSelect={onSelectSearch}
             style={{
-              flex: '0 1 280px', // Cho phép co lại nhưng không vượt quá 280px
-              //marginRight: 'auto', // Đẩy các icon sang bên phải nếu muốn ô tìm kiếm nằm trái
-              marginLeft: 16,
+              flex: '0 1 360px',
+              height: 36,
+              marginRight: 'auto',
             }}
             allowClear
           >

@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -83,9 +84,9 @@ describe('DashboardPage', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => cleanup());
 
-  it('renders the Dashboard title', async () => {
+  it('renders the dashboard title', async () => {
     const { container } = renderPage();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Trang chủ')).toBeInTheDocument();
     expect(container.querySelector('.dashboard-page .page-hero')).toBeInTheDocument();
     await waitForAsyncEffects();
   });
