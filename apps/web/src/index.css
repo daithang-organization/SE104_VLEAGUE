@@ -1261,6 +1261,18 @@ select {
   white-space: nowrap;
 }
 
+.lineup-pitch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-self: start;
+}
+
+.lineup-pitch-side-away .lineup-pitch-meta {
+  justify-content: flex-end;
+  justify-self: end;
+}
+
 .lineup-pitch-formation.ant-tag {
   justify-self: start;
   width: max-content;
@@ -1527,6 +1539,11 @@ select {
   }
 
   .lineup-pitch-side-away .lineup-pitch-formation.ant-tag {
+    justify-self: start;
+  }
+
+  .lineup-pitch-side-away .lineup-pitch-meta {
+    justify-content: flex-start;
     justify-self: start;
   }
 }
