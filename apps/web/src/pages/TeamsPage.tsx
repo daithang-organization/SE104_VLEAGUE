@@ -356,7 +356,7 @@ export default function TeamsPage() {
           </Row>
 
           <Form.Item name="logoUrl" label={t('teams.formLogo')}>
-            <ImageUpload hint={t('teams.formLogoPlaceholder')} />
+            <ImageUpload />
           </Form.Item>
 
           <Form.Item name="status" label={t('teams.formStatus')}>

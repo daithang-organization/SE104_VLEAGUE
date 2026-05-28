@@ -421,7 +421,6 @@ const vi = {
     formStadium: 'Sân nhà',
     formStadiumPlaceholder: 'Chọn sân nhà',
     formLogo: 'URL Logo',
-    formLogoPlaceholder: 'https://example.com/logo.png',
     formStatus: 'Trạng thái',
     formStatusActive: 'Hoạt động',
     formStatusInactive: 'Ngưng hoạt động',
