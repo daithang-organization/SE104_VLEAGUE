@@ -211,36 +211,40 @@ export default function MatchDetailPage() {
     [t],
   );
 
-  const loadOfficialData = useCallback(async (matchId: string) => {
-    setOfficialLoading(true);
-    try {
-      const [nextOfficials, nextAssignments, nextReport, nextDisciplineReport] = await Promise.all([
-        apiGetOfficials(),
-        apiGetMatchOfficials(matchId),
-        apiGetMatchReport(matchId),
-        apiGetDisciplineReport(matchId),
-      ]);
-      setOfficials(nextOfficials ?? []);
-      setOfficialAssignments(nextAssignments ?? []);
-      setMatchReport(nextReport ?? null);
-      setDisciplineReport(nextDisciplineReport ?? null);
-      setSelectedOfficialId((current) => current ?? nextOfficials?.[0]?.id);
-      const supervisorAssignment = nextAssignments?.find(
-        (assignment) => assignment.role === 'SUPERVISOR',
-      );
-      setDisciplineSupervisorId(
-        (current) => current ?? supervisorAssignment?.officialId ?? nextOfficials?.[0]?.id,
-      );
-    } catch (_err) {
-      setOfficials([]);
-      setOfficialAssignments([]);
-      setMatchReport(null);
-      setDisciplineReport(null);
-      message.error('Không thể tải dữ liệu trọng tài và báo cáo trận đấu.');
-    } finally {
-      setOfficialLoading(false);
-    }
-  }, []);
+  const loadOfficialData = useCallback(
+    async (matchId: string) => {
+      setOfficialLoading(true);
+      try {
+        const [nextOfficials, nextAssignments, nextReport, nextDisciplineReport] =
+          await Promise.all([
+            apiGetOfficials(),
+            apiGetMatchOfficials(matchId),
+            apiGetMatchReport(matchId),
+            apiGetDisciplineReport(matchId),
+          ]);
+        setOfficials(nextOfficials ?? []);
+        setOfficialAssignments(nextAssignments ?? []);
+        setMatchReport(nextReport ?? null);
+        setDisciplineReport(nextDisciplineReport ?? null);
+        setSelectedOfficialId((current) => current ?? nextOfficials?.[0]?.id);
+        const supervisorAssignment = nextAssignments?.find(
+          (assignment) => assignment.role === 'SUPERVISOR',
+        );
+        setDisciplineSupervisorId(
+          (current) => current ?? supervisorAssignment?.officialId ?? nextOfficials?.[0]?.id,
+        );
+      } catch (_err) {
+        setOfficials([]);
+        setOfficialAssignments([]);
+        setMatchReport(null);
+        setDisciplineReport(null);
+        message.error('Không thể tải dữ liệu trọng tài và báo cáo trận đấu.');
+      } finally {
+        setOfficialLoading(false);
+      }
+    },
+    [setDisciplineSupervisorId],
+  );
 
   const fetchMatch = useCallback(async () => {
     if (!id) return;
