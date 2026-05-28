@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { message } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -360,7 +360,23 @@ describe('SeasonsPage', () => {
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
     fireEvent.click(expandButton);
 
-    fireEvent.click(await screen.findByRole('button', { name: /gửi 2 đội hiện tại/i }));
+    expect(
+      await screen.findByText('Danh sách mời dự kiến', {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(mockTeamInvitationApi.apiGetInvitationCandidates).toHaveBeenCalledWith('s1');
+        expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledWith('s1');
+      },
+      { timeout: 5000 },
+    );
+
+    const sendCurrentButton = await within(container).findByRole(
+      'button',
+      { name: /gửi 2 đội hiện tại/i },
+      { timeout: 5000 },
+    );
+    fireEvent.click(sendCurrentButton);
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledTimes(2);
