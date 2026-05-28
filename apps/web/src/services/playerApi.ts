@@ -53,13 +53,20 @@ export type UpdatePlayerPayload = {
 export function apiGetPlayers(
   page = 1,
   limit = 20,
-  filters?: { search?: string; position?: string; nationality?: string; teamId?: string },
+  filters?: {
+    search?: string;
+    position?: string;
+    nationality?: string;
+    teamId?: string;
+    playerType?: string;
+  },
 ) {
   const params: Record<string, string | number> = { page, limit };
   if (filters?.search) params.search = filters.search;
   if (filters?.position) params.position = filters.position;
   if (filters?.nationality) params.nationality = filters.nationality;
   if (filters?.teamId) params.teamId = filters.teamId;
+  if (filters?.playerType) params.playerType = filters.playerType;
   return api.get<PaginatedResponse<Player>>('/players', { params }).then((res) => res.data);
 }
 

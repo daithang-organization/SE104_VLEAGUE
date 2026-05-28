@@ -35,6 +35,8 @@ const REAL_TEAMS = [
 ];
 
 const REQUIRED_APPROVED_TEAMS = 10;
+const DEFAULT_SEASON_NAME = 'V.League 2024-2025';
+const LEGACY_SEASON_NAME = 'V.League 2024-25';
 const INVITATION_REGULATION_KEYS = [
   'MIN_ROSTER',
   'MAX_ROSTER',
@@ -66,22 +68,38 @@ function getInvitationSource(index: number) {
 }
 
 async function main() {
-  console.log('🏆 Setting up V.League 2024-25 Season...\n');
+  console.log(`🏆 Setting up ${DEFAULT_SEASON_NAME} Season...\n`);
 
   // 1. Create Season
-  const season = await prisma.season.upsert({
-    where: { name: 'V.League 2024-25' },
-    update: {
-      status: SeasonStatus.IN_PROGRESS,
-    },
-    create: {
-      name: 'V.League 2024-25',
-      year: 2024,
-      startDate: new Date('2024-09-14'),
-      endDate: new Date('2025-06-21'),
-      status: SeasonStatus.IN_PROGRESS,
-    },
+  let season = await prisma.season.findUnique({
+    where: { name: DEFAULT_SEASON_NAME },
   });
+  const legacySeason = season
+    ? null
+    : await prisma.season.findUnique({ where: { name: LEGACY_SEASON_NAME } });
+  const existingSeason = season ?? legacySeason;
+  if (existingSeason) {
+    season = await prisma.season.update({
+      where: { id: existingSeason.id },
+      data: {
+        name: DEFAULT_SEASON_NAME,
+        year: 2024,
+        startDate: new Date('2024-09-14'),
+        endDate: new Date('2025-06-21'),
+        status: SeasonStatus.IN_PROGRESS,
+      },
+    });
+  } else {
+    season = await prisma.season.create({
+      data: {
+        name: DEFAULT_SEASON_NAME,
+        year: 2024,
+        startDate: new Date('2024-09-14'),
+        endDate: new Date('2025-06-21'),
+        status: SeasonStatus.IN_PROGRESS,
+      },
+    });
+  }
   console.log(`✅ Season: ${season.name} (ID: ${season.id})`);
 
   // 1.5 Seed Regulations for this season
@@ -190,13 +208,13 @@ async function main() {
         ownerName: `Công ty chủ quản ${team.name}`,
         ownerCountry: 'Việt Nam',
         ownerAddress: team.city ?? 'Việt Nam',
-        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-25.`,
+        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-2025.`,
         primaryKit: 'Áo màu chính thức theo nhận diện CLB',
         backupKit: 'Áo dự bị màu tương phản',
         participationFeePaid: true,
         feePaidAt: new Date(),
         feeReceiptCode: `FEE-${slugTeamName(team.name).toUpperCase()}`,
-        externalCompetitionSchedule: 'Cúp Quốc gia 2024-25',
+        externalCompetitionSchedule: 'Cúp Quốc gia 2024-2025',
         applicationSubmittedAt: new Date(),
         applicationReviewNote: null,
       },
@@ -208,13 +226,13 @@ async function main() {
         ownerName: `Công ty chủ quản ${team.name}`,
         ownerCountry: 'Việt Nam',
         ownerAddress: team.city ?? 'Việt Nam',
-        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-25.`,
+        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-2025.`,
         primaryKit: 'Áo màu chính thức theo nhận diện CLB',
         backupKit: 'Áo dự bị màu tương phản',
         participationFeePaid: true,
         feePaidAt: new Date(),
         feeReceiptCode: `FEE-${slugTeamName(team.name).toUpperCase()}`,
-        externalCompetitionSchedule: 'Cúp Quốc gia 2024-25',
+        externalCompetitionSchedule: 'Cúp Quốc gia 2024-2025',
         applicationSubmittedAt: new Date(),
       },
     });
@@ -473,7 +491,7 @@ async function main() {
   }
   console.log('✅ Seeded Round 1 results and goals.');
 
-  console.log('\n🚀 V.League 2024-25 Setup Complete!');
+  console.log('\n🚀 V.League 2024-2025 Setup Complete!');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📧 Team manager demo accounts use password:', DEMO_PASSWORD);
   console.log(

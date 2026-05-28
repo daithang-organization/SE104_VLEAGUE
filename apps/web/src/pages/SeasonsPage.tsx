@@ -67,14 +67,14 @@ const STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Đã kết thúc', color: 'default' },
 ];
 
-// Generate season year options: e.g. "2024/2025", "2025/2026", etc.
+// Generate season year options: e.g. "2024-2025", "2025-2026", etc.
 function generateYearOptions() {
   const currentYear = new Date().getFullYear();
   const options = [];
   for (let y = currentYear - 3; y <= currentYear + 3; y++) {
     options.push({
       value: y,
-      label: `Mùa giải ${y}/${y + 1}`,
+      label: `Mùa giải ${y}-${y + 1}`,
     });
   }
   return options;
@@ -659,7 +659,7 @@ export default function SeasonsPage() {
     const currentYear = new Date().getFullYear();
     form.setFieldsValue({
       year: currentYear,
-      name: `VLeague ${currentYear}/${currentYear + 1}`,
+      name: `VLeague ${currentYear}-${currentYear + 1}`,
       status: 'UPCOMING',
     });
     setModalOpen(true);
@@ -679,7 +679,7 @@ export default function SeasonsPage() {
 
   const handleYearChange = (year: number) => {
     if (!editing) {
-      form.setFieldValue('name', `VLeague ${year}/${year + 1}`);
+      form.setFieldValue('name', `VLeague ${year}-${year + 1}`);
     }
   };
 
@@ -765,7 +765,7 @@ export default function SeasonsPage() {
       dataIndex: 'year',
       width: 120,
       align: 'center',
-      render: (year: number) => `${year}/${year + 1}`,
+      render: (year: number) => `${year}-${year + 1}`,
     },
     {
       title: t('seasons.colStatus'),
