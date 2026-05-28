@@ -262,6 +262,32 @@ describe('SeasonsPage', () => {
     });
   });
 
+  it('bulk sends current invitation candidates with their source types', async () => {
+    mockTeamInvitationApi.apiGetSeasonInvitations.mockResolvedValueOnce([]);
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025/2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    fireEvent.click(await screen.findByRole('button', { name: /gửi 2 đội hiện tại/i }));
+
+    await waitFor(() => {
+      expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledTimes(2);
+      expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenNthCalledWith(1, 's1', {
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+      });
+      expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenNthCalledWith(2, 's1', {
+        teamId: 'team-promoted-1',
+        sourceType: 'PROMOTED',
+      });
+    });
+  });
+
   it('shows the backend validation reason when team approval fails', async () => {
     const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
     mockSeasonTeamApi.apiUpdateSeasonTeamStatus.mockRejectedValueOnce({

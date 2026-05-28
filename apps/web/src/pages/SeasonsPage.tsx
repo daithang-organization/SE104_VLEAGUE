@@ -184,6 +184,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const candidatePromotedCount =
     candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PROMOTED').length ??
     0;
+  const currentInvitationTargets =
+    candidateResult?.candidates.filter((candidate) => {
+      const invitationStatus =
+        invitationsByTeamId.get(candidate.teamId)?.status ?? candidate.invitationStatus;
+      return invitationStatus !== 'ACCEPTED';
+    }) ?? [];
 
   const handleAdd = async () => {
     if (!selectedTeamId) return;
@@ -215,6 +221,37 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       await fetchTeams();
     } catch (_err) {
       message.error('Không thể gửi lời mời. Hãy kiểm tra CLB đã có tài khoản manager cố định.');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleSendCurrentInvitations = async () => {
+    if (currentInvitationTargets.length === 0) return;
+
+    setInviting(true);
+    try {
+      const targets = currentInvitationTargets;
+      const results = await Promise.allSettled(
+        targets.map((candidate) =>
+          apiSendTeamInvitation(seasonId, {
+            teamId: candidate.teamId,
+            sourceType: candidate.sourceType,
+          }),
+        ),
+      );
+      const sentCount = results.filter((result) => result.status === 'fulfilled').length;
+      const failedCount = targets.length - sentCount;
+
+      if (sentCount > 0) {
+        message.success(`Đã gửi lời mời đến ${sentCount}/${targets.length} đội hiện tại`);
+        await fetchTeams();
+      }
+      if (failedCount > 0) {
+        message.error(
+          `Có ${failedCount} đội chưa gửi được lời mời. Hãy kiểm tra tài khoản manager CLB.`,
+        );
+      }
     } finally {
       setInviting(false);
     }
@@ -544,6 +581,17 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             style={{ width: 140 }}
             options={INVITATION_SOURCE_OPTIONS}
           />
+          {candidateResult && (
+            <Button
+              size="small"
+              icon={<SendOutlined />}
+              disabled={currentInvitationTargets.length === 0}
+              loading={inviting}
+              onClick={handleSendCurrentInvitations}
+            >
+              Gửi {currentInvitationTargets.length} đội hiện tại
+            </Button>
+          )}
           <Select
             value={selectedTeamId}
             onChange={setSelectedTeamId}

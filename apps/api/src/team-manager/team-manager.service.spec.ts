@@ -46,6 +46,7 @@ describe('TeamManagerService application workflow', () => {
               upsert: jest.fn(),
             },
             user: { findUnique: jest.fn() },
+            team: { findUnique: jest.fn() },
             seasonTeam: {
               findUnique: jest.fn(),
               update: jest.fn(),
@@ -90,6 +91,25 @@ describe('TeamManagerService application workflow', () => {
         where: { seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' } },
       }),
     );
+  });
+
+  it('loads the fixed managed club without requiring a season', async () => {
+    jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+      id: 'team-1',
+      name: 'Hà Nội FC',
+      shortName: 'HN',
+      status: 'ACTIVE',
+    } as any);
+
+    const result = await service.getManagedTeam('manager-1');
+
+    expect(result?.id).toBe('team-1');
+    expect(prisma.team.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'team-1' },
+      }),
+    );
+    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
   });
 
   it('submits application information for the assigned team', async () => {
