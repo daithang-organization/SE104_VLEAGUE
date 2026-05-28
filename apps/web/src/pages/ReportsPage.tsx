@@ -9,7 +9,7 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { Alert, Button, Card, message, Space, Tabs } from 'antd';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TableSkeleton } from '../components';
 import { PageHero } from '../components/PageHero';
@@ -63,6 +63,11 @@ export default function ReportsPage() {
   const [seasonAwards, setSeasonAwards] = useState<SeasonAwards | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+
+  const reloadSeasonAwards = useCallback(async () => {
+    const awards = await apiGetSeasonAwards();
+    setSeasonAwards(awards);
+  }, []);
 
   useEffect(() => {
     Promise.allSettled([
@@ -272,7 +277,13 @@ export default function ReportsPage() {
               {
                 key: 'awards',
                 label: reportTabLabel(<TrophyOutlined />, t('reports.tabAwards')),
-                children: <SeasonAwardsTab awards={seasonAwards} loading={loading} />,
+                children: (
+                  <SeasonAwardsTab
+                    awards={seasonAwards}
+                    loading={loading}
+                    onAwardsChanged={reloadSeasonAwards}
+                  />
+                ),
               },
               {
                 key: 'charts',

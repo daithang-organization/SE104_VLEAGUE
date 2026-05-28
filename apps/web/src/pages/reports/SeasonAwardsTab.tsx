@@ -32,6 +32,7 @@ import {
 interface Props {
   awards: SeasonAwards | null;
   loading: boolean;
+  onAwardsChanged?: () => Promise<void> | void;
 }
 
 type AwardRow = {
@@ -41,7 +42,7 @@ type AwardRow = {
   detail: string;
 };
 
-export default function SeasonAwardsTab({ awards, loading }: Props) {
+export default function SeasonAwardsTab({ awards, loading, onAwardsChanged }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -98,6 +99,7 @@ export default function SeasonAwardsTab({ awards, loading }: Props) {
       const result = await apiConfirmDrawLot(drawLotStatus.seasonId, overrideArr);
       message.success(result.message);
       await fetchDrawLotStatus();
+      await onAwardsChanged?.();
     } catch (_) {
       message.error('Không thể xác nhận. Hãy kiểm tra thứ hạng không trùng.');
     } finally {
@@ -113,6 +115,7 @@ export default function SeasonAwardsTab({ awards, loading }: Props) {
       message.success(result.message);
       setOverrides(new Map());
       await fetchDrawLotStatus();
+      await onAwardsChanged?.();
     } catch (_) {
       message.error('Không thể xóa kết quả rút thăm.');
     } finally {

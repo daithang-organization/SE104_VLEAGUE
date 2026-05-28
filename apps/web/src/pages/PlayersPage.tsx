@@ -39,9 +39,8 @@ import {
   type CreatePlayerPayload,
   type Player,
 } from '../services/playerApi';
-import { apiGetSeasons } from '../services/seasonApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
-import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const POSITION_LABELS: Record<string, string> = {
@@ -95,26 +94,11 @@ export default function PlayersPage() {
     setManagerTeamLoaded(false);
     const loadManagerTeam = async () => {
       try {
-        const seasons = await apiGetSeasons();
-        // Use the same fallback logic as the Dashboard:
-        // 1. Season whose date range includes today
-        // 2. Season with status IN_PROGRESS
-        // 3. Most recent season by startDate
-        const now = Date.now();
-        const season =
-          seasons.find((s) => {
-            if (!s.startDate || !s.endDate) return false;
-            return now >= new Date(s.startDate).getTime() && now <= new Date(s.endDate).getTime();
-          }) ??
-          seasons.find((s) => s.status === 'IN_PROGRESS') ??
-          seasons
-            .filter((s) => s.startDate)
-            .sort(
-              (a, b) => new Date(b.startDate!).getTime() - new Date(a.startDate!).getTime(),
-            )[0] ??
-          null;
-        const assignment = season ? await apiGetTeamManagerAssignment(season.id) : null;
-        if (!cancelled) setManagerTeamId(assignment?.teamId ?? null);
+        const managedTeam = await apiGetTeamManagerManagedTeam();
+        if (!cancelled) {
+          setManagerTeamId(managedTeam?.id ?? null);
+          setTeams(managedTeam ? [managedTeam] : []);
+        }
       } catch (_err) {
         if (!cancelled) {
           setManagerTeamId(null);

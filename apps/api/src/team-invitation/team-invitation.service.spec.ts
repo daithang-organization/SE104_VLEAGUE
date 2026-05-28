@@ -81,6 +81,7 @@ describe('TeamInvitationService', () => {
             },
             regulation: { findMany: jest.fn() },
             teamInvitation: {
+              count: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
               upsert: jest.fn(),
@@ -88,6 +89,7 @@ describe('TeamInvitationService', () => {
               updateMany: jest.fn(),
             },
             seasonTeam: {
+              count: jest.fn(),
               findMany: jest.fn(),
               upsert: jest.fn(),
               updateMany: jest.fn(),
@@ -426,6 +428,57 @@ describe('TeamInvitationService', () => {
           },
         }),
       );
+    });
+  });
+
+  describe('getReplacementCandidates', () => {
+    it('counts distinct accepted and approved teams when calculating replacement slots', async () => {
+      jest.spyOn(prisma.teamInvitation, 'count').mockResolvedValue(8);
+      jest.spyOn(prisma.seasonTeam, 'count').mockResolvedValue(8);
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.status === 'ACCEPTED') {
+            return Promise.resolve(
+              Array.from({ length: 8 }, (_, index) => ({
+                teamId: `team-${index + 1}`,
+              })),
+            ) as any;
+          }
+
+          if (args.where?.status?.in) {
+            return Promise.resolve([]) as any;
+          }
+
+          return Promise.resolve(
+            Array.from({ length: 8 }, (_, index) => ({
+              teamId: `team-${index + 1}`,
+            })),
+          ) as any;
+        });
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.status === 'APPROVED') {
+            return Promise.resolve(
+              Array.from({ length: 8 }, (_, index) => ({
+                teamId: `team-${index + 3}`,
+              })),
+            ) as any;
+          }
+
+          return Promise.resolve(
+            Array.from({ length: 8 }, (_, index) => ({
+              teamId: `team-${index + 3}`,
+            })),
+          ) as any;
+        });
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([] as any);
+
+      const result = await service.getReplacementCandidates('season-1');
+
+      expect(result.filledSlots).toBe(10);
+      expect(result.slotsNeeded).toBe(0);
     });
   });
 

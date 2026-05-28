@@ -238,14 +238,22 @@ export class TeamInvitationService {
 
     const TOTAL_REQUIRED = 10;
 
-    // Count teams that are already accepted/approved
-    const acceptedInvitations = await this.prisma.teamInvitation.count({
-      where: { seasonId, status: TeamInvitationStatus.ACCEPTED },
-    });
-    const approvedTeams = await this.prisma.seasonTeam.count({
-      where: { seasonId, status: SeasonTeamStatus.APPROVED },
-    });
-    const filledSlots = Math.max(acceptedInvitations, approvedTeams);
+    // Count distinct teams that are already accepted and/or approved.
+    const [acceptedInvitations, approvedTeams] = await Promise.all([
+      this.prisma.teamInvitation.findMany({
+        where: { seasonId, status: TeamInvitationStatus.ACCEPTED },
+        select: { teamId: true },
+      }),
+      this.prisma.seasonTeam.findMany({
+        where: { seasonId, status: SeasonTeamStatus.APPROVED },
+        select: { teamId: true },
+      }),
+    ]);
+    const filledTeamIds = new Set([
+      ...acceptedInvitations.map((invitation) => invitation.teamId),
+      ...approvedTeams.map((seasonTeam) => seasonTeam.teamId),
+    ]);
+    const filledSlots = filledTeamIds.size;
     const slotsNeeded = Math.max(0, TOTAL_REQUIRED - filledSlots);
 
     // Teams that declined or expired

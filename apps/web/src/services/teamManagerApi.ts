@@ -37,6 +37,10 @@ export function apiGetTeamManagerAssignment(seasonId: string) {
     .then((res) => res.data);
 }
 
+export function apiGetTeamManagerManagedTeam() {
+  return api.get<Team | null>('/team-manager/managed-team').then((res) => res.data);
+}
+
 export function apiCreateTeamManagerAssignment(seasonId: string, teamId: string) {
   return api
     .post<TeamManagerAssignment>('/team-manager/assignment', { seasonId, teamId })

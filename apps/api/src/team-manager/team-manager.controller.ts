@@ -23,6 +23,15 @@ import { TeamManagerService } from './team-manager.service';
 export class TeamManagerController {
   constructor(private readonly teamManagerService: TeamManagerService) {}
 
+  @Get('managed-team')
+  @ApiOperation({ summary: 'Lấy CLB cố định của team manager' })
+  @ApiOkResponse({
+    description: 'CLB được admin gắn cho manager hoặc null nếu chưa có',
+  })
+  getManagedTeam(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.getManagedTeam(user.id);
+  }
+
   @Get('assignment')
   @ApiOperation({ summary: 'Lấy CLB cố định của team manager trong mùa giải' })
   @ApiQuery({ name: 'seasonId', type: 'string', required: true })

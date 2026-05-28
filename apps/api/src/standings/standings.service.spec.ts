@@ -292,6 +292,50 @@ describe('StandingsService', () => {
       expect(result[0].requiresDrawLot).toBe(true);
       expect(result[1].requiresDrawLot).toBe(true);
     });
+
+    it('ignores stale confirmed draw-lot results when teams no longer require draw lot', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-b',
+          homeScore: 3,
+          awayScore: 0,
+          roundNo: 1,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(matches as any);
+      jest.spyOn(prisma.drawLotResult, 'findMany').mockResolvedValue([
+        {
+          id: 'draw-1',
+          seasonId: 'season-1',
+          teamId: 'team-b',
+          resolvedRank: 1,
+          confirmed: true,
+        },
+        {
+          id: 'draw-2',
+          seasonId: 'season-1',
+          teamId: 'team-a',
+          resolvedRank: 2,
+          confirmed: true,
+        },
+      ] as any);
+
+      const result = await service.getStandings('season-1', 'final');
+
+      expect(result[0].teamId).toBe('team-a');
+      expect(result[0].position).toBe(1);
+      expect(result[1].teamId).toBe('team-b');
+      expect(result[1].position).toBe(2);
+    });
   });
 
   describe('getTopScorers', () => {
@@ -448,6 +492,43 @@ describe('StandingsService', () => {
       expect(result.topScorer?.playerId).toBe('player-1');
       expect(result.bestPlayer?.playerId).toBe('player-1');
       expect(result.requiresDrawLot).toBe(false);
+    });
+  });
+
+  describe('confirmDrawLot', () => {
+    it('rejects overrides that do not cover every team in the current tie group', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-b',
+          homeScore: 1,
+          awayScore: 0,
+          roundNo: 1,
+        },
+        {
+          homeTeamId: 'team-b',
+          awayTeamId: 'team-a',
+          homeScore: 1,
+          awayScore: 0,
+          roundNo: 2,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue(matches as any);
+
+      await expect(
+        service.confirmDrawLot('season-1', [
+          { teamId: 'team-a', resolvedRank: 1 },
+        ]),
+      ).rejects.toThrow('Kết quả rút thăm phải bao gồm đầy đủ các đội');
+      expect(prisma.drawLotResult.upsert).not.toHaveBeenCalled();
     });
   });
 });

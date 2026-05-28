@@ -47,6 +47,27 @@ export class TeamManagerService {
     return this.upsertSeasonAssignment(user.id, seasonId, user.managedTeamId);
   }
 
+  async getManagedTeam(userId: string) {
+    const user = await this.getTeamManagerUser(userId);
+    if (!user.managedTeamId) return null;
+
+    return this.prisma.team.findUnique({
+      where: { id: user.managedTeamId },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        logoUrl: true,
+        city: true,
+        status: true,
+        stadiumId: true,
+        createdAt: true,
+        updatedAt: true,
+        stadium: { select: { id: true, name: true, city: true } },
+      },
+    });
+  }
+
   async getApplication(userId: string, seasonId: string) {
     const assignment = await this.getAssignment(userId, seasonId);
     if (!assignment) return null;
