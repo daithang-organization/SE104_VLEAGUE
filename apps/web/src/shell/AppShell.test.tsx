@@ -50,7 +50,7 @@ describe('AppShell', () => {
     expect(screen.getByAltText('VLeague Logo')).toHaveClass('sidebar-brand-logo');
     expect(container.querySelector('.sidebar-menu')).toBeInTheDocument();
     expect(container.querySelectorAll('.sidebar-menu-icon').length).toBeGreaterThan(0);
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Trang chủ')).toBeInTheDocument();
     expect(screen.getByText('Đội bóng')).toBeInTheDocument();
   });
 });
