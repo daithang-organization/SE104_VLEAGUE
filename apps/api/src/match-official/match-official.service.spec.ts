@@ -39,6 +39,7 @@ describe('MatchOfficialService', () => {
             },
             matchOfficialAssignment: {
               findMany: jest.fn(),
+              findFirst: jest.fn(),
               count: jest.fn(),
               upsert: jest.fn(),
             },
@@ -63,6 +64,12 @@ describe('MatchOfficialService', () => {
     jest
       .spyOn(prisma.official, 'findUnique')
       .mockResolvedValue(official as any);
+    jest.spyOn(prisma.matchOfficialAssignment, 'findFirst').mockResolvedValue({
+      id: 'assignment-1',
+      matchId: 'match-1',
+      officialId: 'official-1',
+      role: 'MAIN_REFEREE',
+    } as any);
   });
 
   afterEach(() => {
@@ -167,22 +174,31 @@ describe('MatchOfficialService', () => {
       bestPlayerId: 'player-1',
     } as any);
 
-    const result = await service.submitMatchReport('match-1', 'user-referee', {
-      homeScore: 2,
-      awayScore: 1,
-      bestPlayerId: 'player-1',
-      technicalStats: { shots: { home: 8, away: 5 } },
-      note: 'Trận đấu hợp lệ',
-      events: [
-        { minute: 12, type: 'GOAL', teamId: 'team-home', playerId: 'player-1' },
-        {
-          minute: 88,
-          type: 'YELLOW_CARD',
-          teamId: 'team-away',
-          playerId: 'player-9',
-        },
-      ],
-    });
+    const result = await service.submitMatchReport(
+      'match-1',
+      { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+      {
+        homeScore: 2,
+        awayScore: 1,
+        bestPlayerId: 'player-1',
+        technicalStats: { shots: { home: 8, away: 5 } },
+        note: 'Trận đấu hợp lệ',
+        events: [
+          {
+            minute: 12,
+            type: 'GOAL',
+            teamId: 'team-home',
+            playerId: 'player-1',
+          },
+          {
+            minute: 88,
+            type: 'YELLOW_CARD',
+            teamId: 'team-away',
+            playerId: 'player-9',
+          },
+        ],
+      },
+    );
 
     expect(result.bestPlayerId).toBe('player-1');
     expect(prisma.match.update).toHaveBeenCalledWith({
@@ -234,15 +250,23 @@ describe('MatchOfficialService', () => {
       sentToDisciplinaryAt: new Date('2026-05-27T10:00:00.000Z'),
     } as any);
 
-    const result = await service.submitDisciplineReport('match-1', {
-      supervisorId: 'official-1',
-      organizationRating: 'GOOD',
-      refereeIssues: 'Không có',
-      playerIssues: 'Một cầu thủ phản ứng trọng tài',
-      organizerIssues: 'Không có',
-      notes: 'Gửi BTC kỷ luật theo dõi',
-      sendToDisciplinary: true,
-    });
+    const result = await service.submitDisciplineReport(
+      'match-1',
+      {
+        id: 'user-supervisor',
+        email: 'referee@demo.local',
+        role: 'SUPERVISOR',
+      },
+      {
+        supervisorId: 'official-1',
+        organizationRating: 'GOOD',
+        refereeIssues: 'Không có',
+        playerIssues: 'Một cầu thủ phản ứng trọng tài',
+        organizerIssues: 'Không có',
+        notes: 'Gửi BTC kỷ luật theo dõi',
+        sendToDisciplinary: true,
+      },
+    );
 
     expect(result.id).toBe('discipline-1');
     expect(prisma.disciplineReport.upsert).toHaveBeenCalledWith(

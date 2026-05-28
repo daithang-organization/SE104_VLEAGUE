@@ -84,16 +84,23 @@ function DashboardCardTitle({ icon, children }: { icon: ReactNode; children: Rea
 }
 
 function getDashboardSeason(seasons: Season[]) {
+  const sortedSeasons = [...seasons].sort((a, b) => {
+    const brandedDelta =
+      Number(b.name.startsWith('V.League')) - Number(a.name.startsWith('V.League'));
+    if (brandedDelta !== 0) return brandedDelta;
+    return b.year - a.year;
+  });
+
   return (
-    seasons.find((season) => {
+    sortedSeasons.find((season) => {
       if (!season.startDate || !season.endDate) return false;
       const start = dayjs(season.startDate).startOf('day').valueOf();
       const end = dayjs(season.endDate).endOf('day').valueOf();
       const now = dayjs().valueOf();
       return now >= start && now <= end;
     }) ??
-    seasons.find((season) => season.status === 'IN_PROGRESS') ??
-    seasons
+    sortedSeasons.find((season) => season.status === 'IN_PROGRESS') ??
+    sortedSeasons
       .filter((season) => season.startDate)
       .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
     null
@@ -725,8 +732,10 @@ export default function DashboardPage() {
   const isAdmin = user?.role === 'ADMIN';
   const dashboardWelcome =
     user?.role === 'REFEREE'
-      ? 'Chào mừng đến trang quản lý chính thức của VLeague dành cho trọng tài'
-      : t('dashboard.welcome');
+      ? t('dashboard.refereeWelcome')
+      : user?.role === 'SUPERVISOR'
+        ? t('dashboard.supervisorWelcome')
+        : t('dashboard.welcome');
   const [stats, setStats] = useState({
     teams: 0,
     players: 0,
@@ -878,7 +887,7 @@ export default function DashboardPage() {
             .sort(([a], [b]) => a - b)
             .slice(0, 15)
             .map(([round, goals]) => ({
-              round: `V${round}`,
+              round: t('dashboard.roundShort', { round }),
               goals,
             }));
           setGoalsPerRound(chartData);
@@ -917,7 +926,7 @@ export default function DashboardPage() {
     { title: t('dashboard.standingsColPlayed'), dataIndex: 'played', width: 60 },
     { title: t('dashboard.standingsColPoints'), dataIndex: 'points', width: 60 },
     {
-      title: '5 trận gần nhất',
+      title: t('dashboard.standingsColLast5'),
       dataIndex: 'recentForm',
       width: 140,
       align: 'center',
@@ -930,7 +939,7 @@ export default function DashboardPage() {
       title: t('dashboard.upcomingColRound'),
       dataIndex: 'roundNo',
       width: 70,
-      render: (v: number) => `V${v}`,
+      render: (v: number) => t('dashboard.roundShort', { round: v }),
     },
     {
       title: t('dashboard.upcomingColMatch'),
@@ -976,7 +985,7 @@ export default function DashboardPage() {
       title: t('dashboard.recentColRound'),
       dataIndex: 'roundNo',
       width: 50,
-      render: (v: number) => `V${v}`,
+      render: (v: number) => t('dashboard.roundShort', { round: v }),
     },
     {
       title: t('dashboard.recentColMatch'),

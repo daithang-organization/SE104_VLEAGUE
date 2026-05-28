@@ -88,7 +88,7 @@ export class MatchOfficialController {
     @CurrentUser() user: CurrentUserPayload | undefined,
     @Body() dto: SubmitMatchReportDto,
   ) {
-    return this.matchOfficialService.submitMatchReport(matchId, user?.id, dto);
+    return this.matchOfficialService.submitMatchReport(matchId, user, dto);
   }
 
   @Get('matches/:matchId/discipline-report')
@@ -107,8 +107,9 @@ export class MatchOfficialController {
   @ApiParam({ name: 'matchId', type: 'string', format: 'uuid' })
   submitDisciplineReport(
     @Param('matchId') matchId: string,
+    @CurrentUser() user: CurrentUserPayload | undefined,
     @Body() dto: SubmitDisciplineReportDto,
   ) {
-    return this.matchOfficialService.submitDisciplineReport(matchId, dto);
+    return this.matchOfficialService.submitDisciplineReport(matchId, user, dto);
   }
 }

@@ -12,11 +12,11 @@ async function main() {
 
   // 1. Find the season we want to keep
   const keepSeason = await prisma.season.findUnique({
-    where: { name: 'V.League 2024-25' },
+    where: { name: 'V.League 2024-2025' },
   });
 
   if (!keepSeason) {
-    console.error('❌ Could not find "V.League 2024-25" season to keep.');
+    console.error('❌ Could not find "V.League 2024-2025" season to keep.');
     return;
   }
 
@@ -31,13 +31,13 @@ async function main() {
 
   console.log(`✅ Deleted ${deleted.count} other seasons.`);
 
-  // 3. Ensure "V.League 2024-25" is IN_PROGRESS
+  // 3. Ensure "V.League 2024-2025" is IN_PROGRESS
   await prisma.season.update({
     where: { id: keepSeason.id },
     data: { status: 'IN_PROGRESS' },
   });
 
-  console.log('✅ Set "V.League 2024-25" to IN_PROGRESS.');
+  console.log('✅ Set "V.League 2024-2025" to IN_PROGRESS.');
 
   await prisma.$disconnect();
   await pool.end();

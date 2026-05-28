@@ -390,7 +390,10 @@ export default function SchedulePage() {
                     {activeRound
                       ? `${t('schedule.roundMatches', { count: activeRoundMatches.length })}${
                           activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                        } · ${activeRoundFinishedCount}/${activeRoundMatches.length} xong`
+                        } · ${t('schedule.roundProgress', {
+                          finished: activeRoundFinishedCount,
+                          total: activeRoundMatches.length,
+                        })}`
                       : ''}
                   </Typography.Text>
                 </div>

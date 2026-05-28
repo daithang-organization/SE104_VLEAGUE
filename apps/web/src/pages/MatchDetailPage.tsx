@@ -72,29 +72,6 @@ import ScoreModal from './match-detail/ScoreModal';
 
 const { Title, Text } = Typography;
 
-const LINEUP_STATUS_MAP: Record<MatchLineupStatus, { color: string; label: string }> = {
-  SUBMITTED: { color: 'processing', label: 'Đã nộp' },
-  APPROVED: { color: 'success', label: 'Đã duyệt' },
-  REJECTED: { color: 'error', label: 'Từ chối' },
-};
-
-const KIT_TYPE_LABEL: Record<MatchKitType, string> = {
-  PRIMARY: 'Áo chính thức',
-  BACKUP: 'Áo dự bị',
-};
-
-const SUSPENSION_REASON_LABEL: Record<string, string> = {
-  RED_CARD: 'Thẻ đỏ',
-  ACCUMULATED_YELLOW_CARDS: 'Đủ 2 thẻ vàng',
-};
-
-const OFFICIAL_ROLE_LABEL: Record<MatchOfficialRole, string> = {
-  MAIN_REFEREE: 'Trọng tài chính',
-  ASSISTANT_REFEREE: 'Trợ lý trọng tài',
-  FOURTH_OFFICIAL: 'Trọng tài bàn',
-  SUPERVISOR: 'Giám sát viên',
-};
-
 const FORMATION_OPTIONS = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2'];
 
 function isForeignNationality(nationality?: string | null) {
@@ -114,6 +91,25 @@ export default function MatchDetailPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const lineupStatusMap: Record<MatchLineupStatus, { color: string; label: string }> = {
+    SUBMITTED: { color: 'processing', label: t('matchDetail.lineupStatusSubmitted') },
+    APPROVED: { color: 'success', label: t('matchDetail.lineupStatusApproved') },
+    REJECTED: { color: 'error', label: t('matchDetail.lineupStatusRejected') },
+  };
+  const kitTypeLabel: Record<MatchKitType, string> = {
+    PRIMARY: t('matchDetail.kitPrimary'),
+    BACKUP: t('matchDetail.kitBackup'),
+  };
+  const suspensionReasonLabel: Record<string, string> = {
+    RED_CARD: t('matchDetail.suspensionRedCard'),
+    ACCUMULATED_YELLOW_CARDS: t('matchDetail.suspensionAccumulatedYellows'),
+  };
+  const officialRoleLabel: Record<MatchOfficialRole, string> = {
+    MAIN_REFEREE: t('matchDetail.officialRoleMainReferee'),
+    ASSISTANT_REFEREE: t('matchDetail.officialRoleAssistantReferee'),
+    FOURTH_OFFICIAL: t('matchDetail.officialRoleFourthOfficial'),
+    SUPERVISOR: t('matchDetail.officialRoleSupervisor'),
+  };
 
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,36 +211,40 @@ export default function MatchDetailPage() {
     [t],
   );
 
-  const loadOfficialData = useCallback(async (matchId: string) => {
-    setOfficialLoading(true);
-    try {
-      const [nextOfficials, nextAssignments, nextReport, nextDisciplineReport] = await Promise.all([
-        apiGetOfficials(),
-        apiGetMatchOfficials(matchId),
-        apiGetMatchReport(matchId),
-        apiGetDisciplineReport(matchId),
-      ]);
-      setOfficials(nextOfficials ?? []);
-      setOfficialAssignments(nextAssignments ?? []);
-      setMatchReport(nextReport ?? null);
-      setDisciplineReport(nextDisciplineReport ?? null);
-      setSelectedOfficialId((current) => current ?? nextOfficials?.[0]?.id);
-      const supervisorAssignment = nextAssignments?.find(
-        (assignment) => assignment.role === 'SUPERVISOR',
-      );
-      setDisciplineSupervisorId(
-        (current) => current ?? supervisorAssignment?.officialId ?? nextOfficials?.[0]?.id,
-      );
-    } catch (_err) {
-      setOfficials([]);
-      setOfficialAssignments([]);
-      setMatchReport(null);
-      setDisciplineReport(null);
-      message.error('Không thể tải dữ liệu trọng tài và báo cáo trận đấu.');
-    } finally {
-      setOfficialLoading(false);
-    }
-  }, []);
+  const loadOfficialData = useCallback(
+    async (matchId: string) => {
+      setOfficialLoading(true);
+      try {
+        const [nextOfficials, nextAssignments, nextReport, nextDisciplineReport] =
+          await Promise.all([
+            apiGetOfficials(),
+            apiGetMatchOfficials(matchId),
+            apiGetMatchReport(matchId),
+            apiGetDisciplineReport(matchId),
+          ]);
+        setOfficials(nextOfficials ?? []);
+        setOfficialAssignments(nextAssignments ?? []);
+        setMatchReport(nextReport ?? null);
+        setDisciplineReport(nextDisciplineReport ?? null);
+        setSelectedOfficialId((current) => current ?? nextOfficials?.[0]?.id);
+        const supervisorAssignment = nextAssignments?.find(
+          (assignment) => assignment.role === 'SUPERVISOR',
+        );
+        setDisciplineSupervisorId(
+          (current) => current ?? supervisorAssignment?.officialId ?? nextOfficials?.[0]?.id,
+        );
+      } catch (_err) {
+        setOfficials([]);
+        setOfficialAssignments([]);
+        setMatchReport(null);
+        setDisciplineReport(null);
+        message.error('Không thể tải dữ liệu trọng tài và báo cáo trận đấu.');
+      } finally {
+        setOfficialLoading(false);
+      }
+    },
+    [setDisciplineSupervisorId],
+  );
 
   const fetchMatch = useCallback(async () => {
     if (!id) return;
@@ -786,8 +786,10 @@ export default function MatchDetailPage() {
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {player.nationality ?? '—'}
               </Text>
-              {isForeignNationality(player.nationality) && <Tag color="purple">Ngoại binh</Tag>}
-              {isSuspended && <Tag color="red">Treo giò</Tag>}
+              {isForeignNationality(player.nationality) && (
+                <Tag color="purple">{t('matchDetail.foreignPlayerTag')}</Tag>
+              )}
+              {isSuspended && <Tag color="red">{t('matchDetail.suspendedTag')}</Tag>}
             </Space>
           </Space>
         );
@@ -804,7 +806,7 @@ export default function MatchDetailPage() {
       },
     },
     {
-      title: 'Vai trò',
+      title: t('matchDetail.colRole'),
       key: 'lineupRole',
       width: 170,
       render: (_: unknown, player: RosterPlayer) => {
@@ -818,9 +820,9 @@ export default function MatchDetailPage() {
               handleLineupRoleChange(player.playerId, value as MatchLineupRole | 'NONE')
             }
             options={[
-              { value: 'NONE', label: 'Không chọn' },
-              { value: 'STARTER', label: 'Chính thức' },
-              { value: 'SUBSTITUTE', label: 'Dự bị' },
+              { value: 'NONE', label: t('matchDetail.lineupRoleNone') },
+              { value: 'STARTER', label: t('matchDetail.lineupRoleStarter') },
+              { value: 'SUBSTITUTE', label: t('matchDetail.lineupRoleSubstitute') },
             ]}
           />
         );
@@ -830,58 +832,60 @@ export default function MatchDetailPage() {
 
   const suspensionColumns = [
     {
-      title: 'Cầu thủ',
+      title: t('matchDetail.colPlayer'),
       key: 'player',
       render: (_: unknown, suspension: MatchSuspension) =>
         suspension.player?.fullName ?? suspension.playerId,
     },
     {
-      title: 'Đội',
+      title: t('matchDetail.colTeam'),
       key: 'team',
       render: (_: unknown, suspension: MatchSuspension) =>
         suspension.team?.name ?? suspension.teamId,
     },
     {
-      title: 'Lý do',
+      title: t('matchDetail.colReason'),
       dataIndex: 'reason',
       key: 'reason',
       render: (reason: string) => (
         <Tag color={reason === 'RED_CARD' ? 'red' : 'gold'}>
-          {SUSPENSION_REASON_LABEL[reason] ?? reason}
+          {suspensionReasonLabel[reason] ?? reason}
         </Tag>
       ),
     },
     {
-      title: 'Từ trận',
+      title: t('matchDetail.colSourceMatch'),
       key: 'sourceMatch',
       width: 120,
       render: (_: unknown, suspension: MatchSuspension) =>
-        suspension.sourceMatch ? `Vòng ${suspension.sourceMatch.roundNo}` : '—',
+        suspension.sourceMatch ? `${t('common.round')} ${suspension.sourceMatch.roundNo}` : '—',
     },
   ];
 
   const submittedLineupColumns = [
     {
-      title: 'Số áo',
+      title: t('matchDetail.colJersey'),
       dataIndex: 'shirtNumber',
       key: 'shirtNumber',
       width: 72,
       render: (value: number | null) => value ?? '—',
     },
     {
-      title: 'Cầu thủ',
+      title: t('matchDetail.colPlayer'),
       key: 'player',
       render: (_: unknown, player: NonNullable<MatchTeamLineup['lineupPlayers']>[number]) =>
         player.player?.fullName ?? player.playerId,
     },
     {
-      title: 'Vai trò',
+      title: t('matchDetail.colRole'),
       dataIndex: 'role',
       key: 'role',
       width: 110,
       render: (role: MatchLineupRole) => (
         <Tag color={role === 'STARTER' ? 'green' : 'blue'}>
-          {role === 'STARTER' ? 'Chính thức' : 'Dự bị'}
+          {role === 'STARTER'
+            ? t('matchDetail.lineupRoleStarter')
+            : t('matchDetail.lineupRoleSubstitute')}
         </Tag>
       ),
     },
@@ -889,24 +893,24 @@ export default function MatchDetailPage() {
 
   const officialAssignmentColumns = [
     {
-      title: 'Vai trò',
+      title: t('matchDetail.colRole'),
       dataIndex: 'role',
       key: 'role',
       width: 160,
       render: (role: MatchOfficialRole) => (
         <Tag color={role === 'SUPERVISOR' ? 'purple' : 'blue'}>
-          {OFFICIAL_ROLE_LABEL[role] ?? role}
+          {officialRoleLabel[role] ?? role}
         </Tag>
       ),
     },
     {
-      title: 'Họ tên',
+      title: t('matchDetail.colFullName'),
       key: 'official',
       render: (_: unknown, assignment: MatchOfficialAssignment) =>
         assignment.official?.fullName ?? assignment.officialId,
     },
     {
-      title: 'Ghi chú',
+      title: t('matchDetail.colNote'),
       dataIndex: 'note',
       key: 'note',
       render: (note: string | null) => note || '—',
@@ -1180,13 +1184,13 @@ export default function MatchDetailPage() {
           },
           {
             key: 'officials',
-            label: '🧑‍⚖️ Trọng tài & báo cáo',
+            label: t('matchDetail.tabOfficials'),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={14}>
                     <Card
-                      title="Danh sách trọng tài/giám sát"
+                      title={t('matchDetail.officialAssignmentsTitle')}
                       size="small"
                       loading={officialLoading}
                     >
@@ -1196,17 +1200,21 @@ export default function MatchDetailPage() {
                         rowKey="id"
                         pagination={false}
                         size="small"
-                        locale={{ emptyText: 'Chưa phân công trọng tài/giám sát viên.' }}
+                        locale={{ emptyText: t('matchDetail.officialAssignmentsEmpty') }}
                       />
                     </Card>
                   </Col>
                   <Col xs={24} lg={10}>
-                    <Card title="Phân công trước trận" size="small" loading={officialLoading}>
+                    <Card
+                      title={t('matchDetail.assignOfficialsTitle')}
+                      size="small"
+                      loading={officialLoading}
+                    >
                       {canAssignOfficials ? (
                         <Space direction="vertical" size={10} style={{ width: '100%' }}>
                           <Select
                             value={selectedOfficialId}
-                            placeholder="Chọn trọng tài/giám sát viên"
+                            placeholder={t('matchDetail.officialSelectPlaceholder')}
                             style={{ width: '100%' }}
                             onChange={setSelectedOfficialId}
                             options={officials.map((official) => ({
@@ -1220,16 +1228,16 @@ export default function MatchDetailPage() {
                             onChange={(value) =>
                               setSelectedOfficialRole(value as MatchOfficialRole)
                             }
-                            options={(Object.keys(OFFICIAL_ROLE_LABEL) as MatchOfficialRole[]).map(
+                            options={(Object.keys(officialRoleLabel) as MatchOfficialRole[]).map(
                               (role) => ({
                                 value: role,
-                                label: OFFICIAL_ROLE_LABEL[role],
+                                label: officialRoleLabel[role],
                               }),
                             )}
                           />
                           <Input
                             value={officialNote}
-                            placeholder="Ghi chú phân công"
+                            placeholder={t('matchDetail.officialNotePlaceholder')}
                             onChange={(event) => setOfficialNote(event.target.value)}
                           />
                           <Button
@@ -1239,13 +1247,11 @@ export default function MatchDetailPage() {
                             disabled={!selectedOfficialId}
                             onClick={handleAssignOfficial}
                           >
-                            Công bố phân công
+                            {t('matchDetail.publishAssignmentBtn')}
                           </Button>
                         </Space>
                       ) : (
-                        <Text type="secondary">
-                          Chỉ BTC có quyền phân công trọng tài/giám sát viên.
-                        </Text>
+                        <Text type="secondary">{t('matchDetail.assignOfficialsReadonly')}</Text>
                       )}
                     </Card>
                   </Col>
@@ -1253,20 +1259,27 @@ export default function MatchDetailPage() {
 
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={12}>
-                    <Card title="Báo cáo trọng tài" size="small" loading={officialLoading}>
+                    <Card
+                      title={t('matchDetail.refereeReportTitle')}
+                      size="small"
+                      loading={officialLoading}
+                    >
                       {matchReport && (
                         <Alert
                           style={{ marginBottom: 12 }}
                           type="success"
                           showIcon
-                          message={`Tỷ số đã báo cáo: ${matchReport.homeScore} - ${matchReport.awayScore}`}
+                          message={t('matchDetail.reportedScore', {
+                            home: matchReport.homeScore,
+                            away: matchReport.awayScore,
+                          })}
                           description={
                             <Space direction="vertical" size={2}>
-                              <Text>Cầu thủ xuất sắc</Text>
+                              <Text>{t('matchDetail.bestPlayer')}</Text>
                               <Text strong>
                                 {matchReport.bestPlayer?.fullName ??
                                   matchReport.bestPlayerId ??
-                                  'Chưa chọn'}
+                                  t('matchDetail.notSelected')}
                               </Text>
                               {matchReport.note && <Text>{matchReport.note}</Text>}
                             </Space>
@@ -1277,7 +1290,9 @@ export default function MatchDetailPage() {
                         <Space direction="vertical" size={10} style={{ width: '100%' }}>
                           <Row gutter={8}>
                             <Col span={12}>
-                              <Text strong>{match.homeTeam?.name ?? 'Đội nhà'}</Text>
+                              <Text strong>
+                                {match.homeTeam?.name ?? t('scoreModal.homeDefault')}
+                              </Text>
                               <InputNumber
                                 min={0}
                                 value={reportHomeScore}
@@ -1286,7 +1301,9 @@ export default function MatchDetailPage() {
                               />
                             </Col>
                             <Col span={12}>
-                              <Text strong>{match.awayTeam?.name ?? 'Đội khách'}</Text>
+                              <Text strong>
+                                {match.awayTeam?.name ?? t('scoreModal.awayDefault')}
+                              </Text>
                               <InputNumber
                                 min={0}
                                 value={reportAwayScore}
@@ -1299,7 +1316,7 @@ export default function MatchDetailPage() {
                             allowClear
                             showSearch
                             value={reportBestPlayerId}
-                            placeholder="Cầu thủ xuất sắc nhất trận"
+                            placeholder={t('matchDetail.bestPlayerPlaceholder')}
                             optionFilterProp="label"
                             style={{ width: '100%' }}
                             onChange={setReportBestPlayerId}
@@ -1308,13 +1325,13 @@ export default function MatchDetailPage() {
                           <Input.TextArea
                             rows={3}
                             value={technicalStatsText}
-                            placeholder='Thông số chuyên môn JSON, ví dụ {"shots":{"home":8,"away":5}}'
+                            placeholder={t('matchDetail.technicalStatsPlaceholder')}
                             onChange={(event) => setTechnicalStatsText(event.target.value)}
                           />
                           <Input.TextArea
                             rows={2}
                             value={reportNote}
-                            placeholder="Ghi chú báo cáo trọng tài"
+                            placeholder={t('matchDetail.refereeReportNotePlaceholder')}
                             onChange={(event) => setReportNote(event.target.value)}
                           />
                           <Button
@@ -1323,38 +1340,53 @@ export default function MatchDetailPage() {
                             loading={reportSubmitting}
                             onClick={handleSubmitMatchReport}
                           >
-                            Nộp báo cáo trọng tài
+                            {t('matchDetail.submitRefereeReportBtn')}
                           </Button>
                         </Space>
                       ) : (
-                        <Text type="secondary">Chỉ BTC hoặc trọng tài được nộp báo cáo.</Text>
+                        <Text type="secondary">{t('matchDetail.refereeReportReadonly')}</Text>
                       )}
                     </Card>
                   </Col>
 
                   <Col xs={24} lg={12}>
-                    <Card title="Báo cáo giám sát" size="small" loading={officialLoading}>
+                    <Card
+                      title={t('matchDetail.supervisorReportTitle')}
+                      size="small"
+                      loading={officialLoading}
+                    >
                       {disciplineReport && (
                         <Alert
                           style={{ marginBottom: 12 }}
                           type={disciplineReport.sentToDisciplinaryAt ? 'warning' : 'info'}
                           showIcon
-                          message={`Đánh giá tổ chức: ${disciplineReport.organizationRating}`}
+                          message={t('matchDetail.organizationRatingReported', {
+                            rating: disciplineReport.organizationRating,
+                          })}
                           description={
                             <Space direction="vertical" size={2}>
                               <Text>
-                                Giám sát:{' '}
+                                {t('matchDetail.supervisorLabel')}{' '}
                                 {disciplineReport.supervisor?.fullName ??
                                   disciplineReport.supervisorId}
                               </Text>
                               {disciplineReport.refereeIssues && (
-                                <Text>Sai sót trọng tài: {disciplineReport.refereeIssues}</Text>
+                                <Text>
+                                  {t('matchDetail.refereeIssuesLabel')}{' '}
+                                  {disciplineReport.refereeIssues}
+                                </Text>
                               )}
                               {disciplineReport.playerIssues && (
-                                <Text>Sai sót cầu thủ: {disciplineReport.playerIssues}</Text>
+                                <Text>
+                                  {t('matchDetail.playerIssuesLabel')}{' '}
+                                  {disciplineReport.playerIssues}
+                                </Text>
                               )}
                               {disciplineReport.organizerIssues && (
-                                <Text>Sai sót BTC sân: {disciplineReport.organizerIssues}</Text>
+                                <Text>
+                                  {t('matchDetail.organizerIssuesLabel')}{' '}
+                                  {disciplineReport.organizerIssues}
+                                </Text>
                               )}
                             </Space>
                           }
@@ -1364,7 +1396,7 @@ export default function MatchDetailPage() {
                         <Space direction="vertical" size={10} style={{ width: '100%' }}>
                           <Select
                             value={disciplineSupervisorId}
-                            placeholder="Chọn giám sát viên đã phân công"
+                            placeholder={t('matchDetail.supervisorSelectPlaceholder')}
                             style={{ width: '100%' }}
                             onChange={setDisciplineSupervisorId}
                             options={
@@ -1384,33 +1416,33 @@ export default function MatchDetailPage() {
                             style={{ width: '100%' }}
                             onChange={setDisciplineRating}
                             options={[
-                              { value: 'GOOD', label: 'Tốt' },
-                              { value: 'ACCEPTABLE', label: 'Đạt yêu cầu' },
-                              { value: 'ISSUES_FOUND', label: 'Có sai sót' },
+                              { value: 'GOOD', label: t('matchDetail.ratingGood') },
+                              { value: 'ACCEPTABLE', label: t('matchDetail.ratingAcceptable') },
+                              { value: 'ISSUES_FOUND', label: t('matchDetail.ratingIssuesFound') },
                             ]}
                           />
                           <Input.TextArea
                             rows={2}
                             value={refereeIssues}
-                            placeholder="Sai sót từ trọng tài nếu có"
+                            placeholder={t('matchDetail.refereeIssuesPlaceholder')}
                             onChange={(event) => setRefereeIssues(event.target.value)}
                           />
                           <Input.TextArea
                             rows={2}
                             value={playerIssues}
-                            placeholder="Sai sót từ cầu thủ nếu có"
+                            placeholder={t('matchDetail.playerIssuesPlaceholder')}
                             onChange={(event) => setPlayerIssues(event.target.value)}
                           />
                           <Input.TextArea
                             rows={2}
                             value={organizerIssues}
-                            placeholder="Sai sót từ BTC sân nếu có"
+                            placeholder={t('matchDetail.organizerIssuesPlaceholder')}
                             onChange={(event) => setOrganizerIssues(event.target.value)}
                           />
                           <Input.TextArea
                             rows={2}
                             value={disciplineNotes}
-                            placeholder="Ghi chú giám sát"
+                            placeholder={t('matchDetail.supervisorNotesPlaceholder')}
                             onChange={(event) => setDisciplineNotes(event.target.value)}
                           />
                           <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
@@ -1419,7 +1451,7 @@ export default function MatchDetailPage() {
                                 checked={sendToDisciplinary}
                                 onChange={setSendToDisciplinary}
                               />
-                              <Text>Chuyển BTC kỷ luật</Text>
+                              <Text>{t('matchDetail.sendToDiscipline')}</Text>
                             </Space>
                             <Button
                               type="primary"
@@ -1428,12 +1460,12 @@ export default function MatchDetailPage() {
                               disabled={!disciplineSupervisorId}
                               onClick={handleSubmitDisciplineReport}
                             >
-                              Nộp báo cáo giám sát
+                              {t('matchDetail.submitSupervisorReportBtn')}
                             </Button>
                           </Flex>
                         </Space>
                       ) : (
-                        <Text type="secondary">Chỉ BTC hoặc giám sát viên được nộp báo cáo.</Text>
+                        <Text type="secondary">{t('matchDetail.supervisorReportReadonly')}</Text>
                       )}
                     </Card>
                   </Col>
@@ -1454,7 +1486,7 @@ export default function MatchDetailPage() {
                       ) : (
                         <Space direction="vertical" size={12} style={{ width: '100%' }}>
                           {lineups.map((lineup) => {
-                            const statusMeta = LINEUP_STATUS_MAP[lineup.status] ?? {
+                            const statusMeta = lineupStatusMap[lineup.status] ?? {
                               color: 'default',
                               label: lineup.status,
                             };
@@ -1480,7 +1512,7 @@ export default function MatchDetailPage() {
                                   <Space wrap>
                                     <Text strong>{lineup.team?.name ?? lineup.teamId}</Text>
                                     <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
-                                    <Tag>{KIT_TYPE_LABEL[lineup.kitType]}</Tag>
+                                    <Tag>{kitTypeLabel[lineup.kitType]}</Tag>
                                     <Tag>{lineup.formation}</Tag>
                                   </Space>
                                   <Text type="secondary">
@@ -1592,8 +1624,8 @@ export default function MatchDetailPage() {
                           style={{ width: '100%', marginTop: 6 }}
                           onChange={setLineupKitType}
                           options={[
-                            { value: 'PRIMARY', label: KIT_TYPE_LABEL.PRIMARY },
-                            { value: 'BACKUP', label: KIT_TYPE_LABEL.BACKUP },
+                            { value: 'PRIMARY', label: kitTypeLabel.PRIMARY },
+                            { value: 'BACKUP', label: kitTypeLabel.BACKUP },
                           ]}
                         />
                       </Col>

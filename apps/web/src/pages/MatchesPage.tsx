@@ -556,9 +556,12 @@ export default function MatchesPage() {
                 </Typography.Title>
                 <Typography.Text type="secondary">
                   {activeRound
-                    ? `${activeRoundMatches.length} trận${
+                    ? `${t('matches.roundMatches', { count: activeRoundMatches.length })}${
                         activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                      } · ${activeRoundFinishedCount}/${activeRoundMatches.length} kết thúc`
+                      } · ${t('matches.roundProgress', {
+                        finished: activeRoundFinishedCount,
+                        total: activeRoundMatches.length,
+                      })}`
                     : ''}
                 </Typography.Text>
               </div>
