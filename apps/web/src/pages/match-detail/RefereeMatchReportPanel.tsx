@@ -17,18 +17,14 @@ import {
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
+  AddMatchEventPayload,
   Match,
   MatchEvent,
   MatchReport,
   RosterPlayer,
   SubmitMatchReportPayload,
 } from '../../services/matchApi';
-import {
-  SCORING_EVENT_TYPES,
-  calculateReportScore,
-  isScoringEventType,
-  type ScoringEventType,
-} from './refereeMatchReportScore';
+import { calculateReportScore, isScoringEventType } from './refereeMatchReportScore';
 
 const { Text } = Typography;
 
@@ -44,12 +40,26 @@ const visuallyHiddenStyle: CSSProperties = {
   width: 1,
 };
 
-type DraftGoalEvent = {
+const REPORT_EVENT_TYPES: AddMatchEventPayload['type'][] = [
+  'GOAL',
+  'OWN_GOAL',
+  'PENALTY',
+  'PENALTY_MISS',
+  'YELLOW_CARD',
+  'RED_CARD',
+  'SUBSTITUTION',
+];
+
+const GOAL_TYPES = ['NORMAL', 'HEADER', 'FREE_KICK', 'PENALTY_KICK', 'LONG_RANGE'];
+
+type DraftReportEvent = {
   key: string;
   minute: number;
-  type: ScoringEventType;
+  type: AddMatchEventPayload['type'];
   teamId?: string;
   playerId?: string;
+  relatedPlayerId?: string;
+  goalType?: string;
   note?: string;
 };
 
@@ -79,11 +89,26 @@ function formatTeamName(match: Match, teamId?: string | null) {
   return '—';
 }
 
-function formatEventLabel(match: Match, event: MatchEvent | DraftGoalEvent) {
+function eventUsesGoalType(type: AddMatchEventPayload['type']) {
+  return type === 'GOAL' || type === 'PENALTY';
+}
+
+function eventUsesRelatedPlayer(type: AddMatchEventPayload['type']) {
+  return type === 'GOAL' || type === 'PENALTY' || type === 'SUBSTITUTION';
+}
+
+function formatEventLabel(match: Match, event: MatchEvent | DraftReportEvent) {
   const teamName = formatTeamName(match, event.teamId);
   const playerId = 'playerId' in event ? event.playerId : undefined;
   const playerName = 'player' in event ? event.player?.fullName : undefined;
   return `${event.minute}' · ${teamName}${playerName || playerId ? ` · ${playerName ?? playerId}` : ''}`;
+}
+
+function buildPlayerOptions(roster: RosterPlayer[]) {
+  return roster.map((player) => ({
+    value: player.playerId,
+    label: `${player.fullName}${player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}`,
+  }));
 }
 
 export default function RefereeMatchReportPanel({
@@ -97,7 +122,7 @@ export default function RefereeMatchReportPanel({
   onSubmit,
 }: RefereeMatchReportPanelProps) {
   const { t } = useTranslation();
-  const [draftGoals, setDraftGoals] = useState<DraftGoalEvent[]>([]);
+  const [draftEvents, setDraftEvents] = useState<DraftReportEvent[]>([]);
   const [bestPlayerId, setBestPlayerId] = useState<string>();
   const [technicalStatsText, setTechnicalStatsText] = useState('');
   const [reportNote, setReportNote] = useState('');
@@ -108,7 +133,7 @@ export default function RefereeMatchReportPanel({
     setTechnicalStatsText(
       matchReport?.technicalStats ? JSON.stringify(matchReport.technicalStats, null, 2) : '',
     );
-    setDraftGoals([]);
+    setDraftEvents([]);
   }, [match.id, matchReport]);
 
   const teamOptions = useMemo(
@@ -120,21 +145,21 @@ export default function RefereeMatchReportPanel({
   );
 
   const playerOptions = useMemo(
-    () =>
-      [...homeRoster, ...awayRoster].map((player) => ({
-        value: player.playerId,
-        label: `${player.fullName}${player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}`,
-      })),
+    () => buildPlayerOptions([...homeRoster, ...awayRoster]),
     [awayRoster, homeRoster],
+  );
+
+  const savedEvents = useMemo(
+    () => (match.events ?? []).map((event) => ({ ...event, teamId: getEventTeamId(event) })),
+    [match.events],
   );
 
   const savedScoringEvents = useMemo(
     () =>
-      (match.events ?? [])
+      savedEvents
         .filter((event) => isScoringEventType(event.type))
-        .map((event) => ({ ...event, teamId: getEventTeamId(event) }))
         .filter((event): event is MatchEvent & { teamId: string } => Boolean(event.teamId)),
-    [match.events],
+    [savedEvents],
   );
 
   const reportScore = useMemo(
@@ -142,43 +167,49 @@ export default function RefereeMatchReportPanel({
       calculateReportScore(
         [
           ...savedScoringEvents.map((event) => ({ type: event.type, teamId: event.teamId })),
-          ...draftGoals.map((event) => ({ type: event.type, teamId: event.teamId })),
+          ...draftEvents
+            .filter((event) => isScoringEventType(event.type))
+            .map((event) => ({ type: event.type, teamId: event.teamId })),
         ],
         match,
       ),
-    [draftGoals, match, savedScoringEvents],
+    [draftEvents, match, savedScoringEvents],
   );
 
-  const addDraftGoal = () => {
-    setDraftGoals((current) => [
+  const addDraftEvent = () => {
+    setDraftEvents((current) => [
       ...current,
       {
-        key: `goal-${Date.now()}-${current.length}`,
+        key: `event-${Date.now()}-${current.length}`,
         minute: 0,
         type: 'GOAL',
       },
     ]);
   };
 
-  const updateDraftGoal = (key: string, patch: Partial<DraftGoalEvent>) => {
-    setDraftGoals((current) =>
-      current.map((event) =>
-        event.key === key
-          ? {
-              ...event,
-              ...patch,
-              playerId:
-                patch.teamId && patch.teamId !== event.teamId
-                  ? undefined
-                  : (patch.playerId ?? event.playerId),
-            }
-          : event,
-      ),
+  const updateDraftEvent = (key: string, patch: Partial<DraftReportEvent>) => {
+    setDraftEvents((current) =>
+      current.map((event) => {
+        if (event.key !== key) return event;
+
+        const nextType = patch.type ?? event.type;
+        const teamChanged = Boolean(patch.teamId && patch.teamId !== event.teamId);
+        return {
+          ...event,
+          ...patch,
+          playerId: teamChanged ? undefined : (patch.playerId ?? event.playerId),
+          relatedPlayerId:
+            teamChanged || !eventUsesRelatedPlayer(nextType)
+              ? undefined
+              : (patch.relatedPlayerId ?? event.relatedPlayerId),
+          goalType: eventUsesGoalType(nextType) ? (patch.goalType ?? event.goalType) : undefined,
+        };
+      }),
     );
   };
 
-  const removeDraftGoal = (key: string) => {
-    setDraftGoals((current) => current.filter((event) => event.key !== key));
+  const removeDraftEvent = (key: string) => {
+    setDraftEvents((current) => current.filter((event) => event.key !== key));
   };
 
   const rosterForTeam = (teamId?: string) => {
@@ -202,14 +233,22 @@ export default function RefereeMatchReportPanel({
     }
   };
 
-  const hasInvalidDraftGoal = draftGoals.some((event) => {
-    const needsPlayer = event.type !== 'OWN_GOAL' && rosterForTeam(event.teamId).length > 0;
-    return event.minute < 0 || !event.teamId || (needsPlayer && !event.playerId);
+  const hasInvalidDraftEvent = draftEvents.some((event) => {
+    const selectedRoster = rosterForTeam(event.teamId);
+    const needsRosterPlayer = selectedRoster.length > 0;
+    const needsRelatedPlayer = event.type === 'SUBSTITUTION' && selectedRoster.length > 0;
+    return (
+      event.minute < 0 ||
+      !event.type ||
+      !event.teamId ||
+      (needsRosterPlayer && !event.playerId) ||
+      (needsRelatedPlayer && !event.relatedPlayerId)
+    );
   });
 
   const handleSubmit = async () => {
-    if (hasInvalidDraftGoal) {
-      message.error(t('matchDetail.reportInvalidGoal'));
+    if (hasInvalidDraftEvent) {
+      message.error(t('matchDetail.reportInvalidEvent'));
       return;
     }
 
@@ -222,13 +261,24 @@ export default function RefereeMatchReportPanel({
       bestPlayerId,
       technicalStats,
       note: cleanOptional(reportNote),
-      events: draftGoals.map((event) => ({
-        minute: event.minute,
-        type: event.type,
-        teamId: event.teamId as string,
-        playerId: event.playerId,
-        note: cleanOptional(event.note),
-      })),
+      events: draftEvents.map((event) => {
+        const payload: AddMatchEventPayload = {
+          minute: event.minute,
+          type: event.type,
+          teamId: event.teamId as string,
+          playerId: event.playerId,
+          note: cleanOptional(event.note),
+        };
+
+        if (eventUsesGoalType(event.type) && event.goalType) {
+          payload.goalType = event.goalType;
+        }
+        if (eventUsesRelatedPlayer(event.type) && event.relatedPlayerId) {
+          payload.relatedPlayerId = event.relatedPlayerId;
+        }
+
+        return payload;
+      }),
     });
   };
 
@@ -265,7 +315,7 @@ export default function RefereeMatchReportPanel({
         <Space orientation="vertical" size={14} style={{ width: '100%' }}>
           <section>
             <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-              <Text strong>{t('matchDetail.reportGoalsSection')}</Text>
+              <Text strong>{t('matchDetail.reportEventsSection')}</Text>
               <Tag color="blue">
                 {t('matchDetail.reportCalculatedScore', {
                   home: reportScore.home,
@@ -275,129 +325,201 @@ export default function RefereeMatchReportPanel({
             </Flex>
 
             <div style={{ marginTop: 10 }}>
-              <Text type="secondary">{t('matchDetail.reportSavedGoals')}</Text>
+              <Text type="secondary">{t('matchDetail.reportSavedEvents')}</Text>
               <div style={{ marginTop: 6 }}>
-                {savedScoringEvents.length > 0 ? (
+                {savedEvents.length > 0 ? (
                   <Space wrap>
-                    {savedScoringEvents.map((event) => (
-                      <Tag key={event.id}>{formatEventLabel(match, event)}</Tag>
+                    {savedEvents.map((event) => (
+                      <Tag key={event.id}>
+                        {t(`eventType.${event.type}`)} · {formatEventLabel(match, event)}
+                      </Tag>
                     ))}
                   </Space>
                 ) : (
-                  <Text type="secondary">{t('matchDetail.reportNoSavedGoals')}</Text>
+                  <Text type="secondary">{t('matchDetail.reportNoSavedEvents')}</Text>
                 )}
               </div>
             </div>
 
             <Space orientation="vertical" size={10} style={{ width: '100%', marginTop: 12 }}>
               <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-                <Text>{t('matchDetail.reportDraftGoals')}</Text>
-                <Button icon={<PlusOutlined />} onClick={addDraftGoal}>
-                  {t('matchDetail.reportAddGoal')}
+                <Text>{t('matchDetail.reportDraftEvents')}</Text>
+                <Button icon={<PlusOutlined />} onClick={addDraftEvent}>
+                  {t('matchDetail.reportAddEvent')}
                 </Button>
               </Flex>
 
-              {draftGoals.map((event, index) => {
+              {draftEvents.map((event, index) => {
                 const eventIndex = index + 1;
                 const selectedRoster = rosterForTeam(event.teamId);
+                const selectedRosterOptions = buildPlayerOptions(selectedRoster);
+                const showGoalType = eventUsesGoalType(event.type);
+                const showRelatedPlayer = eventUsesRelatedPlayer(event.type);
+                const isSubstitution = event.type === 'SUBSTITUTION';
                 const minuteId = `${event.key}-minute`;
                 const typeId = `${event.key}-type`;
                 const teamId = `${event.key}-team`;
                 const playerId = `${event.key}-player`;
+                const goalTypeId = `${event.key}-goal-type`;
+                const relatedPlayerId = `${event.key}-related-player`;
                 const noteId = `${event.key}-note`;
+                const playerLabel = isSubstitution
+                  ? t('matchDetail.reportSubPlayerInLabel', { index: eventIndex })
+                  : t('matchDetail.reportPlayerLabel', { index: eventIndex });
+                const relatedPlayerLabel = isSubstitution
+                  ? t('matchDetail.reportSubPlayerOutLabel', { index: eventIndex })
+                  : t('matchDetail.reportAssistLabel', { index: eventIndex });
+
                 return (
-                  <Row key={event.key} gutter={[8, 8]} align="middle">
-                    <Col xs={24} sm={6} md={4}>
-                      <label htmlFor={minuteId} style={visuallyHiddenStyle}>
-                        {t('matchDetail.reportMinuteLabel', { index: eventIndex })}
-                      </label>
-                      <InputNumber
-                        id={minuteId}
-                        min={0}
-                        max={150}
-                        value={event.minute}
-                        aria-label={t('matchDetail.reportMinuteLabel', { index: eventIndex })}
-                        style={{ width: '100%' }}
-                        onChange={(value) =>
-                          updateDraftGoal(event.key, { minute: Number(value ?? 0) })
-                        }
-                      />
-                    </Col>
-                    <Col xs={24} sm={9} md={5}>
-                      <label htmlFor={typeId} style={visuallyHiddenStyle}>
-                        {t('matchDetail.reportTypeLabel', { index: eventIndex })}
-                      </label>
-                      <Select
-                        id={typeId}
-                        value={event.type}
-                        aria-label={t('matchDetail.reportTypeLabel', { index: eventIndex })}
-                        style={{ width: '100%' }}
-                        onChange={(value) => updateDraftGoal(event.key, { type: value })}
-                        options={SCORING_EVENT_TYPES.map((type) => ({
-                          value: type,
-                          label: t(`eventType.${type}`),
-                        }))}
-                      />
-                    </Col>
-                    <Col xs={24} sm={9} md={5}>
-                      <label htmlFor={teamId} style={visuallyHiddenStyle}>
-                        {t('matchDetail.reportTeamLabel', { index: eventIndex })}
-                      </label>
-                      <Select
-                        id={teamId}
-                        value={event.teamId}
-                        placeholder={t('eventFormModal.teamLabel')}
-                        aria-label={t('matchDetail.reportTeamLabel', { index: eventIndex })}
-                        style={{ width: '100%' }}
-                        onChange={(teamId) => updateDraftGoal(event.key, { teamId })}
-                        options={teamOptions}
-                      />
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <label htmlFor={playerId} style={visuallyHiddenStyle}>
-                        {t('matchDetail.reportPlayerLabel', { index: eventIndex })}
-                      </label>
-                      <Select
-                        id={playerId}
-                        allowClear
-                        showSearch
-                        value={event.playerId}
-                        aria-label={t('matchDetail.reportPlayerLabel', { index: eventIndex })}
-                        optionFilterProp="label"
-                        disabled={!event.teamId}
-                        style={{ width: '100%' }}
-                        onChange={(playerId) => updateDraftGoal(event.key, { playerId })}
-                        options={selectedRoster.map((player) => ({
-                          value: player.playerId,
-                          label: `${player.fullName}${
-                            player.jerseyNumber ? ` #${player.jerseyNumber}` : ''
-                          }`,
-                        }))}
-                      />
-                    </Col>
-                    <Col xs={20} sm={10} md={3}>
-                      <label htmlFor={noteId} style={visuallyHiddenStyle}>
-                        {t('matchDetail.reportNoteLabel', { index: eventIndex })}
-                      </label>
-                      <Input
-                        id={noteId}
-                        value={event.note}
-                        aria-label={t('matchDetail.reportNoteLabel', { index: eventIndex })}
-                        placeholder={t('eventFormModal.notePlaceholder')}
-                        onChange={(inputEvent) =>
-                          updateDraftGoal(event.key, { note: inputEvent.target.value })
-                        }
-                      />
-                    </Col>
-                    <Col xs={4} sm={2} md={1}>
-                      <Button
-                        danger
-                        icon={<DeleteOutlined />}
-                        aria-label={t('matchDetail.reportRemoveGoal', { index: eventIndex })}
-                        onClick={() => removeDraftGoal(event.key)}
-                      />
-                    </Col>
-                  </Row>
+                  <div
+                    key={event.key}
+                    style={{
+                      border: '1px solid var(--ant-color-border-secondary)',
+                      borderRadius: 6,
+                      padding: 10,
+                    }}
+                  >
+                    <Row gutter={[8, 8]} align="middle">
+                      <Col xs={12} sm={6} md={4}>
+                        <label htmlFor={minuteId} style={visuallyHiddenStyle}>
+                          {t('matchDetail.reportMinuteLabel', { index: eventIndex })}
+                        </label>
+                        <InputNumber
+                          id={minuteId}
+                          min={0}
+                          max={150}
+                          value={event.minute}
+                          aria-label={t('matchDetail.reportMinuteLabel', { index: eventIndex })}
+                          style={{ width: '100%' }}
+                          onChange={(value) =>
+                            updateDraftEvent(event.key, { minute: Number(value ?? 0) })
+                          }
+                        />
+                      </Col>
+                      <Col xs={12} sm={9} md={6}>
+                        <label htmlFor={typeId} style={visuallyHiddenStyle}>
+                          {t('matchDetail.reportTypeLabel', { index: eventIndex })}
+                        </label>
+                        <Select
+                          id={typeId}
+                          value={event.type}
+                          aria-label={t('matchDetail.reportTypeLabel', { index: eventIndex })}
+                          style={{ width: '100%' }}
+                          onChange={(type) =>
+                            updateDraftEvent(event.key, {
+                              type: type as AddMatchEventPayload['type'],
+                            })
+                          }
+                          options={REPORT_EVENT_TYPES.map((type) => ({
+                            value: type,
+                            label: t(`eventType.${type}`),
+                          }))}
+                        />
+                      </Col>
+                      <Col xs={24} sm={9} md={6}>
+                        <label htmlFor={teamId} style={visuallyHiddenStyle}>
+                          {t('matchDetail.reportTeamLabel', { index: eventIndex })}
+                        </label>
+                        <Select
+                          id={teamId}
+                          value={event.teamId}
+                          placeholder={t('eventFormModal.teamLabel')}
+                          aria-label={t('matchDetail.reportTeamLabel', { index: eventIndex })}
+                          style={{ width: '100%' }}
+                          onChange={(teamId) => updateDraftEvent(event.key, { teamId })}
+                          options={teamOptions}
+                        />
+                      </Col>
+                      <Col xs={24} sm={12} md={8}>
+                        <label htmlFor={playerId} style={visuallyHiddenStyle}>
+                          {playerLabel}
+                        </label>
+                        <Select
+                          id={playerId}
+                          allowClear
+                          showSearch
+                          value={event.playerId}
+                          aria-label={playerLabel}
+                          placeholder={t('eventFormModal.playerPlaceholder')}
+                          optionFilterProp="label"
+                          disabled={!event.teamId}
+                          style={{ width: '100%' }}
+                          onChange={(playerId) => updateDraftEvent(event.key, { playerId })}
+                          options={selectedRosterOptions}
+                        />
+                      </Col>
+                      {showGoalType && (
+                        <Col xs={24} sm={12} md={6}>
+                          <label htmlFor={goalTypeId} style={visuallyHiddenStyle}>
+                            {t('matchDetail.reportGoalTypeLabel', { index: eventIndex })}
+                          </label>
+                          <Select
+                            id={goalTypeId}
+                            allowClear
+                            value={event.goalType}
+                            aria-label={t('matchDetail.reportGoalTypeLabel', {
+                              index: eventIndex,
+                            })}
+                            placeholder={t('eventFormModal.goalTypePlaceholder')}
+                            style={{ width: '100%' }}
+                            onChange={(goalType) => updateDraftEvent(event.key, { goalType })}
+                            options={GOAL_TYPES.map((goalType) => ({
+                              value: goalType,
+                              label: t(`goalType.${goalType}`),
+                            }))}
+                          />
+                        </Col>
+                      )}
+                      {showRelatedPlayer && (
+                        <Col xs={24} sm={12} md={6}>
+                          <label htmlFor={relatedPlayerId} style={visuallyHiddenStyle}>
+                            {relatedPlayerLabel}
+                          </label>
+                          <Select
+                            id={relatedPlayerId}
+                            allowClear
+                            showSearch
+                            value={event.relatedPlayerId}
+                            aria-label={relatedPlayerLabel}
+                            placeholder={
+                              isSubstitution
+                                ? t('eventFormModal.subPlayerPlaceholder')
+                                : t('eventFormModal.assistPlaceholder')
+                            }
+                            optionFilterProp="label"
+                            disabled={!event.teamId}
+                            style={{ width: '100%' }}
+                            onChange={(relatedPlayerId) =>
+                              updateDraftEvent(event.key, { relatedPlayerId })
+                            }
+                            options={selectedRosterOptions}
+                          />
+                        </Col>
+                      )}
+                      <Col xs={20} sm={showGoalType || showRelatedPlayer ? 10 : 12} md={5}>
+                        <label htmlFor={noteId} style={visuallyHiddenStyle}>
+                          {t('matchDetail.reportNoteLabel', { index: eventIndex })}
+                        </label>
+                        <Input
+                          id={noteId}
+                          value={event.note}
+                          aria-label={t('matchDetail.reportNoteLabel', { index: eventIndex })}
+                          placeholder={t('eventFormModal.notePlaceholder')}
+                          onChange={(inputEvent) =>
+                            updateDraftEvent(event.key, { note: inputEvent.target.value })
+                          }
+                        />
+                      </Col>
+                      <Col xs={4} sm={2} md={1}>
+                        <Button
+                          danger
+                          icon={<DeleteOutlined />}
+                          aria-label={t('matchDetail.reportRemoveEvent', { index: eventIndex })}
+                          onClick={() => removeDraftEvent(event.key)}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
                 );
               })}
             </Space>
@@ -435,7 +557,7 @@ export default function RefereeMatchReportPanel({
             <Text strong>{t('matchDetail.reportReviewSection')}</Text>
             <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
               <Text type="secondary">
-                {t('matchDetail.reportSummary', { goals: draftGoals.length })}
+                {t('matchDetail.reportSummary', { events: draftEvents.length })}
               </Text>
               <Button
                 type="primary"

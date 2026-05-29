@@ -92,11 +92,11 @@
     },
     "019e6db3-27b8-7480-9c60-9c9152ed294f": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đúng, hợp lý nhất là mỗi mùa v.league 1 có một “snapshot nguồn thăng hạng” từ kết quả v.league 2 mùa liền trước. snapshot đó nên là dữ liệu đã đóng băng: hạng, đội, giải nguồn, trạng thái đủ điều kiện, ghi chú. khi gửi lời mời đội thăng hạng thì hệ thống lấy 2 đội đầu snapshot này. ý tưởng import toàn bộ clb ở việt nam là ổn, nhưng mình không nên suy luận kiểu “không ở v.league 1 thì mặc định là v.league 2”. cách đó dễ sai vì có đội hạng nhất, hạng nhì, trẻ, futsal, đã giải thể, không hoạt động, hoặc chỉ là đội ngoài hệ thống mùa đó. mình đề xuất hướng chắc hơn: 1. `team` là danh mục clb toàn quốc. 2. thêm/duy trì dữ liệu “đội tham gia giải nào ở mùa nào”, ví dụ `competitionseasonteam` hoặc mở rộng `seasonteam` có `competition/tier`. 3. khi tạo mùa mới v.league 1, hệ thống nhìn vào snapshot bxh v.league 2 mùa trước. 4. admin có thể import bxh v.league 2 bằng csv/excel hoặc nhập thủ công. 5. hệ thống tự tạo `promotioncandidate` từ top n của snapshot, nhưng admin vẫn được override do các trường hợp không đủ điều kiện, bỏ suất, play-off, đổi tên clb, giải thể. nói ngắn gọn: import hết clb thì nên làm, nhưng không nên dùng “không thuộc v.league 1” làm tiêu chí mặc định v.league 2. nên có membership theo giải/mùa. giai đoạn hiện tại có thể để admin nhập/import snapshot v.league 2 trước, sau đó nâng cấp thành tự sinh bxh nếu sau này mình quản lý đầy đủ cả v.league 2 trong hệ thống.",
-        "first_seen_at": "2026-05-29T05:17:30.225Z",
-        "last_seen_at": "2026-05-29T05:17:30.225Z",
+        "fingerprint": "ordinary|theo mình, bước tiếp theo nên là **khóa p2 hiện tại theo hướng snapshot trước**, chưa vội xây full v.league 2. lộ trình hợp lý: 1. **giữ `promotioncandidate` làm nguồn thăng hạng chính** đây là snapshot đã đóng băng cho mùa v.league 1: đội nào, hạng mấy, đến từ giải nào, đủ điều kiện hay không. 2. **bổ sung import snapshot v.league 2** admin có thể import csv/excel gồm: `rank`, `team`, `sourcecompetition`, `qualificationtype`, `note`. import xong hệ thống tạo/cập nhật danh sách đội thăng hạng. 3. **không mặc định “ngoài v.league 1 = v.league 2”** thay vào đó, sau này thêm model kiểu `competitionseasonteam` để biết đội nào thuộc giải nào ở mùa nào. 4. **khi tạo mùa v.league 1 mới** ui cho chọn “nguồn thăng hạng”: ví dụ `v.league 2 2025`. hệ thống tự lấy top 2 từ snapshot đó để đưa vào danh sách mời. 5. **admin vẫn được override** vì thực tế có đội không đủ điều kiện, bỏ suất, đổi tên, sáp nhập, hoặc cần đội thay thế. nên làm ngay bây giờ: **thêm import snapshot v.league 2 + gắn snapshot này vào luồng gửi lời mời mùa mới**. sau đó mới làm bước lớn hơn là quản lý nhiều giải/mùa đầy đủ.",
+        "first_seen_at": "2026-05-29T05:20:13.813Z",
+        "last_seen_at": "2026-05-29T05:20:13.813Z",
         "repeat_count": 1,
-        "last_turn_id": "019e722a-2e16-7380-acc2-c134e96bb667",
+        "last_turn_id": "019e722c-bb09-7922-9976-4bce2f2b5559",
         "last_thread_id": null
       }
     },
@@ -112,21 +112,21 @@
     },
     "019e71be-9ccd-7823-a941-ead2e2e6586d": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đúng, form hiện tại mới chỉ là bản “goal-only”, nên chưa đủ cho biên bản thật. mình đề xuất mở rộng thành danh sách **sự kiện sẽ nộp** giống event sheet: 1. mỗi dòng là 1 sự kiện riêng: loại sự kiện, phút, đội, cầu thủ, ghi chú. 2. nếu là bàn thắng/phạt đền: hiện thêm loại bàn thắng và kiến tạo. 3. nếu là thẻ vàng/thẻ đỏ: hiện cầu thủ nhận thẻ. 4. nếu là thay người: hiện cầu thủ vào sân và cầu thủ ra sân. 5. tỉ số tự tính chỉ dựa trên `goal`, `penalty`, `own_goal`; thẻ/thay người không ảnh hưởng tỉ số. 6. nút thêm sẽ đổi từ `thêm bàn thắng` thành `thêm sự kiện`, nhưng có thể có nút nhanh `+ bàn thắng`, `+ thẻ vàng`, `+ thay người` để trọng tài nhập nhanh. mình cần chốt 1 điểm trước khi viết spec/triển khai: bạn muốn biên bản trọng tài nhập **tất cả loại sự kiện hiện có** gồm `bàn thắng`, `phản lưới`, `penalty thành công`, `penalty hỏng`, `thẻ vàng`, `thẻ đỏ`, `thay người`; hay trước mắt chỉ cần `bàn thắng + thẻ phạt`?",
-        "first_seen_at": "2026-05-29T05:11:19.120Z",
-        "last_seen_at": "2026-05-29T05:11:19.120Z",
+        "fingerprint": "ordinary|đã triển khai form biên bản trọng tài gom chung luồng cập nhật tỉ số và sự kiện vào một nơi. thay đổi chính: - [refereematchreportpanel.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/refereematchreportpanel.tsx:43) hỗ trợ thêm nhiều dòng sự kiện: bàn thắng, phản lưới, penalty, penalty hỏng, thẻ vàng, thẻ đỏ, thay người. - với bàn thắng/penalty có chọn `loại bàn thắng` và `kiến tạo`; thay người có `cầu thủ vào sân` và `cầu thủ ra sân`; thẻ phạt không làm đổi tỉ số. - tỉ số biên bản được tự tính từ sự kiện ghi bàn và gửi cùng `bestplayerid`, `technicalstats`, `note`, `events` trong một lần bấm `nộp biên bản trận đấu`. - cập nhật text i18n tại [vi.ts](c:/se104_vleague/apps/web/src/locales/vi.ts:373) và [en.ts](c:/se104_vleague/apps/web/src/locales/en.ts:351). - bổ sung test cho goal + loại bàn + assist, thẻ phạt, thay người, và việc trọng tài chỉ nhập trong report panel tại [matchdetailpage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/matchdetailpage.test.tsx:625). verification: - `pnpm --filter web exec vitest run src/pages/__tests__/matchdetailpage.test.tsx -t \"referee match record|draft goal events|card events|substitutions|referee score\"`: pass 5/5. - `pnpm --filter web exec vitest run src/pages/__tests__/matchdetailpage.test.tsx`: pass 14/14. - `pnpm --filter web exec tsc -b --pretty false`: pass. - `pnpm --filter web run lint`: pass, 0 errors, còn 17 warnings sẵn có. - `pnpm --filter web test`: fail do 15 timeout rải rác khi chạy full suite song song, 240 tests pass. các case report trọng tài vẫn pass khi chạy riêng.",
+        "first_seen_at": "2026-05-29T05:49:02.251Z",
+        "last_seen_at": "2026-05-29T05:49:02.251Z",
         "repeat_count": 1,
-        "last_turn_id": "019e7223-6d9a-7540-82a0-e8c0a08b1190",
+        "last_turn_id": "019e7227-0868-7ab3-aead-82e8fb17c272",
         "last_thread_id": null
       }
     },
     "019e7223-a197-71a0-8726-35276e5d8258": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã thêm logo clb vào header match center. thay đổi chính: - [matchcenter.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/matchcenter.tsx:35): thêm `matchcenterteam`, dùng `getteamlogourl` và fallback chữ viết tắt. - [index.css](c:/se104_vleague/apps/web/src/index.css:1111): style logo tròn, căn đội nhà/đội khách và responsive mobile. - [matchdetailpage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/matchdetailpage.test.tsx:533): test đảm bảo match center luôn có 2 logo đội. đã verify: - `pnpm --filter web test -- matchdetailpage.test.tsx` -> 12/12 passed - `pnpm --filter web build` -> passed - `pnpm --filter web lint` -> 0 errors, còn 17 warnings ở file không liên quan sẵn có.",
-        "first_seen_at": "2026-05-29T05:17:08.890Z",
-        "last_seen_at": "2026-05-29T05:17:08.890Z",
+        "fingerprint": "ordinary|đã gỡ rate limit ở be. thay đổi chính: - bỏ toàn bộ `@throttle`, `@skipthrottle`, `@nestjs/throttler` trong `auth`, `search`, `health` controller. - bỏ swagger docs `apitoomanyrequestsresponse` cho register/login. - xóa dependency `@nestjs/throttler` khỏi `apps/api/package.json` và `pnpm-lock.yaml`. - thêm test `apps/api/src/rate-limit-disabled.spec.ts` để chặn việc rate-limit quay lại. verification đã chạy: - `pnpm --filter api test -- rate-limit-disabled.spec.ts auth.controller.spec.ts search.controller.spec.ts` → `24/24` pass - `pnpm --filter api build` → pass - `rg` xác nhận không còn throttler/rate-limit refs trong production backend và package/lockfile. mình giữ nguyên generic http `429` mapping trong exception filter vì đó chỉ là format lỗi nếu có nơi khác trả 429, không phải cơ chế rate limit.",
+        "first_seen_at": "2026-05-29T05:42:30.322Z",
+        "last_seen_at": "2026-05-29T05:42:30.322Z",
         "repeat_count": 1,
-        "last_turn_id": "019e7224-1634-70b2-93ab-501a699231f8",
+        "last_turn_id": "019e7236-62a4-7851-8ae9-c233c7db5399",
         "last_thread_id": null
       }
     }

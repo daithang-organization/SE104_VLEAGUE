@@ -151,6 +151,11 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
       updatedAt: '2025-01-01T00:00:00Z',
     },
   ]),
+  apiImportPromotionCandidates: vi.fn().mockResolvedValue({
+    importedCount: 2,
+    replaced: true,
+    candidates: [],
+  }),
   apiUpsertPromotionCandidate: vi.fn().mockResolvedValue({}),
   apiDeletePromotionCandidate: vi.fn().mockResolvedValue({ count: 1 }),
   apiSendTeamInvitation: vi.fn().mockResolvedValue({}),
@@ -268,6 +273,12 @@ function resetMockImplementations() {
   ]);
   mockTeamInvitationApi.apiUpsertPromotionCandidate.mockReset();
   mockTeamInvitationApi.apiUpsertPromotionCandidate.mockResolvedValue({});
+  mockTeamInvitationApi.apiImportPromotionCandidates.mockReset();
+  mockTeamInvitationApi.apiImportPromotionCandidates.mockResolvedValue({
+    importedCount: 2,
+    replaced: true,
+    candidates: [],
+  });
   mockTeamInvitationApi.apiDeletePromotionCandidate.mockReset();
   mockTeamInvitationApi.apiDeletePromotionCandidate.mockResolvedValue({ count: 1 });
 
@@ -372,6 +383,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Nguồn đội thăng hạng')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /import csv/i })).toBeInTheDocument();
     expect(await screen.findAllByText('V.League 2 2025')).not.toHaveLength(0);
     expect(mockTeamInvitationApi.apiGetPromotionCandidates).toHaveBeenCalledWith('s1');
   });

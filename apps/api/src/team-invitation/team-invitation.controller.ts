@@ -19,6 +19,7 @@ import {
 import { CurrentUser, JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import {
+  ImportPromotionCandidatesDto,
   RespondTeamInvitationDto,
   SendTeamInvitationDto,
   UpsertPromotionCandidateDto,
@@ -83,6 +84,20 @@ export class TeamInvitationController {
   @ApiOkResponse({ description: 'Danh sách đội thăng hạng theo ranking' })
   listPromotionCandidates(@Param('seasonId') seasonId: string) {
     return this.invitationService.listPromotionCandidates(seasonId);
+  }
+
+  @Post('seasons/:seasonId/promotion-candidates/import')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'BTC import nhiều dòng snapshot thăng hạng từ BXH V.League 2',
+  })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiOkResponse({ description: 'Kết quả import snapshot thăng hạng' })
+  importPromotionCandidates(
+    @Param('seasonId') seasonId: string,
+    @Body() dto: ImportPromotionCandidatesDto,
+  ) {
+    return this.invitationService.importPromotionCandidates(seasonId, dto);
   }
 
   @Post('seasons/:seasonId/promotion-candidates')

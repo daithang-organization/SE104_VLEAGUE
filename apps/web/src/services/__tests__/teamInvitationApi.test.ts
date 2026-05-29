@@ -14,6 +14,7 @@ import {
   apiGetMyPendingInvitations,
   apiGetPromotionCandidates,
   apiGetSeasonInvitations,
+  apiImportPromotionCandidates,
   apiDeletePromotionCandidate,
   apiRespondTeamInvitation,
   apiSendTeamInvitation,
@@ -99,6 +100,27 @@ describe('teamInvitationApi', () => {
 
     expect(mockApi.post).toHaveBeenCalledWith('/seasons/season-1/promotion-candidates', payload);
     expect(result).toEqual(row);
+  });
+
+  it('apiImportPromotionCandidates calls POST /seasons/:id/promotion-candidates/import', async () => {
+    const response = { importedCount: 2, replaced: true, candidates: [] };
+    const payload = {
+      sourceCompetition: 'V.League 2 2025',
+      replaceExisting: true,
+      rows: [
+        { rank: 1, teamName: 'PVF-CAND', qualificationType: 'CHAMPION' as const },
+        { rank: 2, teamName: 'Trường Tươi Bình Phước' },
+      ],
+    };
+    mockApi.post.mockResolvedValue({ data: response });
+
+    const result = await apiImportPromotionCandidates('season-1', payload);
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/seasons/season-1/promotion-candidates/import',
+      payload,
+    );
+    expect(result).toEqual(response);
   });
 
   it('apiDeletePromotionCandidate calls DELETE /seasons/:id/promotion-candidates/:teamId', async () => {
