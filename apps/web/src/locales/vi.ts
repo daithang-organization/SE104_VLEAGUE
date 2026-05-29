@@ -559,6 +559,7 @@ const vi = {
     formDobRequired: 'Vui lòng chọn ngày sinh',
     formDobPlaceholder: 'Chọn ngày sinh',
     formBirthPlace: 'Nơi sinh',
+    formBirthPlaceRequired: 'Vui lòng nhập nơi sinh',
     formBirthPlacePlaceholder: 'VD: Hà Nội',
     formNationality: 'Quốc tịch',
     formNationalityRequired: 'Vui lòng nhập quốc tịch',
@@ -574,9 +575,15 @@ const vi = {
     formPositionMF: 'Tiền vệ (MF)',
     formPositionFW: 'Tiền đạo (FW)',
     formHeight: 'Chiều cao (cm)',
+    formHeightRequired: 'Vui lòng nhập chiều cao',
     formHeightPlaceholder: 'VD: 168',
     formWeight: 'Cân nặng (kg)',
+    formWeightRequired: 'Vui lòng nhập cân nặng',
     formWeightPlaceholder: 'VD: 65',
+    formCareerSummary: 'Tóm tắt tiểu sử chơi bóng',
+    formCareerSummaryRequired: 'Vui lòng nhập tóm tắt tiểu sử chơi bóng',
+    formCareerSummaryPlaceholder:
+      'Tóm tắt quá trình đào tạo, CLB từng thi đấu, thành tích nổi bật...',
   },
 
   // ─────────────────────────────────────────────
@@ -1327,6 +1334,7 @@ const vi = {
     descPosition: 'Vị trí',
     descHeight: 'Chiều cao',
     descWeight: 'Cân nặng',
+    descCareerSummary: 'Tóm tắt tiểu sử chơi bóng',
     descCurrentTeam: 'Đội hiện tại',
     descJerseyNumber: 'số {number}',
     noTeam: 'Chưa thuộc đội nào',

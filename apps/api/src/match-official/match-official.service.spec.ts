@@ -51,6 +51,7 @@ describe('MatchOfficialService', () => {
             },
             matchEvent: {
               createMany: jest.fn(),
+              deleteMany: jest.fn(),
             },
           },
         },
@@ -205,6 +206,9 @@ describe('MatchOfficialService', () => {
       where: { id: 'match-1' },
       data: { homeScore: 2, awayScore: 1 },
     });
+    expect(prisma.matchEvent.deleteMany).toHaveBeenCalledWith({
+      where: { matchId: 'match-1', source: 'MATCH_REPORT' },
+    });
     expect(prisma.matchEvent.createMany).toHaveBeenCalledWith({
       data: [
         {
@@ -216,6 +220,7 @@ describe('MatchOfficialService', () => {
           relatedPlayerId: undefined,
           goalType: undefined,
           note: undefined,
+          source: 'MATCH_REPORT',
         },
         {
           matchId: 'match-1',
@@ -226,9 +231,9 @@ describe('MatchOfficialService', () => {
           relatedPlayerId: undefined,
           goalType: undefined,
           note: undefined,
+          source: 'MATCH_REPORT',
         },
       ],
-      skipDuplicates: true,
     });
     expect(prisma.matchReport.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

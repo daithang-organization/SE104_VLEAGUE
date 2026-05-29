@@ -1,6 +1,7 @@
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -55,6 +56,12 @@ export class StandingsController {
     description:
       'in_progress: chỉ xét điểm/hiệu số và cho đồng hạng; final: xét thêm đối đầu/rút thăm',
   })
+  @ApiQuery({
+    name: 'roundNo',
+    required: false,
+    type: 'integer',
+    description: 'Tính bảng xếp hạng sau khi kết thúc vòng đấu này',
+  })
   @ApiOkResponse({
     description: 'Bảng xếp hạng',
     schema: {
@@ -85,8 +92,13 @@ export class StandingsController {
   getStandings(
     @Query('seasonId') seasonId?: string,
     @Query('mode') mode: StandingsMode = 'in_progress',
+    @Query('roundNo') roundNo?: string,
   ) {
-    return this.standingsService.getStandings(seasonId, mode);
+    return this.standingsService.getStandings(
+      seasonId,
+      mode,
+      this.parseRoundNo(roundNo),
+    );
   }
 
   @Get('top-scorers')
@@ -233,12 +245,18 @@ export class StandingsController {
   @ApiOperation({ summary: 'Export bảng xếp hạng ra CSV' })
   @ApiProduces('text/csv')
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'roundNo', required: false, type: 'integer' })
   async exportStandingsCsv(
     @Res() res: Response,
     @Query('seasonId') seasonId?: string,
     @Query('mode') mode: StandingsMode = 'in_progress',
+    @Query('roundNo') roundNo?: string,
   ) {
-    const data = await this.standingsService.getStandings(seasonId, mode);
+    const data = await this.standingsService.getStandings(
+      seasonId,
+      mode,
+      this.parseRoundNo(roundNo),
+    );
     const csv = toCsv(data, [
       'position',
       'teamName',
@@ -367,11 +385,26 @@ export class StandingsController {
   @Get(':seasonId')
   @ApiOperation({ summary: 'Lấy bảng xếp hạng theo mùa giải' })
   @ApiParam({ name: 'seasonId', type: 'string', format: 'uuid' })
+  @ApiQuery({ name: 'roundNo', required: false, type: 'integer' })
   @ApiOkResponse({ description: 'Bảng xếp hạng' })
   getStandingsBySeason(
     @Param('seasonId') seasonId: string,
     @Query('mode') mode: StandingsMode = 'in_progress',
+    @Query('roundNo') roundNo?: string,
   ) {
-    return this.standingsService.getStandings(seasonId, mode);
+    return this.standingsService.getStandings(
+      seasonId,
+      mode,
+      this.parseRoundNo(roundNo),
+    );
+  }
+
+  private parseRoundNo(roundNo?: string) {
+    if (roundNo === undefined || roundNo === '') return undefined;
+    const parsed = Number(roundNo);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new BadRequestException('roundNo phải là số nguyên dương.');
+    }
+    return parsed;
   }
 }

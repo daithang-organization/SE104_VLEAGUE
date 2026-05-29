@@ -238,10 +238,45 @@ describe('RosterService', () => {
         .spyOn(prisma.player, 'findUnique')
         .mockResolvedValue({ id: 'player-new', playerType: 'FOREIGN' } as any);
       jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValueOnce(18); // active count < 22
       jest
-        .spyOn(prisma.teamPlayer, 'count')
-        .mockResolvedValueOnce(18) // active count < 22
-        .mockResolvedValueOnce(5); // foreign count = 5
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'FOREIGN', nationality: 'Brazil' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Japan' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Korea' } },
+          { player: { playerType: 'FOREIGN', nationality: 'France' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Spain' } },
+        ] as any);
+
+      await expect(
+        service.addPlayerToRoster('team-1', {
+          playerId: 'player-new',
+          jerseyNumber: 99,
+        }),
+      ).rejects.toThrow('5 cầu thủ ngoại');
+    });
+
+    it('should treat non-Vietnam nationality as foreign even when playerType is DOMESTIC', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue({ id: 'team-1', name: 'Team A' } as any);
+      jest.spyOn(prisma.player, 'findUnique').mockResolvedValue({
+        id: 'player-new',
+        playerType: 'DOMESTIC',
+        nationality: 'Brazil',
+      } as any);
+      jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValueOnce(18);
+      jest
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'DOMESTIC', nationality: 'Brazil' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Japan' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Korea' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'France' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Spain' } },
+        ] as any);
 
       await expect(
         service.addPlayerToRoster('team-1', {
@@ -264,10 +299,16 @@ describe('RosterService', () => {
         .spyOn(prisma.player, 'findUnique')
         .mockResolvedValue({ id: 'player-new', playerType: 'FOREIGN' } as any);
       jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValueOnce(18);
       jest
-        .spyOn(prisma.teamPlayer, 'count')
-        .mockResolvedValueOnce(18)
-        .mockResolvedValueOnce(5);
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'FOREIGN', nationality: 'Brazil' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Japan' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Korea' } },
+          { player: { playerType: 'FOREIGN', nationality: 'France' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Spain' } },
+        ] as any);
 
       await expect(
         service.addPlayerToRoster('team-1', {
@@ -352,10 +393,13 @@ describe('RosterService', () => {
         .spyOn(prisma.player, 'findUnique')
         .mockResolvedValue({ id: 'player-new', playerType: 'FOREIGN' } as any);
       jest.spyOn(prisma.teamPlayer, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValueOnce(10); // active < 22
       jest
-        .spyOn(prisma.teamPlayer, 'count')
-        .mockResolvedValueOnce(10) // active < 22
-        .mockResolvedValueOnce(2); // foreign = custom limit
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'FOREIGN', nationality: 'Brazil' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Japan' } },
+        ] as any);
 
       await expect(
         service.addPlayerToRoster('team-1', {

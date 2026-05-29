@@ -8,7 +8,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
+import { JwtAuthGuard, Public, Role, Roles, RolesGuard } from '../auth';
 import { SchedulingService } from './scheduling.service';
 
 @ApiTags('Scheduling')
@@ -78,6 +78,7 @@ export class SchedulingController {
   }
 
   @Get('/schedule')
+  @Public()
   @Roles(
     Role.ADMIN,
     Role.TEAM_MANAGER,
@@ -88,7 +89,7 @@ export class SchedulingController {
   @ApiOperation({
     summary: 'Lấy lịch thi đấu',
     description:
-      'Trả về danh sách trận đấu kèm thông tin đội & sân. Yêu cầu đăng nhập.',
+      'Trả về danh sách trận đấu kèm thông tin đội & sân. Có thể truy cập công khai.',
   })
   @ApiQuery({
     name: 'seasonId',

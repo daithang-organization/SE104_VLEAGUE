@@ -1257,6 +1257,15 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               {viewingTeam.participationFeePaid ? 'Đã nộp' : 'Chưa nộp'}
               {viewingTeam.feeReceiptCode ? ` (${viewingTeam.feeReceiptCode})` : ''}
             </Descriptions.Item>
+            <Descriptions.Item label="Chứng từ lệ phí">
+              {viewingTeam.feeReceiptUrl ? (
+                <a href={viewingTeam.feeReceiptUrl} target="_blank" rel="noreferrer">
+                  Mở chứng từ
+                </a>
+              ) : (
+                '—'
+              )}
+            </Descriptions.Item>
             <Descriptions.Item label="Giới thiệu đội">
               {viewingTeam.teamIntroduction ?? '—'}
             </Descriptions.Item>

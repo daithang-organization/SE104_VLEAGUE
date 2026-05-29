@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -123,6 +123,12 @@ describe('PlayersPage', () => {
   it('shows add button for admin/team_manager users', () => {
     renderPage();
     expect(screen.getByText('Thêm cầu thủ')).toBeInTheDocument();
+  });
+
+  it('shows a career summary field in the player form', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Thêm cầu thủ'));
+    expect(await screen.findByLabelText('Tóm tắt tiểu sử chơi bóng')).toBeInTheDocument();
   });
 
   it('hides add button for public users', () => {

@@ -331,6 +331,8 @@ export class RegistrationService {
     dto: CreatePlayerDto,
     actor?: TeamScopeActor,
   ): Promise<Player> {
+    this.assertRequiredPlayerProfile(dto);
+
     const writableTeamId = actor
       ? await this.teamManagerScope.resolveWritableTeamId(actor, dto.teamId)
       : dto.teamId;
@@ -375,9 +377,10 @@ export class RegistrationService {
         nationality: dto.nationality,
         position: dto.position as any,
         playerType: (dto.playerType ?? 'DOMESTIC') as any,
-        birthPlace: dto.birthPlace,
+        birthPlace: dto.birthPlace.trim(),
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
+        careerSummary: dto.careerSummary.trim(),
       },
     });
 
@@ -408,6 +411,8 @@ export class RegistrationService {
     dto: UpdatePlayerDto,
     actor?: TeamScopeActor,
   ): Promise<Player> {
+    this.assertProvidedPlayerProfile(dto);
+
     await this.findOnePlayer(id);
     if (actor) {
       await this.assertCanManagePlayer(actor, id);
@@ -424,9 +429,12 @@ export class RegistrationService {
     if (dto.nationality !== undefined) data.nationality = dto.nationality;
     if (dto.position !== undefined) data.position = dto.position;
     if (dto.playerType !== undefined) data.playerType = dto.playerType;
-    if (dto.birthPlace !== undefined) data.birthPlace = dto.birthPlace;
+    if (dto.birthPlace !== undefined) data.birthPlace = dto.birthPlace.trim();
     if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
     if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
+    if (dto.careerSummary !== undefined) {
+      data.careerSummary = dto.careerSummary.trim();
+    }
 
     const player = await this.prisma.player.update({
       where: { id },
@@ -485,6 +493,56 @@ export class RegistrationService {
     if (!rosterRow) {
       throw new ForbiddenException(
         'Tài khoản này chỉ được thao tác với cầu thủ thuộc CLB đã được admin gắn.',
+      );
+    }
+  }
+
+  private assertRequiredPlayerProfile(dto: CreatePlayerDto) {
+    const requiredTextFields = [
+      ['birthPlace', dto.birthPlace],
+      ['careerSummary', dto.careerSummary],
+    ] as const;
+    const missing: string[] = requiredTextFields
+      .filter(([, value]) => !value?.trim())
+      .map(([field]) => field);
+
+    if (dto.heightCm === undefined || dto.heightCm === null) {
+      missing.push('heightCm');
+    }
+    if (dto.weightKg === undefined || dto.weightKg === null) {
+      missing.push('weightKg');
+    }
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Hồ sơ cầu thủ còn thiếu thông tin bắt buộc: ${missing.join(', ')}`,
+      );
+    }
+  }
+
+  private assertProvidedPlayerProfile(dto: UpdatePlayerDto) {
+    const data = dto as UpdatePlayerDto & {
+      heightCm?: number | null;
+      weightKg?: number | null;
+    };
+    const invalid: string[] = [];
+
+    if (data.birthPlace !== undefined && !data.birthPlace?.trim()) {
+      invalid.push('birthPlace');
+    }
+    if (data.heightCm === null) {
+      invalid.push('heightCm');
+    }
+    if (data.weightKg === null) {
+      invalid.push('weightKg');
+    }
+    if (data.careerSummary !== undefined && !data.careerSummary?.trim()) {
+      invalid.push('careerSummary');
+    }
+
+    if (invalid.length > 0) {
+      throw new BadRequestException(
+        `Hồ sơ cầu thủ không được để trống: ${invalid.join(', ')}`,
       );
     }
   }

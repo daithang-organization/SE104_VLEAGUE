@@ -229,6 +229,7 @@ function TeamManagerDashboard() {
       backupKit: application?.backupKit ?? '',
       participationFeePaid: application?.participationFeePaid ?? false,
       feeReceiptCode: application?.feeReceiptCode ?? '',
+      feeReceiptUrl: application?.feeReceiptUrl ?? '',
       externalCompetitionSchedule: application?.externalCompetitionSchedule ?? '',
     });
   }, [application, applicationForm, currentSeason]);
@@ -243,7 +244,8 @@ function TeamManagerDashboard() {
         seasonId: currentSeason.id,
         ownerAddress: values.ownerAddress?.trim() || undefined,
         feeReceiptCode: values.feeReceiptCode?.trim() || undefined,
-        externalCompetitionSchedule: values.externalCompetitionSchedule?.trim() || undefined,
+        feeReceiptUrl: values.feeReceiptUrl?.trim() || undefined,
+        externalCompetitionSchedule: values.externalCompetitionSchedule.trim(),
         participationFeePaid: values.participationFeePaid ?? false,
       });
       setApplication(updatedApplication);
@@ -430,6 +432,11 @@ function TeamManagerDashboard() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="feeReceiptUrl" label="Link chứng từ nộp lệ phí">
+                  <Input placeholder="https://..." />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item
                   name="participationFeePaid"
                   label="Lệ phí tham dự"
@@ -442,6 +449,9 @@ function TeamManagerDashboard() {
                 <Form.Item
                   name="externalCompetitionSchedule"
                   label="Lịch giải khác đã/đang tham gia"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập lịch giải khác đã/đang tham gia' },
+                  ]}
                 >
                   <Input.TextArea
                     rows={2}

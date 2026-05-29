@@ -28,7 +28,8 @@ export type SubmitTeamManagerApplicationPayload = {
   backupKit: string;
   participationFeePaid: boolean;
   feeReceiptCode?: string;
-  externalCompetitionSchedule?: string;
+  feeReceiptUrl?: string;
+  externalCompetitionSchedule: string;
 };
 
 export function apiGetTeamManagerAssignment(seasonId: string) {

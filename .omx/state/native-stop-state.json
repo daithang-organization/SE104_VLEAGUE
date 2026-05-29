@@ -92,11 +92,11 @@
     },
     "019e6db3-27b8-7480-9c60-9c9152ed294f": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|theo mình, bước tiếp theo nên là **khóa p2 hiện tại theo hướng snapshot trước**, chưa vội xây full v.league 2. lộ trình hợp lý: 1. **giữ `promotioncandidate` làm nguồn thăng hạng chính** đây là snapshot đã đóng băng cho mùa v.league 1: đội nào, hạng mấy, đến từ giải nào, đủ điều kiện hay không. 2. **bổ sung import snapshot v.league 2** admin có thể import csv/excel gồm: `rank`, `team`, `sourcecompetition`, `qualificationtype`, `note`. import xong hệ thống tạo/cập nhật danh sách đội thăng hạng. 3. **không mặc định “ngoài v.league 1 = v.league 2”** thay vào đó, sau này thêm model kiểu `competitionseasonteam` để biết đội nào thuộc giải nào ở mùa nào. 4. **khi tạo mùa v.league 1 mới** ui cho chọn “nguồn thăng hạng”: ví dụ `v.league 2 2025`. hệ thống tự lấy top 2 từ snapshot đó để đưa vào danh sách mời. 5. **admin vẫn được override** vì thực tế có đội không đủ điều kiện, bỏ suất, đổi tên, sáp nhập, hoặc cần đội thay thế. nên làm ngay bây giờ: **thêm import snapshot v.league 2 + gắn snapshot này vào luồng gửi lời mời mùa mới**. sau đó mới làm bước lớn hơn là quản lý nhiều giải/mùa đầy đủ.",
-        "first_seen_at": "2026-05-29T05:20:13.813Z",
-        "last_seen_at": "2026-05-29T05:20:13.813Z",
+        "fingerprint": "ordinary|đã triển khai import snapshot v.league 2 cho nguồn đội thăng hạng. phần chính: - backend thêm `post /seasons/:seasonid/promotion-candidates/import`. - import hỗ trợ nhiều dòng, resolve clb bằng `teamid` hoặc `teamname`/`shortname`. - có validate trùng hạng, trùng clb, thiếu nguồn giải, clb không tồn tại. - có tùy chọn `replaceexisting` để thay snapshot hiện tại. - web thêm nút `import csv` trong box “nguồn đội thăng hạng”. - api client và test đã cập nhật. kiểm tra: - `pnpm --recursive run lint`: pass, còn 17 warning web cũ. - `pnpm --filter api test`: pass, `31/31` suites, `328` tests. - `pnpm --filter web test`: pass, `40/40` files, `255` passed, `1` skipped. - api typecheck: pass. - web typecheck: pass. - `git diff --check`: pass, chỉ warning crlf ở docs. lưu ý: `pnpm --recursive run test` bị timeout ở web khi chạy song song với api, nhưng chạy tuần tự riêng api và web đều pass. mình chưa push code.",
+        "first_seen_at": "2026-05-29T05:52:47.830Z",
+        "last_seen_at": "2026-05-29T05:52:47.830Z",
         "repeat_count": 1,
-        "last_turn_id": "019e722c-bb09-7922-9976-4bce2f2b5559",
+        "last_turn_id": "019e722e-ecbf-77d2-a850-e78750b9226c",
         "last_thread_id": null
       }
     },
@@ -122,11 +122,21 @@
     },
     "019e7223-a197-71a0-8726-35276e5d8258": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã gỡ rate limit ở be. thay đổi chính: - bỏ toàn bộ `@throttle`, `@skipthrottle`, `@nestjs/throttler` trong `auth`, `search`, `health` controller. - bỏ swagger docs `apitoomanyrequestsresponse` cho register/login. - xóa dependency `@nestjs/throttler` khỏi `apps/api/package.json` và `pnpm-lock.yaml`. - thêm test `apps/api/src/rate-limit-disabled.spec.ts` để chặn việc rate-limit quay lại. verification đã chạy: - `pnpm --filter api test -- rate-limit-disabled.spec.ts auth.controller.spec.ts search.controller.spec.ts` → `24/24` pass - `pnpm --filter api build` → pass - `rg` xác nhận không còn throttler/rate-limit refs trong production backend và package/lockfile. mình giữ nguyên generic http `429` mapping trong exception filter vì đó chỉ là format lỗi nếu có nơi khác trả 429, không phải cơ chế rate limit.",
-        "first_seen_at": "2026-05-29T05:42:30.322Z",
-        "last_seen_at": "2026-05-29T05:42:30.322Z",
+        "fingerprint": "ordinary|đã xử lý mục **2** và **4**. **đã làm** - sửa `app.e2e-spec.ts` stale: bỏ kỳ vọng `get / = hello world`, chuyển sang smoke thật theo `/api/health`. - đổi `scheduling.e2e-spec.ts` sang route runtime thật `/api/schedule...`. - thêm e2e helper dùng `setglobalprefix('api')`, validation pipe, global error filter, logging interceptor. - thêm observability endpoints: - `get /api/health/live` - `get /api/health/ready` - `get /api/health` - thêm `requestidmiddleware`: mọi response có `x-request-id`; nếu client gửi thì echo lại, nếu không thì tự tạo. - error response chuẩn giờ cũng trả `requestid`. - `health_heap_limit_mb` configurable, default `512`, tránh readiness false-negative vì hard-code 150mb quá thấp. - `log_level` giờ được logger module đọc thật. - thêm runbook: `docs/qa_observability_runbook.md` gồm checklist qa theo role, health endpoints, env config, alert suggestions. **đã verify** - `pnpm --filter api test:e2e -- app.e2e-spec.ts scheduling.e2e-spec.ts --detectopenhandles --runinband`: 2 suites, 7 tests passed. - `pnpm --filter api test -- registration.service.spec.ts team-manager.service.spec.ts season.service.spec.ts scheduling.service.spec.ts match-official.service.spec.ts`: 5 suites, 71 tests passed. - `pnpm --filter web test -- playerspage.test.tsx dashboardpage.test.tsx`: 2 files, 17 tests passed. - `pnpm --filter api build`: passed. - `git diff --check`: passed. lưu ý: `.omx/state/native-stop-state.json` vẫn dirty do runtime state, không thuộc thay đổi source cần commit.",
+        "first_seen_at": "2026-05-29T12:34:07.012Z",
+        "last_seen_at": "2026-05-29T12:34:07.012Z",
         "repeat_count": 1,
-        "last_turn_id": "019e7236-62a4-7851-8ae9-c233c7db5399",
+        "last_turn_id": "019e73b0-8525-7a60-857a-cd7a8c7e02e8",
+        "last_thread_id": null
+      }
+    },
+    "019e724b-4bca-7813-98a0-2e3672477e84": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã chạy xong: - `pnpm test`: pass - api: 33 test suites, 350 tests passed - web: 40 files passed, 256 passed, 1 skipped - `pnpm lint`: pass, 0 errors - còn 17 warnings ở web: hook dependencies, fast-refresh, 1 unused eslint-disable - `pnpm build`: pass - dùng làm type check vì repo không có script `typecheck` riêng - api `nest build` pass - web `tsc -b && vite build` pass ghi chú: test vẫn có warning từ jsdom/css/getcomputedstyle và node `--localstorage-file`; build có warning bundle chunk >500kb. không có lỗi chặn.",
+        "first_seen_at": "2026-05-29T13:58:04.953Z",
+        "last_seen_at": "2026-05-29T13:58:04.953Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e73fd-ae7d-78a1-82e4-e99fe95ee114",
         "last_thread_id": null
       }
     }

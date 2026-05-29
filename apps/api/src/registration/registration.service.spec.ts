@@ -50,6 +50,7 @@ describe('RegistrationService', () => {
       birthPlace: null,
       heightCm: null,
       weightKg: null,
+      careerSummary: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -63,10 +64,17 @@ describe('RegistrationService', () => {
       birthPlace: null,
       heightCm: null,
       weightKg: null,
+      careerSummary: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
   ];
+  const validPlayerProfile = {
+    birthPlace: 'Hà Nội',
+    heightCm: 180,
+    weightKg: 72,
+    careerSummary: 'Từng thi đấu tại giải trẻ quốc gia.',
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -314,14 +322,23 @@ describe('RegistrationService', () => {
         dob: '2000-01-01',
         nationality: 'Vietnam',
         position: PlayerPosition.FW,
+        ...validPlayerProfile,
       };
       jest.spyOn(prisma.player, 'create').mockResolvedValue({
         ...mockPlayers[0],
         fullName: dto.fullName,
+        careerSummary: dto.careerSummary,
       } as any);
 
       const result = await service.createPlayer(dto);
       expect(result.fullName).toBe('Test Player');
+      expect(prisma.player.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            careerSummary: 'Từng thi đấu tại giải trẻ quốc gia.',
+          }),
+        }),
+      );
     });
 
     it('assigns team-manager-created players to the fixed club', async () => {
@@ -330,6 +347,7 @@ describe('RegistrationService', () => {
         dob: '2000-01-01',
         nationality: 'Vietnam',
         position: PlayerPosition.FW,
+        ...validPlayerProfile,
       };
       jest
         .spyOn(teamManagerScope, 'resolveWritableTeamId')
@@ -353,6 +371,25 @@ describe('RegistrationService', () => {
       expect(prisma.teamPlayer.create).toHaveBeenCalledWith({
         data: { teamId: 'team-1', playerId: 'player-new' },
       });
+    });
+
+    it.each([
+      ['birthPlace', { birthPlace: ' ' }],
+      ['heightCm', { heightCm: undefined }],
+      ['weightKg', { weightKg: undefined }],
+      ['careerSummary', { careerSummary: ' ' }],
+    ])('rejects createPlayer when %s is missing', async (field, override) => {
+      await expect(
+        service.createPlayer({
+          fullName: 'Incomplete Player',
+          dob: '2000-01-01',
+          nationality: 'Vietnam',
+          position: PlayerPosition.FW,
+          ...validPlayerProfile,
+          ...override,
+        } as any),
+      ).rejects.toThrow(field);
+      expect(prisma.player.create).not.toHaveBeenCalled();
     });
   });
 
@@ -378,6 +415,43 @@ describe('RegistrationService', () => {
     });
   });
 
+  describe('updatePlayer', () => {
+    it('updates a player career summary', async () => {
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ ...mockPlayers[0], roster: [] } as any);
+      jest.spyOn(prisma.player, 'update').mockResolvedValue({
+        ...mockPlayers[0],
+        careerSummary: 'Đã có 3 mùa thi đấu chuyên nghiệp.',
+      } as any);
+
+      await service.updatePlayer('player-1', {
+        careerSummary: 'Đã có 3 mùa thi đấu chuyên nghiệp.',
+      } as any);
+
+      expect(prisma.player.update).toHaveBeenCalledWith({
+        where: { id: 'player-1' },
+        data: { careerSummary: 'Đã có 3 mùa thi đấu chuyên nghiệp.' },
+      });
+    });
+
+    it.each([
+      ['birthPlace', { birthPlace: ' ' }],
+      ['heightCm', { heightCm: null }],
+      ['weightKg', { weightKg: null }],
+      ['careerSummary', { careerSummary: ' ' }],
+    ])('rejects updatePlayer when %s is cleared', async (field, update) => {
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ ...mockPlayers[0], roster: [] } as any);
+
+      await expect(
+        service.updatePlayer('player-1', update as any),
+      ).rejects.toThrow(field);
+      expect(prisma.player.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('createPlayer - age validation', () => {
     it('should reject a player under 16 years old', async () => {
       const today = new Date();
@@ -393,6 +467,7 @@ describe('RegistrationService', () => {
           dob: youngDob.toISOString(),
           nationality: 'VN',
           position: 'FORWARD',
+          ...validPlayerProfile,
         } as any),
       ).rejects.toThrow('ít nhất 16 tuổi');
     });
@@ -411,6 +486,7 @@ describe('RegistrationService', () => {
           dob: oldDob.toISOString(),
           nationality: 'VN',
           position: 'FORWARD',
+          ...validPlayerProfile,
         } as any),
       ).rejects.toThrow('không được quá 40 tuổi');
     });
@@ -439,6 +515,7 @@ describe('RegistrationService', () => {
         dob: dob.toISOString(),
         nationality: 'VN',
         position: 'FORWARD',
+        ...validPlayerProfile,
       } as any);
 
       expect(result.fullName).toBe('Valid Player');
@@ -468,6 +545,7 @@ describe('RegistrationService', () => {
         dob: dob.toISOString(),
         nationality: 'VN',
         position: 'GOALKEEPER',
+        ...validPlayerProfile,
       } as any);
 
       expect(result.fullName).toBe('Veteran Player');
@@ -499,6 +577,7 @@ describe('RegistrationService', () => {
           nationality: 'VN',
           position: 'FORWARD',
           seasonId: 'season-custom',
+          ...validPlayerProfile,
         } as any),
       ).rejects.toThrow('ít nhất 18 tuổi');
     });
@@ -528,6 +607,7 @@ describe('RegistrationService', () => {
         dob: dob17.toISOString(),
         nationality: 'VN',
         position: 'FORWARD',
+        ...validPlayerProfile,
       } as any);
 
       expect(result.fullName).toBe('Player 17');

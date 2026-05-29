@@ -181,6 +181,7 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('Hồ sơ tham dự mùa giải')).toBeInTheDocument();
     expect(container.querySelector('.dashboard-manager-page .page-hero')).toBeInTheDocument();
     expect(await screen.findByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
+    expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
   });
 });

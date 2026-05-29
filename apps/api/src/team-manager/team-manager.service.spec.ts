@@ -29,6 +29,7 @@ describe('TeamManagerService application workflow', () => {
     backupKit: 'Áo trắng, quần tím',
     participationFeePaid: true,
     feeReceiptCode: 'REC-001',
+    feeReceiptUrl: 'https://storage.example/receipts/rec-001.pdf',
     externalCompetitionSchedule: 'Cúp Quốc gia 2026',
   };
 
@@ -137,6 +138,8 @@ describe('TeamManagerService application workflow', () => {
           ownerName: applicationPayload.ownerName,
           ownerCountry: applicationPayload.ownerCountry,
           participationFeePaid: true,
+          feeReceiptCode: 'REC-001',
+          feeReceiptUrl: 'https://storage.example/receipts/rec-001.pdf',
           applicationSubmittedAt: expect.any(Date),
           applicationReviewNote: null,
         }),
@@ -169,5 +172,15 @@ describe('TeamManagerService application workflow', () => {
         ownerName: '',
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects application submission when external competition schedule is missing', async () => {
+    await expect(
+      service.submitApplication('manager-1', {
+        ...applicationPayload,
+        externalCompetitionSchedule: ' ',
+      }),
+    ).rejects.toThrow('externalCompetitionSchedule');
+    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
   });
 });

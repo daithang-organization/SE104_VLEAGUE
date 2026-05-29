@@ -8,6 +8,9 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isProduction = configService.get('NODE_ENV') === 'production';
+        const logLevel =
+          configService.get<string>('LOG_LEVEL') ??
+          (isProduction ? 'info' : 'debug');
 
         return {
           pinoHttp: {
@@ -82,12 +85,12 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
                     // Đẹp mắt với màu sắc phân biệt
                     customColors:
                       'error:red,warn:yellow,info:green,debug:blue,trace:gray',
-                    minimumLevel: 'debug',
+                    minimumLevel: logLevel,
                   },
                 },
 
             // Log level
-            level: isProduction ? 'info' : 'debug',
+            level: logLevel,
           },
         };
       },

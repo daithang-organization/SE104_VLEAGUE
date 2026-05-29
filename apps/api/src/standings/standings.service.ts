@@ -47,6 +47,7 @@ export class StandingsService {
   async getStandings(
     seasonId?: string,
     mode: StandingsMode = 'in_progress',
+    roundNo?: number,
   ): Promise<TeamStanding[]> {
     // Get the season (current if not specified)
     const targetSeasonId = await this.resolveSeasonId(seasonId);
@@ -79,6 +80,7 @@ export class StandingsService {
         status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
         homeScore: { not: null },
         awayScore: { not: null },
+        ...(roundNo !== undefined ? { roundNo: { lte: roundNo } } : {}),
       },
       select: {
         homeTeamId: true,

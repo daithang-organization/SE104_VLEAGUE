@@ -18,6 +18,7 @@ export type Player = {
   birthPlace?: string | null;
   heightCm?: number | null;
   weightKg?: number | null;
+  careerSummary?: string | null;
   createdAt: string;
   updatedAt: string;
   roster?: Array<{
@@ -31,9 +32,10 @@ export type CreatePlayerPayload = {
   nationality: string;
   position: 'GK' | 'DF' | 'MF' | 'FW';
   playerType?: 'DOMESTIC' | 'FOREIGN';
-  birthPlace?: string;
-  heightCm?: number;
-  weightKg?: number;
+  birthPlace: string;
+  heightCm: number;
+  weightKg: number;
+  careerSummary: string;
   teamId?: string;
 };
 
@@ -46,6 +48,7 @@ export type UpdatePlayerPayload = {
   birthPlace?: string;
   heightCm?: number;
   weightKg?: number;
+  careerSummary?: string;
   teamId?: string;
 };
 

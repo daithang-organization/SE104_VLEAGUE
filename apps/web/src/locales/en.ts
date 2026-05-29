@@ -530,6 +530,7 @@ const en = {
     formDobRequired: 'Please select date of birth',
     formDobPlaceholder: 'Select date',
     formBirthPlace: 'Birth Place',
+    formBirthPlaceRequired: 'Please enter birth place',
     formBirthPlacePlaceholder: 'e.g. Hanoi',
     formNationality: 'Nationality',
     formNationalityRequired: 'Please enter nationality',
@@ -545,9 +546,15 @@ const en = {
     formPositionMF: '⚙️ Midfielder (MF)',
     formPositionFW: '⚽ Forward (FW)',
     formHeight: 'Height (cm)',
+    formHeightRequired: 'Please enter height',
     formHeightPlaceholder: 'e.g. 168',
     formWeight: 'Weight (kg)',
+    formWeightRequired: 'Please enter weight',
     formWeightPlaceholder: 'e.g. 65',
+    formCareerSummary: 'Career summary',
+    formCareerSummaryRequired: 'Please enter career summary',
+    formCareerSummaryPlaceholder:
+      'Summarize academy history, former clubs, and notable achievements...',
   },
 
   // ─────────────────────────────────────────────
@@ -1291,6 +1298,7 @@ const en = {
     descPosition: 'Position',
     descHeight: 'Height',
     descWeight: 'Weight',
+    descCareerSummary: 'Career summary',
     descCurrentTeam: 'Current Team',
     descJerseyNumber: 'No. {number}',
     noTeam: 'No team',

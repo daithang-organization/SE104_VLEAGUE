@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import type { Match } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -7,7 +8,10 @@ export class SchedulingService {
   private readonly logger = new Logger(SchedulingService.name);
   private readonly requiredTeamCount = 10;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   // ────────── GET schedule with relations ──────────
   async getSchedule(
@@ -269,9 +273,49 @@ export class SchedulingService {
       data: { status: 'PUBLISHED' },
     });
 
+    if (seasonId && result.count > 0) {
+      await this.notifyApprovedTeamManagers(seasonId);
+    }
+
     return {
       ok: true,
       message: `Đã công bố ${result.count} trận đấu.`,
     };
+  }
+
+  private async notifyApprovedTeamManagers(seasonId: string) {
+    const seasonTeams = await this.prisma.seasonTeam.findMany({
+      where: { seasonId, status: 'APPROVED' },
+      include: {
+        team: {
+          select: {
+            name: true,
+            managedUsers: { select: { id: true } },
+          },
+        },
+      },
+    });
+
+    const notifiedUserIds = new Set<string>();
+    const notifications = seasonTeams.flatMap((seasonTeam) =>
+      seasonTeam.team.managedUsers
+        .filter((manager) => {
+          if (notifiedUserIds.has(manager.id)) return false;
+          notifiedUserIds.add(manager.id);
+          return true;
+        })
+        .map((manager) =>
+          this.notificationService.createForUser({
+            userId: manager.id,
+            title: 'Lịch thi đấu đã được công bố',
+            message: `Lịch thi đấu mùa giải đã được BTC công bố cho ${seasonTeam.team.name}.`,
+            type: 'SCHEDULE_CHANGE',
+            entityType: 'season',
+            entityId: seasonId,
+          }),
+        ),
+    );
+
+    await Promise.all(notifications);
   }
 }

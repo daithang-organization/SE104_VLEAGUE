@@ -132,8 +132,8 @@ export class TeamManagerService {
         participationFeePaid: dto.participationFeePaid,
         feePaidAt: dto.participationFeePaid ? new Date() : null,
         feeReceiptCode: dto.feeReceiptCode?.trim() || null,
-        externalCompetitionSchedule:
-          dto.externalCompetitionSchedule?.trim() || null,
+        feeReceiptUrl: dto.feeReceiptUrl?.trim() || null,
+        externalCompetitionSchedule: dto.externalCompetitionSchedule.trim(),
         applicationSubmittedAt: new Date(),
         applicationReviewNote: null,
       },
@@ -206,6 +206,7 @@ export class TeamManagerService {
       ['teamIntroduction', dto.teamIntroduction],
       ['primaryKit', dto.primaryKit],
       ['backupKit', dto.backupKit],
+      ['externalCompetitionSchedule', dto.externalCompetitionSchedule],
     ] as const;
 
     const missing = requiredFields
