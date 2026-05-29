@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
+  PromotionCandidateStatus,
+  PromotionQualificationType,
   Season,
   SeasonTeamStatus,
   TeamInvitationSourceType,
@@ -22,6 +24,7 @@ import {
 import {
   RespondTeamInvitationDto,
   SendTeamInvitationDto,
+  UpsertPromotionCandidateDto,
 } from './dto/team-invitation.dto';
 
 const RESPONSE_STATUSES = [
@@ -41,6 +44,10 @@ type InvitationCandidate = {
   invitationStatus: TeamInvitationStatus | null;
   responseReason: string | null;
   deadlineAt: Date | null;
+  sourceCompetition?: string | null;
+  qualificationType?: PromotionQualificationType | null;
+  promotionStatus?: PromotionCandidateStatus | null;
+  sourceNote?: string | null;
   team: {
     id: string;
     name: string;
@@ -84,6 +91,19 @@ export class TeamInvitationService {
   private managerAssignmentInclude = {
     user: { select: { id: true, email: true, name: true } },
   } satisfies Prisma.TeamManagerAssignmentInclude;
+
+  private teamSummarySelect = {
+    id: true,
+    name: true,
+    shortName: true,
+    city: true,
+    logoUrl: true,
+    status: true,
+  } satisfies Prisma.TeamSelect;
+
+  private promotionCandidateInclude = {
+    team: { select: this.teamSummarySelect },
+  } satisfies Prisma.PromotionCandidateInclude;
 
   async listForSeason(seasonId: string) {
     await this.ensureSeasonExists(seasonId);
@@ -209,6 +229,13 @@ export class TeamInvitationService {
       include: this.invitationInclude,
     });
 
+    if (dto.sourceType === TeamInvitationSourceType.PROMOTED) {
+      await this.prisma.promotionCandidate.updateMany({
+        where: { seasonId, teamId: dto.teamId },
+        data: { status: PromotionCandidateStatus.INVITED },
+      });
+    }
+
     const message = this.buildNotificationMessage(
       season.name,
       team.name,
@@ -287,22 +314,39 @@ export class TeamInvitationService {
     ).map((st) => st.teamId);
     for (const id of seasonTeamIds) involvedTeamIds.add(id);
 
-    // Available teams: ACTIVE, not already involved
-    const candidates = await this.prisma.team.findMany({
+    const promotionCandidates = await this.prisma.promotionCandidate.findMany({
+      where: {
+        seasonId,
+        status: PromotionCandidateStatus.ELIGIBLE,
+        teamId: { notIn: [...involvedTeamIds] },
+      },
+      include: this.promotionCandidateInclude,
+      orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+    });
+    const promotionCandidateTeamIds = promotionCandidates.map(
+      (candidate) => candidate.teamId,
+    );
+
+    // Available teams: promotion ranking first, then other ACTIVE teams.
+    const otherActiveTeams = await this.prisma.team.findMany({
       where: {
         status: 'ACTIVE',
-        id: { notIn: [...involvedTeamIds] },
+        id: { notIn: [...involvedTeamIds, ...promotionCandidateTeamIds] },
       },
-      select: {
-        id: true,
-        name: true,
-        shortName: true,
-        city: true,
-        logoUrl: true,
-        status: true,
-      },
+      select: this.teamSummarySelect,
       orderBy: { name: 'asc' },
     });
+    const candidates = [
+      ...promotionCandidates.map((candidate) => ({
+        ...candidate.team,
+        promotionRank: candidate.rank,
+        sourceCompetition: candidate.sourceCompetition,
+        qualificationType: candidate.qualificationType,
+        promotionStatus: candidate.status,
+        sourceNote: candidate.note,
+      })),
+      ...otherActiveTeams,
+    ];
 
     return {
       totalRequired: TOTAL_REQUIRED,
@@ -311,6 +355,75 @@ export class TeamInvitationService {
       declinedTeams: declinedExpiredInvitations,
       candidates,
     };
+  }
+
+  async listPromotionCandidates(seasonId: string) {
+    await this.ensureSeasonExists(seasonId);
+
+    return this.prisma.promotionCandidate.findMany({
+      where: { seasonId },
+      include: this.promotionCandidateInclude,
+      orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  async upsertPromotionCandidate(
+    seasonId: string,
+    dto: UpsertPromotionCandidateDto,
+  ) {
+    await Promise.all([
+      this.ensureSeasonExists(seasonId),
+      this.ensureTeamExists(dto.teamId),
+    ]);
+
+    const sourceCompetition = dto.sourceCompetition.trim();
+    if (!sourceCompetition) {
+      throw new BadRequestException('Vui lòng nhập nguồn giải thăng hạng.');
+    }
+
+    return this.prisma.promotionCandidate.upsert({
+      where: {
+        seasonId_teamId: {
+          seasonId,
+          teamId: dto.teamId,
+        },
+      },
+      create: {
+        seasonId,
+        teamId: dto.teamId,
+        rank: dto.rank,
+        sourceCompetition,
+        qualificationType:
+          dto.qualificationType ?? PromotionQualificationType.RUNNER_UP,
+        status: dto.status ?? PromotionCandidateStatus.ELIGIBLE,
+        note: dto.note?.trim() || null,
+      },
+      update: {
+        rank: dto.rank,
+        sourceCompetition,
+        qualificationType:
+          dto.qualificationType ?? PromotionQualificationType.RUNNER_UP,
+        status: dto.status ?? PromotionCandidateStatus.ELIGIBLE,
+        note: dto.note?.trim() || null,
+      },
+      include: this.promotionCandidateInclude,
+    });
+  }
+
+  async deletePromotionCandidate(seasonId: string, teamId: string) {
+    await this.ensureSeasonExists(seasonId);
+
+    const result = await this.prisma.promotionCandidate.deleteMany({
+      where: { seasonId, teamId },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException(
+        'Không tìm thấy đội trong snapshot thăng hạng.',
+      );
+    }
+
+    return result;
   }
 
   async getPendingForManager(userId: string) {
@@ -434,6 +547,21 @@ export class TeamInvitationService {
       });
     }
 
+    if (invitation.sourceType === TeamInvitationSourceType.PROMOTED) {
+      await this.prisma.promotionCandidate.updateMany({
+        where: {
+          seasonId: invitation.seasonId,
+          teamId: invitation.teamId,
+        },
+        data: {
+          status:
+            responseStatus === TeamInvitationStatus.ACCEPTED
+              ? PromotionCandidateStatus.ACCEPTED
+              : PromotionCandidateStatus.DECLINED,
+        },
+      });
+    }
+
     return updatedInvitation;
   }
 
@@ -454,25 +582,89 @@ export class TeamInvitationService {
       invitationStatus: TeamInvitationStatus | null;
       responseReason: string | null;
       deadlineAt: Date | null;
+      sourceRank?: number;
+      sourceCompetition?: string | null;
+      qualificationType?: PromotionQualificationType | null;
+      promotionStatus?: PromotionCandidateStatus | null;
+      sourceNote?: string | null;
     }> = [];
+
+    const promotionCandidates = await this.prisma.promotionCandidate.findMany({
+      where: {
+        seasonId,
+        teamId: { notIn: excludedTeamIds },
+        status: {
+          in: [
+            PromotionCandidateStatus.ELIGIBLE,
+            PromotionCandidateStatus.INVITED,
+            PromotionCandidateStatus.ACCEPTED,
+          ],
+        },
+      },
+      include: this.promotionCandidateInclude,
+      orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+    });
+    const sortedPromotionCandidates = [...promotionCandidates].sort(
+      (a, b) => a.rank - b.rank,
+    );
+    const promotionCandidateTeamIds = sortedPromotionCandidates.map(
+      (candidate) => candidate.teamId,
+    );
+    const promotionCandidateInvitations =
+      promotionCandidateTeamIds.length > 0
+        ? await this.prisma.teamInvitation.findMany({
+            where: { seasonId, teamId: { in: promotionCandidateTeamIds } },
+            select: {
+              id: true,
+              teamId: true,
+              status: true,
+              responseReason: true,
+              deadlineAt: true,
+            },
+          })
+        : [];
+    const invitationsByTeamId = new Map(
+      promotionCandidateInvitations.map((invitation) => [
+        invitation.teamId,
+        invitation,
+      ]),
+    );
+
+    for (const candidate of sortedPromotionCandidates) {
+      if (selected.length >= requiredSlots) break;
+      if (
+        excluded.has(candidate.teamId) ||
+        selectedTeamIds.has(candidate.teamId)
+      ) {
+        continue;
+      }
+
+      const invitation = invitationsByTeamId.get(candidate.teamId);
+      selectedTeamIds.add(candidate.teamId);
+      selected.push({
+        teamId: candidate.teamId,
+        teamName: candidate.team.name,
+        team: candidate.team,
+        invitationId: invitation?.id ?? null,
+        invitationStatus: invitation?.status ?? null,
+        responseReason: invitation?.responseReason ?? null,
+        deadlineAt: invitation?.deadlineAt ?? null,
+        sourceRank: candidate.rank,
+        sourceCompetition: candidate.sourceCompetition,
+        qualificationType: candidate.qualificationType,
+        promotionStatus: candidate.status,
+        sourceNote: candidate.note,
+      });
+    }
 
     const promotedInvitations = await this.prisma.teamInvitation.findMany({
       where: {
         seasonId,
         sourceType: TeamInvitationSourceType.PROMOTED,
-        teamId: { notIn: excludedTeamIds },
+        teamId: { notIn: [...excludedTeamIds, ...selectedTeamIds] },
       },
       include: {
-        team: {
-          select: {
-            id: true,
-            name: true,
-            shortName: true,
-            city: true,
-            logoUrl: true,
-            status: true,
-          },
-        },
+        team: { select: this.teamSummarySelect },
       },
       orderBy: [{ sentAt: 'asc' }, { createdAt: 'asc' }],
     });
@@ -495,6 +687,7 @@ export class TeamInvitationService {
         invitationStatus: invitation.status,
         responseReason: invitation.responseReason,
         deadlineAt: invitation.deadlineAt,
+        sourceNote: invitation.promotionNote,
       });
     }
 
@@ -510,16 +703,7 @@ export class TeamInvitationService {
           },
         },
         include: {
-          team: {
-            select: {
-              id: true,
-              name: true,
-              shortName: true,
-              city: true,
-              logoUrl: true,
-              status: true,
-            },
-          },
+          team: { select: this.teamSummarySelect },
         },
         orderBy: { registeredAt: 'asc' },
       });
@@ -549,7 +733,7 @@ export class TeamInvitationService {
     return selected.map((candidate, index) => ({
       ...candidate,
       sourceType: TeamInvitationSourceType.PROMOTED,
-      sourceRank: index + 1,
+      sourceRank: candidate.sourceRank ?? index + 1,
       points: 0,
       goalDifference: 0,
       played: 0,

@@ -36,6 +36,12 @@ const POSITION_LABEL: Record<string, string> = {
   OTHER: 'Khác',
 };
 
+const LINEUP_STATUS_LABEL: Record<MatchTeamLineup['status'], string> = {
+  SUBMITTED: 'Đã nộp',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Từ chối',
+};
+
 function getTeamLineup(lineups: MatchTeamLineup[], teamId: string) {
   return lineups.find((lineup) => lineup.teamId === teamId);
 }
@@ -172,6 +178,10 @@ function getDisplayName(player: LineupPlayer, compactTrailingShirtNumber: boolea
   return name;
 }
 
+function getLineupStatusLabel(status: MatchTeamLineup['status']) {
+  return LINEUP_STATUS_LABEL[status] ?? status;
+}
+
 function TeamBadge({ team, teamName }: { team?: TeamIdentity | null; teamName: string }) {
   const logoUrl = getTeamLogoUrl(team ?? teamName);
 
@@ -221,6 +231,7 @@ function PitchSide({
     '--lineup-lines': String(Math.max(displayLines.length, 1)),
   } as CSSProperties;
   const compactHomeNames = side === 'home';
+  const statusLabel = lineup?.status ? getLineupStatusLabel(lineup.status) : undefined;
 
   return (
     <section className={`lineup-pitch-side lineup-pitch-side-${side}`} aria-label={teamName}>
@@ -228,7 +239,12 @@ function PitchSide({
         <TeamBadge team={team} teamName={teamName} />
         <span className="lineup-pitch-team-copy">
           <strong>{teamName}</strong>
-          <Tag className="lineup-pitch-formation">{lineup?.formation || 'Chưa rõ sơ đồ'}</Tag>
+          <span className="lineup-pitch-meta">
+            <Tag className="lineup-pitch-formation">{lineup?.formation || 'Chưa rõ sơ đồ'}</Tag>
+            {statusLabel && (
+              <Tag className="lineup-pitch-formation lineup-pitch-status">{statusLabel}</Tag>
+            )}
+          </span>
         </span>
       </div>
 

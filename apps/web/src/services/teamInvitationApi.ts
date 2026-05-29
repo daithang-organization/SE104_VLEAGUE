@@ -4,6 +4,8 @@ import type { Team } from './teamApi';
 
 export type TeamInvitationSourceType = 'PREVIOUS_TOP_8' | 'PROMOTED' | 'REPLACEMENT';
 export type TeamInvitationStatus = 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+export type PromotionQualificationType = 'CHAMPION' | 'RUNNER_UP' | 'PLAYOFF' | 'REPLACEMENT_POOL';
+export type PromotionCandidateStatus = 'ELIGIBLE' | 'INVITED' | 'ACCEPTED' | 'DECLINED' | 'SKIPPED';
 
 export type TeamInvitation = {
   id: string;
@@ -35,6 +37,10 @@ export type InvitationCandidate = {
   invitationStatus: TeamInvitationStatus | null;
   responseReason: string | null;
   deadlineAt: string | null;
+  sourceCompetition?: string | null;
+  qualificationType?: PromotionQualificationType | null;
+  promotionStatus?: PromotionCandidateStatus | null;
+  sourceNote?: string | null;
   team?: Team | null;
 };
 
@@ -55,6 +61,29 @@ export type SendTeamInvitationPayload = {
 export type RespondTeamInvitationPayload = {
   responseStatus: 'ACCEPTED' | 'DECLINED';
   responseReason?: string;
+};
+
+export type PromotionCandidate = {
+  id: string;
+  seasonId: string;
+  teamId: string;
+  rank: number;
+  sourceCompetition: string;
+  qualificationType: PromotionQualificationType;
+  status: PromotionCandidateStatus;
+  note: string | null;
+  team?: Team;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UpsertPromotionCandidatePayload = {
+  teamId: string;
+  rank: number;
+  sourceCompetition: string;
+  qualificationType?: PromotionQualificationType;
+  status?: PromotionCandidateStatus;
+  note?: string;
 };
 
 export function apiGetSeasonInvitations(seasonId: string) {
@@ -78,6 +107,27 @@ export function apiGetMyPendingInvitations() {
   return api.get<TeamInvitation[]>('/team-invitations/my-pending').then((res) => res.data);
 }
 
+export function apiGetPromotionCandidates(seasonId: string) {
+  return api
+    .get<PromotionCandidate[]>(`/seasons/${seasonId}/promotion-candidates`)
+    .then((res) => res.data);
+}
+
+export function apiUpsertPromotionCandidate(
+  seasonId: string,
+  payload: UpsertPromotionCandidatePayload,
+) {
+  return api
+    .post<PromotionCandidate>(`/seasons/${seasonId}/promotion-candidates`, payload)
+    .then((res) => res.data);
+}
+
+export function apiDeletePromotionCandidate(seasonId: string, teamId: string) {
+  return api
+    .delete<{ count: number }>(`/seasons/${seasonId}/promotion-candidates/${teamId}`)
+    .then((res) => res.data);
+}
+
 export function apiRespondTeamInvitation(
   invitationId: string,
   payload: RespondTeamInvitationPayload,
@@ -92,7 +142,15 @@ export type ReplacementCandidateResult = {
   filledSlots: number;
   slotsNeeded: number;
   declinedTeams: TeamInvitation[];
-  candidates: Team[];
+  candidates: Array<
+    Team & {
+      promotionRank?: number;
+      sourceCompetition?: string;
+      qualificationType?: PromotionQualificationType;
+      promotionStatus?: PromotionCandidateStatus;
+      sourceNote?: string | null;
+    }
+  >;
 };
 
 export function apiGetReplacementCandidates(seasonId: string) {

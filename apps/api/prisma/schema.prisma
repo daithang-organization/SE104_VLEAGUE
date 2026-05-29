@@ -59,6 +59,21 @@ enum TeamInvitationStatus {
   EXPIRED
 }
 
+enum PromotionQualificationType {
+  CHAMPION
+  RUNNER_UP
+  PLAYOFF
+  REPLACEMENT_POOL
+}
+
+enum PromotionCandidateStatus {
+  ELIGIBLE
+  INVITED
+  ACCEPTED
+  DECLINED
+  SKIPPED
+}
+
 enum EventType {
   GOAL
   OWN_GOAL
@@ -230,6 +245,7 @@ model Team {
   managedUsers User[] @relation("ManagedTeam")
   invitations TeamInvitation[]
   drawLotResults DrawLotResult[]
+  promotionCandidates PromotionCandidate[]
 
   @@map("teams")
 }
@@ -302,6 +318,7 @@ model Season {
   invitations TeamInvitation[]
   playerSuspensions PlayerSuspension[]
   drawLotResults DrawLotResult[]
+  promotionCandidates PromotionCandidate[]
 
   @@map("seasons")
 }
@@ -671,6 +688,29 @@ model TeamManagerAssignment {
   @@index([teamId])
   @@index([seasonId])
   @@map("team_manager_assignments")
+}
+
+model PromotionCandidate {
+  id       String @id @default(uuid()) @db.Uuid
+  seasonId String @map("season_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  teamId   String @map("team_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  rank              Int
+  sourceCompetition String                     @map("source_competition")
+  qualificationType PromotionQualificationType @default(RUNNER_UP) @map("qualification_type")
+  status            PromotionCandidateStatus   @default(ELIGIBLE)
+  note              String?                    @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, teamId])
+  @@unique([seasonId, rank])
+  @@index([seasonId])
+  @@index([status])
+  @@map("promotion_candidates")
 }
 
 model TeamInvitation {
