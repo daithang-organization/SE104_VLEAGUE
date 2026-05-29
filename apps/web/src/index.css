@@ -1108,7 +1108,42 @@ select {
   min-width: 0;
 }
 
-.match-center-matchup strong {
+.match-center-team {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.match-center-team-away {
+  justify-content: flex-end;
+}
+
+.match-center-team-away .match-center-team-logo {
+  order: 2;
+}
+
+.match-center-team-logo {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 850;
+  object-fit: contain;
+}
+
+.match-center-team-logo-fallback {
+  display: grid;
+  place-items: center;
+}
+
+.match-center-team strong {
   min-width: 0;
   overflow: hidden;
   color: var(--text-main);
@@ -1118,7 +1153,7 @@ select {
   white-space: nowrap;
 }
 
-.match-center-matchup strong:last-child {
+.match-center-team-away strong {
   text-align: right;
 }
 
@@ -1680,7 +1715,22 @@ select {
     text-align: center;
   }
 
-  .match-center-header > strong:last-child {
+  .match-center-matchup {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    width: 100%;
+  }
+
+  .match-center-team,
+  .match-center-team-away {
+    justify-content: center;
+  }
+
+  .match-center-team-away .match-center-team-logo {
+    order: 0;
+  }
+
+  .match-center-team-away strong {
     text-align: center;
   }
 

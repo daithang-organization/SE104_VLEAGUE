@@ -1,7 +1,7 @@
 import { Card, Spin, Typography } from 'antd';
 import type { CSSProperties } from 'react';
 import type { Match, MatchTeamLineup } from '../../services/matchApi';
-import { getTeamTheme } from '../../utils/teamLogos';
+import { getTeamLogoUrl, getTeamTheme } from '../../utils/teamLogos';
 import LineupBench from './LineupBench';
 import LineupPitch from './LineupPitch';
 
@@ -13,10 +13,48 @@ type MatchCenterProps = {
   loading?: boolean;
 };
 
+type MatchTeam = NonNullable<Match['homeTeam']>;
+type TeamSide = 'home' | 'away';
+
 function formatScore(match: Match) {
   const home = match.homeScore ?? '—';
   const away = match.awayScore ?? '—';
   return `${home} - ${away}`;
+}
+
+function getTeamInitials(teamName: string) {
+  return teamName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+function MatchCenterTeam({
+  team,
+  teamName,
+  side,
+}: {
+  team?: MatchTeam | null;
+  teamName: string;
+  side: TeamSide;
+}) {
+  const logoUrl = getTeamLogoUrl(team ?? teamName);
+
+  return (
+    <span className={`match-center-team match-center-team-${side}`}>
+      {logoUrl ? (
+        <img className="match-center-team-logo" src={logoUrl} alt={`${teamName} logo`} />
+      ) : (
+        <span className="match-center-team-logo match-center-team-logo-fallback" aria-hidden="true">
+          {getTeamInitials(teamName)}
+        </span>
+      )}
+      <strong>{teamName}</strong>
+    </span>
+  );
 }
 
 export default function MatchCenter({ match, lineups, loading = false }: MatchCenterProps) {
@@ -39,9 +77,9 @@ export default function MatchCenter({ match, lineups, loading = false }: MatchCe
           <Title level={4}>Đội hình ra sân</Title>
         </span>
         <div className="match-center-matchup">
-          <strong>{homeTeamName}</strong>
+          <MatchCenterTeam team={match.homeTeam} teamName={homeTeamName} side="home" />
           <b>{formatScore(match)}</b>
-          <strong>{awayTeamName}</strong>
+          <MatchCenterTeam team={match.awayTeam} teamName={awayTeamName} side="away" />
         </div>
       </div>
 

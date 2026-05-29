@@ -262,6 +262,15 @@ function renderPage() {
   );
 }
 
+async function selectReportOption(control: HTMLElement, optionTitle: string) {
+  fireEvent.mouseDown(control);
+  const option = (await screen.findAllByTitle(optionTitle)).find((element) =>
+    element.classList.contains('ant-select-item-option'),
+  );
+  expect(option).toBeDefined();
+  fireEvent.click(option!);
+}
+
 function resetMatchApiMocks() {
   mockMatchApi.apiGetMatch.mockReset();
   mockMatchApi.apiGetMatch.mockResolvedValue(defaultMatch);
@@ -530,6 +539,15 @@ describe('MatchDetailPage', () => {
     expect(matchCenter).toBeInTheDocument();
     const matchCenterElement = matchCenter as HTMLElement;
 
+    expect(matchCenterElement.querySelectorAll('.match-center-team-logo')).toHaveLength(2);
+    expect(matchCenterElement.querySelector('img[alt="Ha Noi FC logo"]')).toHaveAttribute(
+      'src',
+      '/team-logos/Logo_H%C3%A0_N%E1%BB%99i_FC.png',
+    );
+    expect(matchCenterElement.querySelector('img[alt="Hai Phong FC logo"]')).toHaveAttribute(
+      'src',
+      '/team-logos/H%E1%BA%A3i_Ph%C3%B2ng_FC.webp',
+    );
     expect(
       within(matchCenterElement).getByText('Chưa có đội nào nộp danh sách thi đấu.'),
     ).toBeInTheDocument();
@@ -581,26 +599,20 @@ describe('MatchDetailPage', () => {
 
     await screen.findByText(/Chi tiết trận đấu/);
     fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Thêm bàn thắng/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm sự kiện/ }));
 
     const reportPanel = screen.getByTestId('referee-match-report-panel');
-    fireEvent.change(within(reportPanel).getByLabelText('Phút bàn thắng 1'), {
+    fireEvent.change(within(reportPanel).getByLabelText('Phút sự kiện 1'), {
       target: { value: '23' },
     });
 
-    fireEvent.mouseDown(within(reportPanel).getByLabelText('Đội ghi bàn 1'));
-    const teamOption = (await screen.findAllByTitle('Ha Noi FC')).find((element) =>
-      element.classList.contains('ant-select-item-option'),
+    await selectReportOption(within(reportPanel).getByLabelText('Đội sự kiện 1'), 'Ha Noi FC');
+    await selectReportOption(
+      within(reportPanel).getByLabelText('Cầu thủ sự kiện 1'),
+      'Home Player 1 #1',
     );
-    expect(teamOption).toBeDefined();
-    fireEvent.click(teamOption!);
-
-    fireEvent.mouseDown(within(reportPanel).getByLabelText('Cầu thủ ghi bàn 1'));
-    const scorerOption = (await screen.findAllByTitle('Home Player 1 #1')).find((element) =>
-      element.classList.contains('ant-select-item-option'),
-    );
-    expect(scorerOption).toBeDefined();
-    fireEvent.click(scorerOption!);
+    await selectReportOption(within(reportPanel).getByLabelText('Loại bàn thắng 1'), 'Đánh đầu');
+    await selectReportOption(within(reportPanel).getByLabelText('Kiến tạo 1'), 'Home Player 2 #2');
 
     fireEvent.click(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ }));
 
@@ -617,6 +629,95 @@ describe('MatchDetailPage', () => {
             type: 'GOAL',
             teamId: 'home-team',
             playerId: 'h-player-1',
+            goalType: 'HEADER',
+            relatedPlayerId: 'h-player-2',
+            note: undefined,
+          },
+        ],
+      });
+    });
+  }, 30_000);
+
+  it('submits card events from the referee report without changing the score', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm sự kiện/ }));
+
+    const reportPanel = screen.getByTestId('referee-match-report-panel');
+    fireEvent.change(within(reportPanel).getByLabelText('Phút sự kiện 1'), {
+      target: { value: '45' },
+    });
+
+    await selectReportOption(within(reportPanel).getByLabelText('Loại sự kiện 1'), 'Thẻ vàng');
+    await selectReportOption(within(reportPanel).getByLabelText('Đội sự kiện 1'), 'Hai Phong FC');
+    await selectReportOption(
+      within(reportPanel).getByLabelText('Cầu thủ sự kiện 1'),
+      'Away Player 2 #2',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiSubmitMatchReport).toHaveBeenCalledWith('m1', {
+        homeScore: 0,
+        awayScore: 0,
+        bestPlayerId: 'h-player-1',
+        technicalStats: undefined,
+        note: undefined,
+        events: [
+          {
+            minute: 45,
+            type: 'YELLOW_CARD',
+            teamId: 'away-team',
+            playerId: 'a-player-2',
+            note: undefined,
+          },
+        ],
+      });
+    });
+  }, 30_000);
+
+  it('submits substitutions with player in and player out from the referee report', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm sự kiện/ }));
+
+    const reportPanel = screen.getByTestId('referee-match-report-panel');
+    fireEvent.change(within(reportPanel).getByLabelText('Phút sự kiện 1'), {
+      target: { value: '70' },
+    });
+
+    await selectReportOption(within(reportPanel).getByLabelText('Loại sự kiện 1'), 'Thay người');
+    await selectReportOption(within(reportPanel).getByLabelText('Đội sự kiện 1'), 'Ha Noi FC');
+    await selectReportOption(
+      within(reportPanel).getByLabelText('Cầu thủ vào sân 1'),
+      'Home Player 12 #12',
+    );
+    await selectReportOption(
+      within(reportPanel).getByLabelText('Cầu thủ ra sân 1'),
+      'Home Player 4 #4',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiSubmitMatchReport).toHaveBeenCalledWith('m1', {
+        homeScore: 0,
+        awayScore: 0,
+        bestPlayerId: 'h-player-1',
+        technicalStats: undefined,
+        note: undefined,
+        events: [
+          {
+            minute: 70,
+            type: 'SUBSTITUTION',
+            teamId: 'home-team',
+            playerId: 'h-player-12',
+            relatedPlayerId: 'h-player-4',
             note: undefined,
           },
         ],
@@ -641,7 +742,7 @@ describe('MatchDetailPage', () => {
     expect(screen.queryByRole('button', { name: /Thêm sự kiện/ })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
-    expect(screen.getByRole('button', { name: /Thêm bàn thắng/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Thêm sự kiện/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ })).toBeInTheDocument();
   });
 });
