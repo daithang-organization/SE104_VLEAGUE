@@ -389,7 +389,6 @@ const en = {
     formStadium: 'Home Stadium',
     formStadiumPlaceholder: 'Select stadium',
     formLogo: 'Logo URL',
-    formLogoPlaceholder: 'https://example.com/logo.png',
     formStatus: 'Status',
     formStatusActive: 'Active',
     formStatusInactive: 'Inactive',

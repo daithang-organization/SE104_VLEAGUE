@@ -22,7 +22,7 @@ export class CreateSeasonDto {
   })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     description: 'Năm của mùa giải',
@@ -31,7 +31,7 @@ export class CreateSeasonDto {
   })
   @IsInt()
   @Min(2020)
-  year: number;
+  year!: number;
 
   @ApiPropertyOptional({
     description: 'Trạng thái mùa giải',

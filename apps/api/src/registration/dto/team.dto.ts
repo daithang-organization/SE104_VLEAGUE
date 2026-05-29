@@ -19,7 +19,7 @@ export class CreateTeamDto {
   })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional({
     description: 'Tên viết tắt',
@@ -117,10 +117,10 @@ export class UpdateTeamDto {
 
 export class TeamResponseDto {
   @ApiProperty({ description: 'ID đội bóng', format: 'uuid' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ description: 'Tên đội bóng', example: 'Hoàng Anh Gia Lai' })
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional({ description: 'Tên viết tắt', example: 'HAGL' })
   shortName?: string;
@@ -129,11 +129,11 @@ export class TeamResponseDto {
   city?: string;
 
   @ApiProperty({ description: 'Trạng thái', enum: TeamStatus })
-  status: TeamStatus;
+  status!: TeamStatus;
 
   @ApiProperty({ description: 'Ngày tạo' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty({ description: 'Ngày cập nhật' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

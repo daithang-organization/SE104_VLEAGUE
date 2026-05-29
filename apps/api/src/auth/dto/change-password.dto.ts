@@ -5,7 +5,7 @@ export class ChangePasswordDto {
   @ApiProperty({ example: 'oldPassword123' })
   @IsNotEmpty({ message: 'Mật khẩu hiện tại không được để trống' })
   @IsString()
-  currentPassword: string;
+  currentPassword!: string;
 
   @ApiProperty({
     example: 'newPassword123',
@@ -16,5 +16,5 @@ export class ChangePasswordDto {
   @Matches(/^(?=.*[A-Za-z])(?=.*\d)/, {
     message: 'Mật khẩu mới phải chứa ít nhất 1 chữ cái và 1 số',
   })
-  newPassword: string;
+  newPassword!: string;
 }
