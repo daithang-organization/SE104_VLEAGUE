@@ -18,6 +18,7 @@ export type SeasonTeam = {
   participationFeePaid: boolean;
   feePaidAt: string | null;
   feeReceiptCode: string | null;
+  feeReceiptUrl: string | null;
   externalCompetitionSchedule: string | null;
   applicationSubmittedAt: string | null;
   applicationReviewNote: string | null;

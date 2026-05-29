@@ -2,7 +2,7 @@
 
 ## Goal
 
-Reduce match-day data entry friction for referees by consolidating score entry, goal events, player-of-the-match selection, and referee report submission into one coherent post-match workflow.
+Reduce match-day data entry friction for referees by consolidating score entry, match events, player-of-the-match selection, and referee report submission into one coherent post-match workflow.
 
 The new primary action is `Nộp biên bản trận đấu`.
 
@@ -10,7 +10,7 @@ The new primary action is `Nộp biên bản trận đấu`.
 
 Use a guided match report flow inside the existing `Trọng tài & báo cáo` tab.
 
-The referee should not have to jump between `Cập nhật tỉ số`, `Thêm sự kiện`, and `Nộp báo cáo trọng tài` for the same post-match responsibility. Goal events become the source of truth for the score, and the final submission stores the report data in one user-facing action.
+The referee should not have to jump between `Cập nhật tỉ số`, `Thêm sự kiện`, and `Nộp báo cáo trọng tài` for the same post-match responsibility. Report events become the source of truth for the match record, scoring events become the source of truth for the score, and the final submission stores the report data in one user-facing action.
 
 ## Alternatives Considered
 
@@ -29,10 +29,13 @@ The referee opens the match detail page and selects `Trọng tài & báo cáo`.
 
 The tab shows a `Biên bản trận đấu` panel with three sections:
 
-1. `Bàn thắng & tỉ số`
-   - Add goal events with minute, team, player, and optional note.
-   - Show the calculated score from goal events.
-   - Allow editing/removing draft goal events before submission.
+1. `Sự kiện & tỉ số`
+   - Add match events with minute, type, team, player, and optional note.
+   - Support `GOAL`, `OWN_GOAL`, `PENALTY`, `PENALTY_MISS`, `YELLOW_CARD`, `RED_CARD`, and `SUBSTITUTION`.
+   - Show `goalType` and assist for scored goals and penalties.
+   - Show player-in and player-out fields for substitutions.
+   - Show the calculated score from scoring events only.
+   - Allow editing/removing draft events before submission.
 
 2. `Thông tin sau trận`
    - Select `Cầu thủ xuất sắc nhất trận`.
@@ -40,12 +43,12 @@ The tab shows a `Biên bản trận đấu` panel with three sections:
    - Enter referee report notes.
 
 3. `Kiểm tra & nộp`
-   - Show a concise summary: final score, goal list, player of the match, and report notes.
+   - Show a concise summary: final score, event list, player of the match, and report notes.
    - Submit with one primary button: `Nộp biên bản trận đấu`.
 
 ## Score Rules
 
-Goal events are the default source of truth for score.
+Scoring events are the default source of truth for score.
 
 The score shown in the report is calculated from:
 
@@ -53,9 +56,9 @@ The score shown in the report is calculated from:
 - `PENALTY`
 - `OWN_GOAL`, counted for the benefiting team according to the event team semantics already used by the backend
 
-`PENALTY_MISS`, cards, and substitutions do not change the score.
+`PENALTY_MISS`, cards, and substitutions are submitted as report events but do not change the score.
 
-For the first pass, the referee flow should not expose separate manual score inputs. It should calculate `homeScore` and `awayScore` from the draft goal events and submit those calculated values through the existing report payload. Existing admin score controls can remain outside this referee report flow.
+For the first pass, the referee flow should not expose separate manual score inputs. It should calculate `homeScore` and `awayScore` from saved and draft scoring events and submit those calculated values through the existing report payload. Existing admin score controls can remain outside this referee report flow.
 
 ## Role Boundaries
 
@@ -89,28 +92,29 @@ Expected API direction:
 
 - Reuse the existing `POST /matches/:id/report` endpoint as the first implementation path.
 - The current report payload already supports `homeScore`, `awayScore`, `bestPlayerId`, `technicalStats`, `note`, and `events`, so the first pass should be a frontend consolidation rather than a new backend model.
-- Keep standalone event endpoints available for existing match timeline workflows, but the consolidated referee report should submit goal events through the report payload when the referee is filing the final report.
+- Keep standalone event endpoints available for existing match timeline workflows, but the consolidated referee report should submit match events through the report payload when the referee is filing the final report.
 
 ## Validation
 
 Before submission:
 
 - At least one valid final score exists. A `0-0` score is valid.
-- Goal event rows must have minute, team, and event type.
-- Player is required for normal goals and penalties when available from roster data.
+- Event rows must have minute, team, and event type.
+- Player is required when roster data is available for the selected team.
+- Substitution rows require both player in and player out when roster data is available.
 - Player of the match remains optional because the current report DTO allows `bestPlayerId` to be omitted.
 - Technical stats JSON must be valid JSON if the field remains raw JSON.
 
 After submission:
 
-- Match score matches the saved goal events.
-- Timeline reflects saved goal events.
+- Match score matches the saved scoring events.
+- Timeline reflects saved report events.
 - Match report shows the submitted score, best player, technical stats, and notes.
 
 ## Error And Empty States
 
-- If no goal events exist, show the calculated score as `0-0`.
-- If roster data is missing, allow saving a goal event with team and note, then clearly mark the missing player metadata.
+- If no scoring events exist, show the calculated score as `0-0`.
+- If roster data is missing, allow saving an event with team and note, then clearly mark the missing player metadata.
 - If event saving succeeds but report saving fails, show which part failed and keep the referee's report draft on screen.
 - If a duplicate submit is attempted while saving, disable the submit button and keep the summary visible.
 
@@ -119,11 +123,13 @@ After submission:
 Add or update tests for:
 
 - Referee can submit a match report from one consolidated panel.
-- Goal events calculate the displayed score.
+- Scoring events calculate the displayed score.
+- Cards and substitutions submit through the report payload without changing the score.
+- Substitutions include both player in and player out.
 - `0-0` report can be submitted without goal events.
 - Referee report flow does not show separate manual score inputs.
 - Supervisor report remains separate and still renders for supervisor/admin workflows.
-- Existing match timeline still renders submitted goal events.
+- Existing match timeline still renders submitted report events.
 
 ## Out Of Scope
 

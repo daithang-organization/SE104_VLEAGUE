@@ -229,6 +229,7 @@ function TeamManagerDashboard() {
       backupKit: application?.backupKit ?? '',
       participationFeePaid: application?.participationFeePaid ?? false,
       feeReceiptCode: application?.feeReceiptCode ?? '',
+      feeReceiptUrl: application?.feeReceiptUrl ?? '',
       externalCompetitionSchedule: application?.externalCompetitionSchedule ?? '',
     });
   }, [application, applicationForm, currentSeason]);
@@ -243,6 +244,7 @@ function TeamManagerDashboard() {
         seasonId: currentSeason.id,
         ownerAddress: values.ownerAddress?.trim() || undefined,
         feeReceiptCode: values.feeReceiptCode?.trim() || undefined,
+        feeReceiptUrl: values.feeReceiptUrl?.trim() || undefined,
         externalCompetitionSchedule: values.externalCompetitionSchedule?.trim() || undefined,
         participationFeePaid: values.participationFeePaid ?? false,
       });
@@ -427,6 +429,11 @@ function TeamManagerDashboard() {
               <Col xs={24} md={12}>
                 <Form.Item name="feeReceiptCode" label="Mã biên lai/ghi chú nộp phí">
                   <Input placeholder="Mã biên lai lệ phí 1 tỷ đồng" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="feeReceiptUrl" label="Link chứng từ nộp lệ phí">
+                  <Input placeholder="https://..." />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>

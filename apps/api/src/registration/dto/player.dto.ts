@@ -10,6 +10,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
@@ -109,6 +110,15 @@ export class CreatePlayerDto {
   weightKg?: number;
 
   @ApiPropertyOptional({
+    description: 'Tóm tắt tiểu sử chơi bóng',
+    example: 'Từng thi đấu tại giải trẻ quốc gia.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  careerSummary?: string;
+
+  @ApiPropertyOptional({
     description: 'ID đội bóng (nếu có)',
     format: 'uuid',
   })
@@ -197,6 +207,15 @@ export class UpdatePlayerDto {
   @Min(30)
   @Max(200)
   weightKg?: number;
+
+  @ApiPropertyOptional({
+    description: 'Tóm tắt tiểu sử chơi bóng',
+    example: 'Đã có 3 mùa thi đấu chuyên nghiệp.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  careerSummary?: string;
 
   @ApiPropertyOptional({
     description: 'ID đội bóng',
@@ -299,6 +318,9 @@ export class PlayerResponseDto {
 
   @ApiPropertyOptional({ description: 'Cân nặng (kg)' })
   weightKg?: number;
+
+  @ApiPropertyOptional({ description: 'Tóm tắt tiểu sử chơi bóng' })
+  careerSummary?: string;
 
   @ApiPropertyOptional({ description: 'ID đội bóng', format: 'uuid' })
   teamId?: string;

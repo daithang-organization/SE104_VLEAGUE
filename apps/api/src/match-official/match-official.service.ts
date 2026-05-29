@@ -115,6 +115,12 @@ export class MatchOfficialService {
       data: { homeScore: dto.homeScore, awayScore: dto.awayScore },
     });
 
+    if (dto.events !== undefined) {
+      await this.prisma.matchEvent.deleteMany({
+        where: { matchId, source: 'MATCH_REPORT' },
+      });
+    }
+
     const events = dto.events ?? [];
     if (events.length > 0) {
       await this.prisma.matchEvent.createMany({
@@ -127,8 +133,8 @@ export class MatchOfficialService {
           relatedPlayerId: event.relatedPlayerId,
           goalType: event.goalType,
           note: event.note,
+          source: 'MATCH_REPORT',
         })),
-        skipDuplicates: true,
       });
     }
 

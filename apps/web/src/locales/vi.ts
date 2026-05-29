@@ -577,6 +577,9 @@ const vi = {
     formHeightPlaceholder: 'VD: 168',
     formWeight: 'Cân nặng (kg)',
     formWeightPlaceholder: 'VD: 65',
+    formCareerSummary: 'Tóm tắt tiểu sử chơi bóng',
+    formCareerSummaryPlaceholder:
+      'Tóm tắt quá trình đào tạo, CLB từng thi đấu, thành tích nổi bật...',
   },
 
   // ─────────────────────────────────────────────
@@ -1327,6 +1330,7 @@ const vi = {
     descPosition: 'Vị trí',
     descHeight: 'Chiều cao',
     descWeight: 'Cân nặng',
+    descCareerSummary: 'Tóm tắt tiểu sử chơi bóng',
     descCurrentTeam: 'Đội hiện tại',
     descJerseyNumber: 'số {number}',
     noTeam: 'Chưa thuộc đội nào',

@@ -265,6 +265,7 @@ describe('SeasonService', () => {
       participationFeePaid: true,
       feePaidAt: new Date(),
       feeReceiptCode: 'REC-001',
+      feeReceiptUrl: 'https://storage.example/receipts/rec-001.pdf',
       externalCompetitionSchedule: 'Cúp Quốc gia',
       applicationSubmittedAt: new Date(),
       applicationReviewNote: null,
@@ -332,6 +333,19 @@ describe('SeasonService', () => {
       await expect(
         service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
       ).rejects.toThrow('chưa nộp hồ sơ');
+      expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
+    });
+
+    it('should reject approval when participation fee proof is missing', async () => {
+      jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
+        ...seasonTeamRecord,
+        feeReceiptCode: null,
+        feeReceiptUrl: null,
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('chứng từ nộp lệ phí');
       expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
     });
 

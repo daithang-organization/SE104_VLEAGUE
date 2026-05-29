@@ -50,6 +50,7 @@ describe('RegistrationService', () => {
       birthPlace: null,
       heightCm: null,
       weightKg: null,
+      careerSummary: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -63,6 +64,7 @@ describe('RegistrationService', () => {
       birthPlace: null,
       heightCm: null,
       weightKg: null,
+      careerSummary: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -314,14 +316,23 @@ describe('RegistrationService', () => {
         dob: '2000-01-01',
         nationality: 'Vietnam',
         position: PlayerPosition.FW,
+        careerSummary: 'Từng thi đấu tại giải trẻ quốc gia.',
       };
       jest.spyOn(prisma.player, 'create').mockResolvedValue({
         ...mockPlayers[0],
         fullName: dto.fullName,
+        careerSummary: dto.careerSummary,
       } as any);
 
       const result = await service.createPlayer(dto);
       expect(result.fullName).toBe('Test Player');
+      expect(prisma.player.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            careerSummary: 'Từng thi đấu tại giải trẻ quốc gia.',
+          }),
+        }),
+      );
     });
 
     it('assigns team-manager-created players to the fixed club', async () => {
@@ -375,6 +386,27 @@ describe('RegistrationService', () => {
       await expect(service.deletePlayer('not-found')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('updatePlayer', () => {
+    it('updates a player career summary', async () => {
+      jest
+        .spyOn(prisma.player, 'findUnique')
+        .mockResolvedValue({ ...mockPlayers[0], roster: [] } as any);
+      jest.spyOn(prisma.player, 'update').mockResolvedValue({
+        ...mockPlayers[0],
+        careerSummary: 'Đã có 3 mùa thi đấu chuyên nghiệp.',
+      } as any);
+
+      await service.updatePlayer('player-1', {
+        careerSummary: 'Đã có 3 mùa thi đấu chuyên nghiệp.',
+      } as any);
+
+      expect(prisma.player.update).toHaveBeenCalledWith({
+        where: { id: 'player-1' },
+        data: { careerSummary: 'Đã có 3 mùa thi đấu chuyên nghiệp.' },
+      });
     });
   });
 

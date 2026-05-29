@@ -67,6 +67,12 @@ export class SubmitTeamApplicationDto {
   @MaxLength(100)
   feeReceiptCode?: string;
 
+  @ApiPropertyOptional({ description: 'URL chứng từ nộp lệ phí tham dự' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  feeReceiptUrl?: string;
+
   @ApiPropertyOptional({ description: 'Lịch giải khác đã/đang tham gia' })
   @IsOptional()
   @IsString()

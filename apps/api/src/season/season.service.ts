@@ -391,6 +391,8 @@ export class SeasonService {
     primaryKit?: string | null;
     backupKit?: string | null;
     participationFeePaid?: boolean | null;
+    feeReceiptCode?: string | null;
+    feeReceiptUrl?: string | null;
   }) {
     if (!record.applicationSubmittedAt) {
       throw new BadRequestException('CLB chưa nộp hồ sơ tham dự mùa giải.');
@@ -422,6 +424,12 @@ export class SeasonService {
     if (!record.participationFeePaid) {
       throw new BadRequestException(
         'CLB chưa xác nhận nộp lệ phí tham dự 1 tỷ đồng.',
+      );
+    }
+
+    if (!record.feeReceiptCode?.trim() && !record.feeReceiptUrl?.trim()) {
+      throw new BadRequestException(
+        'CLB chưa cung cấp chứng từ nộp lệ phí tham dự.',
       );
     }
   }

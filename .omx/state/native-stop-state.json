@@ -92,11 +92,11 @@
     },
     "019e6db3-27b8-7480-9c60-9c9152ed294f": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|theo mình, bước tiếp theo nên là **khóa p2 hiện tại theo hướng snapshot trước**, chưa vội xây full v.league 2. lộ trình hợp lý: 1. **giữ `promotioncandidate` làm nguồn thăng hạng chính** đây là snapshot đã đóng băng cho mùa v.league 1: đội nào, hạng mấy, đến từ giải nào, đủ điều kiện hay không. 2. **bổ sung import snapshot v.league 2** admin có thể import csv/excel gồm: `rank`, `team`, `sourcecompetition`, `qualificationtype`, `note`. import xong hệ thống tạo/cập nhật danh sách đội thăng hạng. 3. **không mặc định “ngoài v.league 1 = v.league 2”** thay vào đó, sau này thêm model kiểu `competitionseasonteam` để biết đội nào thuộc giải nào ở mùa nào. 4. **khi tạo mùa v.league 1 mới** ui cho chọn “nguồn thăng hạng”: ví dụ `v.league 2 2025`. hệ thống tự lấy top 2 từ snapshot đó để đưa vào danh sách mời. 5. **admin vẫn được override** vì thực tế có đội không đủ điều kiện, bỏ suất, đổi tên, sáp nhập, hoặc cần đội thay thế. nên làm ngay bây giờ: **thêm import snapshot v.league 2 + gắn snapshot này vào luồng gửi lời mời mùa mới**. sau đó mới làm bước lớn hơn là quản lý nhiều giải/mùa đầy đủ.",
-        "first_seen_at": "2026-05-29T05:20:13.813Z",
-        "last_seen_at": "2026-05-29T05:20:13.813Z",
+        "fingerprint": "ordinary|đã triển khai import snapshot v.league 2 cho nguồn đội thăng hạng. phần chính: - backend thêm `post /seasons/:seasonid/promotion-candidates/import`. - import hỗ trợ nhiều dòng, resolve clb bằng `teamid` hoặc `teamname`/`shortname`. - có validate trùng hạng, trùng clb, thiếu nguồn giải, clb không tồn tại. - có tùy chọn `replaceexisting` để thay snapshot hiện tại. - web thêm nút `import csv` trong box “nguồn đội thăng hạng”. - api client và test đã cập nhật. kiểm tra: - `pnpm --recursive run lint`: pass, còn 17 warning web cũ. - `pnpm --filter api test`: pass, `31/31` suites, `328` tests. - `pnpm --filter web test`: pass, `40/40` files, `255` passed, `1` skipped. - api typecheck: pass. - web typecheck: pass. - `git diff --check`: pass, chỉ warning crlf ở docs. lưu ý: `pnpm --recursive run test` bị timeout ở web khi chạy song song với api, nhưng chạy tuần tự riêng api và web đều pass. mình chưa push code.",
+        "first_seen_at": "2026-05-29T05:52:47.830Z",
+        "last_seen_at": "2026-05-29T05:52:47.830Z",
         "repeat_count": 1,
-        "last_turn_id": "019e722c-bb09-7922-9976-4bce2f2b5559",
+        "last_turn_id": "019e722e-ecbf-77d2-a850-e78750b9226c",
         "last_thread_id": null
       }
     },
@@ -122,11 +122,21 @@
     },
     "019e7223-a197-71a0-8726-35276e5d8258": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã gỡ rate limit ở be. thay đổi chính: - bỏ toàn bộ `@throttle`, `@skipthrottle`, `@nestjs/throttler` trong `auth`, `search`, `health` controller. - bỏ swagger docs `apitoomanyrequestsresponse` cho register/login. - xóa dependency `@nestjs/throttler` khỏi `apps/api/package.json` và `pnpm-lock.yaml`. - thêm test `apps/api/src/rate-limit-disabled.spec.ts` để chặn việc rate-limit quay lại. verification đã chạy: - `pnpm --filter api test -- rate-limit-disabled.spec.ts auth.controller.spec.ts search.controller.spec.ts` → `24/24` pass - `pnpm --filter api build` → pass - `rg` xác nhận không còn throttler/rate-limit refs trong production backend và package/lockfile. mình giữ nguyên generic http `429` mapping trong exception filter vì đó chỉ là format lỗi nếu có nơi khác trả 429, không phải cơ chế rate limit.",
-        "first_seen_at": "2026-05-29T05:42:30.322Z",
-        "last_seen_at": "2026-05-29T05:42:30.322Z",
+        "fingerprint": "ordinary|bước tiếp theo nên làm theo thứ tự này: 1. **apply migration vào db thật/local** - dev local: `pnpm --filter api exec prisma migrate dev` - staging/prod: `pnpm --filter api exec prisma migrate deploy` - sau đó restart backend. 2. **smoke test bằng ui** - team_manager: nộp hồ sơ có `link chứng từ nộp lệ phí`. - admin: duyệt đội, thử thiếu chứng từ để chắc chắn bị chặn. - admin: generate/publish lịch, kiểm tra notification cho manager. - admin/team_manager: tạo/sửa cầu thủ có `tóm tắt tiểu sử chơi bóng`. - referee: gửi báo cáo trận 2 lần, kiểm tra event không bị nhân đôi. 3. **bổ sung seed/demo data** - thêm `careersummary` cho một số cầu thủ mẫu. - thêm `feereceipturl` cho hồ sơ đội mẫu để demo nhìn đầy đủ hơn. 4. **cập nhật tài liệu/handoff** - ghi rõ các phần vừa hoàn tất: career summary, fee proof url, schedule notification, idempotent match report events. - tôi chưa thấy file `vleague-handoff-status-2026-05-28.md` trong repo hiện tại, nên cần xác định lại path nếu file đó đang nằm ngoài workspace. 5. **chuẩn bị commit** - chỉ stage các file source/test/migration liên quan. - tránh stage `.omx/state/*` và các file docs lạ nếu không định đưa vào commit. về mặt core requirement của đề, sau phần vừa thêm thì không còn lỗ hổng lớn rõ ràng. việc đáng làm nhất bây giờ là chạy migration db rồi smoke test end-to-end bằng các vai trò thật.",
+        "first_seen_at": "2026-05-29T12:03:28.118Z",
+        "last_seen_at": "2026-05-29T12:03:28.118Z",
         "repeat_count": 1,
-        "last_turn_id": "019e7236-62a4-7851-8ae9-c233c7db5399",
+        "last_turn_id": "019e739d-a4bb-79e3-99c3-b751ba4bb293",
+        "last_thread_id": null
+      }
+    },
+    "019e724b-4bca-7813-98a0-2e3672477e84": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã pull/merge `origin/main` vào nhánh hiện tại `feat/audit-optimizing` và push lại lên `origin`. kết quả: - merge commit: `0b097d0 merge remote-tracking branch 'origin/main' into feat/audit-optimizing` - push thành công: `ee0248f..0b097d0 feat/audit-optimizing -> feat/audit-optimizing` - local và remote đã đồng bộ: `0 0` ahead/behind lưu ý: worktree vẫn còn thay đổi chưa commit và tôi đã giữ nguyên, chưa push các file này: - `.omx/state/native-stop-state.json` - `.omx/state/session.json` - `docs/superpowers/specs/2026-05-29-referee-match-report-design.md` - `docs/superpowers/plans/2026-05-29-referee-match-report-full-events-implementation.md` github cũng báo default branch có 34 vulnerabilities. tôi chưa chạy test vì yêu cầu hiện tại là pull/merge và push.",
+        "first_seen_at": "2026-05-29T05:58:33.354Z",
+        "last_seen_at": "2026-05-29T05:58:33.354Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e724b-ce0b-7b52-b3c1-27cea85a70d8",
         "last_thread_id": null
       }
     }

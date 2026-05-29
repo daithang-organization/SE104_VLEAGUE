@@ -287,6 +287,7 @@ export default function PlayersPage() {
       birthPlace: player.birthPlace ?? '',
       heightCm: player.heightCm ?? undefined,
       weightKg: player.weightKg ?? undefined,
+      careerSummary: player.careerSummary ?? '',
       teamId: managerTeamId ?? (player.roster || [])[0]?.team?.id ?? undefined,
     });
     setModalOpen(true);
@@ -308,6 +309,10 @@ export default function PlayersPage() {
         weightKg: values.weightKg || undefined,
         teamId: managerTeamId ?? values.teamId ?? undefined,
       };
+      const careerSummary = values.careerSummary?.trim();
+      if (careerSummary || editingPlayer) {
+        payload.careerSummary = careerSummary || '';
+      }
 
       if (editingPlayer) {
         await apiUpdatePlayer(editingPlayer.id, payload);
@@ -680,6 +685,15 @@ export default function PlayersPage() {
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item name="careerSummary" label={t('players.formCareerSummary')}>
+            <Input.TextArea
+              rows={3}
+              maxLength={2000}
+              showCount
+              placeholder={t('players.formCareerSummaryPlaceholder')}
+            />
+          </Form.Item>
         </Form>
       </Modal>
     </>

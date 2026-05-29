@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SchedulingService } from './scheduling.service';
 
 describe('SchedulingService', () => {
   let service: SchedulingService;
   let prisma: PrismaService;
+  let notificationService: NotificationService;
 
   const mockMatches = [
     {
@@ -46,6 +48,14 @@ describe('SchedulingService', () => {
       providers: [
         SchedulingService,
         {
+          provide: NotificationService,
+          useValue: {
+            createForUser: jest
+              .fn()
+              .mockResolvedValue({ id: 'notification-1' }),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: {
             match: {
@@ -71,6 +81,7 @@ describe('SchedulingService', () => {
 
     service = module.get<SchedulingService>(SchedulingService);
     prisma = module.get<PrismaService>(PrismaService);
+    notificationService = module.get<NotificationService>(NotificationService);
   });
 
   it('should be defined', () => {
@@ -218,6 +229,7 @@ describe('SchedulingService', () => {
   describe('publish', () => {
     it('should update DRAFT matches to PUBLISHED', async () => {
       jest.spyOn(prisma.match, 'updateMany').mockResolvedValue({ count: 12 });
+      jest.spyOn(prisma.seasonTeam, 'findMany').mockResolvedValue([]);
 
       const result = await service.publish();
 
@@ -227,6 +239,42 @@ describe('SchedulingService', () => {
         where: { status: 'DRAFT' },
         data: { status: 'PUBLISHED' },
       });
+    });
+
+    it('notifies approved team managers when a season schedule is published', async () => {
+      jest.spyOn(prisma.match, 'updateMany').mockResolvedValue({ count: 90 });
+      jest.spyOn(prisma.seasonTeam, 'findMany').mockResolvedValue([
+        {
+          team: {
+            name: 'Hà Nội FC',
+            managedUsers: [{ id: 'manager-1' }, { id: 'manager-2' }],
+          },
+        },
+      ] as any);
+
+      await service.publish('season-1');
+
+      expect(prisma.seasonTeam.findMany).toHaveBeenCalledWith({
+        where: { seasonId: 'season-1', status: 'APPROVED' },
+        include: {
+          team: {
+            select: {
+              name: true,
+              managedUsers: { select: { id: true } },
+            },
+          },
+        },
+      });
+      expect(notificationService.createForUser).toHaveBeenCalledTimes(2);
+      expect(notificationService.createForUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'manager-1',
+          title: 'Lịch thi đấu đã được công bố',
+          type: 'SCHEDULE_CHANGE',
+          entityType: 'season',
+          entityId: 'season-1',
+        }),
+      );
     });
   });
 });

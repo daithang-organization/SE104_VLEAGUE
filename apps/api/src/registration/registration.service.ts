@@ -378,6 +378,7 @@ export class RegistrationService {
         birthPlace: dto.birthPlace,
         heightCm: dto.heightCm,
         weightKg: dto.weightKg,
+        careerSummary: dto.careerSummary?.trim() || null,
       },
     });
 
@@ -427,6 +428,9 @@ export class RegistrationService {
     if (dto.birthPlace !== undefined) data.birthPlace = dto.birthPlace;
     if (dto.heightCm !== undefined) data.heightCm = dto.heightCm;
     if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
+    if (dto.careerSummary !== undefined) {
+      data.careerSummary = dto.careerSummary?.trim() || null;
+    }
 
     const player = await this.prisma.player.update({
       where: { id },

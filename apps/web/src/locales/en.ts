@@ -548,6 +548,9 @@ const en = {
     formHeightPlaceholder: 'e.g. 168',
     formWeight: 'Weight (kg)',
     formWeightPlaceholder: 'e.g. 65',
+    formCareerSummary: 'Career summary',
+    formCareerSummaryPlaceholder:
+      'Summarize academy history, former clubs, and notable achievements...',
   },
 
   // ─────────────────────────────────────────────
@@ -1291,6 +1294,7 @@ const en = {
     descPosition: 'Position',
     descHeight: 'Height',
     descWeight: 'Weight',
+    descCareerSummary: 'Career summary',
     descCurrentTeam: 'Current Team',
     descJerseyNumber: 'No. {number}',
     noTeam: 'No team',

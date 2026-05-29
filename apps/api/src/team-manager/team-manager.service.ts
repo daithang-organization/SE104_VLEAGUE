@@ -132,6 +132,7 @@ export class TeamManagerService {
         participationFeePaid: dto.participationFeePaid,
         feePaidAt: dto.participationFeePaid ? new Date() : null,
         feeReceiptCode: dto.feeReceiptCode?.trim() || null,
+        feeReceiptUrl: dto.feeReceiptUrl?.trim() || null,
         externalCompetitionSchedule:
           dto.externalCompetitionSchedule?.trim() || null,
         applicationSubmittedAt: new Date(),
