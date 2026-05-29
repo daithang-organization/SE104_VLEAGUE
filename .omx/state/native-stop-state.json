@@ -82,21 +82,21 @@
     },
     "019e6db6-a709-7461-9a5c-3af5398e9b87": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã cập nhật logo clb ở đúng 2 khu vực bạn chỉ: - `thống kê trận đấu` trong tab `tổng quan`: thêm logo cạnh tên đội nhà/đội khách. - `diễn biến trận đấu`: thêm logo trong 2 card đội ở header. - có fallback chữ viết tắt nếu đội chưa có logo asset. - không đụng phần `trọng tài & báo cáo`, tab `diễn biến trận đấu`, hay sơ đồ/đội hình ra sân. file đã sửa: - [matchstatspanel.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/matchstatspanel.tsx) - [matchtimeline.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/matchtimeline.tsx) - [index.css](c:/se104_vleague/apps/web/src/index.css) - [matchdetailpage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/matchdetailpage.test.tsx) verification: - `pnpm --filter web test -- matchdetailpage.test.tsx`: 9/9 pass - `pnpm --filter web lint`: 0 errors, còn 17 warnings cũ - `pnpm --filter web build`: pass dev server: `http://127.0.0.1:5173/` trả `200 ok`. nếu bạn dùng `127.0.0.1:5174` mà bị refused thì mở `http://localhost:5174/` hoặc dùng port `5173`.",
-        "first_seen_at": "2026-05-29T04:02:18.518Z",
-        "last_seen_at": "2026-05-29T04:02:18.518Z",
+        "fingerprint": "ordinary|đã chạy cho `apps/web`: - `pnpm --filter web lint`: pass, 0 errors, còn 17 warnings cũ. - `pnpm --filter web exec tsc -b`: pass. - `pnpm --filter web test`: lần đầu có 1 timeout ở `matchdetailpage.test.tsx`, rerun file đó pass 9/9, rerun full suite pass `40/40 files`, `249 passed`, `1 skipped`. có một số warning/log từ jsdom/antd như `getcomputedstyle` pseudo-elements và deprecation, nhưng lần chạy cuối cùng exit 0.",
+        "first_seen_at": "2026-05-29T04:10:43.598Z",
+        "last_seen_at": "2026-05-29T04:10:43.598Z",
         "repeat_count": 1,
-        "last_turn_id": "019e71d8-3f5b-7180-91e0-1c6f14364e80",
+        "last_turn_id": "019e71e7-90fa-7c41-a272-23449e7ca878",
         "last_thread_id": null
       }
     },
     "019e6db3-27b8-7480-9c60-9c9152ed294f": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã chạy lại sau chỉnh sửa cuối: - `pnpm --recursive run lint`: pass, 0 errors. còn 17 warning cũ ở các file khác; warning trong `seasonspage.tsx` đã xử lý. - `pnpm --recursive run test`: pass. api `30/30` suites, `324` tests; web `40/40` files, `249` passed, `1` skipped. - `pnpm --filter api exec tsc --noemit -p tsconfig.build.json`: pass. - `pnpm --filter web exec tsc -b --noemit`: pass. - `git diff --check`: pass, chỉ có warning crlf line endings. mình chưa push code. worktree còn có `.omx/state/native-stop-state.json` là state runtime, nên khi commit/push nên bỏ file này khỏi staging.",
-        "first_seen_at": "2026-05-28T17:26:01.722Z",
-        "last_seen_at": "2026-05-28T17:26:01.722Z",
+        "fingerprint": "ordinary|theo mình, bước tiếp theo nên là **khóa p2 hiện tại theo hướng snapshot trước**, chưa vội xây full v.league 2. lộ trình hợp lý: 1. **giữ `promotioncandidate` làm nguồn thăng hạng chính** đây là snapshot đã đóng băng cho mùa v.league 1: đội nào, hạng mấy, đến từ giải nào, đủ điều kiện hay không. 2. **bổ sung import snapshot v.league 2** admin có thể import csv/excel gồm: `rank`, `team`, `sourcecompetition`, `qualificationtype`, `note`. import xong hệ thống tạo/cập nhật danh sách đội thăng hạng. 3. **không mặc định “ngoài v.league 1 = v.league 2”** thay vào đó, sau này thêm model kiểu `competitionseasonteam` để biết đội nào thuộc giải nào ở mùa nào. 4. **khi tạo mùa v.league 1 mới** ui cho chọn “nguồn thăng hạng”: ví dụ `v.league 2 2025`. hệ thống tự lấy top 2 từ snapshot đó để đưa vào danh sách mời. 5. **admin vẫn được override** vì thực tế có đội không đủ điều kiện, bỏ suất, đổi tên, sáp nhập, hoặc cần đội thay thế. nên làm ngay bây giờ: **thêm import snapshot v.league 2 + gắn snapshot này vào luồng gửi lời mời mùa mới**. sau đó mới làm bước lớn hơn là quản lý nhiều giải/mùa đầy đủ.",
+        "first_seen_at": "2026-05-29T05:20:13.813Z",
+        "last_seen_at": "2026-05-29T05:20:13.813Z",
         "repeat_count": 1,
-        "last_turn_id": "019e6f8e-3188-7de3-9b20-b7c9d710826e",
+        "last_turn_id": "019e722c-bb09-7922-9976-4bce2f2b5559",
         "last_thread_id": null
       }
     },
@@ -112,11 +112,21 @@
     },
     "019e71be-9ccd-7823-a941-ead2e2e6586d": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã chốt hướng và ghi thành spec tại [2026-05-29-referee-match-report-design.md](c:/se104_vleague/docs/superpowers/specs/2026-05-29-referee-match-report-design.md). commit đã tạo: `608f4db reduce referee report entry friction`. điểm chính trong spec: dùng một luồng `nộp biên bản trận đấu`, tỉ số tự tính từ sự kiện bàn thắng, dùng endpoint report hiện có, và giữ báo cáo giám sát tách riêng. tôi cũng xác nhận đây là thay đổi ui/ux là chính vì backend hiện đã nhận `homescore`, `awayscore`, `bestplayerid`, `technicalstats`, `note`, `events`. worktree vẫn còn thay đổi ngoài phạm vi ở `.omx/state/native-stop-state.json` và `apps/web/src/pages/__tests__/matchdetailpage.test.tsx`, không nằm trong commit này. bạn review spec này trước; sau khi bạn đồng ý, tôi sẽ viết implementation plan rồi mới triển khai.",
-        "first_seen_at": "2026-05-29T03:50:47.331Z",
-        "last_seen_at": "2026-05-29T03:50:47.331Z",
+        "fingerprint": "ordinary|đã triển khai form biên bản trọng tài gom chung luồng cập nhật tỉ số và sự kiện vào một nơi. thay đổi chính: - [refereematchreportpanel.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/refereematchreportpanel.tsx:43) hỗ trợ thêm nhiều dòng sự kiện: bàn thắng, phản lưới, penalty, penalty hỏng, thẻ vàng, thẻ đỏ, thay người. - với bàn thắng/penalty có chọn `loại bàn thắng` và `kiến tạo`; thay người có `cầu thủ vào sân` và `cầu thủ ra sân`; thẻ phạt không làm đổi tỉ số. - tỉ số biên bản được tự tính từ sự kiện ghi bàn và gửi cùng `bestplayerid`, `technicalstats`, `note`, `events` trong một lần bấm `nộp biên bản trận đấu`. - cập nhật text i18n tại [vi.ts](c:/se104_vleague/apps/web/src/locales/vi.ts:373) và [en.ts](c:/se104_vleague/apps/web/src/locales/en.ts:351). - bổ sung test cho goal + loại bàn + assist, thẻ phạt, thay người, và việc trọng tài chỉ nhập trong report panel tại [matchdetailpage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/matchdetailpage.test.tsx:625). verification: - `pnpm --filter web exec vitest run src/pages/__tests__/matchdetailpage.test.tsx -t \"referee match record|draft goal events|card events|substitutions|referee score\"`: pass 5/5. - `pnpm --filter web exec vitest run src/pages/__tests__/matchdetailpage.test.tsx`: pass 14/14. - `pnpm --filter web exec tsc -b --pretty false`: pass. - `pnpm --filter web run lint`: pass, 0 errors, còn 17 warnings sẵn có. - `pnpm --filter web test`: fail do 15 timeout rải rác khi chạy full suite song song, 240 tests pass. các case report trọng tài vẫn pass khi chạy riêng.",
+        "first_seen_at": "2026-05-29T05:49:02.251Z",
+        "last_seen_at": "2026-05-29T05:49:02.251Z",
         "repeat_count": 1,
-        "last_turn_id": "019e71d3-522a-7d01-a65d-41ed8cc0ccd8",
+        "last_turn_id": "019e7227-0868-7ab3-aead-82e8fb17c272",
+        "last_thread_id": null
+      }
+    },
+    "019e7223-a197-71a0-8726-35276e5d8258": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã gỡ rate limit ở be. thay đổi chính: - bỏ toàn bộ `@throttle`, `@skipthrottle`, `@nestjs/throttler` trong `auth`, `search`, `health` controller. - bỏ swagger docs `apitoomanyrequestsresponse` cho register/login. - xóa dependency `@nestjs/throttler` khỏi `apps/api/package.json` và `pnpm-lock.yaml`. - thêm test `apps/api/src/rate-limit-disabled.spec.ts` để chặn việc rate-limit quay lại. verification đã chạy: - `pnpm --filter api test -- rate-limit-disabled.spec.ts auth.controller.spec.ts search.controller.spec.ts` → `24/24` pass - `pnpm --filter api build` → pass - `rg` xác nhận không còn throttler/rate-limit refs trong production backend và package/lockfile. mình giữ nguyên generic http `429` mapping trong exception filter vì đó chỉ là format lỗi nếu có nơi khác trả 429, không phải cơ chế rate limit.",
+        "first_seen_at": "2026-05-29T05:42:30.322Z",
+        "last_seen_at": "2026-05-29T05:42:30.322Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e7236-62a4-7851-8ae9-c233c7db5399",
         "last_thread_id": null
       }
     }

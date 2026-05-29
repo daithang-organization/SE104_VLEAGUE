@@ -86,6 +86,28 @@ export type UpsertPromotionCandidatePayload = {
   note?: string;
 };
 
+export type ImportPromotionCandidateRow = {
+  rank: number;
+  teamId?: string;
+  teamName?: string;
+  sourceCompetition?: string;
+  qualificationType?: PromotionQualificationType;
+  status?: PromotionCandidateStatus;
+  note?: string;
+};
+
+export type ImportPromotionCandidatesPayload = {
+  sourceCompetition?: string;
+  replaceExisting?: boolean;
+  rows: ImportPromotionCandidateRow[];
+};
+
+export type ImportPromotionCandidatesResult = {
+  importedCount: number;
+  replaced: boolean;
+  candidates: PromotionCandidate[];
+};
+
 export function apiGetSeasonInvitations(seasonId: string) {
   return api.get<TeamInvitation[]>(`/seasons/${seasonId}/invitations`).then((res) => res.data);
 }
@@ -119,6 +141,18 @@ export function apiUpsertPromotionCandidate(
 ) {
   return api
     .post<PromotionCandidate>(`/seasons/${seasonId}/promotion-candidates`, payload)
+    .then((res) => res.data);
+}
+
+export function apiImportPromotionCandidates(
+  seasonId: string,
+  payload: ImportPromotionCandidatesPayload,
+) {
+  return api
+    .post<ImportPromotionCandidatesResult>(
+      `/seasons/${seasonId}/promotion-candidates/import`,
+      payload,
+    )
     .then((res) => res.data);
 }
 

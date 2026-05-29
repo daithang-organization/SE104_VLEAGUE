@@ -22,6 +22,7 @@ import {
   type TeamStanding,
 } from '../standings/standings.service';
 import {
+  ImportPromotionCandidatesDto,
   RespondTeamInvitationDto,
   SendTeamInvitationDto,
   UpsertPromotionCandidateDto,
@@ -56,6 +57,29 @@ type InvitationCandidate = {
     logoUrl: string | null;
     status: string;
   } | null;
+};
+type TeamSummary = NonNullable<InvitationCandidate['team']>;
+type PromotionCandidateWithTeam = Prisma.PromotionCandidateGetPayload<{
+  include: {
+    team: {
+      select: {
+        id: true;
+        name: true;
+        shortName: true;
+        city: true;
+        logoUrl: true;
+        status: true;
+      };
+    };
+  };
+}>;
+type ResolvedPromotionImportRow = {
+  teamId: string;
+  rank: number;
+  sourceCompetition: string;
+  qualificationType: PromotionQualificationType;
+  status: PromotionCandidateStatus;
+  note: string | null;
 };
 
 @Injectable()
@@ -413,6 +437,115 @@ export class TeamInvitationService {
     });
   }
 
+  async importPromotionCandidates(
+    seasonId: string,
+    dto: ImportPromotionCandidatesDto,
+  ) {
+    await this.ensureSeasonExists(seasonId);
+
+    const sourceCompetition = dto.sourceCompetition?.trim() || '';
+    const teams = await this.prisma.team.findMany({
+      select: this.teamSummarySelect,
+    });
+    const teamsById = new Map(teams.map((team) => [team.id, team]));
+    const teamsByName = this.buildTeamLookup(teams);
+    const errors: string[] = [];
+    const seenTeamIds = new Set<string>();
+    const seenRanks = new Set<number>();
+    const rows: ResolvedPromotionImportRow[] = [];
+
+    dto.rows.forEach((row, index) => {
+      const line = index + 1;
+      const rowSourceCompetition =
+        row.sourceCompetition?.trim() || sourceCompetition;
+      const resolved = this.resolvePromotionImportTeam(
+        row,
+        teamsById,
+        teamsByName,
+      );
+
+      if (!rowSourceCompetition) {
+        errors.push(`Dòng ${line}: thiếu giải nguồn.`);
+      }
+      if (seenRanks.has(row.rank)) {
+        errors.push(`Dòng ${line}: trùng hạng #${row.rank}.`);
+      } else {
+        seenRanks.add(row.rank);
+      }
+      if (resolved.error) {
+        errors.push(`Dòng ${line}: ${resolved.error}`);
+      }
+      if (resolved.team) {
+        if (seenTeamIds.has(resolved.team.id)) {
+          errors.push(`Dòng ${line}: CLB bị trùng trong file import.`);
+        } else {
+          seenTeamIds.add(resolved.team.id);
+        }
+      }
+
+      if (rowSourceCompetition && resolved.team) {
+        rows.push({
+          teamId: resolved.team.id,
+          rank: row.rank,
+          sourceCompetition: rowSourceCompetition,
+          qualificationType:
+            row.qualificationType ??
+            this.inferPromotionQualificationType(row.rank),
+          status: row.status ?? PromotionCandidateStatus.ELIGIBLE,
+          note: row.note?.trim() || null,
+        });
+      }
+    });
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    const candidates = await this.prisma.$transaction(async (tx) => {
+      if (dto.replaceExisting) {
+        await tx.promotionCandidate.deleteMany({ where: { seasonId } });
+      }
+
+      const imported: PromotionCandidateWithTeam[] = [];
+      for (const row of rows) {
+        imported.push(
+          await tx.promotionCandidate.upsert({
+            where: {
+              seasonId_teamId: {
+                seasonId,
+                teamId: row.teamId,
+              },
+            },
+            create: {
+              seasonId,
+              teamId: row.teamId,
+              rank: row.rank,
+              sourceCompetition: row.sourceCompetition,
+              qualificationType: row.qualificationType,
+              status: row.status,
+              note: row.note,
+            },
+            update: {
+              rank: row.rank,
+              sourceCompetition: row.sourceCompetition,
+              qualificationType: row.qualificationType,
+              status: row.status,
+              note: row.note,
+            },
+            include: this.promotionCandidateInclude,
+          }),
+        );
+      }
+      return imported;
+    });
+
+    return {
+      importedCount: candidates.length,
+      replaced: Boolean(dto.replaceExisting),
+      candidates,
+    };
+  }
+
   async deletePromotionCandidate(seasonId: string, teamId: string) {
     await this.ensureSeasonExists(seasonId);
 
@@ -764,6 +897,66 @@ export class TeamInvitationService {
         }),
       ),
     );
+  }
+
+  private buildTeamLookup(teams: TeamSummary[]) {
+    const lookup = new Map<string, TeamSummary[]>();
+    const add = (value: string | null, team: TeamSummary) => {
+      const key = this.normalizeTeamLookupKey(value);
+      if (!key) return;
+      const matches = lookup.get(key) ?? [];
+      if (!matches.some((match) => match.id === team.id)) {
+        matches.push(team);
+      }
+      lookup.set(key, matches);
+    };
+
+    for (const team of teams) {
+      add(team.name, team);
+      add(team.shortName, team);
+    }
+
+    return lookup;
+  }
+
+  private resolvePromotionImportTeam(
+    row: ImportPromotionCandidatesDto['rows'][number],
+    teamsById: Map<string, TeamSummary>,
+    teamsByName: Map<string, TeamSummary[]>,
+  ): { team?: TeamSummary; error?: string } {
+    if (row.teamId) {
+      const team = teamsById.get(row.teamId);
+      return team
+        ? { team }
+        : { error: `không tìm thấy CLB với ID ${row.teamId}.` };
+    }
+
+    const key = this.normalizeTeamLookupKey(row.teamName);
+    if (!key) {
+      return { error: 'thiếu ID hoặc tên CLB.' };
+    }
+
+    const matches = teamsByName.get(key) ?? [];
+    if (matches.length === 0) {
+      return { error: `không tìm thấy CLB "${row.teamName}".` };
+    }
+    if (matches.length > 1) {
+      return {
+        error: `tên CLB "${row.teamName}" bị trùng, vui lòng dùng teamId.`,
+      };
+    }
+
+    return { team: matches[0] };
+  }
+
+  private normalizeTeamLookupKey(value?: string | null) {
+    return value?.trim().replace(/\s+/g, ' ').toLocaleLowerCase('vi-VN') ?? '';
+  }
+
+  private inferPromotionQualificationType(rank: number) {
+    if (rank === 1) return PromotionQualificationType.CHAMPION;
+    if (rank === 2) return PromotionQualificationType.RUNNER_UP;
+    return PromotionQualificationType.REPLACEMENT_POOL;
   }
 
   private async buildTopLeagueCandidates(

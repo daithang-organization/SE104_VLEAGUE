@@ -9,12 +9,14 @@
   SendOutlined,
   SwapOutlined,
   TeamOutlined,
+  UploadOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
   Button,
   Card,
+  Checkbox,
   DatePicker,
   Descriptions,
   Flex,
@@ -59,9 +61,11 @@ import {
   apiGetPromotionCandidates,
   apiGetReplacementCandidates,
   apiGetSeasonInvitations,
+  apiImportPromotionCandidates,
   apiDeletePromotionCandidate,
   apiSendTeamInvitation,
   apiUpsertPromotionCandidate,
+  type ImportPromotionCandidateRow,
   type InvitationCandidate,
   type InvitationCandidateResult,
   type PromotionCandidate,
@@ -147,7 +151,196 @@ type PromotionCandidateFormValues = {
   qualificationType?: PromotionQualificationType;
   note?: string;
 };
+type PromotionImportFormValues = {
+  sourceCompetition?: string;
+  replaceExisting?: boolean;
+  importText?: string;
+};
 type ReplacementCandidate = ReplacementCandidateResult['candidates'][number];
+type PromotionImportField =
+  | 'rank'
+  | 'teamId'
+  | 'teamName'
+  | 'sourceCompetition'
+  | 'qualificationType'
+  | 'status'
+  | 'note';
+
+const PROMOTION_IMPORT_TEMPLATE =
+  'rank,team,qualificationType,note\n1,PVF-CAND,CHAMPION,Vô địch\n2,Trường Tươi Bình Phước,RUNNER_UP,Á quân';
+
+function normalizeImportToken(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function splitPromotionImportLine(line: string) {
+  const delimiter = line.includes('\t') ? '\t' : ',';
+  const cells: string[] = [];
+  let cell = '';
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"' && quoted && next === '"') {
+      cell += '"';
+      index += 1;
+      continue;
+    }
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === delimiter && !quoted) {
+      cells.push(cell.trim());
+      cell = '';
+      continue;
+    }
+    cell += char;
+  }
+
+  cells.push(cell.trim());
+  return cells;
+}
+
+function getPromotionImportHeaderField(header: string): PromotionImportField | null {
+  const key = normalizeImportToken(header);
+  const fields: Record<string, PromotionImportField> = {
+    rank: 'rank',
+    hang: 'rank',
+    position: 'rank',
+    teamid: 'teamId',
+    idclb: 'teamId',
+    clbid: 'teamId',
+    team: 'teamName',
+    teamname: 'teamName',
+    clb: 'teamName',
+    club: 'teamName',
+    tenclb: 'teamName',
+    source: 'sourceCompetition',
+    sourcecompetition: 'sourceCompetition',
+    nguon: 'sourceCompetition',
+    giainguon: 'sourceCompetition',
+    qualification: 'qualificationType',
+    qualificationtype: 'qualificationType',
+    type: 'qualificationType',
+    loai: 'qualificationType',
+    status: 'status',
+    trangthai: 'status',
+    note: 'note',
+    notes: 'note',
+    ghichu: 'note',
+  };
+  return fields[key] ?? null;
+}
+
+function parsePromotionQualification(value?: string) {
+  const key = normalizeImportToken(value ?? '');
+  if (!key) return undefined;
+  const values: Record<string, PromotionQualificationType> = {
+    champion: 'CHAMPION',
+    vodich: 'CHAMPION',
+    runnerup: 'RUNNER_UP',
+    aquan: 'RUNNER_UP',
+    playoff: 'PLAYOFF',
+    playoffwinner: 'PLAYOFF',
+    replacementpool: 'REPLACEMENT_POOL',
+    replacement: 'REPLACEMENT_POOL',
+    duphong: 'REPLACEMENT_POOL',
+  };
+  return values[key] ?? null;
+}
+
+function parsePromotionStatus(value?: string) {
+  const key = normalizeImportToken(value ?? '');
+  if (!key) return undefined;
+  const values = {
+    eligible: 'ELIGIBLE',
+    invited: 'INVITED',
+    accepted: 'ACCEPTED',
+    declined: 'DECLINED',
+    skipped: 'SKIPPED',
+  } as const;
+  return values[key as keyof typeof values] ?? null;
+}
+
+function looksLikeUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function parsePromotionImportText(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const errors: string[] = [];
+  const rows: ImportPromotionCandidateRow[] = [];
+
+  if (lines.length === 0) {
+    return { rows, errors: ['Chưa có dữ liệu import.'] };
+  }
+
+  const firstCells = splitPromotionImportLine(lines[0]);
+  const headerFields = firstCells.map(getPromotionImportHeaderField);
+  const hasHeader = headerFields.some(Boolean) && headerFields.includes('rank');
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+
+  dataLines.forEach((line, index) => {
+    const lineNumber = hasHeader ? index + 2 : index + 1;
+    const cells = splitPromotionImportLine(line);
+    const getCell = (field: PromotionImportField, fallbackIndex?: number) => {
+      if (hasHeader) {
+        const cellIndex = headerFields.findIndex((candidate) => candidate === field);
+        return cellIndex >= 0 ? cells[cellIndex]?.trim() : undefined;
+      }
+      return fallbackIndex === undefined ? undefined : cells[fallbackIndex]?.trim();
+    };
+    const rankValue = getCell('rank', 0);
+    const teamIdValue = getCell('teamId');
+    const teamNameValue = getCell('teamName', 1);
+    const sourceCompetition = getCell('sourceCompetition')?.trim();
+    const qualificationValue = getCell('qualificationType', 2);
+    const statusValue = getCell('status');
+    const note = getCell('note', 3)?.trim();
+    const rank = Number(rankValue);
+    const qualificationType = parsePromotionQualification(qualificationValue);
+    const status = parsePromotionStatus(statusValue);
+
+    if (!Number.isInteger(rank) || rank < 1) {
+      errors.push(`Dòng ${lineNumber}: hạng không hợp lệ.`);
+    }
+    if (!teamIdValue && !teamNameValue) {
+      errors.push(`Dòng ${lineNumber}: thiếu CLB.`);
+    }
+    if (qualificationType === null) {
+      errors.push(`Dòng ${lineNumber}: loại thăng hạng không hợp lệ.`);
+    }
+    if (status === null) {
+      errors.push(`Dòng ${lineNumber}: trạng thái không hợp lệ.`);
+    }
+
+    if (Number.isInteger(rank) && rank >= 1 && (teamIdValue || teamNameValue)) {
+      const teamRef = teamIdValue || teamNameValue || '';
+      rows.push({
+        rank,
+        teamId: looksLikeUuid(teamRef) ? teamRef : teamIdValue,
+        teamName: looksLikeUuid(teamRef) ? undefined : teamNameValue,
+        sourceCompetition: sourceCompetition || undefined,
+        qualificationType: qualificationType || undefined,
+        status: status || undefined,
+        note: note || undefined,
+      });
+    }
+  });
+
+  return { rows, errors };
+}
 
 // ─── Season Team Panel (expandable row) ───
 function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
@@ -170,6 +363,9 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const [replacementModalOpen, setReplacementModalOpen] = useState(false);
   const [promotionNoteInput, setPromotionNoteInput] = useState('');
   const [promotionForm] = Form.useForm<PromotionCandidateFormValues>();
+  const [promotionImportForm] = Form.useForm<PromotionImportFormValues>();
+  const [promotionImportOpen, setPromotionImportOpen] = useState(false);
+  const [promotionImporting, setPromotionImporting] = useState(false);
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
@@ -338,6 +534,44 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       message.error(getBackendErrorMessage(err) || 'Không thể xóa đội thăng hạng');
     } finally {
       setPromotionSaving(false);
+    }
+  };
+
+  const handleOpenPromotionImport = () => {
+    promotionImportForm.setFieldsValue({
+      sourceCompetition:
+        promotionImportForm.getFieldValue('sourceCompetition') ||
+        promotionForm.getFieldValue('sourceCompetition') ||
+        'V.League 2 2025',
+      replaceExisting: true,
+    });
+    setPromotionImportOpen(true);
+  };
+
+  const handleImportPromotionCandidates = async () => {
+    const values = await promotionImportForm.validateFields();
+    const parsed = parsePromotionImportText(values.importText ?? '');
+    if (parsed.errors.length > 0) {
+      promotionImportForm.setFields([{ name: 'importText', errors: parsed.errors.slice(0, 4) }]);
+      message.error(parsed.errors[0]);
+      return;
+    }
+
+    setPromotionImporting(true);
+    try {
+      const result = await apiImportPromotionCandidates(seasonId, {
+        sourceCompetition: values.sourceCompetition?.trim() || undefined,
+        replaceExisting: values.replaceExisting,
+        rows: parsed.rows,
+      });
+      message.success(`Đã import ${result.importedCount} đội vào snapshot thăng hạng`);
+      setPromotionImportOpen(false);
+      promotionImportForm.resetFields(['importText']);
+      await fetchTeams();
+    } catch (err: unknown) {
+      message.error(getBackendErrorMessage(err) || 'Không thể import snapshot thăng hạng');
+    } finally {
+      setPromotionImporting(false);
     }
   };
 
@@ -731,10 +965,15 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     <div style={{ padding: '8px 0' }}>
       <div style={{ marginBottom: 16 }}>
         <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-          <Typography.Text strong>Nguồn đội thăng hạng</Typography.Text>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Snapshot từ giải hạng dưới để hệ thống lấy 2 đội thăng hạng theo ranking
-          </Typography.Text>
+          <Space direction="vertical" size={0}>
+            <Typography.Text strong>Nguồn đội thăng hạng</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Snapshot từ giải hạng dưới để hệ thống lấy 2 đội thăng hạng theo ranking
+            </Typography.Text>
+          </Space>
+          <Button size="small" icon={<UploadOutlined />} onClick={handleOpenPromotionImport}>
+            Import CSV
+          </Button>
         </Flex>
         <Form
           form={promotionForm}
@@ -790,6 +1029,50 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           loading={loading}
           locale={{ emptyText: 'Chưa có snapshot đội thăng hạng' }}
         />
+        <Modal
+          title="Import snapshot V.League 2"
+          open={promotionImportOpen}
+          onCancel={() => setPromotionImportOpen(false)}
+          onOk={handleImportPromotionCandidates}
+          confirmLoading={promotionImporting}
+          okText="Import"
+          cancelText="Hủy"
+          width={720}
+        >
+          <Form
+            form={promotionImportForm}
+            layout="vertical"
+            initialValues={{
+              sourceCompetition: 'V.League 2 2025',
+              replaceExisting: true,
+            }}
+          >
+            <Flex gap={12} align="flex-start">
+              <Form.Item
+                name="sourceCompetition"
+                label="Giải nguồn"
+                rules={[{ required: true, message: 'Nhập giải nguồn' }]}
+                style={{ flex: 1 }}
+              >
+                <Input placeholder="V.League 2 2025" />
+              </Form.Item>
+              <Form.Item name="replaceExisting" valuePropName="checked" style={{ paddingTop: 30 }}>
+                <Checkbox>Thay thế snapshot hiện tại</Checkbox>
+              </Form.Item>
+            </Flex>
+            <Form.Item
+              name="importText"
+              label="Dữ liệu CSV/Excel"
+              rules={[{ required: true, message: 'Dán dữ liệu snapshot' }]}
+            >
+              <Input.TextArea
+                rows={8}
+                placeholder={PROMOTION_IMPORT_TEMPLATE}
+                style={{ fontFamily: 'monospace' }}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
       </div>
       <div style={{ marginBottom: 12 }}>
         {candidateResult ? (

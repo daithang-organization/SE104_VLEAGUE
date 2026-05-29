@@ -67,6 +67,7 @@ describe('TeamInvitationService', () => {
         {
           provide: PrismaService,
           useValue: {
+            $transaction: jest.fn(),
             season: { findUnique: jest.fn(), findFirst: jest.fn() },
             team: { findUnique: jest.fn(), findMany: jest.fn() },
             user: {
@@ -122,6 +123,9 @@ describe('TeamInvitationService', () => {
     notificationService = module.get<NotificationService>(NotificationService);
     standingsService = module.get<StandingsService>(StandingsService);
 
+    jest
+      .spyOn(prisma as any, '$transaction')
+      .mockImplementation((callback: any) => callback(prisma));
     jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(season as any);
     jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(team as any);
     jest.spyOn(prisma.user, 'findMany').mockResolvedValue([managerUser] as any);
@@ -311,6 +315,93 @@ describe('TeamInvitationService', () => {
           teamId: 'team-1',
           rank: 1,
           sourceCompetition: '   ',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect((prisma as any).promotionCandidate.upsert).not.toHaveBeenCalled();
+    });
+
+    it('imports promotion ranking rows by team name and can replace the snapshot', async () => {
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([
+        {
+          id: 'team-1',
+          name: 'PVF-CAND',
+          shortName: 'PVF',
+          city: 'Hưng Yên',
+          logoUrl: null,
+          status: 'ACTIVE',
+        },
+        {
+          id: 'team-2',
+          name: 'Trường Tươi Bình Phước',
+          shortName: 'TTBP',
+          city: 'Bình Phước',
+          logoUrl: null,
+          status: 'ACTIVE',
+        },
+      ] as any);
+
+      const result = await service.importPromotionCandidates('season-1', {
+        sourceCompetition: ' V.League 2 2025 ',
+        replaceExisting: true,
+        rows: [
+          {
+            rank: 1,
+            teamName: 'PVF',
+            note: ' Vô địch ',
+          },
+          {
+            rank: 2,
+            teamId: 'team-2',
+            qualificationType: 'PLAYOFF' as any,
+          },
+        ],
+      });
+
+      expect(
+        (prisma as any).promotionCandidate.deleteMany,
+      ).toHaveBeenCalledWith({
+        where: { seasonId: 'season-1' },
+      });
+      expect((prisma as any).promotionCandidate.upsert).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: {
+            seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' },
+          },
+          create: expect.objectContaining({
+            rank: 1,
+            sourceCompetition: 'V.League 2 2025',
+            qualificationType: 'CHAMPION',
+            status: 'ELIGIBLE',
+            note: 'Vô địch',
+          }),
+        }),
+      );
+      expect((prisma as any).promotionCandidate.upsert).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: {
+            seasonId_teamId: { seasonId: 'season-1', teamId: 'team-2' },
+          },
+          create: expect.objectContaining({
+            rank: 2,
+            sourceCompetition: 'V.League 2 2025',
+            qualificationType: 'PLAYOFF',
+          }),
+        }),
+      );
+      expect(result).toEqual(
+        expect.objectContaining({ importedCount: 2, replaced: true }),
+      );
+    });
+
+    it('rejects promotion imports with unresolved teams before writing', async () => {
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([] as any);
+
+      await expect(
+        service.importPromotionCandidates('season-1', {
+          sourceCompetition: 'V.League 2 2025',
+          rows: [{ rank: 1, teamName: 'CLB chưa có trong hệ thống' }],
         }),
       ).rejects.toThrow(BadRequestException);
       expect((prisma as any).promotionCandidate.upsert).not.toHaveBeenCalled();
