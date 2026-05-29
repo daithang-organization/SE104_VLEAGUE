@@ -86,8 +86,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     // Thêm metadata cho response
-    const requestId = request.headers['x-request-id'] as string;
-    errorResponse.requestId = requestId;
+    const requestId =
+      (request.headers['x-request-id'] as string | undefined) ??
+      String((request as Request & { id?: string | number }).id ?? '');
+    if (requestId) {
+      errorResponse.requestId = requestId;
+      response.setHeader('x-request-id', requestId);
+    }
     errorResponse.timestamp = new Date().toISOString();
 
     // Log error với context
