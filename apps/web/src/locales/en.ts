@@ -718,6 +718,7 @@ const en = {
     colCapacity: 'Capacity',
     colFifaStars: 'FIFA Stars',
     colActions: 'Actions',
+    totalCount: 'Total {total} stadiums',
     editAction: 'Edit stadium',
     deleteAction: 'Delete stadium',
     deleteConfirmTitle: 'Delete stadium?',

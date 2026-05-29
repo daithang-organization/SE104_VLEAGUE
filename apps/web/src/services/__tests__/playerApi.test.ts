@@ -25,9 +25,23 @@ describe('playerApi', () => {
     const data = { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
     mockApi.get.mockResolvedValue({ data });
 
-    const result = await apiGetPlayers(1, 20, { search: 'hai', position: 'MF', teamId: 't1' });
+    const result = await apiGetPlayers(1, 20, {
+      search: 'hai',
+      position: 'MF',
+      teamId: 't1',
+      sortBy: 'fullName',
+      sortOrder: 'desc',
+    });
     expect(mockApi.get).toHaveBeenCalledWith('/players', {
-      params: { page: 1, limit: 20, search: 'hai', position: 'MF', teamId: 't1' },
+      params: {
+        page: 1,
+        limit: 20,
+        search: 'hai',
+        position: 'MF',
+        teamId: 't1',
+        sortBy: 'fullName',
+        sortOrder: 'desc',
+      },
     });
     expect(result).toEqual(data);
   });

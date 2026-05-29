@@ -58,6 +58,9 @@ const mockSeasonApi = vi.hoisted(() => ({
   apiGetSeasons: vi
     .fn()
     .mockResolvedValue([{ id: 's1', name: 'V.League 2025', year: 2025, status: 'IN_PROGRESS' }]),
+  apiGetCurrentSeason: vi
+    .fn()
+    .mockResolvedValue({ id: 's1', name: 'V.League 2025', year: 2025, status: 'IN_PROGRESS' }),
 }));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));

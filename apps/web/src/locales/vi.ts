@@ -748,6 +748,7 @@ const vi = {
     colCapacity: 'Sức chứa',
     colFifaStars: 'Sao FIFA',
     colActions: 'Hành động',
+    totalCount: 'Tổng {total} sân vận động',
     editAction: 'Chỉnh sửa sân vận động',
     deleteAction: 'Xóa sân vận động',
     deleteConfirmTitle: 'Xóa sân vận động?',

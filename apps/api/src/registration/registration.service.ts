@@ -188,10 +188,26 @@ export class RegistrationService {
     playerType?: string;
     minAge?: number;
     maxAge?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   }) {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 20;
     const skip = (page - 1) * limit;
+    const sortableFields = new Set(['fullName', 'dob', 'heightCm', 'weightKg']);
+    const sortBy =
+      pagination?.sortBy && sortableFields.has(pagination.sortBy)
+        ? pagination.sortBy
+        : 'fullName';
+    const sortOrder = pagination?.sortOrder === 'desc' ? 'desc' : 'asc';
+    const nullableNumericSortFields = new Set(['heightCm', 'weightKg']);
+    const primaryOrder = nullableNumericSortFields.has(sortBy)
+      ? { [sortBy]: { sort: sortOrder, nulls: 'last' } }
+      : { [sortBy]: sortOrder };
+    const orderBy: Prisma.PlayerOrderByWithRelationInput[] =
+      sortBy === 'fullName'
+        ? [{ fullName: sortOrder }]
+        : [primaryOrder, { fullName: 'asc' }];
 
     // Build where clause
     const where: Record<string, unknown> = {};
@@ -245,7 +261,7 @@ export class RegistrationService {
     const [data, total] = await Promise.all([
       this.prisma.player.findMany({
         where,
-        orderBy: { fullName: 'asc' },
+        orderBy,
         include: {
           roster: {
             where: { leftAt: null },

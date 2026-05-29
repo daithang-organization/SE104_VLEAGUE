@@ -186,10 +186,15 @@ describe('PlayersPage', () => {
 
     await waitFor(() => {
       expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
-      expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalledWith(1, 20, {
-        search: undefined,
-        teamId: 't1',
-      });
+      expect(mockPlayerApi.apiGetPlayers).toHaveBeenNthCalledWith(
+        1,
+        1,
+        20,
+        expect.objectContaining({
+          search: undefined,
+          teamId: 't1',
+        }),
+      );
     });
   });
 });

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppMenuIcon, PageCover } from '../components';
 import { api } from '../lib/api';
+import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetHeadToHead, type HeadToHeadResult } from '../services/searchApi';
 
 type Team = { id: string; name: string; shortName?: string | null };
-type Season = { id: string; name: string };
 
 export default function HeadToHeadPage() {
   const { t } = useTranslation();
@@ -24,10 +24,9 @@ export default function HeadToHeadPage() {
       .get<{ data: Team[] }>('/teams', { params: { limit: 100 } })
       .then((r) => setTeams(r.data.data ?? []))
       .catch(() => {});
-    api
-      .get<{ data: Season[] }>('/seasons', { params: { limit: 50 } })
-      .then((r) => setSeasons(r.data.data ?? []))
-      .catch(() => {});
+    apiGetSeasons()
+      .then(setSeasons)
+      .catch(() => setSeasons([]));
   }, []);
 
   const fetchH2H = useCallback(async () => {
