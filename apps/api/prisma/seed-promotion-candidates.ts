@@ -20,12 +20,24 @@ const prisma = new PrismaClient({ adapter });
 const DEMO_PASSWORD = 'Demo@12345';
 const SOURCE_COMPETITION = 'V.League 2 2025-26';
 const DEFAULT_PROMOTION_CITY = 'Vi\u1ec7t Nam';
+const DEFAULT_TARGET_SEASON = {
+  name: 'VLeague 2026-2027',
+  year: 2026,
+  startDate: new Date('2026-09-01'),
+  endDate: new Date('2027-06-30'),
+};
 
 type PromotionSeedRow = {
   rank: number;
   fileName: string;
   shortName: string;
   city?: string;
+  stadium: {
+    name: string;
+    city: string;
+    address: string;
+    capacity: number;
+  };
   qualificationType: PromotionQualificationType;
   note: string;
 };
@@ -35,6 +47,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 1,
     fileName: 'Bắc Ninh FC.svg',
     shortName: 'BN',
+    city: 'Bắc Ninh',
+    stadium: {
+      name: 'Sân vận động Việt Yên',
+      city: 'Bắc Ninh',
+      address: 'Việt Yên, Bắc Ninh',
+      capacity: 18000,
+    },
     qualificationType: PromotionQualificationType.CHAMPION,
     note: 'Vô địch V.League 2 2025-26',
   },
@@ -42,7 +61,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 2,
     fileName: 'Long An FC.png',
     shortName: 'LA',
-    city: 'Long An',
+    city: 'Tây Ninh',
+    stadium: {
+      name: 'Sân vận động Long An',
+      city: 'Tây Ninh',
+      address: 'P. Long An, Tây Ninh',
+      capacity: 19975,
+    },
     qualificationType: PromotionQualificationType.RUNNER_UP,
     note: 'Á quân V.League 2 2025-26',
   },
@@ -50,6 +75,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 3,
     fileName: 'Quy Nhơn United.png',
     shortName: 'QNU',
+    city: 'Gia Lai',
+    stadium: {
+      name: 'Sân vận động Quy Nhơn',
+      city: 'Gia Lai',
+      address: 'Quy Nhơn, Gia Lai',
+      capacity: 20000,
+    },
     qualificationType: PromotionQualificationType.PLAYOFF,
     note: 'Suất play-off V.League 2 2025-26',
   },
@@ -57,6 +89,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 4,
     fileName: 'Quảng Ninh FC.png',
     shortName: 'QNINH',
+    city: 'Quảng Ninh',
+    stadium: {
+      name: 'Sân vận động Cẩm Phả',
+      city: 'Quảng Ninh',
+      address: 'Cẩm Phả, Quảng Ninh',
+      capacity: 16000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -64,6 +103,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 5,
     fileName: 'Sanna Khánh Hòa FC.png',
     shortName: 'SKH',
+    city: 'Khánh Hòa',
+    stadium: {
+      name: 'Sân vận động 19 Tháng 8',
+      city: 'Khánh Hòa',
+      address: 'TP. Nha Trang, Khánh Hòa',
+      capacity: 18000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -71,6 +117,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 6,
     fileName: 'Thanh Niên TP Hồ Chí Minh FC.png',
     shortName: 'TNHCM',
+    city: 'TP. Hồ Chí Minh',
+    stadium: {
+      name: 'Sân vận động Pleiku',
+      city: 'Gia Lai',
+      address: 'TP. Pleiku, Gia Lai',
+      capacity: 12000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -78,6 +131,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 7,
     fileName: 'Trường Tươi Đồng Nai.png',
     shortName: 'TTDN',
+    city: 'Đồng Nai',
+    stadium: {
+      name: 'Sân vận động Bình Phước',
+      city: 'Đồng Nai',
+      address: 'P. Bình Phước, Đồng Nai',
+      capacity: 11000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -85,6 +145,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 8,
     fileName: 'Trẻ PVF CAND.png',
     shortName: 'PVF',
+    city: 'Hưng Yên',
+    stadium: {
+      name: 'Sân vận động PVF',
+      city: 'Hưng Yên',
+      address: 'Nghĩa Trụ, Hưng Yên',
+      capacity: 4600,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -92,6 +159,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 9,
     fileName: 'Xuân Thiện Phú Thọ FC.png',
     shortName: 'PT',
+    city: 'Phú Thọ',
+    stadium: {
+      name: 'Sân vận động Việt Trì',
+      city: 'Phú Thọ',
+      address: 'Thanh Miếu, Phú Thọ',
+      capacity: 20000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -99,6 +173,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 10,
     fileName: 'Đại học Văn Hiến FC.png',
     shortName: 'VHU',
+    city: 'TP. Hồ Chí Minh',
+    stadium: {
+      name: 'Sân vận động Bà Rịa',
+      city: 'TP. Hồ Chí Minh',
+      address: 'P. Bà Rịa, TP. Hồ Chí Minh',
+      capacity: 16000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -106,6 +187,13 @@ const PROMOTION_CANDIDATES: PromotionSeedRow[] = [
     rank: 11,
     fileName: 'Đồng Tháp FC.png',
     shortName: 'DT',
+    city: 'Đồng Tháp',
+    stadium: {
+      name: 'Sân vận động Cao Lãnh',
+      city: 'Đồng Tháp',
+      address: 'Mỹ Trà, Đồng Tháp',
+      capacity: 23000,
+    },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
   },
@@ -143,9 +231,25 @@ async function findTargetSeason() {
     return prisma.season.findFirst({ where: { name: targetSeasonName } });
   }
 
-  return prisma.season.findFirst({
+  const upcomingSeason = await prisma.season.findFirst({
     where: { status: SeasonStatus.UPCOMING },
     orderBy: { year: 'desc' },
+  });
+
+  if (upcomingSeason) return upcomingSeason;
+
+  return prisma.season.upsert({
+    where: { name: DEFAULT_TARGET_SEASON.name },
+    update: {
+      year: DEFAULT_TARGET_SEASON.year,
+      startDate: DEFAULT_TARGET_SEASON.startDate,
+      endDate: DEFAULT_TARGET_SEASON.endDate,
+      status: SeasonStatus.UPCOMING,
+    },
+    create: {
+      ...DEFAULT_TARGET_SEASON,
+      status: SeasonStatus.UPCOMING,
+    },
   });
 }
 
@@ -184,6 +288,25 @@ async function main() {
   for (const row of PROMOTION_CANDIDATES) {
     const teamName = teamNameFromFile(row.fileName);
     const logoUrl = `/promo_candidates/${row.fileName}`;
+    const stadium = await prisma.stadium.upsert({
+      where: { name: row.stadium.name },
+      update: {
+        address: row.stadium.address,
+        city: row.stadium.city,
+        country: 'Việt Nam',
+        capacity: row.stadium.capacity,
+        fifaStars: 2,
+      },
+      create: {
+        name: row.stadium.name,
+        address: row.stadium.address,
+        city: row.stadium.city,
+        country: 'Việt Nam',
+        capacity: row.stadium.capacity,
+        fifaStars: 2,
+      },
+    });
+
     const team = await prisma.team.upsert({
       where: { name: teamName },
       update: {
@@ -191,6 +314,7 @@ async function main() {
         city: row.city ?? DEFAULT_PROMOTION_CITY,
         logoUrl,
         status: TeamStatus.ACTIVE,
+        stadiumId: stadium.id,
       },
       create: {
         name: teamName,
@@ -198,6 +322,7 @@ async function main() {
         city: row.city ?? DEFAULT_PROMOTION_CITY,
         logoUrl,
         status: TeamStatus.ACTIVE,
+        stadiumId: stadium.id,
       },
     });
 
@@ -262,7 +387,9 @@ async function main() {
       },
     });
 
-    console.log(`#${row.rank} ${teamName} -> ${logoUrl}`);
+    console.log(
+      `#${row.rank} ${teamName} -> ${row.stadium.name} -> ${logoUrl}`,
+    );
   }
 
   console.log(

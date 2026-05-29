@@ -11,7 +11,7 @@ export class CreateStadiumDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Thành phố',
+    description: 'Tỉnh/Thành phố',
     example: 'Hà Nội',
   })
   @IsString()

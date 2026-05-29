@@ -23,7 +23,7 @@ const STADIUMS = [
   },
   {
     name: 'Sân vận động Thống Nhất',
-    address: 'Quận 10, TP.HCM',
+    address: 'Quận 10, TP. Hồ Chí Minh',
     city: 'TP. Hồ Chí Minh',
     capacity: 25000,
   },
@@ -35,14 +35,14 @@ const STADIUMS = [
   },
   {
     name: 'Sân vận động Thiên Trường',
-    address: 'TP. Nam Định',
-    city: 'Nam Định',
+    address: 'P. Nam Định, Ninh Bình',
+    city: 'Ninh Bình',
     capacity: 30000,
   },
   {
     name: 'Sân vận động Pleiku',
     address: 'TP. Pleiku, Gia Lai',
-    city: 'Pleiku',
+    city: 'Gia Lai',
     capacity: 12000,
   },
   {
@@ -53,14 +53,14 @@ const STADIUMS = [
   },
   {
     name: 'Sân vận động Vinh',
-    address: 'TP. Vinh, Nghệ An',
-    city: 'Vinh',
+    address: 'P. Vinh, Nghệ An',
+    city: 'Nghệ An',
     capacity: 18000,
   },
   {
     name: 'Sân vận động Quy Nhơn',
-    address: 'TP. Quy Nhơn, Bình Định',
-    city: 'Quy Nhơn',
+    address: 'Quy Nhơn, Gia Lai',
+    city: 'Gia Lai',
     capacity: 20000,
   },
   {
@@ -71,21 +71,21 @@ const STADIUMS = [
   },
   {
     name: 'Sân vận động Gò Đậu',
-    address: 'TP. Thủ Dầu Một, Bình Dương',
-    city: 'Bình Dương',
+    address: 'P. Thủ Dầu Một, TP. Hồ Chí Minh',
+    city: 'TP. Hồ Chí Minh',
     capacity: 18250,
   },
   {
     name: 'Sân vận động Cần Thơ',
-    address: 'Ninh Kiều, Cần Thơ',
+    address: 'Ninh Kiều, TP. Cần Thơ',
     city: 'Cần Thơ',
     capacity: 50000,
   },
   {
     name: 'Sân vận động Bà Rịa',
-    address: 'TP. Bà Rịa, Bà Rịa-Vũng Tàu',
-    city: 'Bà Rịa',
-    capacity: 15000,
+    address: 'P. Bà Rịa, TP. Hồ Chí Minh',
+    city: 'TP. Hồ Chí Minh',
+    capacity: 16000,
   },
   {
     name: 'Sân vận động Tự Do',
@@ -95,27 +95,27 @@ const STADIUMS = [
   },
   {
     name: 'Sân vận động Long An',
-    address: 'TP. Tân An, Long An',
-    city: 'Long An',
-    capacity: 20000,
+    address: 'P. Long An, Tây Ninh',
+    city: 'Tây Ninh',
+    capacity: 19975,
   },
   {
     name: 'Sân vận động 19 Tháng 8',
-    address: 'Nha Trang, Khánh Hòa',
-    city: 'Nha Trang',
-    capacity: 22000,
+    address: 'TP. Nha Trang, Khánh Hòa',
+    city: 'Khánh Hòa',
+    capacity: 18000,
   },
   {
     name: 'Sân vận động Việt Trì',
-    address: 'TP. Việt Trì, Phú Thọ',
-    city: 'Việt Trì',
+    address: 'Thanh Miếu, Phú Thọ',
+    city: 'Phú Thọ',
     capacity: 20000,
   },
   {
     name: 'Sân vận động Cao Lãnh',
-    address: 'TP. Cao Lãnh, Đồng Tháp',
-    city: 'Cao Lãnh',
-    capacity: 18000,
+    address: 'Mỹ Trà, Đồng Tháp',
+    city: 'Đồng Tháp',
+    capacity: 23000,
   },
   {
     name: 'Sân vận động Hà Tĩnh',
@@ -125,9 +125,33 @@ const STADIUMS = [
   },
   {
     name: 'Sân vận động Tam Kỳ',
-    address: 'TP. Tam Kỳ, Quảng Nam',
-    city: 'Tam Kỳ',
+    address: 'P. Tam Kỳ, Đà Nẵng',
+    city: 'Đà Nẵng',
     capacity: 15000,
+  },
+  {
+    name: 'Sân vận động Việt Yên',
+    address: 'Việt Yên, Bắc Ninh',
+    city: 'Bắc Ninh',
+    capacity: 18000,
+  },
+  {
+    name: 'Sân vận động Cẩm Phả',
+    address: 'Cẩm Phả, Quảng Ninh',
+    city: 'Quảng Ninh',
+    capacity: 16000,
+  },
+  {
+    name: 'Sân vận động Bình Phước',
+    address: 'P. Bình Phước, Đồng Nai',
+    city: 'Đồng Nai',
+    capacity: 11000,
+  },
+  {
+    name: 'Sân vận động PVF',
+    address: 'Nghĩa Trụ, Hưng Yên',
+    city: 'Hưng Yên',
+    capacity: 4600,
   },
 ];
 

@@ -22,6 +22,7 @@ RUN pnpm install --frozen-lockfile --shamefully-hoist
 
 # Copy source
 COPY apps/api apps/api
+COPY promo_candidates promo_candidates
 
 EXPOSE 8080
 
