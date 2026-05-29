@@ -29,7 +29,7 @@ export type SubmitTeamManagerApplicationPayload = {
   participationFeePaid: boolean;
   feeReceiptCode?: string;
   feeReceiptUrl?: string;
-  externalCompetitionSchedule?: string;
+  externalCompetitionSchedule: string;
 };
 
 export function apiGetTeamManagerAssignment(seasonId: string) {

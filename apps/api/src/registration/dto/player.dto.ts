@@ -81,42 +81,40 @@ export class CreatePlayerDto {
   @IsEnum(PlayerType)
   playerType?: PlayerType;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Nơi sinh',
     example: 'Hà Nội',
   })
-  @IsOptional()
   @IsString()
-  birthPlace?: string;
+  @IsNotEmpty()
+  birthPlace!: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Chiều cao (cm)',
     example: 168,
   })
-  @IsOptional()
   @IsInt()
   @Min(100)
   @Max(250)
-  heightCm?: number;
+  heightCm!: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Cân nặng (kg)',
     example: 65,
   })
-  @IsOptional()
   @IsInt()
   @Min(30)
   @Max(200)
-  weightKg?: number;
+  weightKg!: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Tóm tắt tiểu sử chơi bóng',
     example: 'Từng thi đấu tại giải trẻ quốc gia.',
   })
-  @IsOptional()
   @IsString()
+  @IsNotEmpty()
   @MaxLength(2000)
-  careerSummary?: string;
+  careerSummary!: string;
 
   @ApiPropertyOptional({
     description: 'ID đội bóng (nếu có)',
@@ -186,6 +184,7 @@ export class UpdatePlayerDto {
   })
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
   birthPlace?: string;
 
   @ApiPropertyOptional({
@@ -214,6 +213,7 @@ export class UpdatePlayerDto {
   })
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
   @MaxLength(2000)
   careerSummary?: string;
 

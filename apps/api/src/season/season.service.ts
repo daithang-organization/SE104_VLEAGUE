@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Season } from '@prisma/client';
+import {
+  isForeignPlayer,
+  isVietnameseNationality,
+} from '../common/utils/foreign-player.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { CreateSeasonDto, UpdateSeasonDto } from './dto';
@@ -282,7 +286,7 @@ export class SeasonService {
       minStadiumCapacity,
       minStadiumFifaStars,
       activePlayers,
-      foreignPlayers,
+      activeRosterPlayers,
       team,
     ] = await Promise.all([
       this.regulationHelper.getNumericValue(
@@ -313,11 +317,18 @@ export class SeasonService {
       this.prisma.teamPlayer.count({
         where: { teamId, leftAt: null },
       }),
-      this.prisma.teamPlayer.count({
+      this.prisma.teamPlayer.findMany({
         where: {
           teamId,
           leftAt: null,
-          player: { playerType: 'FOREIGN' },
+        },
+        select: {
+          player: {
+            select: {
+              playerType: true,
+              nationality: true,
+            },
+          },
         },
       }),
       this.prisma.team.findUnique({
@@ -329,6 +340,10 @@ export class SeasonService {
     if (!team) {
       throw new NotFoundException('Không tìm thấy đội bóng');
     }
+
+    const foreignPlayers = activeRosterPlayers.filter((row) =>
+      isForeignPlayer(row.player),
+    ).length;
 
     if (activePlayers < minRoster) {
       throw new BadRequestException(
@@ -380,7 +395,7 @@ export class SeasonService {
       .replace(/\s+/g, ' ')
       .trim();
 
-    return normalized === 'viet nam' || normalized === 'vietnam';
+    return isVietnameseNationality(normalized);
   }
 
   private assertApplicationComplete(record: {
@@ -393,6 +408,7 @@ export class SeasonService {
     participationFeePaid?: boolean | null;
     feeReceiptCode?: string | null;
     feeReceiptUrl?: string | null;
+    externalCompetitionSchedule?: string | null;
   }) {
     if (!record.applicationSubmittedAt) {
       throw new BadRequestException('CLB chưa nộp hồ sơ tham dự mùa giải.');
@@ -404,6 +420,7 @@ export class SeasonService {
       ['giới thiệu đội', record.teamIntroduction],
       ['áo thi đấu chính thức', record.primaryKit],
       ['áo thi đấu dự bị', record.backupKit],
+      ['lịch giải khác đã/đang tham gia', record.externalCompetitionSchedule],
     ] as const;
     const missing = requiredFields
       .filter(([, value]) => !value?.trim())

@@ -32,10 +32,10 @@ export type CreatePlayerPayload = {
   nationality: string;
   position: 'GK' | 'DF' | 'MF' | 'FW';
   playerType?: 'DOMESTIC' | 'FOREIGN';
-  birthPlace?: string;
-  heightCm?: number;
-  weightKg?: number;
-  careerSummary?: string;
+  birthPlace: string;
+  heightCm: number;
+  weightKg: number;
+  careerSummary: string;
   teamId?: string;
 };
 

@@ -90,6 +90,7 @@ describe('StandingsController', () => {
       expect(service.getStandings).toHaveBeenCalledWith(
         undefined,
         'in_progress',
+        undefined,
       );
     });
 
@@ -100,13 +101,34 @@ describe('StandingsController', () => {
       expect(service.getStandings).toHaveBeenCalledWith(
         seasonId,
         'in_progress',
+        undefined,
       );
     });
 
     it('should pass requested standings mode', async () => {
       await controller.getStandings('season-1', 'final');
 
-      expect(service.getStandings).toHaveBeenCalledWith('season-1', 'final');
+      expect(service.getStandings).toHaveBeenCalledWith(
+        'season-1',
+        'final',
+        undefined,
+      );
+    });
+
+    it('should pass requested round number', async () => {
+      await controller.getStandings('season-1', 'in_progress', '3');
+
+      expect(service.getStandings).toHaveBeenCalledWith(
+        'season-1',
+        'in_progress',
+        3,
+      );
+    });
+
+    it('should reject invalid round number', () => {
+      expect(() =>
+        controller.getStandings('season-1', 'in_progress', '0'),
+      ).toThrow('roundNo');
     });
   });
 
@@ -148,13 +170,28 @@ describe('StandingsController', () => {
       expect(service.getStandings).toHaveBeenCalledWith(
         seasonId,
         'in_progress',
+        undefined,
       );
     });
 
     it('should pass requested standings mode', async () => {
       await controller.getStandingsBySeason('season-1', 'final');
 
-      expect(service.getStandings).toHaveBeenCalledWith('season-1', 'final');
+      expect(service.getStandings).toHaveBeenCalledWith(
+        'season-1',
+        'final',
+        undefined,
+      );
+    });
+
+    it('should pass requested round number for season route', async () => {
+      await controller.getStandingsBySeason('season-1', 'in_progress', '4');
+
+      expect(service.getStandings).toHaveBeenCalledWith(
+        'season-1',
+        'in_progress',
+        4,
+      );
     });
   });
 });

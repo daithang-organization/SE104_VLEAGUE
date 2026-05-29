@@ -3,6 +3,33 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { createE2eApp } from './create-e2e-app';
 
+type HealthBody = {
+  status: string;
+  info: {
+    database: { status: string };
+    memory_heap: { status: string };
+  };
+};
+
+type ReadinessBody = {
+  status: string;
+  details: {
+    database: { status: string };
+  };
+};
+
+type LivenessBody = {
+  status: string;
+  uptimeSeconds: number;
+  timestamp: string;
+};
+
+type ErrorBody = {
+  code: string;
+  requestId: string;
+  timestamp: string;
+};
+
 describe('Application observability (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -19,9 +46,10 @@ describe('Application observability (e2e)', () => {
       .get('/api/health')
       .expect(200)
       .expect((res) => {
-        expect(res.body.status).toBe('ok');
-        expect(res.body.info.database.status).toBe('up');
-        expect(res.body.info.memory_heap.status).toBe('up');
+        const body = res.body as HealthBody;
+        expect(body.status).toBe('ok');
+        expect(body.info.database.status).toBe('up');
+        expect(body.info.memory_heap.status).toBe('up');
       });
   });
 
@@ -30,8 +58,9 @@ describe('Application observability (e2e)', () => {
       .get('/api/health/ready')
       .expect(200)
       .expect((res) => {
-        expect(res.body.status).toBe('ok');
-        expect(res.body.details.database.status).toBe('up');
+        const body = res.body as ReadinessBody;
+        expect(body.status).toBe('ok');
+        expect(body.details.database.status).toBe('up');
       });
   });
 
@@ -42,9 +71,10 @@ describe('Application observability (e2e)', () => {
       .expect(200)
       .expect('x-request-id', 'smoke-request-1')
       .expect((res) => {
-        expect(res.body.status).toBe('ok');
-        expect(res.body.uptimeSeconds).toEqual(expect.any(Number));
-        expect(res.body.timestamp).toEqual(expect.any(String));
+        const body = res.body as LivenessBody;
+        expect(body.status).toBe('ok');
+        expect(body.uptimeSeconds).toEqual(expect.any(Number));
+        expect(body.timestamp).toEqual(expect.any(String));
       });
   });
 
@@ -55,9 +85,10 @@ describe('Application observability (e2e)', () => {
       .expect(404)
       .expect('x-request-id', 'smoke-error-1')
       .expect((res) => {
-        expect(res.body.code).toBe('NOT_FOUND');
-        expect(res.body.requestId).toBe('smoke-error-1');
-        expect(res.body.timestamp).toEqual(expect.any(String));
+        const body = res.body as ErrorBody;
+        expect(body.code).toBe('NOT_FOUND');
+        expect(body.requestId).toBe('smoke-error-1');
+        expect(body.timestamp).toEqual(expect.any(String));
       });
   });
 });

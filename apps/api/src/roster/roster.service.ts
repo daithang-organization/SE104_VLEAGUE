@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { isForeignPlayer } from '../common/utils/foreign-player.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
@@ -164,20 +165,30 @@ export class RosterService {
     }
 
     // Check foreign player limit against regulation
-    if ((player as Record<string, unknown>).playerType === 'FOREIGN') {
+    if (isForeignPlayer(player)) {
       const maxForeign = await this.regulationHelper.getNumericValue(
         dto.seasonId,
         'MAX_FOREIGN_PLAYERS',
         DEFAULT_MAX_FOREIGN,
       );
 
-      const foreignCount = await this.prisma.teamPlayer.count({
+      const activeRosterPlayers = await this.prisma.teamPlayer.findMany({
         where: {
           teamId,
           leftAt: null,
-          player: { playerType: 'FOREIGN' },
+        },
+        select: {
+          player: {
+            select: {
+              playerType: true,
+              nationality: true,
+            },
+          },
         },
       });
+      const foreignCount = activeRosterPlayers.filter((row) =>
+        isForeignPlayer(row.player),
+      ).length;
 
       if (foreignCount >= maxForeign) {
         throw new BadRequestException(

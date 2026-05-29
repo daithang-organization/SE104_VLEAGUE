@@ -47,6 +47,7 @@ describe('SeasonService', () => {
             },
             teamPlayer: {
               count: jest.fn(),
+              findMany: jest.fn(),
             },
           },
         },
@@ -296,6 +297,15 @@ describe('SeasonService', () => {
         .spyOn(prisma.teamPlayer, 'count')
         .mockResolvedValueOnce(16)
         .mockResolvedValueOnce(5);
+      jest
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'FOREIGN', nationality: 'Brazil' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Japan' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Korea' } },
+          { player: { playerType: 'FOREIGN', nationality: 'France' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Spain' } },
+        ] as any);
       jest.spyOn(prisma.seasonTeam, 'update').mockResolvedValue({
         ...seasonTeamRecord,
         status: 'APPROVED',
@@ -315,11 +325,18 @@ describe('SeasonService', () => {
       expect(prisma.teamPlayer.count).toHaveBeenCalledWith({
         where: { teamId: 'team-1', leftAt: null },
       });
-      expect(prisma.teamPlayer.count).toHaveBeenCalledWith({
+      expect(prisma.teamPlayer.findMany).toHaveBeenCalledWith({
         where: {
           teamId: 'team-1',
           leftAt: null,
-          player: { playerType: 'FOREIGN' },
+        },
+        select: {
+          player: {
+            select: {
+              playerType: true,
+              nationality: true,
+            },
+          },
         },
       });
     });
@@ -333,6 +350,18 @@ describe('SeasonService', () => {
       await expect(
         service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
       ).rejects.toThrow('chưa nộp hồ sơ');
+      expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
+    });
+
+    it('should reject approval when external competition schedule is missing', async () => {
+      jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
+        ...seasonTeamRecord,
+        externalCompetitionSchedule: null,
+      } as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('lịch giải khác');
       expect(regulationHelper.getNumericValue).not.toHaveBeenCalled();
     });
 
@@ -377,8 +406,38 @@ describe('SeasonService', () => {
       jest
         .spyOn(prisma.teamPlayer, 'count')
         .mockReset()
-        .mockResolvedValueOnce(20)
-        .mockResolvedValueOnce(6);
+        .mockResolvedValueOnce(20);
+      jest
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'FOREIGN', nationality: 'Brazil' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Japan' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Korea' } },
+          { player: { playerType: 'FOREIGN', nationality: 'France' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Spain' } },
+          { player: { playerType: 'FOREIGN', nationality: 'Argentina' } },
+        ] as any);
+
+      await expect(
+        service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),
+      ).rejects.toThrow('tối đa 5 cầu thủ ngoại');
+    });
+
+    it('should reject approval when non-Vietnam nationality roster exceeds the foreign-player limit', async () => {
+      jest
+        .spyOn(prisma.teamPlayer, 'count')
+        .mockReset()
+        .mockResolvedValueOnce(20);
+      jest
+        .spyOn(prisma.teamPlayer, 'findMany')
+        .mockResolvedValue([
+          { player: { playerType: 'DOMESTIC', nationality: 'Brazil' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Japan' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Korea' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'France' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Spain' } },
+          { player: { playerType: 'DOMESTIC', nationality: 'Argentina' } },
+        ] as any);
 
       await expect(
         service.updateTeamStatus('season-1', 'team-1', 'APPROVED'),

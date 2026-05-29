@@ -173,4 +173,14 @@ describe('TeamManagerService application workflow', () => {
       }),
     ).rejects.toThrow(BadRequestException);
   });
+
+  it('rejects application submission when external competition schedule is missing', async () => {
+    await expect(
+      service.submitApplication('manager-1', {
+        ...applicationPayload,
+        externalCompetitionSchedule: ' ',
+      }),
+    ).rejects.toThrow('externalCompetitionSchedule');
+    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
+  });
 });

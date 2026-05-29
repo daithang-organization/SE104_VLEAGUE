@@ -73,9 +73,9 @@ export class SubmitTeamApplicationDto {
   @MaxLength(500)
   feeReceiptUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Lịch giải khác đã/đang tham gia' })
-  @IsOptional()
+  @ApiProperty({ description: 'Lịch giải khác đã/đang tham gia' })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(2000)
-  externalCompetitionSchedule?: string;
+  externalCompetitionSchedule!: string;
 }

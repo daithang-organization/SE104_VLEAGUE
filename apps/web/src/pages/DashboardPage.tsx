@@ -245,7 +245,7 @@ function TeamManagerDashboard() {
         ownerAddress: values.ownerAddress?.trim() || undefined,
         feeReceiptCode: values.feeReceiptCode?.trim() || undefined,
         feeReceiptUrl: values.feeReceiptUrl?.trim() || undefined,
-        externalCompetitionSchedule: values.externalCompetitionSchedule?.trim() || undefined,
+        externalCompetitionSchedule: values.externalCompetitionSchedule.trim(),
         participationFeePaid: values.participationFeePaid ?? false,
       });
       setApplication(updatedApplication);
@@ -449,6 +449,9 @@ function TeamManagerDashboard() {
                 <Form.Item
                   name="externalCompetitionSchedule"
                   label="Lịch giải khác đã/đang tham gia"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập lịch giải khác đã/đang tham gia' },
+                  ]}
                 >
                   <Input.TextArea
                     rows={2}

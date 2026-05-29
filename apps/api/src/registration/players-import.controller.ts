@@ -45,7 +45,7 @@ export class PlayersImportController {
   @ApiOperation({
     summary: 'Import cầu thủ từ CSV',
     description:
-      'Upload file CSV với format: fullName,dob,nationality,position,playerType,birthPlace,heightCm,weightKg',
+      'Upload file CSV với format: fullName,dob,nationality,position,playerType,birthPlace,heightCm,weightKg,careerSummary',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -98,6 +98,7 @@ export class PlayersImportController {
         birthPlace,
         heightCm,
         weightKg,
+        careerSummary,
       ] = fields;
 
       if (
@@ -105,10 +106,14 @@ export class PlayersImportController {
         !dob ||
         !nationality ||
         !position ||
+        !birthPlace ||
+        !heightCm ||
+        !weightKg ||
+        !careerSummary ||
         !['GK', 'DF', 'MF', 'FW'].includes(position)
       ) {
         errors.push(
-          `Dòng ${i + 2}: Thiếu thông tin bắt buộc (fullName, dob, nationality, position)`,
+          `Dòng ${i + 2}: Thiếu thông tin bắt buộc (fullName, dob, nationality, position, birthPlace, heightCm, weightKg, careerSummary)`,
         );
         continue;
       }
@@ -123,9 +128,10 @@ export class PlayersImportController {
             playerType === 'FOREIGN'
               ? ('FOREIGN' as never)
               : ('DOMESTIC' as never),
-          birthPlace: birthPlace || undefined,
-          heightCm: heightCm ? Number(heightCm) : undefined,
-          weightKg: weightKg ? Number(weightKg) : undefined,
+          birthPlace,
+          heightCm: Number(heightCm),
+          weightKg: Number(weightKg),
+          careerSummary,
         });
         imported++;
       } catch (err: unknown) {
