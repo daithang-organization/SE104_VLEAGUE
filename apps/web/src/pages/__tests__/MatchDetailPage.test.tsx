@@ -434,7 +434,7 @@ describe('MatchDetailPage', () => {
     });
   });
 
-  it('renders the match center tabs with timeline, lineup, bench, and stats shells', async () => {
+  it('renders overview stats and keeps only the visual lineup inside the lineup tab', async () => {
     mockMatchApi.apiGetMatch.mockResolvedValueOnce(matchWithEvents);
     mockMatchApi.apiGetMatchLineups.mockResolvedValueOnce(submittedLineups);
     mockMatchApi.apiGetMatchReport.mockResolvedValueOnce({
@@ -453,34 +453,12 @@ describe('MatchDetailPage', () => {
     const { container } = renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    fireEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
 
     await waitFor(() => {
-      expect(mockMatchApi.apiGetMatchLineups).toHaveBeenCalledWith('m1');
+      expect(container.querySelector('.match-stats-panel')).toBeInTheDocument();
     });
 
-    const matchCenter = container.querySelector('.match-center-card');
-    expect(matchCenter).toBeInTheDocument();
-    const matchCenterElement = matchCenter as HTMLElement;
-    expect(
-      within(matchCenterElement).getByRole('tab', { name: /DIỄN BIẾN TRẬN ĐẤU/ }),
-    ).toBeInTheDocument();
-    expect(
-      within(matchCenterElement).getByRole('tab', { name: /ĐỘI HÌNH RA SÂN/ }),
-    ).toBeInTheDocument();
-    expect(within(matchCenterElement).getByRole('tab', { name: /THỐNG KÊ/ })).toBeInTheDocument();
-
-    fireEvent.click(within(matchCenterElement).getByRole('tab', { name: /ĐỘI HÌNH RA SÂN/ }));
-    expect(matchCenterElement.querySelector('.lineup-pitch')).toBeInTheDocument();
-    expect(matchCenterElement.querySelector('.lineup-pitch')).toHaveTextContent('Đội hình ra sân');
-    expect(within(matchCenterElement).getAllByText('Ha Noi FC').length).toBeGreaterThan(0);
-    expect(within(matchCenterElement).getAllByText('Hai Phong FC').length).toBeGreaterThan(0);
-    expect(matchCenterElement.querySelector('.lineup-bench')).toBeInTheDocument();
-    expect(matchCenterElement.querySelector('.lineup-bench')).toHaveTextContent('Bảng ghế dự bị');
-
-    fireEvent.click(within(matchCenterElement).getByRole('tab', { name: /THỐNG KÊ/ }));
-    const statsPanel = matchCenterElement.querySelector('.match-stats-panel') as HTMLElement;
-    expect(statsPanel).toBeInTheDocument();
+    const statsPanel = container.querySelector('.match-stats-panel') as HTMLElement;
     expect(statsPanel.querySelector('.match-stats-teams')).toHaveTextContent('Ha Noi FC');
     expect(statsPanel.querySelector('.match-stats-teams')).toHaveTextContent('Hai Phong FC');
     expect(within(statsPanel).getByText('Thông số trận đấu')).toBeInTheDocument();
@@ -503,9 +481,31 @@ describe('MatchDetailPage', () => {
     expectStatsRow('Thẻ đỏ', '1', '0');
     expectStatsRow('Thay người', '1', '1');
 
-    fireEvent.click(within(matchCenterElement).getByRole('tab', { name: /DIỄN BIẾN TRẬN ĐẤU/ }));
-    expect(within(matchCenterElement).getByLabelText('Diễn biến trận đấu')).toBeInTheDocument();
-    expect(matchCenterElement.querySelector('.match-timeline-hero')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiGetMatchLineups).toHaveBeenCalledWith('m1');
+    });
+
+    const matchCenter = container.querySelector('.match-center-card');
+    expect(matchCenter).toBeInTheDocument();
+    const matchCenterElement = matchCenter as HTMLElement;
+    expect(
+      within(matchCenterElement).queryByRole('tab', { name: /DIỄN BIẾN TRẬN ĐẤU/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(matchCenterElement).queryByRole('tab', { name: /THỐNG KÊ/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(matchCenterElement).getByRole('heading', { name: /Đội hình ra sân/i }),
+    ).toBeInTheDocument();
+
+    expect(matchCenterElement.querySelector('.lineup-pitch')).toBeInTheDocument();
+    expect(matchCenterElement.querySelector('.lineup-pitch')).toHaveTextContent('Đội hình ra sân');
+    expect(within(matchCenterElement).getAllByText('Ha Noi FC').length).toBeGreaterThan(0);
+    expect(within(matchCenterElement).getAllByText('Hai Phong FC').length).toBeGreaterThan(0);
+    expect(matchCenterElement.querySelector('.lineup-bench')).toBeInTheDocument();
+    expect(matchCenterElement.querySelector('.lineup-bench')).toHaveTextContent('Bảng ghế dự bị');
   });
 
   it('shows a pending lineup state inside the match center when no team has submitted', async () => {
@@ -517,8 +517,6 @@ describe('MatchDetailPage', () => {
     const matchCenter = document.querySelector('.match-center-card');
     expect(matchCenter).toBeInTheDocument();
     const matchCenterElement = matchCenter as HTMLElement;
-
-    await userEvent.click(within(matchCenterElement).getByRole('tab', { name: /ĐỘI HÌNH RA SÂN/ }));
 
     expect(
       within(matchCenterElement).getByText('Chưa có đội nào nộp danh sách thi đấu.'),

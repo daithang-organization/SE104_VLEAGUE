@@ -71,6 +71,7 @@ import {
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
 import EventFormModal from './match-detail/EventFormModal';
 import MatchCenter from './match-detail/MatchCenter';
+import MatchStatsPanel from './match-detail/MatchStatsPanel';
 import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
 import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
@@ -994,34 +995,6 @@ export default function MatchDetailPage() {
     },
   ];
 
-  // Stats table data
-  const statsData = [
-    {
-      key: 'goals',
-      stat: t('matchDetail.statGoals'),
-      home: homeGoals.length,
-      away: awayGoals.length,
-    },
-    {
-      key: 'yellows',
-      stat: t('matchDetail.statYellows'),
-      home: homeYellows,
-      away: awayYellows,
-    },
-    {
-      key: 'reds',
-      stat: t('matchDetail.statReds'),
-      home: homeReds,
-      away: awayReds,
-    },
-    {
-      key: 'subs',
-      stat: t('matchDetail.statSubs'),
-      home: homeSubs,
-      away: awaySubs,
-    },
-  ];
-
   const renderTeamLogo = (team: Match['homeTeam'], fallback: string) => {
     const logoUrl = getTeamLogoUrl(team);
 
@@ -1213,34 +1186,12 @@ export default function MatchDetailPage() {
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Card title={t('matchDetail.matchStatsTitle')} size="small">
-                    <Table
-                      dataSource={statsData}
-                      rowKey="key"
-                      pagination={false}
-                      size="small"
-                      columns={[
-                        {
-                          title: match.homeTeam?.name ?? t('matchDetail.colHome'),
-                          dataIndex: 'home',
-                          align: 'center',
-                          width: 80,
-                          render: (v: number) => <strong>{v}</strong>,
-                        },
-                        {
-                          title: t('matchDetail.colStat'),
-                          dataIndex: 'stat',
-                          align: 'center',
-                        },
-                        {
-                          title: match.awayTeam?.name ?? t('matchDetail.colAway'),
-                          dataIndex: 'away',
-                          align: 'center',
-                          width: 80,
-                          render: (v: number) => <strong>{v}</strong>,
-                        },
-                      ]}
-                    />
+                  <Card
+                    title={t('matchDetail.matchStatsTitle')}
+                    size="small"
+                    styles={{ body: { padding: 0 } }}
+                  >
+                    <MatchStatsPanel match={match} events={events} matchReport={matchReport} />
                   </Card>
                 </Col>
               </Row>
@@ -1626,14 +1577,7 @@ export default function MatchDetailPage() {
             label: t('matchDetail.tabLineups'),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <MatchCenter
-                  match={match}
-                  events={events}
-                  lineups={lineups}
-                  matchReport={matchReport}
-                  loading={lineupLoading}
-                  onPlayerClick={(pid) => navigate(`/players/${pid}`)}
-                />
+                <MatchCenter match={match} lineups={lineups} loading={lineupLoading} />
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={16}>
                     <Card title="Danh sách đã nộp" size="small" loading={lineupLoading}>

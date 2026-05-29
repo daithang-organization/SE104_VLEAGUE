@@ -1022,9 +1022,7 @@ select {
 
 .match-center-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(118px, auto) minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
+  gap: 12px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
   background:
@@ -1037,54 +1035,55 @@ select {
     var(--surface);
 }
 
-.match-center-header > strong {
+.match-center-header > span {
+  display: grid;
+  min-width: 0;
+}
+
+.match-center-header > span .ant-typography {
+  margin: 0;
+}
+
+.match-center-header > span > span.ant-typography {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.match-center-header h4.ant-typography {
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.match-center-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.match-center-matchup strong {
   min-width: 0;
   overflow: hidden;
   color: var(--text-main);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.match-center-header > strong:last-child {
+.match-center-matchup strong:last-child {
   text-align: right;
 }
 
-.match-center-header > span {
-  display: grid;
-  justify-items: center;
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.match-center-header b {
+.match-center-matchup b {
   color: var(--text-main);
   font-size: 22px;
   line-height: 1.1;
   white-space: nowrap;
-}
-
-.match-center-tabs .ant-tabs-nav {
-  margin: 0;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.match-center-tabs .ant-tabs-tab {
-  min-height: 48px;
-  margin: 0 22px 0 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.match-center-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: var(--primary);
 }
 
 .match-center-panel {
