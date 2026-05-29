@@ -131,7 +131,10 @@ export class TeamInvitationService {
     const previousSeason = previousSeasonId
       ? await this.prisma.season.findUnique({ where: { id: previousSeasonId } })
       : await this.prisma.season.findFirst({
-          where: { year: targetSeason.year - 1 },
+          where: {
+            status: 'COMPLETED',
+            year: { lt: targetSeason.year },
+          },
           orderBy: { year: 'desc' },
         });
 

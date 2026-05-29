@@ -431,7 +431,10 @@ describe('TeamInvitationService', () => {
       const result = await (service as any).getInvitationCandidates('season-1');
 
       expect(prisma.season.findFirst).toHaveBeenCalledWith({
-        where: { year: 2025 },
+        where: {
+          status: 'COMPLETED',
+          year: { lt: 2026 },
+        },
         orderBy: { year: 'desc' },
       });
       expect(standingsService.getStandings).toHaveBeenCalledWith(

@@ -576,7 +576,9 @@ export class StandingsService {
         { homeTeamId: team1Id, awayTeamId: team2Id },
         { homeTeamId: team2Id, awayTeamId: team1Id },
       ],
-      status: 'FINISHED',
+      status: { in: ['PUBLISHED', 'LOCKED', 'FINISHED'] },
+      homeScore: { not: null },
+      awayScore: { not: null },
     };
     if (seasonId) where.seasonId = seasonId;
 

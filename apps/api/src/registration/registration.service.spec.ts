@@ -246,7 +246,7 @@ describe('RegistrationService', () => {
       await service.listPlayers();
       expect(prisma.player.findMany).toHaveBeenCalledWith({
         where: {},
-        orderBy: { fullName: 'asc' },
+        orderBy: [{ fullName: 'asc' }],
         include: {
           roster: {
             where: { leftAt: null },
@@ -266,6 +266,25 @@ describe('RegistrationService', () => {
         skip: 0,
         take: 20,
       });
+    });
+
+    it('should apply requested player sorting before pagination', async () => {
+      jest
+        .spyOn(prisma.player, 'findMany')
+        .mockResolvedValue(mockPlayers as any);
+      jest.spyOn(prisma.player, 'count').mockResolvedValue(2);
+
+      await service.listPlayers({ sortBy: 'heightCm', sortOrder: 'desc' });
+      expect(prisma.player.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [
+            { heightCm: { sort: 'desc', nulls: 'last' } },
+            { fullName: 'asc' },
+          ],
+          skip: 0,
+          take: 20,
+        }),
+      );
     });
   });
 

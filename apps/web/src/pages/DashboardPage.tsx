@@ -39,7 +39,7 @@ import { AppMenuIcon, CardSkeleton, PageCover } from '../components';
 import { apiGetMatches, type Match } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule } from '../services/scheduleApi';
-import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetCardStats,
   apiGetStandings,
@@ -763,20 +763,21 @@ export default function DashboardPage() {
         }
 
         const dashboardSeason =
-          seasons.status === 'fulfilled'
-            ? (seasons.value.find((season) => {
+          (await apiGetCurrentSeason()) ??
+          (seasons.status === 'fulfilled'
+            ? (seasons.value.find((season) => season.status === 'IN_PROGRESS') ??
+              seasons.value.find((season) => {
                 if (!season.startDate || !season.endDate) return false;
                 const start = dayjs(season.startDate).startOf('day').valueOf();
                 const end = dayjs(season.endDate).endOf('day').valueOf();
                 const now = dayjs().valueOf();
                 return now >= start && now <= end;
               }) ??
-              seasons.value.find((season) => season.status === 'IN_PROGRESS') ??
               seasons.value
                 .filter((season) => season.startDate)
                 .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
               null)
-            : null;
+            : null);
         setCurrentSeason(dashboardSeason);
 
         if (dashboardSeason) {

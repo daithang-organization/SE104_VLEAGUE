@@ -91,6 +91,8 @@ export function useAntdThemeConfig(): ThemeConfig {
           },
           Table: {
             headerBg: '#1a2942',
+            headerSortActiveBg: '#1a2942',
+            bodySortBg: '#152238',
             borderColor: 'rgba(255, 255, 255, 0.15)',
             rowHoverBg: 'rgba(227, 34, 33, 0.15)',
           },
@@ -137,6 +139,8 @@ export function useAntdThemeConfig(): ThemeConfig {
         },
         Table: {
           headerBg: '#f1f5f9',
+          headerSortActiveBg: '#f1f5f9',
+          bodySortBg: '#ffffff',
           borderColor: '#e2e8f0',
           rowHoverBg: '#eef3fb',
         },
