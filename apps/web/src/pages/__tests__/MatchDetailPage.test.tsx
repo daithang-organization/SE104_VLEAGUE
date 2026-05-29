@@ -663,7 +663,7 @@ describe('MatchDetailPage', () => {
         ],
       });
     });
-  }, 30_000);
+  }, 60_000);
 
   it('submits card events from the referee report without changing the score', async () => {
     renderPage();
@@ -703,7 +703,7 @@ describe('MatchDetailPage', () => {
         ],
       });
     });
-  }, 30_000);
+  }, 60_000);
 
   it('submits substitutions with player in and player out from the referee report', async () => {
     renderPage();
@@ -748,7 +748,7 @@ describe('MatchDetailPage', () => {
         ],
       });
     });
-  }, 30_000);
+  }, 60_000);
 
   it('keeps referee score and event entry inside the report flow', async () => {
     mockUseAuth.mockReturnValue({

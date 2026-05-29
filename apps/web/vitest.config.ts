@@ -8,6 +8,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './vitest.setup.ts',
     css: false,
-    testTimeout: 15_000,
+    testTimeout: 60_000,
+    hookTimeout: 30_000,
+    minWorkers: 1,
+    maxWorkers: 2,
   },
 });

@@ -11,7 +11,7 @@ export class UpdateStadiumDto {
   name?: string;
 
   @ApiPropertyOptional({
-    description: 'Thành phố',
+    description: 'Tỉnh/Thành phố',
     example: 'Hà Nội',
   })
   @IsOptional()

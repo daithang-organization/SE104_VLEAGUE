@@ -1,4 +1,15 @@
 import type { CSSProperties } from 'react';
+import bacNinhLogo from '../assets/promo-candidates/bac-ninh-fc.svg';
+import daiHocVanHienLogo from '../assets/promo-candidates/dai-hoc-van-hien-fc.png';
+import dongThapLogo from '../assets/promo-candidates/dong-thap-fc.png';
+import longAnLogo from '../assets/promo-candidates/long-an-fc.png';
+import quangNinhLogo from '../assets/promo-candidates/quang-ninh-fc.png';
+import quyNhonUnitedLogo from '../assets/promo-candidates/quy-nhon-united.png';
+import sannaKhanhHoaLogo from '../assets/promo-candidates/sanna-khanh-hoa-fc.png';
+import thanhNienTpHcmLogo from '../assets/promo-candidates/thanh-nien-tp-ho-chi-minh-fc.png';
+import trePvfCandLogo from '../assets/promo-candidates/tre-pvf-cand.png';
+import truongTuoiDongNaiLogo from '../assets/promo-candidates/truong-tuoi-dong-nai.png';
+import xuanThienPhuThoLogo from '../assets/promo-candidates/xuan-thien-phu-tho-fc.png';
 
 type TeamIdentity = {
   name?: string | null;
@@ -46,6 +57,28 @@ const TEAM_LOGOS: Record<string, string> = {
   hlht: '/team-logos/HLHT_FC.svg.png',
   'shb da nang': '/team-logos/CLB_SHB_%C4%90%C3%A0_N%E1%BA%B5ng.svg.png',
   dn: '/team-logos/CLB_SHB_%C4%90%C3%A0_N%E1%BA%B5ng.svg.png',
+  'bac ninh fc': bacNinhLogo,
+  bn: bacNinhLogo,
+  'long an fc': longAnLogo,
+  la: longAnLogo,
+  'quy nhon united': quyNhonUnitedLogo,
+  qnu: quyNhonUnitedLogo,
+  'quang ninh fc': quangNinhLogo,
+  qninh: quangNinhLogo,
+  'sanna khanh hoa fc': sannaKhanhHoaLogo,
+  skh: sannaKhanhHoaLogo,
+  'thanh nien tp ho chi minh fc': thanhNienTpHcmLogo,
+  tnhcm: thanhNienTpHcmLogo,
+  'truong tuoi dong nai': truongTuoiDongNaiLogo,
+  ttdn: truongTuoiDongNaiLogo,
+  'tre pvf cand': trePvfCandLogo,
+  pvf: trePvfCandLogo,
+  'xuan thien phu tho fc': xuanThienPhuThoLogo,
+  pt: xuanThienPhuThoLogo,
+  'dai hoc van hien fc': daiHocVanHienLogo,
+  vhu: daiHocVanHienLogo,
+  'dong thap fc': dongThapLogo,
+  dt: dongThapLogo,
 };
 
 const DEFAULT_TEAM_THEME: TeamTheme = {
@@ -263,8 +296,13 @@ export function normalizeTeamLogoKey(value?: string | null) {
 export function getTeamLogoUrl(team?: TeamIdentity | string | null) {
   if (!team) return undefined;
   if (typeof team === 'string') return TEAM_LOGOS[normalizeTeamLogoKey(team)];
+  const mappedLogo =
+    TEAM_LOGOS[normalizeTeamLogoKey(team.name)] || TEAM_LOGOS[normalizeTeamLogoKey(team.shortName)];
+
+  if (mappedLogo) return mappedLogo;
+
   return (
-    team.logoUrl ||
+    (team.logoUrl ? encodeURI(team.logoUrl) : undefined) ||
     TEAM_LOGOS[normalizeTeamLogoKey(team.name)] ||
     TEAM_LOGOS[normalizeTeamLogoKey(team.shortName)]
   );
