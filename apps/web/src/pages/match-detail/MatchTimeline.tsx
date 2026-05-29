@@ -2,7 +2,7 @@ import { Card, Tag, Typography } from 'antd';
 import type { CSSProperties } from 'react';
 import type { MatchEvent } from '../../services/matchApi';
 import { useTheme } from '../../shell/ThemeContext';
-import { getTeamTheme } from '../../utils/teamLogos';
+import { getTeamLogoUrl, getTeamTheme } from '../../utils/teamLogos';
 import { EVENT_TYPE_MAP } from './constants';
 
 const { Text } = Typography;
@@ -55,6 +55,30 @@ interface MatchTimelineProps {
   onPlayerClick?: (playerId: string) => void;
 }
 
+function getTeamInitials(teamName: string) {
+  return teamName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+function TeamLogo({ teamName }: { teamName: string }) {
+  const logoUrl = getTeamLogoUrl(teamName);
+
+  if (logoUrl) {
+    return <img className="match-timeline-team-logo" src={logoUrl} alt={`${teamName} logo`} />;
+  }
+
+  return (
+    <span className="match-timeline-team-logo match-timeline-team-logo-fallback" aria-hidden="true">
+      {getTeamInitials(teamName)}
+    </span>
+  );
+}
+
 export default function MatchTimeline({
   events,
   homeTeamId,
@@ -104,7 +128,10 @@ export default function MatchTimeline({
         <div className="match-timeline-grid">
           <article className="match-timeline-grid-card match-timeline-team-card-home">
             <Text className="match-timeline-card-label">Đội nhà</Text>
-            <strong>{homeTeamName}</strong>
+            <div className="match-timeline-team-main">
+              <TeamLogo teamName={homeTeamName} />
+              <strong>{homeTeamName}</strong>
+            </div>
             <span>{homeEventCount} sự kiện</span>
           </article>
           <article className="match-timeline-grid-card match-timeline-center-card">
@@ -114,7 +141,10 @@ export default function MatchTimeline({
           </article>
           <article className="match-timeline-grid-card match-timeline-team-card-away">
             <Text className="match-timeline-card-label">Đội khách</Text>
-            <strong>{awayTeamName}</strong>
+            <div className="match-timeline-team-main">
+              <TeamLogo teamName={awayTeamName} />
+              <strong>{awayTeamName}</strong>
+            </div>
             <span>{awayEventCount} sự kiện</span>
           </article>
         </div>

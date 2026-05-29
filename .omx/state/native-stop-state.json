@@ -82,11 +82,11 @@
     },
     "019e6db6-a709-7461-9a5c-3af5398e9b87": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã sửa theo feedback của bạn. cụ thể: - trong tab `đội hình` đã bỏ tab con `diễn biến trận đấu` và `thống kê`. - tab `đội hình` giờ chỉ còn phần `đội hình ra sân` với sân + ghế dự bị. - `diễn biến trận đấu` vẫn nằm ở tab chính `diễn biến trận đấu`. - `thống kê` đã được đưa vào tab `tổng quan`, thay cho bảng thống kê cũ. - header match center đã chỉnh lại để không bị dính chữ như screenshot. đã verify: - `pnpm --filter web test -- matchdetailpage.test.tsx`: pass `9/9` - `pnpm --filter web lint`: pass, còn 17 warning cũ ngoài phạm vi - `pnpm --filter web build`: pass dev server đã restart, url đang chạy: `http://localhost:5174/` `http://localhost:5173/` cũng trả `200 ok`, nhưng vite instance mới đang báo local url là `5174`.",
-        "first_seen_at": "2026-05-29T03:38:12.300Z",
-        "last_seen_at": "2026-05-29T03:38:12.300Z",
+        "fingerprint": "ordinary|đã cập nhật logo clb ở đúng 2 khu vực bạn chỉ: - `thống kê trận đấu` trong tab `tổng quan`: thêm logo cạnh tên đội nhà/đội khách. - `diễn biến trận đấu`: thêm logo trong 2 card đội ở header. - có fallback chữ viết tắt nếu đội chưa có logo asset. - không đụng phần `trọng tài & báo cáo`, tab `diễn biến trận đấu`, hay sơ đồ/đội hình ra sân. file đã sửa: - [matchstatspanel.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/matchstatspanel.tsx) - [matchtimeline.tsx](c:/se104_vleague/apps/web/src/pages/match-detail/matchtimeline.tsx) - [index.css](c:/se104_vleague/apps/web/src/index.css) - [matchdetailpage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/matchdetailpage.test.tsx) verification: - `pnpm --filter web test -- matchdetailpage.test.tsx`: 9/9 pass - `pnpm --filter web lint`: 0 errors, còn 17 warnings cũ - `pnpm --filter web build`: pass dev server: `http://127.0.0.1:5173/` trả `200 ok`. nếu bạn dùng `127.0.0.1:5174` mà bị refused thì mở `http://localhost:5174/` hoặc dùng port `5173`.",
+        "first_seen_at": "2026-05-29T04:02:18.518Z",
+        "last_seen_at": "2026-05-29T04:02:18.518Z",
         "repeat_count": 1,
-        "last_turn_id": "019e71c2-84e7-7fc0-a104-4bd3a46b465f",
+        "last_turn_id": "019e71d8-3f5b-7180-91e0-1c6f14364e80",
         "last_thread_id": null
       }
     },
@@ -107,6 +107,16 @@
         "last_seen_at": "2026-05-28T16:32:05.291Z",
         "repeat_count": 1,
         "last_turn_id": "019e6f5f-878c-70a3-a80f-0c9130a96165",
+        "last_thread_id": null
+      }
+    },
+    "019e71be-9ccd-7823-a941-ead2e2e6586d": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã chốt hướng và ghi thành spec tại [2026-05-29-referee-match-report-design.md](c:/se104_vleague/docs/superpowers/specs/2026-05-29-referee-match-report-design.md). commit đã tạo: `608f4db reduce referee report entry friction`. điểm chính trong spec: dùng một luồng `nộp biên bản trận đấu`, tỉ số tự tính từ sự kiện bàn thắng, dùng endpoint report hiện có, và giữ báo cáo giám sát tách riêng. tôi cũng xác nhận đây là thay đổi ui/ux là chính vì backend hiện đã nhận `homescore`, `awayscore`, `bestplayerid`, `technicalstats`, `note`, `events`. worktree vẫn còn thay đổi ngoài phạm vi ở `.omx/state/native-stop-state.json` và `apps/web/src/pages/__tests__/matchdetailpage.test.tsx`, không nằm trong commit này. bạn review spec này trước; sau khi bạn đồng ý, tôi sẽ viết implementation plan rồi mới triển khai.",
+        "first_seen_at": "2026-05-29T03:50:47.331Z",
+        "last_seen_at": "2026-05-29T03:50:47.331Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e71d3-522a-7d01-a65d-41ed8cc0ccd8",
         "last_thread_id": null
       }
     }

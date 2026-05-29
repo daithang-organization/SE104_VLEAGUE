@@ -376,6 +376,7 @@ describe('MatchDetailPage', () => {
     expect(container.querySelector('.match-timeline-hero')).toBeInTheDocument();
     expect(container.querySelector('.match-timeline-grid')).toBeInTheDocument();
     expect(container.querySelectorAll('.match-timeline-grid-card')).toHaveLength(3);
+    expect(container.querySelectorAll('.match-timeline-team-logo')).toHaveLength(2);
   });
 
   it('opens an existing event for editing and saves it through update API', async () => {
@@ -461,6 +462,7 @@ describe('MatchDetailPage', () => {
     const statsPanel = container.querySelector('.match-stats-panel') as HTMLElement;
     expect(statsPanel.querySelector('.match-stats-teams')).toHaveTextContent('Ha Noi FC');
     expect(statsPanel.querySelector('.match-stats-teams')).toHaveTextContent('Hai Phong FC');
+    expect(statsPanel.querySelectorAll('.match-stats-team-logo')).toHaveLength(2);
     expect(within(statsPanel).getByText('Thông số trận đấu')).toBeInTheDocument();
 
     const expectStatsRow = (label: string, home: string, away: string) => {

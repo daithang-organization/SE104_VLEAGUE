@@ -1,4 +1,5 @@
 import type { Match, MatchEvent, MatchReport } from '../../services/matchApi';
+import { getTeamLogoUrl } from '../../utils/teamLogos';
 
 type MatchStatsPanelProps = {
   match: Match;
@@ -48,6 +49,8 @@ type StatPair = {
   away: unknown;
 };
 
+type MatchTeam = NonNullable<Match['homeTeam']>;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -80,6 +83,30 @@ function getSideStat(value: unknown): StatPair | null {
 function formatStatValue(value: unknown) {
   if (value === null || value === undefined || value === '') return '—';
   return String(value);
+}
+
+function getTeamInitials(teamName: string) {
+  return teamName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+function TeamLogo({ team, teamName }: { team?: MatchTeam | null; teamName: string }) {
+  const logoUrl = getTeamLogoUrl(team ?? teamName);
+
+  if (logoUrl) {
+    return <img className="match-stats-team-logo" src={logoUrl} alt={`${teamName} logo`} />;
+  }
+
+  return (
+    <span className="match-stats-team-logo match-stats-team-logo-fallback" aria-hidden="true">
+      {getTeamInitials(teamName)}
+    </span>
+  );
 }
 
 function getTechnicalStat(technicalStats: Record<string, unknown>, aliases: string[]) {
@@ -178,12 +205,18 @@ export default function MatchStatsPanel({ match, events, matchReport }: MatchSta
   return (
     <div className="match-stats-panel">
       <div className="match-stats-teams">
-        <strong>{homeTeamName}</strong>
+        <div className="match-stats-team match-stats-team-home">
+          <TeamLogo team={match.homeTeam} teamName={homeTeamName} />
+          <strong>{homeTeamName}</strong>
+        </div>
         <span>
           <small>Thống kê</small>
           <b>Thông số trận đấu</b>
         </span>
-        <strong>{awayTeamName}</strong>
+        <div className="match-stats-team match-stats-team-away">
+          <TeamLogo team={match.awayTeam} teamName={awayTeamName} />
+          <strong>{awayTeamName}</strong>
+        </div>
       </div>
 
       <div className="match-stats-list">
