@@ -298,7 +298,17 @@ function resetMatchApiMocks() {
 }
 
 describe('MatchDetailPage', () => {
-  beforeEach(() => resetMatchApiMocks());
+  beforeEach(() => {
+    mockUseAuth.mockReset();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    resetMatchApiMocks();
+  });
 
   it('renders the score area as a hero with grid cards', async () => {
     const { container } = renderPage();
@@ -543,5 +553,95 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText('Cầu thủ xuất sắc')).toBeInTheDocument();
     expect(screen.getByText('Home Player 1')).toBeInTheDocument();
     expect(screen.getByText('Một cầu thủ phản ứng trọng tài')).toBeInTheDocument();
+  });
+
+  it('submits a zero-zero referee match record from the consolidated report panel', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    await screen.findByText('Biên bản trận đấu');
+
+    await userEvent.click(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiSubmitMatchReport).toHaveBeenCalledWith('m1', {
+        homeScore: 0,
+        awayScore: 0,
+        bestPlayerId: 'h-player-1',
+        technicalStats: undefined,
+        note: undefined,
+        events: [],
+      });
+    });
+  });
+
+  it('submits draft goal events and calculates the report score from them', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm bàn thắng/ }));
+
+    const reportPanel = screen.getByTestId('referee-match-report-panel');
+    fireEvent.change(within(reportPanel).getByLabelText('Phút bàn thắng 1'), {
+      target: { value: '23' },
+    });
+
+    fireEvent.mouseDown(within(reportPanel).getByLabelText('Đội ghi bàn 1'));
+    const teamOption = (await screen.findAllByTitle('Ha Noi FC')).find((element) =>
+      element.classList.contains('ant-select-item-option'),
+    );
+    expect(teamOption).toBeDefined();
+    fireEvent.click(teamOption!);
+
+    fireEvent.mouseDown(within(reportPanel).getByLabelText('Cầu thủ ghi bàn 1'));
+    const scorerOption = (await screen.findAllByTitle('Home Player 1 #1')).find((element) =>
+      element.classList.contains('ant-select-item-option'),
+    );
+    expect(scorerOption).toBeDefined();
+    fireEvent.click(scorerOption!);
+
+    fireEvent.click(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiSubmitMatchReport).toHaveBeenCalledWith('m1', {
+        homeScore: 1,
+        awayScore: 0,
+        bestPlayerId: 'h-player-1',
+        technicalStats: undefined,
+        note: undefined,
+        events: [
+          {
+            minute: 23,
+            type: 'GOAL',
+            teamId: 'home-team',
+            playerId: 'h-player-1',
+            note: undefined,
+          },
+        ],
+      });
+    });
+  }, 30_000);
+
+  it('keeps referee score and event entry inside the report flow', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'referee@vl.local', role: 'REFEREE' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+
+    expect(screen.queryByRole('button', { name: /Cập nhật tỉ số/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Thêm sự kiện/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    expect(screen.getByRole('button', { name: /Thêm bàn thắng/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ })).toBeInTheDocument();
   });
 });

@@ -8,7 +8,11 @@ import vi from './src/locales/vi';
 i18n.use(initReactI18next).init({
   lng: 'vi',
   resources: { vi: { translation: vi } },
-  interpolation: { escapeValue: false },
+  interpolation: {
+    escapeValue: false,
+    prefix: '{',
+    suffix: '}',
+  },
 });
 
 // Ant Design Tabs/Collapse and other components use ResizeObserver

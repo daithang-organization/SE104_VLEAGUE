@@ -18,7 +18,6 @@ import {
   Descriptions,
   Flex,
   Input,
-  InputNumber,
   message,
   Row,
   Select,
@@ -67,10 +66,12 @@ import {
   type Official,
   type PlayerPosition,
   type RosterPlayer,
+  type SubmitMatchReportPayload,
 } from '../services/matchApi';
-import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
+import { EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
 import EventFormModal from './match-detail/EventFormModal';
 import MatchCenter from './match-detail/MatchCenter';
+import RefereeMatchReportPanel from './match-detail/RefereeMatchReportPanel';
 import MatchStatsPanel from './match-detail/MatchStatsPanel';
 import MatchTimeline from './match-detail/MatchTimeline';
 import ScoreModal from './match-detail/ScoreModal';
@@ -161,11 +162,6 @@ export default function MatchDetailPage() {
     useState<MatchOfficialRole>('MAIN_REFEREE');
   const [officialNote, setOfficialNote] = useState('');
   const [officialAssigning, setOfficialAssigning] = useState(false);
-  const [reportHomeScore, setReportHomeScore] = useState(0);
-  const [reportAwayScore, setReportAwayScore] = useState(0);
-  const [reportBestPlayerId, setReportBestPlayerId] = useState<string>();
-  const [reportNote, setReportNote] = useState('');
-  const [technicalStatsText, setTechnicalStatsText] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [disciplineSupervisorId, setDisciplineSupervisorId] = useState<string>();
   const [disciplineRating, setDisciplineRating] = useState('GOOD');
@@ -181,7 +177,6 @@ export default function MatchDetailPage() {
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<MatchEvent | null>(null);
 
-  const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
   const canViewLineupData = useMemo(
     () => user?.role && ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR'].includes(user.role),
     [user],
@@ -313,17 +308,6 @@ export default function MatchDetailPage() {
   }, [match, selectedLineupTeamId]);
 
   useEffect(() => {
-    if (!match) return;
-    setReportHomeScore(matchReport?.homeScore ?? match.homeScore ?? 0);
-    setReportAwayScore(matchReport?.awayScore ?? match.awayScore ?? 0);
-    setReportBestPlayerId(matchReport?.bestPlayerId ?? undefined);
-    setReportNote(matchReport?.note ?? '');
-    setTechnicalStatsText(
-      matchReport?.technicalStats ? JSON.stringify(matchReport.technicalStats, null, 2) : '',
-    );
-  }, [match, matchReport]);
-
-  useEffect(() => {
     if (!disciplineReport) return;
     setDisciplineSupervisorId(disciplineReport.supervisorId);
     setDisciplineRating(disciplineReport.organizationRating);
@@ -406,15 +390,6 @@ export default function MatchDetailPage() {
     if (selectedLineupTeamId === match.awayTeamId) return match.awayTeam?.name ?? '—';
     return '—';
   }, [match, selectedLineupTeamId]);
-
-  const playerOptions = useMemo(
-    () =>
-      [...homeRoster, ...awayRoster].map((player) => ({
-        value: player.playerId,
-        label: `${player.fullName}${player.jerseyNumber ? ` #${player.jerseyNumber}` : ''}`,
-      })),
-    [awayRoster, homeRoster],
-  );
 
   const supervisorAssignments = useMemo(
     () => officialAssignments.filter((assignment) => assignment.role === 'SUPERVISOR'),
@@ -603,36 +578,12 @@ export default function MatchDetailPage() {
     setEventModalOpen(false);
   };
 
-  const parseTechnicalStats = () => {
-    const trimmed = technicalStatsText.trim();
-    if (!trimmed) return undefined;
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
-        throw new Error('Technical stats must be an object');
-      }
-      return parsed as Record<string, unknown>;
-    } catch (_err) {
-      message.error('Thông số chuyên môn phải là JSON object hợp lệ.');
-      return null;
-    }
-  };
-
-  const handleSubmitMatchReport = async () => {
+  const handleSubmitMatchReport = async (payload: SubmitMatchReportPayload) => {
     if (!match) return;
-    const technicalStats = parseTechnicalStats();
-    if (technicalStats === null) return;
-
     setReportSubmitting(true);
     try {
-      await apiSubmitMatchReport(match.id, {
-        homeScore: reportHomeScore,
-        awayScore: reportAwayScore,
-        bestPlayerId: reportBestPlayerId,
-        technicalStats,
-        note: reportNote.trim() || undefined,
-      });
-      message.success('Đã nộp báo cáo trọng tài.');
+      await apiSubmitMatchReport(match.id, payload);
+      message.success(t('matchDetail.reportSubmitSuccess'));
       fetchMatch();
       loadOfficialData(match.id);
     } catch (err: unknown) {
@@ -641,7 +592,7 @@ export default function MatchDetailPage() {
         typeof err === 'object' &&
         'response' in err &&
         (err as { response?: { data?: { message?: string } } }).response?.data?.message;
-      message.error((msg as string) || 'Không thể nộp báo cáo trọng tài.');
+      message.error((msg as string) || t('matchDetail.reportSubmitError'));
     } finally {
       setReportSubmitting(false);
     }
@@ -1120,7 +1071,7 @@ export default function MatchDetailPage() {
       </section>
 
       {/* Admin Actions */}
-      {canEdit && (
+      {canAssignOfficials && (
         <Card size="small" style={{ marginBottom: 16 }}>
           <Flex gap={8} wrap="wrap" align="center">
             <Text strong style={{ marginRight: 8 }}>
@@ -1262,7 +1213,7 @@ export default function MatchDetailPage() {
                                   <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>
                                 )}
                               </div>
-                              {canEdit && (
+                              {canAssignOfficials && (
                                 <Button
                                   size="small"
                                   icon={<EditOutlined />}
@@ -1358,94 +1309,16 @@ export default function MatchDetailPage() {
 
                 <Row gutter={[16, 16]}>
                   <Col xs={24} lg={12}>
-                    <Card
-                      title={t('matchDetail.refereeReportTitle')}
-                      size="small"
+                    <RefereeMatchReportPanel
+                      match={match}
+                      matchReport={matchReport}
+                      homeRoster={homeRoster}
+                      awayRoster={awayRoster}
+                      canSubmit={Boolean(canSubmitMatchReport)}
                       loading={officialLoading}
-                    >
-                      {matchReport && (
-                        <Alert
-                          style={{ marginBottom: 12 }}
-                          type="success"
-                          showIcon
-                          message={t('matchDetail.reportedScore', {
-                            home: matchReport.homeScore,
-                            away: matchReport.awayScore,
-                          })}
-                          description={
-                            <Space direction="vertical" size={2}>
-                              <Text>{t('matchDetail.bestPlayer')}</Text>
-                              <Text strong>
-                                {matchReport.bestPlayer?.fullName ??
-                                  matchReport.bestPlayerId ??
-                                  t('matchDetail.notSelected')}
-                              </Text>
-                              {matchReport.note && <Text>{matchReport.note}</Text>}
-                            </Space>
-                          }
-                        />
-                      )}
-                      {canSubmitMatchReport ? (
-                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                          <Row gutter={8}>
-                            <Col span={12}>
-                              <Text strong>
-                                {match.homeTeam?.name ?? t('scoreModal.homeDefault')}
-                              </Text>
-                              <InputNumber
-                                min={0}
-                                value={reportHomeScore}
-                                style={{ width: '100%', marginTop: 6 }}
-                                onChange={(value) => setReportHomeScore(Number(value ?? 0))}
-                              />
-                            </Col>
-                            <Col span={12}>
-                              <Text strong>
-                                {match.awayTeam?.name ?? t('scoreModal.awayDefault')}
-                              </Text>
-                              <InputNumber
-                                min={0}
-                                value={reportAwayScore}
-                                style={{ width: '100%', marginTop: 6 }}
-                                onChange={(value) => setReportAwayScore(Number(value ?? 0))}
-                              />
-                            </Col>
-                          </Row>
-                          <Select
-                            allowClear
-                            showSearch
-                            value={reportBestPlayerId}
-                            placeholder={t('matchDetail.bestPlayerPlaceholder')}
-                            optionFilterProp="label"
-                            style={{ width: '100%' }}
-                            onChange={setReportBestPlayerId}
-                            options={playerOptions}
-                          />
-                          <Input.TextArea
-                            rows={3}
-                            value={technicalStatsText}
-                            placeholder={t('matchDetail.technicalStatsPlaceholder')}
-                            onChange={(event) => setTechnicalStatsText(event.target.value)}
-                          />
-                          <Input.TextArea
-                            rows={2}
-                            value={reportNote}
-                            placeholder={t('matchDetail.refereeReportNotePlaceholder')}
-                            onChange={(event) => setReportNote(event.target.value)}
-                          />
-                          <Button
-                            type="primary"
-                            icon={<SendOutlined />}
-                            loading={reportSubmitting}
-                            onClick={handleSubmitMatchReport}
-                          >
-                            {t('matchDetail.submitRefereeReportBtn')}
-                          </Button>
-                        </Space>
-                      ) : (
-                        <Text type="secondary">{t('matchDetail.refereeReportReadonly')}</Text>
-                      )}
-                    </Card>
+                      submitting={reportSubmitting}
+                      onSubmit={handleSubmitMatchReport}
+                    />
                   </Col>
 
                   <Col xs={24} lg={12}>
