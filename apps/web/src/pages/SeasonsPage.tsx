@@ -74,6 +74,7 @@ import {
   type TeamInvitation,
   type TeamInvitationSourceType,
 } from '../services/teamInvitationApi';
+import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const STATUS_OPTIONS = [
   { value: 'UPCOMING', label: 'Sắp diễn ra', color: 'blue' },
@@ -621,19 +622,18 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     {
       title: 'CLB',
       key: 'team',
-      render: (_, r) => (
-        <Space size={6}>
-          {r.team?.logoUrl && (
-            <img
-              src={r.team.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
-            />
-          )}
-          <strong>{r.team?.name ?? r.teamId}</strong>
-          {r.team?.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
-        </Space>
-      ),
+      render: (_, r) => {
+        const logoUrl = getTeamLogoUrl(r.team);
+        return (
+          <Space size={6}>
+            {logoUrl && (
+              <img src={logoUrl} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
+            )}
+            <strong>{r.team?.name ?? r.teamId}</strong>
+            {r.team?.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
+          </Space>
+        );
+      },
     },
     {
       title: 'Nguồn',
@@ -706,19 +706,18 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     {
       title: 'CLB',
       key: 'team',
-      render: (_, r) => (
-        <Space size={6}>
-          {r.team?.logoUrl && (
-            <img
-              src={r.team.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
-            />
-          )}
-          <strong>{r.teamName}</strong>
-          {r.team?.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
-        </Space>
-      ),
+      render: (_, r) => {
+        const logoUrl = getTeamLogoUrl(r.team ?? r.teamName);
+        return (
+          <Space size={6}>
+            {logoUrl && (
+              <img src={logoUrl} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
+            )}
+            <strong>{r.teamName}</strong>
+            {r.team?.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
+          </Space>
+        );
+      },
     },
     {
       title: 'Điểm',
@@ -809,19 +808,18 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     {
       title: t('seasons.teamPanelColTeam'),
       key: 'team',
-      render: (_, r) => (
-        <Space size={6}>
-          {r.team.logoUrl && (
-            <img
-              src={r.team.logoUrl}
-              alt=""
-              style={{ width: 20, height: 20, objectFit: 'contain' }}
-            />
-          )}
-          <strong>{r.team.name}</strong>
-          {r.team.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
-        </Space>
-      ),
+      render: (_, r) => {
+        const logoUrl = getTeamLogoUrl(r.team);
+        return (
+          <Space size={6}>
+            {logoUrl && (
+              <img src={logoUrl} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
+            )}
+            <strong>{r.team.name}</strong>
+            {r.team.shortName && <span style={{ color: '#888' }}>({r.team.shortName})</span>}
+          </Space>
+        );
+      },
     },
     {
       title: t('seasons.teamPanelColCity'),
@@ -1292,19 +1290,22 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               {
                 title: 'CLB',
                 key: 'team',
-                render: (_, r) => (
-                  <Space size={6}>
-                    {r.logoUrl && (
-                      <img
-                        src={r.logoUrl}
-                        alt=""
-                        style={{ width: 20, height: 20, objectFit: 'contain' }}
-                      />
-                    )}
-                    <strong>{r.name}</strong>
-                    {r.shortName && <span style={{ color: '#888' }}>({r.shortName})</span>}
-                  </Space>
-                ),
+                render: (_, r) => {
+                  const logoUrl = getTeamLogoUrl(r);
+                  return (
+                    <Space size={6}>
+                      {logoUrl && (
+                        <img
+                          src={logoUrl}
+                          alt=""
+                          style={{ width: 20, height: 20, objectFit: 'contain' }}
+                        />
+                      )}
+                      <strong>{r.name}</strong>
+                      {r.shortName && <span style={{ color: '#888' }}>({r.shortName})</span>}
+                    </Space>
+                  );
+                },
               },
               {
                 title: 'Thành phố',
