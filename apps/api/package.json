@@ -25,7 +25,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:seed": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed.ts",
     "seed:demo-users": "tsx prisma/seed-demo-users.ts",
-    "seed:real": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed-stadiums.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-teams.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-players.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/setup-vleague-2024.ts"
+    "seed:real": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed-stadiums.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-teams.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-players.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/setup-vleague-2024.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-report-demo.ts"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^1.9.1",
@@ -39,7 +39,6 @@
     "@nestjs/platform-socket.io": "^11.1.14",
     "@nestjs/swagger": "^11.2.5",
     "@nestjs/terminus": "^11.0.0",
-    "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.14",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",

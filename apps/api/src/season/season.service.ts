@@ -70,9 +70,7 @@ export class SeasonService {
   }
 
   findCurrent(): Promise<Season | null> {
-    return this.prisma.season.findFirst({
-      where: { status: 'IN_PROGRESS' },
-    });
+    return this.findBestCurrentSeason();
   }
 
   async create(dto: CreateSeasonDto): Promise<Season> {
@@ -426,5 +424,54 @@ export class SeasonService {
         'CLB chưa xác nhận nộp lệ phí tham dự 1 tỷ đồng.',
       );
     }
+  }
+
+  private async findBestCurrentSeason(): Promise<Season | null> {
+    const seasonDelegate = this.prisma.season as typeof this.prisma.season & {
+      findMany?: typeof this.prisma.season.findMany;
+      findFirst?: typeof this.prisma.season.findFirst;
+    };
+    if (!seasonDelegate.findMany) {
+      return (
+        seasonDelegate.findFirst?.({
+          where: { status: 'IN_PROGRESS' },
+        }) ?? null
+      );
+    }
+
+    const seasons = await seasonDelegate.findMany({
+      where: { status: 'IN_PROGRESS' },
+      include: {
+        _count: {
+          select: {
+            matches: true,
+            seasonTeams: true,
+          },
+        },
+      },
+      orderBy: [{ year: 'desc' }, { startDate: 'desc' }],
+    });
+
+    if (!Array.isArray(seasons)) {
+      return (
+        seasonDelegate.findFirst?.({
+          where: { status: 'IN_PROGRESS' },
+        }) ?? null
+      );
+    }
+
+    return (
+      seasons.sort((a, b) => {
+        const matchDelta = b._count.matches - a._count.matches;
+        if (matchDelta !== 0) return matchDelta;
+        const teamDelta = b._count.seasonTeams - a._count.seasonTeams;
+        if (teamDelta !== 0) return teamDelta;
+        const brandedDelta =
+          Number(b.name.startsWith('V.League')) -
+          Number(a.name.startsWith('V.League'));
+        if (brandedDelta !== 0) return brandedDelta;
+        return b.year - a.year;
+      })[0] ?? null
+    );
   }
 }

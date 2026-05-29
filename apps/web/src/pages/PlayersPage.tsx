@@ -23,6 +23,7 @@ import {
   Table,
   Tag,
 } from 'antd';
+import type { FilterValue, SorterResult, SortOrder as AntSortOrder } from 'antd/es/table/interface';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -37,10 +38,11 @@ import {
   apiUpdatePlayer,
   type CreatePlayerPayload,
   type Player,
+  type PlayerSortBy,
+  type PlayerSortOrder,
 } from '../services/playerApi';
-import { apiGetCurrentSeason } from '../services/seasonApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
-import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const POSITION_LABELS: Record<string, string> = {
@@ -59,6 +61,26 @@ const POSITION_COLORS: Record<string, string> = {
 
 const CAN_EDIT_ROLES = ['ADMIN', 'TEAM_MANAGER'];
 
+type PlayerColumnFilters = {
+  teamId?: string;
+  nationality?: string;
+  position?: string;
+  playerType?: string;
+};
+
+type PlayerSortState = {
+  sortBy: PlayerSortBy;
+  sortOrder: PlayerSortOrder;
+};
+
+const PLAYER_SORT_FIELDS = new Set<PlayerSortBy>(['fullName', 'dob', 'heightCm', 'weightKg']);
+
+const firstFilterValue = (value?: FilterValue | null) =>
+  value?.[0] !== undefined ? String(value[0]) : undefined;
+
+const toAntSortOrder = (sortOrder: PlayerSortOrder): AntSortOrder =>
+  sortOrder === 'asc' ? 'ascend' : 'descend';
+
 export default function PlayersPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -71,6 +93,12 @@ export default function PlayersPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [columnFilters, setColumnFilters] = useState<PlayerColumnFilters>({});
+  const [sortState, setSortState] = useState<PlayerSortState>({
+    sortBy: 'fullName',
+    sortOrder: 'asc',
+  });
+  const [filterSourcePlayers, setFilterSourcePlayers] = useState<Player[]>([]);
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
   const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
   const [form] = Form.useForm();
@@ -80,8 +108,9 @@ export default function PlayersPage() {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
   const totalPlayers = pagination.total || players.length;
-  const foreignPlayers = players.filter((player) => player.playerType === 'FOREIGN').length;
-  const rosteredPlayers = players.filter((player) => player.roster?.[0]?.team).length;
+  const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
+  const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
+  const rosteredPlayers = metricPlayers.filter((player) => player.roster?.[0]?.team).length;
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -94,9 +123,11 @@ export default function PlayersPage() {
     setManagerTeamLoaded(false);
     const loadManagerTeam = async () => {
       try {
-        const season = await apiGetCurrentSeason();
-        const assignment = season ? await apiGetTeamManagerAssignment(season.id) : null;
-        if (!cancelled) setManagerTeamId(assignment?.teamId ?? null);
+        const managedTeam = await apiGetTeamManagerManagedTeam();
+        if (!cancelled) {
+          setManagerTeamId(managedTeam?.id ?? null);
+          setTeams(managedTeam ? [managedTeam] : []);
+        }
       } catch (_err) {
         if (!cancelled) {
           setManagerTeamId(null);
@@ -119,7 +150,12 @@ export default function PlayersPage() {
       try {
         const res = await apiGetPlayers(page, limit, {
           search: searchQuery || undefined,
-          teamId: managerTeamId || undefined,
+          teamId: managerTeamId || columnFilters.teamId || undefined,
+          nationality: columnFilters.nationality,
+          position: columnFilters.position,
+          playerType: columnFilters.playerType,
+          sortBy: sortState.sortBy,
+          sortOrder: sortState.sortOrder,
         });
         setPlayers(res.data);
         setPagination((prev) => {
@@ -134,7 +170,16 @@ export default function PlayersPage() {
         setLoading(false);
       }
     },
-    [managerTeamId, t],
+    [
+      columnFilters.nationality,
+      columnFilters.playerType,
+      columnFilters.position,
+      columnFilters.teamId,
+      managerTeamId,
+      sortState.sortBy,
+      sortState.sortOrder,
+      t,
+    ],
   );
 
   useEffect(() => {
@@ -157,6 +202,27 @@ export default function PlayersPage() {
   ]);
 
   useEffect(() => {
+    if (isTeamManager && !managerTeamLoaded) return;
+    if (isTeamManager && !managerTeamId) {
+      setFilterSourcePlayers([]);
+      return;
+    }
+
+    let cancelled = false;
+    apiGetPlayers(1, 1000, { teamId: managerTeamId || undefined })
+      .then((res) => {
+        if (!cancelled) setFilterSourcePlayers(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setFilterSourcePlayers([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeamManager, managerTeamId, managerTeamLoaded]);
+
+  useEffect(() => {
     apiGetTeams()
       .then((res) =>
         setTeams(
@@ -172,6 +238,35 @@ export default function PlayersPage() {
     const cleanValue = value.trim();
     setSearch(cleanValue);
     setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const handleTableChange = (
+    nextPagination: { current?: number; pageSize?: number },
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<Player> | SorterResult<Player>[],
+  ) => {
+    const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+    const field = typeof activeSorter?.field === 'string' ? activeSorter.field : undefined;
+    const nextSortState: PlayerSortState =
+      field && PLAYER_SORT_FIELDS.has(field as PlayerSortBy) && activeSorter.order
+        ? {
+            sortBy: field as PlayerSortBy,
+            sortOrder: activeSorter.order === 'descend' ? 'desc' : 'asc',
+          }
+        : { sortBy: 'fullName', sortOrder: 'asc' };
+
+    setSortState(nextSortState);
+    setColumnFilters({
+      teamId: managerTeamId || firstFilterValue(filters.club),
+      nationality: firstFilterValue(filters.nationality),
+      position: firstFilterValue(filters.position),
+      playerType: firstFilterValue(filters.playerType),
+    });
+    setPagination((prev) => ({
+      ...prev,
+      page: nextPagination.current ?? 1,
+      limit: nextPagination.pageSize ?? prev.limit,
+    }));
   };
 
   const openCreateModal = () => {
@@ -280,7 +375,8 @@ export default function PlayersPage() {
     {
       title: t('players.colFullName'),
       dataIndex: 'fullName',
-      sorter: (a, b) => a.fullName.localeCompare(b.fullName),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'fullName' ? toAntSortOrder(sortState.sortOrder) : null,
       render: (name: string, record: Player) => (
         <a onClick={() => navigate(`/players/${record.id}`)}>{name}</a>
       ),
@@ -296,30 +392,36 @@ export default function PlayersPage() {
       },
       filters: (() => {
         const clubs = new Map<string, string>();
-        players.forEach((p) => {
+        filterSourcePlayers.forEach((p) => {
           const tp = p.roster?.[0];
           if (tp?.team) clubs.set(tp.team.id, tp.team.name);
         });
+        if (clubs.size === 0) {
+          teams.forEach((team) => clubs.set(team.id, team.name));
+        }
         return [...clubs.entries()].map(([id, name]) => ({ text: name, value: id }));
       })(),
-      onFilter: (value, record) => record.roster?.[0]?.team?.id === value,
+      filteredValue: columnFilters.teamId ? [columnFilters.teamId] : null,
     },
     {
       title: t('players.colDob'),
       dataIndex: 'dob',
       width: 120,
       render: (dob: string) => dayjs(dob).format('DD/MM/YYYY'),
-      sorter: (a, b) => new Date(a.dob).getTime() - new Date(b.dob).getTime(),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'dob' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     {
       title: t('players.colNationality'),
       dataIndex: 'nationality',
       width: 120,
-      filters: [...new Set(players.map((p) => p.nationality))].map((n) => ({
-        text: n,
-        value: n,
-      })),
-      onFilter: (value, record) => record.nationality === value,
+      filters: [...new Set(filterSourcePlayers.map((p) => p.nationality).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((n) => ({
+          text: n,
+          value: n,
+        })),
+      filteredValue: columnFilters.nationality ? [columnFilters.nationality] : null,
     },
     {
       title: t('players.colPosition'),
@@ -332,7 +434,7 @@ export default function PlayersPage() {
         text,
         value,
       })),
-      onFilter: (value, record) => record.position === value,
+      filteredValue: columnFilters.position ? [columnFilters.position] : null,
     },
     {
       title: t('players.colType'),
@@ -347,21 +449,23 @@ export default function PlayersPage() {
         { text: t('players.formTypeDomestic'), value: 'DOMESTIC' },
         { text: t('players.formTypeForeign'), value: 'FOREIGN' },
       ],
-      onFilter: (value, record) => record.playerType === value,
+      filteredValue: columnFilters.playerType ? [columnFilters.playerType] : null,
     },
     {
       title: t('players.colHeight'),
       dataIndex: 'heightCm',
       width: 90,
       render: (v: number | null) => (v ? `${v} cm` : '—'),
-      sorter: (a, b) => (a.heightCm ?? 0) - (b.heightCm ?? 0),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'heightCm' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     {
       title: t('players.colWeight'),
       dataIndex: 'weightKg',
       width: 90,
       render: (v: number | null) => (v ? `${v} kg` : '—'),
-      sorter: (a, b) => (a.weightKg ?? 0) - (b.weightKg ?? 0),
+      sorter: true,
+      sortOrder: sortState.sortBy === 'weightKg' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     ...(canEdit
       ? [
@@ -454,10 +558,8 @@ export default function PlayersPage() {
                 total: pagination.total,
                 showSizeChanger: true,
                 showTotal: (total) => t('players.totalCount', { total }),
-                onChange: (page, pageSize) => {
-                  setPagination((prev) => ({ ...prev, page, limit: pageSize }));
-                },
               }}
+              onChange={handleTableChange}
               size="middle"
               locale={{ emptyText: t('common.noData') }}
             />

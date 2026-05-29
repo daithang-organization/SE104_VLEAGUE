@@ -33,6 +33,12 @@ describe('MatchController', () => {
     createdEvent: { id: 'evt-1', minute: 45, type: 'GOAL' },
   };
 
+  const mockUpdateEventResult = {
+    ok: true,
+    matchId: 'match-1',
+    updatedEvent: { id: 'evt-1', minute: 55, type: 'PENALTY' },
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MatchController],
@@ -43,6 +49,7 @@ describe('MatchController', () => {
             findAll: jest.fn().mockResolvedValue(mockPaginated),
             getMatchById: jest.fn().mockResolvedValue(mockMatch),
             addEvent: jest.fn().mockResolvedValue(mockEventResult),
+            updateEvent: jest.fn().mockResolvedValue(mockUpdateEventResult),
             removeEvent: jest.fn().mockResolvedValue({ success: true }),
             updateMatch: jest
               .fn()
@@ -124,6 +131,25 @@ describe('MatchController', () => {
 
       expect(result).toEqual(mockEventResult);
       expect(service.addEvent).toHaveBeenCalledWith('match-1', dto);
+    });
+  });
+
+  describe('updateEvent', () => {
+    it('should update an event in a match', async () => {
+      const dto = {
+        minute: 55,
+        type: 'PENALTY',
+        playerId: 'p-1',
+        teamId: 'team-1',
+      };
+      const result = await controller.updateEvent(
+        'match-1',
+        'evt-1',
+        dto as any,
+      );
+
+      expect(result).toEqual(mockUpdateEventResult);
+      expect(service.updateEvent).toHaveBeenCalledWith('match-1', 'evt-1', dto);
     });
   });
 

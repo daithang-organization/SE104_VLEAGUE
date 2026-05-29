@@ -57,9 +57,25 @@ const mockTeamApi = vi.hoisted(() => ({
   }),
 }));
 
+const mockSeasonApi = vi.hoisted(() => ({
+  apiGetCurrentSeason: vi.fn().mockResolvedValue(null),
+}));
+
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
+  apiGetTeamManagerManagedTeam: vi.fn().mockResolvedValue({
+    id: 't1',
+    name: 'Hà Nội FC',
+    shortName: 'HN',
+    status: 'ACTIVE',
+  }),
+}));
+
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/playerApi', () => mockPlayerApi);
 vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/seasonApi', () => mockSeasonApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import PlayersPage from '../PlayersPage';
 
@@ -154,6 +170,31 @@ describe('PlayersPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Ngoại binh')).toBeInTheDocument();
+    });
+  });
+
+  it('loads managed club players for team managers even when no current season exists', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager.hanoi@demo.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
+      expect(mockPlayerApi.apiGetPlayers).toHaveBeenNthCalledWith(
+        1,
+        1,
+        20,
+        expect.objectContaining({
+          search: undefined,
+          teamId: 't1',
+        }),
+      );
     });
   });
 });

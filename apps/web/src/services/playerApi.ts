@@ -49,17 +49,31 @@ export type UpdatePlayerPayload = {
   teamId?: string;
 };
 
+export type PlayerSortBy = 'fullName' | 'dob' | 'heightCm' | 'weightKg';
+export type PlayerSortOrder = 'asc' | 'desc';
+
 // ─────────── API calls ───────────
 export function apiGetPlayers(
   page = 1,
   limit = 20,
-  filters?: { search?: string; position?: string; nationality?: string; teamId?: string },
+  filters?: {
+    search?: string;
+    position?: string;
+    nationality?: string;
+    teamId?: string;
+    playerType?: string;
+    sortBy?: PlayerSortBy;
+    sortOrder?: PlayerSortOrder;
+  },
 ) {
   const params: Record<string, string | number> = { page, limit };
   if (filters?.search) params.search = filters.search;
   if (filters?.position) params.position = filters.position;
   if (filters?.nationality) params.nationality = filters.nationality;
   if (filters?.teamId) params.teamId = filters.teamId;
+  if (filters?.playerType) params.playerType = filters.playerType;
+  if (filters?.sortBy) params.sortBy = filters.sortBy;
+  if (filters?.sortOrder) params.sortOrder = filters.sortOrder;
   return api.get<PaginatedResponse<Player>>('/players', { params }).then((res) => res.data);
 }
 

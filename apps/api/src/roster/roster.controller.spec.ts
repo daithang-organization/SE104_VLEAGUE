@@ -8,6 +8,11 @@ describe('RosterController', () => {
 
   const mockTeamId = 'team-1';
   const mockPlayerId = 'player-1';
+  const mockUser = {
+    id: 'manager-1',
+    email: 'm@vl.local',
+    role: 'TEAM_MANAGER',
+  };
 
   const mockRoster = {
     teamId: mockTeamId,
@@ -87,34 +92,44 @@ describe('RosterController', () => {
   describe('addPlayer', () => {
     it('should add player to roster', async () => {
       const dto = { playerId: 'player-3', jerseyNumber: 10 };
-      const result = await controller.addPlayer(mockTeamId, dto);
+      const result = await controller.addPlayer(mockTeamId, dto, mockUser);
 
       expect(result).toEqual(mockAddResult);
-      expect(service.addPlayerToRoster).toHaveBeenCalledWith(mockTeamId, dto);
+      expect(service.addPlayerToRoster).toHaveBeenCalledWith(
+        mockTeamId,
+        dto,
+        mockUser,
+      );
     });
   });
 
   describe('updatePlayer', () => {
     it('should update player in roster', async () => {
       const dto = { jerseyNumber: 7 };
-      await controller.updatePlayer(mockTeamId, mockPlayerId, dto);
+      await controller.updatePlayer(mockTeamId, mockPlayerId, dto, mockUser);
 
       expect(service.updateRosterPlayer).toHaveBeenCalledWith(
         mockTeamId,
         mockPlayerId,
         dto,
+        mockUser,
       );
     });
   });
 
   describe('removePlayer', () => {
     it('should remove player from roster', async () => {
-      const result = await controller.removePlayer(mockTeamId, mockPlayerId);
+      const result = await controller.removePlayer(
+        mockTeamId,
+        mockPlayerId,
+        mockUser,
+      );
 
       expect(result).toEqual(mockRemoveResult);
       expect(service.removePlayerFromRoster).toHaveBeenCalledWith(
         mockTeamId,
         mockPlayerId,
+        mockUser,
       );
     });
   });

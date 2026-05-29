@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface TeamStanding {
@@ -29,6 +29,11 @@ type StandingMatch = {
   awayScore: number | null;
   kickoffAt?: Date | null;
   roundNo: number;
+};
+
+type DrawLotResultLike = {
+  teamId: string;
+  resolvedRank: number;
 };
 
 @Injectable()
@@ -184,6 +189,9 @@ export class StandingsService {
 
     if (mode === 'final') {
       standings = this.applyFinalTieBreakers(standings, matches);
+      if (targetSeasonId) {
+        standings = await this.applyDrawLotResults(standings, targetSeasonId);
+      }
     }
 
     // Assign positions
@@ -568,7 +576,9 @@ export class StandingsService {
         { homeTeamId: team1Id, awayTeamId: team2Id },
         { homeTeamId: team2Id, awayTeamId: team1Id },
       ],
-      status: 'FINISHED',
+      status: { in: ['PUBLISHED', 'LOCKED', 'FINISHED'] },
+      homeScore: { not: null },
+      awayScore: { not: null },
     };
     if (seasonId) where.seasonId = seasonId;
 
@@ -696,9 +706,37 @@ export class StandingsService {
   private async resolveSeasonId(seasonId?: string) {
     if (seasonId) return seasonId;
 
-    const currentSeason = await this.prisma.season.findFirst({
+    const seasonDelegate = this.prisma.season as typeof this.prisma.season & {
+      findMany?: typeof this.prisma.season.findMany;
+      findFirst?: typeof this.prisma.season.findFirst;
+    };
+    if (!seasonDelegate.findMany) {
+      const currentSeason = await seasonDelegate.findFirst?.({
+        where: { status: 'IN_PROGRESS' },
+      });
+      return currentSeason?.id;
+    }
+
+    const currentSeasons = await seasonDelegate.findMany({
       where: { status: 'IN_PROGRESS' },
+      include: {
+        _count: {
+          select: {
+            matches: true,
+            seasonTeams: true,
+          },
+        },
+      },
     });
+    const currentSeason = currentSeasons.sort((a, b) => {
+      const brandedDelta =
+        Number(b.name.startsWith('V.League')) -
+        Number(a.name.startsWith('V.League'));
+      if (brandedDelta !== 0) return brandedDelta;
+      const matchDelta = b._count.matches - a._count.matches;
+      if (matchDelta !== 0) return matchDelta;
+      return b._count.seasonTeams - a._count.seasonTeams;
+    })[0];
     return currentSeason?.id;
   }
 
@@ -849,5 +887,454 @@ export class StandingsService {
       currentPosition = index + 1;
       team.position = currentPosition;
     });
+  }
+
+  // ── Draw Lot ──────────────────────────────────────────────────
+
+  /**
+   * Apply saved DrawLotResult to resolve tied positions in final standings.
+   * Called after applyFinalTieBreakers when mode === 'final'.
+   */
+  private async applyDrawLotResults(
+    standings: TeamStanding[],
+    seasonId: string,
+  ): Promise<TeamStanding[]> {
+    this.assignPositions(standings, 'final');
+    const drawLotGroups = this.getDrawLotGroups(standings);
+    const currentDrawLotTeamIds = drawLotGroups
+      .flat()
+      .map((standing) => standing.teamId);
+
+    if (currentDrawLotTeamIds.length === 0) return standings;
+
+    const drawLotResults = await this.prisma.drawLotResult.findMany({
+      where: {
+        seasonId,
+        confirmed: true,
+        teamId: { in: currentDrawLotTeamIds },
+      },
+    });
+
+    if (!this.drawLotResultsCoverGroups(drawLotGroups, drawLotResults)) {
+      return standings;
+    }
+
+    const rankMap = new Map(
+      drawLotResults.map((r) => [r.teamId, r.resolvedRank]),
+    );
+
+    // For each team that has a confirmed draw lot result, override position
+    for (const standing of standings) {
+      if (rankMap.has(standing.teamId)) {
+        standing.position = rankMap.get(standing.teamId)!;
+        standing.requiresDrawLot = false;
+        standing.tieBreakNote = 'Đã xếp hạng chính thức qua rút thăm.';
+      }
+    }
+
+    // Re-sort by resolved position
+    standings.sort((a, b) => {
+      const rankA = rankMap.get(a.teamId) ?? a.position;
+      const rankB = rankMap.get(b.teamId) ?? b.position;
+      if (rankA !== rankB) return rankA - rankB;
+      return this.compareByPrimaryStandingRules(a, b);
+    });
+
+    return standings;
+  }
+
+  /**
+   * Get draw lot status: which teams need draw lot, are there saved results?
+   */
+  async getDrawLotStatus(seasonId?: string) {
+    const targetSeasonId = await this.resolveSeasonId(seasonId);
+    if (!targetSeasonId) {
+      return {
+        seasonId: null,
+        teamsRequiringDrawLot: [],
+        isResolved: false,
+        results: [],
+      };
+    }
+
+    const rawStandings = await this.getRawFinalStandings(targetSeasonId);
+    const drawLotGroups = this.getDrawLotGroups(rawStandings);
+    const drawLotTeamIds = drawLotGroups
+      .flat()
+      .map((standing) => standing.teamId);
+
+    const results = await this.prisma.drawLotResult.findMany({
+      where:
+        drawLotTeamIds.length > 0
+          ? { seasonId: targetSeasonId, teamId: { in: drawLotTeamIds } }
+          : { seasonId: targetSeasonId, teamId: { in: [] } },
+      include: { team: { select: { id: true, name: true, shortName: true } } },
+      orderBy: { resolvedRank: 'asc' },
+    });
+    const isResolved =
+      drawLotGroups.length > 0 &&
+      this.drawLotResultsCoverGroups(
+        drawLotGroups,
+        results.filter((result) => result.confirmed),
+      );
+
+    return {
+      seasonId: targetSeasonId,
+      teamsRequiringDrawLot: isResolved ? [] : drawLotGroups.flat(),
+      isResolved,
+      results,
+    };
+  }
+
+  /**
+   * Auto-random draw lot: shuffle tied teams and assign random ranks.
+   * Does NOT auto-confirm — admin must confirm separately.
+   */
+  async executeDrawLot(seasonId: string, userId?: string) {
+    // First compute standings without draw lot applied to find tied teams
+    const rawStandings = await this.getRawFinalStandings(seasonId);
+    const tiedTeams = rawStandings.filter((s) => s.requiresDrawLot === true);
+
+    if (tiedTeams.length === 0) {
+      return { message: 'Không có đội nào cần rút thăm.', results: [] };
+    }
+
+    // Group tied teams by their position (they share the same position)
+    const groups = this.groupTiedTeams(tiedTeams);
+
+    // Delete existing unconfirmed results for this season
+    await this.prisma.drawLotResult.deleteMany({
+      where: { seasonId, confirmed: false },
+    });
+
+    const results: Array<{
+      teamId: string;
+      teamName: string;
+      resolvedRank: number;
+    }> = [];
+
+    for (const group of groups) {
+      // Fisher-Yates shuffle
+      const shuffled = [...group];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      // Assign sequential ranks starting from the group's shared position
+      const startRank = group[0].position;
+      for (let i = 0; i < shuffled.length; i++) {
+        const rank = startRank + i;
+        await this.prisma.drawLotResult.upsert({
+          where: {
+            seasonId_teamId: { seasonId, teamId: shuffled[i].teamId },
+          },
+          create: {
+            seasonId,
+            teamId: shuffled[i].teamId,
+            resolvedRank: rank,
+            note: `Rút thăm tự động — hạng ${rank}`,
+            resolvedBy: userId ?? null,
+            confirmed: false,
+          },
+          update: {
+            resolvedRank: rank,
+            note: `Rút thăm tự động — hạng ${rank}`,
+            resolvedBy: userId ?? null,
+            confirmed: false,
+            resolvedAt: new Date(),
+          },
+        });
+        results.push({
+          teamId: shuffled[i].teamId,
+          teamName: shuffled[i].teamName,
+          resolvedRank: rank,
+        });
+      }
+    }
+
+    return {
+      message: `Đã rút thăm cho ${results.length} đội. Hãy xác nhận kết quả.`,
+      results,
+    };
+  }
+
+  /**
+   * Admin confirms draw lot results (optionally overriding ranks).
+   */
+  async confirmDrawLot(
+    seasonId: string,
+    overrides?: Array<{ teamId: string; resolvedRank: number }>,
+    userId?: string,
+  ) {
+    const rawStandings = await this.getRawFinalStandings(seasonId);
+    const drawLotGroups = this.getDrawLotGroups(rawStandings);
+    const drawLotTeamIds = drawLotGroups
+      .flat()
+      .map((standing) => standing.teamId);
+
+    if (drawLotGroups.length === 0) {
+      throw new BadRequestException('Không có đội nào cần rút thăm.');
+    }
+
+    if (overrides && overrides.length > 0) {
+      this.assertDrawLotOverridesMatchGroups(drawLotGroups, overrides);
+
+      // Apply overrides
+      for (const override of overrides) {
+        await this.prisma.drawLotResult.upsert({
+          where: {
+            seasonId_teamId: { seasonId, teamId: override.teamId },
+          },
+          create: {
+            seasonId,
+            teamId: override.teamId,
+            resolvedRank: override.resolvedRank,
+            note: 'BTC xác nhận thủ công',
+            resolvedBy: userId ?? null,
+            confirmed: true,
+          },
+          update: {
+            resolvedRank: override.resolvedRank,
+            note: 'BTC xác nhận thủ công',
+            resolvedBy: userId ?? null,
+            confirmed: true,
+            resolvedAt: new Date(),
+          },
+        });
+      }
+    } else {
+      const pendingResults = await this.prisma.drawLotResult.findMany({
+        where: {
+          seasonId,
+          confirmed: false,
+          teamId: { in: drawLotTeamIds },
+        },
+      });
+
+      if (!this.drawLotResultsCoverGroups(drawLotGroups, pendingResults)) {
+        throw new BadRequestException(
+          'Chưa có đủ kết quả rút thăm để xác nhận.',
+        );
+      }
+
+      // Confirm all existing unconfirmed results
+      await this.prisma.drawLotResult.updateMany({
+        where: { seasonId, confirmed: false, teamId: { in: drawLotTeamIds } },
+        data: { confirmed: true, resolvedAt: new Date() },
+      });
+    }
+
+    return { message: 'Đã xác nhận kết quả rút thăm.' };
+  }
+
+  /**
+   * Reset draw lot results for a season.
+   */
+  async resetDrawLot(seasonId: string) {
+    const deleted = await this.prisma.drawLotResult.deleteMany({
+      where: { seasonId },
+    });
+    return {
+      message: `Đã xóa ${deleted.count} kết quả rút thăm.`,
+      deletedCount: deleted.count,
+    };
+  }
+
+  /**
+   * Get raw final standings without applying DrawLotResult.
+   * Used internally to find which teams still need draw lot.
+   */
+  private async getRawFinalStandings(
+    seasonId: string,
+  ): Promise<TeamStanding[]> {
+    const seasonTeams = await this.prisma.seasonTeam.findMany({
+      where: { seasonId, status: 'APPROVED' },
+      include: { team: { select: { id: true, name: true } } },
+    });
+    const teams = seasonTeams.map((st) => st.team);
+
+    const matches = await this.prisma.match.findMany({
+      where: {
+        seasonId,
+        status: { in: ['PUBLISHED', 'FINISHED', 'LOCKED'] },
+        homeScore: { not: null },
+        awayScore: { not: null },
+      },
+      select: {
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+        kickoffAt: true,
+        roundNo: true,
+      },
+    });
+
+    const standingsMap = new Map<string, TeamStanding>();
+    for (const team of teams) {
+      standingsMap.set(team.id, {
+        position: 0,
+        teamId: team.id,
+        teamName: team.name,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDifference: 0,
+        points: 0,
+        recentForm: [],
+      });
+    }
+
+    for (const match of matches) {
+      const homeTeam = standingsMap.get(match.homeTeamId);
+      const awayTeam = standingsMap.get(match.awayTeamId);
+      if (!homeTeam || !awayTeam) continue;
+
+      const homeScore = match.homeScore ?? 0;
+      const awayScore = match.awayScore ?? 0;
+
+      homeTeam.played++;
+      awayTeam.played++;
+      homeTeam.goalsFor += homeScore;
+      homeTeam.goalsAgainst += awayScore;
+      awayTeam.goalsFor += awayScore;
+      awayTeam.goalsAgainst += homeScore;
+
+      if (homeScore > awayScore) {
+        homeTeam.won++;
+        homeTeam.points += 3;
+        awayTeam.lost++;
+      } else if (homeScore < awayScore) {
+        awayTeam.won++;
+        awayTeam.points += 3;
+        homeTeam.lost++;
+      } else {
+        homeTeam.drawn++;
+        awayTeam.drawn++;
+        homeTeam.points += 1;
+        awayTeam.points += 1;
+      }
+    }
+
+    for (const team of standingsMap.values()) {
+      team.goalDifference = team.goalsFor - team.goalsAgainst;
+    }
+
+    let standings = Array.from(standingsMap.values()).sort((a, b) =>
+      this.compareByPrimaryStandingRules(a, b),
+    );
+    standings = this.applyFinalTieBreakers(standings, matches);
+    this.assignPositions(standings, 'final');
+
+    return standings;
+  }
+
+  /**
+   * Group tied teams by their shared position.
+   */
+  private groupTiedTeams(tiedTeams: TeamStanding[]): TeamStanding[][] {
+    const groups: TeamStanding[][] = [];
+    let currentGroup: TeamStanding[] = [];
+
+    for (const team of tiedTeams) {
+      if (
+        currentGroup.length === 0 ||
+        currentGroup[0].position === team.position
+      ) {
+        currentGroup.push(team);
+      } else {
+        groups.push(currentGroup);
+        currentGroup = [team];
+      }
+    }
+    if (currentGroup.length > 0) groups.push(currentGroup);
+
+    return groups;
+  }
+
+  private getDrawLotGroups(standings: TeamStanding[]) {
+    return this.groupTiedTeams(
+      standings.filter((standing) => standing.requiresDrawLot === true),
+    );
+  }
+
+  private getExpectedDrawLotRanks(group: TeamStanding[]) {
+    const startRank = group[0].position;
+    return group.map((_, index) => startRank + index);
+  }
+
+  private drawLotResultsCoverGroups(
+    groups: TeamStanding[][],
+    results: DrawLotResultLike[],
+  ) {
+    const resultsByTeamId = new Map(
+      results.map((result) => [result.teamId, result]),
+    );
+
+    for (const group of groups) {
+      const ranks: number[] = [];
+      for (const standing of group) {
+        const result = resultsByTeamId.get(standing.teamId);
+        if (!result) return false;
+        ranks.push(result.resolvedRank);
+      }
+
+      const expectedRanks = this.getExpectedDrawLotRanks(group);
+      if (!this.sameNumberSet(ranks, expectedRanks)) return false;
+    }
+
+    return true;
+  }
+
+  private assertDrawLotOverridesMatchGroups(
+    groups: TeamStanding[][],
+    overrides: DrawLotResultLike[],
+  ) {
+    const requiredTeamIds = new Set(
+      groups.flat().map((standing) => standing.teamId),
+    );
+    const overrideTeamIds = overrides.map((override) => override.teamId);
+    const overrideRanks = overrides.map((override) => override.resolvedRank);
+
+    if (new Set(overrideTeamIds).size !== overrideTeamIds.length) {
+      throw new BadRequestException(
+        'Mỗi đội chỉ được có một kết quả rút thăm.',
+      );
+    }
+
+    if (new Set(overrideRanks).size !== overrideRanks.length) {
+      throw new BadRequestException('Thứ hạng không được trùng nhau.');
+    }
+
+    if (overrides.length !== requiredTeamIds.size) {
+      throw new BadRequestException(
+        'Kết quả rút thăm phải bao gồm đầy đủ các đội trong nhóm đang hòa.',
+      );
+    }
+
+    for (const override of overrides) {
+      if (!requiredTeamIds.has(override.teamId)) {
+        throw new BadRequestException(
+          'Kết quả rút thăm chỉ được áp dụng cho các đội đang cần rút thăm.',
+        );
+      }
+    }
+
+    if (!this.drawLotResultsCoverGroups(groups, overrides)) {
+      throw new BadRequestException(
+        'Thứ hạng rút thăm phải khớp phạm vi thứ hạng của nhóm đang hòa.',
+      );
+    }
+  }
+
+  private sameNumberSet(first: number[], second: number[]) {
+    if (first.length !== second.length) return false;
+    const firstSet = new Set(first);
+    if (firstSet.size !== first.length) return false;
+    return second.every((value) => firstSet.has(value));
   }
 }

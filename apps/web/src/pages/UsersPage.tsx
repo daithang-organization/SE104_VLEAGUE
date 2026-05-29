@@ -5,6 +5,7 @@
   PlusOutlined,
   SearchOutlined,
   SafetyCertificateOutlined,
+  TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
@@ -27,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { AppMenuIcon } from '../components';
 import { PageCover } from '../components/PageCover';
 import { TableSkeleton } from '../components/LoadingSkeleton';
+import { apiGetTeams, type Team } from '../services/teamApi';
 import {
   apiCreateUser,
   apiDeleteUser,
@@ -55,10 +57,13 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
 
   // Create user modal
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm] = Form.useForm();
+  const createRole = Form.useWatch('role', createForm);
   const [creating, setCreating] = useState(false);
 
   // Edit role modal
@@ -83,11 +88,29 @@ export default function UsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
+  useEffect(() => {
+    const fetchTeams = async () => {
+      setTeamsLoading(true);
+      try {
+        const data = await apiGetTeams(1, 100);
+        setTeams(data.data);
+      } catch (_err) {
+        message.error(t('users.teamLoadError'));
+      } finally {
+        setTeamsLoading(false);
+      }
+    };
+
+    fetchTeams();
+  }, [t]);
+
   // ─── Create ─────────────────
   const handleCreate = async (values: CreateUserPayload) => {
     setCreating(true);
     try {
-      await apiCreateUser(values);
+      const payload =
+        values.role === 'TEAM_MANAGER' ? values : { ...values, managedTeamId: undefined };
+      await apiCreateUser(payload);
       message.success(t('users.createSuccess'));
       setCreateOpen(false);
       createForm.resetFields();
@@ -164,6 +187,24 @@ export default function UsersPage() {
         const color = ROLE_COLORS[role] || 'default';
         return <Tag color={color}>{t(`role.${role}`)}</Tag>;
       },
+    },
+    {
+      title: t('users.colManagedTeam'),
+      key: 'managedTeam',
+      width: 180,
+      render: (_, record) =>
+        record.role === 'TEAM_MANAGER' ? (
+          record.managedTeam ? (
+            <Space size={6}>
+              <TeamOutlined />
+              <span>{record.managedTeam.name}</span>
+            </Space>
+          ) : (
+            <Tag color="warning">{t('users.managedTeamMissing')}</Tag>
+          )
+        ) : (
+          '—'
+        ),
     },
     {
       title: t('users.colEmailVerified'),
@@ -282,7 +323,16 @@ export default function UsersPage() {
         onCancel={() => setCreateOpen(false)}
         footer={null}
       >
-        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
+        <Form
+          form={createForm}
+          layout="vertical"
+          onFinish={handleCreate}
+          onValuesChange={(changedValues) => {
+            if ('role' in changedValues && changedValues.role !== 'TEAM_MANAGER') {
+              createForm.setFieldsValue({ managedTeamId: undefined });
+            }
+          }}
+        >
           <Form.Item
             name="email"
             label={t('users.formEmail')}
@@ -310,6 +360,24 @@ export default function UsersPage() {
           >
             <Select options={roleOptions} placeholder={t('users.formRolePlaceholder')} />
           </Form.Item>
+          {createRole === 'TEAM_MANAGER' && (
+            <Form.Item
+              name="managedTeamId"
+              label={t('users.formManagedTeam')}
+              rules={[{ required: true, message: t('users.formManagedTeamRequired') }]}
+            >
+              <Select
+                showSearch
+                loading={teamsLoading}
+                placeholder={t('users.formManagedTeamPlaceholder')}
+                optionFilterProp="label"
+                options={teams.map((team) => ({
+                  value: team.id,
+                  label: team.name,
+                }))}
+              />
+            </Form.Item>
+          )}
           <Form.Item name="name" label={t('users.formName')}>
             <Input placeholder={t('users.formNamePlaceholder')} />
           </Form.Item>

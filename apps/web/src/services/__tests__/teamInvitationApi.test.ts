@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockApi = vi.hoisted(() => ({
+  delete: vi.fn(),
   get: vi.fn(),
   post: vi.fn(),
   patch: vi.fn(),
@@ -11,9 +12,13 @@ vi.mock('../../lib/api', () => ({ api: mockApi }));
 import {
   apiGetInvitationCandidates,
   apiGetMyPendingInvitations,
+  apiGetPromotionCandidates,
   apiGetSeasonInvitations,
+  apiImportPromotionCandidates,
+  apiDeletePromotionCandidate,
   apiRespondTeamInvitation,
   apiSendTeamInvitation,
+  apiUpsertPromotionCandidate,
 } from '../teamInvitationApi';
 
 describe('teamInvitationApi', () => {
@@ -68,6 +73,63 @@ describe('teamInvitationApi', () => {
 
     expect(mockApi.get).toHaveBeenCalledWith('/team-invitations/my-pending');
     expect(result).toEqual(invitations);
+  });
+
+  it('apiGetPromotionCandidates calls GET /seasons/:id/promotion-candidates', async () => {
+    const rows = [{ id: 'pc-1', teamId: 'team-1', rank: 1 }];
+    mockApi.get.mockResolvedValue({ data: rows });
+
+    const result = await apiGetPromotionCandidates('season-1');
+
+    expect(mockApi.get).toHaveBeenCalledWith('/seasons/season-1/promotion-candidates');
+    expect(result).toEqual(rows);
+  });
+
+  it('apiUpsertPromotionCandidate calls POST /seasons/:id/promotion-candidates', async () => {
+    const row = { id: 'pc-1', teamId: 'team-1', rank: 1 };
+    const payload = {
+      teamId: 'team-1',
+      rank: 1,
+      sourceCompetition: 'V.League 2 2025',
+      qualificationType: 'CHAMPION' as const,
+      note: 'Vô địch',
+    };
+    mockApi.post.mockResolvedValue({ data: row });
+
+    const result = await apiUpsertPromotionCandidate('season-1', payload);
+
+    expect(mockApi.post).toHaveBeenCalledWith('/seasons/season-1/promotion-candidates', payload);
+    expect(result).toEqual(row);
+  });
+
+  it('apiImportPromotionCandidates calls POST /seasons/:id/promotion-candidates/import', async () => {
+    const response = { importedCount: 2, replaced: true, candidates: [] };
+    const payload = {
+      sourceCompetition: 'V.League 2 2025',
+      replaceExisting: true,
+      rows: [
+        { rank: 1, teamName: 'PVF-CAND', qualificationType: 'CHAMPION' as const },
+        { rank: 2, teamName: 'Trường Tươi Bình Phước' },
+      ],
+    };
+    mockApi.post.mockResolvedValue({ data: response });
+
+    const result = await apiImportPromotionCandidates('season-1', payload);
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/seasons/season-1/promotion-candidates/import',
+      payload,
+    );
+    expect(result).toEqual(response);
+  });
+
+  it('apiDeletePromotionCandidate calls DELETE /seasons/:id/promotion-candidates/:teamId', async () => {
+    mockApi.delete.mockResolvedValue({ data: { count: 1 } });
+
+    const result = await apiDeletePromotionCandidate('season-1', 'team-1');
+
+    expect(mockApi.delete).toHaveBeenCalledWith('/seasons/season-1/promotion-candidates/team-1');
+    expect(result).toEqual({ count: 1 });
   });
 
   it('apiRespondTeamInvitation calls PATCH /team-invitations/:id/respond', async () => {

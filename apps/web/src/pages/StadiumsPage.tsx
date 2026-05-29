@@ -293,7 +293,12 @@ export default function StadiumsPage() {
             dataSource={filtered}
             rowKey="id"
             loading={loading}
-            pagination={{ pageSize: 15, showSizeChanger: true }}
+            pagination={{
+              defaultPageSize: 15,
+              pageSizeOptions: [10, 15, 20, 50],
+              showSizeChanger: true,
+              showTotal: (total) => t('stadiums.totalCount', { total }),
+            }}
             size="middle"
           />
         </Card>

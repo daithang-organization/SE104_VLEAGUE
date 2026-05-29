@@ -39,7 +39,7 @@ import { AppMenuIcon, CardSkeleton, PageCover } from '../components';
 import { apiGetMatches, type Match } from '../services/matchApi';
 import { apiGetPlayers } from '../services/playerApi';
 import { apiGetSchedule } from '../services/scheduleApi';
-import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetCardStats,
   apiGetStandings,
@@ -48,9 +48,8 @@ import {
   type TeamStanding,
   type TopScorer,
 } from '../services/standingsApi';
-import { apiGetTeam, apiGetTeams, type Team, type TeamDetail } from '../services/teamApi';
+import { apiGetTeam, apiGetTeams, type TeamDetail } from '../services/teamApi';
 import {
-  apiCreateTeamManagerAssignment,
   apiGetTeamManagerAssignment,
   apiGetTeamManagerApplication,
   apiSubmitTeamManagerApplication,
@@ -84,16 +83,23 @@ function DashboardCardTitle({ icon, children }: { icon: ReactNode; children: Rea
 }
 
 function getDashboardSeason(seasons: Season[]) {
+  const sortedSeasons = [...seasons].sort((a, b) => {
+    const brandedDelta =
+      Number(b.name.startsWith('V.League')) - Number(a.name.startsWith('V.League'));
+    if (brandedDelta !== 0) return brandedDelta;
+    return b.year - a.year;
+  });
+
   return (
-    seasons.find((season) => {
+    sortedSeasons.find((season) => {
       if (!season.startDate || !season.endDate) return false;
       const start = dayjs(season.startDate).startOf('day').valueOf();
       const end = dayjs(season.endDate).endOf('day').valueOf();
       const now = dayjs().valueOf();
       return now >= start && now <= end;
     }) ??
-    seasons.find((season) => season.status === 'IN_PROGRESS') ??
-    seasons
+    sortedSeasons.find((season) => season.status === 'IN_PROGRESS') ??
+    sortedSeasons
       .filter((season) => season.startDate)
       .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
     null
@@ -128,7 +134,6 @@ function getApplicationStatus(application: TeamManagerApplication | null) {
 function TeamManagerDashboard() {
   const [applicationForm] = Form.useForm<SubmitTeamManagerApplicationPayload>();
   const [loading, setLoading] = useState(true);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [application, setApplication] = useState<TeamManagerApplication | null>(null);
@@ -143,15 +148,14 @@ function TeamManagerDashboard() {
     const loadBootstrap = async () => {
       setLoading(true);
       try {
-        const [teamsData, seasonsData] = await Promise.all([apiGetTeams(1, 100), apiGetSeasons()]);
+        const seasonsData = await apiGetSeasons();
         const season = getDashboardSeason(seasonsData);
         const assignment = season?.id ? await apiGetTeamManagerAssignment(season.id) : null;
 
-        setTeams(teamsData.data);
         setCurrentSeason(season);
         setSelectedTeamId(assignment?.teamId ?? null);
       } catch (_err) {
-        message.error('Không tải được dữ liệu chọn đội bóng');
+        message.error('Không tải được dữ liệu CLB quản lý');
       } finally {
         setLoading(false);
       }
@@ -229,21 +233,6 @@ function TeamManagerDashboard() {
     });
   }, [application, applicationForm, currentSeason]);
 
-  const handleSelectTeam = async (teamId: string) => {
-    if (!currentSeason?.id) return;
-
-    setLoading(true);
-    try {
-      const assignment = await apiCreateTeamManagerAssignment(currentSeason.id, teamId);
-      setSelectedTeamId(assignment.teamId);
-      message.success('Đã chọn CLB quản lý cho mùa giải này');
-    } catch (_err) {
-      message.error('Không thể chọn CLB. Tài khoản này có thể đã chọn CLB cho mùa giải.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmitApplication = async (values: SubmitTeamManagerApplicationPayload) => {
     if (!currentSeason?.id) return;
 
@@ -305,15 +294,10 @@ function TeamManagerDashboard() {
       <div className="page-stack dashboard-page dashboard-manager-page">
         <PageCover
           eyebrow="VLeague"
-          title="Chọn CLB quản lý"
-          description="Vui lòng chọn đội bóng của bạn để bắt đầu trang quản lý CLB. Lựa chọn này chỉ được thực hiện một lần cho mùa giải hiện tại."
+          title="Chưa được gắn CLB"
+          description="Tài khoản TEAM_MANAGER cần được admin gắn với một CLB cố định trước khi sử dụng trang quản lý đội bóng."
           icon={<TeamOutlined />}
           metrics={[
-            {
-              label: 'CLB khả dụng',
-              value: teams.length.toLocaleString('vi-VN'),
-              icon: <TeamOutlined />,
-            },
             {
               label: 'Mùa giải',
               value: currentSeason?.name ?? '...',
@@ -322,31 +306,12 @@ function TeamManagerDashboard() {
           ]}
         />
 
-        <div className="dashboard-team-select-grid">
-          {teams.map((candidate) => {
-            const logoUrl = getTeamLogoUrl(candidate);
-            return (
-              <Card
-                key={candidate.id}
-                hoverable
-                loading={loading}
-                className="dashboard-team-select-card"
-                onClick={() => handleSelectTeam(candidate.id)}
-              >
-                <div className="dashboard-team-select-logo">
-                  {logoUrl ? (
-                    <img src={logoUrl} alt={`${candidate.name} logo`} />
-                  ) : (
-                    <TeamOutlined />
-                  )}
-                </div>
-                <Typography.Text strong className="dashboard-team-select-name">
-                  {candidate.name}
-                </Typography.Text>
-              </Card>
-            );
-          })}
-        </div>
+        <Alert
+          type="warning"
+          showIcon
+          message="Tài khoản chưa có CLB cố định"
+          description="Vui lòng liên hệ admin để gắn tài khoản này với đúng CLB trong màn hình Quản lý người dùng."
+        />
       </div>
     );
   }
@@ -725,8 +690,10 @@ export default function DashboardPage() {
   const isAdmin = user?.role === 'ADMIN';
   const dashboardWelcome =
     user?.role === 'REFEREE'
-      ? 'Chào mừng đến trang quản lý chính thức của VLeague dành cho trọng tài'
-      : t('dashboard.welcome');
+      ? t('dashboard.refereeWelcome')
+      : user?.role === 'SUPERVISOR'
+        ? t('dashboard.supervisorWelcome')
+        : t('dashboard.welcome');
   const [stats, setStats] = useState({
     teams: 0,
     players: 0,
@@ -796,20 +763,21 @@ export default function DashboardPage() {
         }
 
         const dashboardSeason =
-          seasons.status === 'fulfilled'
-            ? (seasons.value.find((season) => {
+          (await apiGetCurrentSeason()) ??
+          (seasons.status === 'fulfilled'
+            ? (seasons.value.find((season) => season.status === 'IN_PROGRESS') ??
+              seasons.value.find((season) => {
                 if (!season.startDate || !season.endDate) return false;
                 const start = dayjs(season.startDate).startOf('day').valueOf();
                 const end = dayjs(season.endDate).endOf('day').valueOf();
                 const now = dayjs().valueOf();
                 return now >= start && now <= end;
               }) ??
-              seasons.value.find((season) => season.status === 'IN_PROGRESS') ??
               seasons.value
                 .filter((season) => season.startDate)
                 .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
               null)
-            : null;
+            : null);
         setCurrentSeason(dashboardSeason);
 
         if (dashboardSeason) {
@@ -878,7 +846,7 @@ export default function DashboardPage() {
             .sort(([a], [b]) => a - b)
             .slice(0, 15)
             .map(([round, goals]) => ({
-              round: `V${round}`,
+              round: t('dashboard.roundShort', { round }),
               goals,
             }));
           setGoalsPerRound(chartData);
@@ -917,7 +885,7 @@ export default function DashboardPage() {
     { title: t('dashboard.standingsColPlayed'), dataIndex: 'played', width: 60 },
     { title: t('dashboard.standingsColPoints'), dataIndex: 'points', width: 60 },
     {
-      title: '5 trận gần nhất',
+      title: t('dashboard.standingsColLast5'),
       dataIndex: 'recentForm',
       width: 140,
       align: 'center',
@@ -930,7 +898,7 @@ export default function DashboardPage() {
       title: t('dashboard.upcomingColRound'),
       dataIndex: 'roundNo',
       width: 70,
-      render: (v: number) => `V${v}`,
+      render: (v: number) => t('dashboard.roundShort', { round: v }),
     },
     {
       title: t('dashboard.upcomingColMatch'),
@@ -976,7 +944,7 @@ export default function DashboardPage() {
       title: t('dashboard.recentColRound'),
       dataIndex: 'roundNo',
       width: 50,
-      render: (v: number) => `V${v}`,
+      render: (v: number) => t('dashboard.roundShort', { round: v }),
     },
     {
       title: t('dashboard.recentColMatch'),

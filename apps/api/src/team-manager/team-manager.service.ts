@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -37,14 +36,35 @@ export class TeamManagerService {
     },
   } satisfies Prisma.TeamManagerAssignmentInclude;
 
-  getAssignment(userId: string, seasonId: string) {
+  async getAssignment(userId: string, seasonId: string) {
     if (!seasonId) {
       throw new BadRequestException('seasonId là bắt buộc.');
     }
 
-    return this.prisma.teamManagerAssignment.findUnique({
-      where: { userId_seasonId: { userId, seasonId } },
-      include: this.assignmentInclude,
+    const user = await this.getTeamManagerUser(userId);
+    if (!user.managedTeamId) return null;
+
+    return this.upsertSeasonAssignment(user.id, seasonId, user.managedTeamId);
+  }
+
+  async getManagedTeam(userId: string) {
+    const user = await this.getTeamManagerUser(userId);
+    if (!user.managedTeamId) return null;
+
+    return this.prisma.team.findUnique({
+      where: { id: user.managedTeamId },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        logoUrl: true,
+        city: true,
+        status: true,
+        stadiumId: true,
+        createdAt: true,
+        updatedAt: true,
+        stadium: { select: { id: true, name: true, city: true } },
+      },
     });
   }
 
@@ -75,7 +95,9 @@ export class TeamManagerService {
 
     const assignment = await this.getAssignment(userId, dto.seasonId);
     if (!assignment) {
-      throw new ForbiddenException('Bạn chưa được gán CLB trong mùa giải này.');
+      throw new ForbiddenException(
+        'Tài khoản này chưa được admin gắn với CLB nào.',
+      );
     }
 
     const seasonTeam = await this.prisma.seasonTeam.findUnique({
@@ -131,44 +153,48 @@ export class TeamManagerService {
       throw new BadRequestException('seasonId và teamId là bắt buộc.');
     }
 
-    const existing = await this.getAssignment(userId, seasonId);
-    if (existing) {
-      if (existing.teamId === teamId) return existing;
-      throw new ConflictException(
-        'Bạn đã chọn CLB cho mùa giải này và không thể thay đổi.',
+    const user = await this.getTeamManagerUser(userId);
+    if (!user.managedTeamId) {
+      throw new ForbiddenException(
+        'Tài khoản này chưa được admin gắn với CLB nào.',
       );
     }
 
-    const [user, seasonTeam] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: userId } }),
-      this.prisma.seasonTeam.findUnique({
-        where: { seasonId_teamId: { seasonId, teamId } },
-        include: { team: true, season: true },
-      }),
-    ]);
+    if (user.managedTeamId !== teamId) {
+      throw new ForbiddenException(
+        'Tài khoản này chỉ được làm việc với CLB đã được admin gắn.',
+      );
+    }
+
+    return this.upsertSeasonAssignment(user.id, seasonId, user.managedTeamId);
+  }
+
+  private async getTeamManagerUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, managedTeamId: true },
+    });
 
     if (!user) {
       throw new NotFoundException('Không tìm thấy người dùng.');
     }
 
     if (user.role !== 'TEAM_MANAGER') {
-      throw new BadRequestException(
-        'Chỉ tài khoản TEAM_MANAGER được chọn CLB.',
-      );
+      throw new BadRequestException('Chỉ tài khoản TEAM_MANAGER quản lý CLB.');
     }
 
-    if (!seasonTeam) {
-      throw new BadRequestException('CLB chưa được đăng ký vào mùa giải này.');
-    }
+    return user;
+  }
 
-    if (seasonTeam.status !== 'APPROVED') {
-      throw new BadRequestException(
-        'CLB chưa được duyệt tham gia mùa giải này.',
-      );
-    }
-
-    return this.prisma.teamManagerAssignment.create({
-      data: { userId, seasonId, teamId },
+  private upsertSeasonAssignment(
+    userId: string,
+    seasonId: string,
+    teamId: string,
+  ) {
+    return this.prisma.teamManagerAssignment.upsert({
+      where: { userId_seasonId: { userId, seasonId } },
+      update: { teamId },
+      create: { userId, seasonId, teamId },
       include: this.assignmentInclude,
     });
   }

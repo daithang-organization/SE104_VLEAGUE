@@ -6,10 +6,13 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
+  PromotionCandidateStatus,
+  PromotionQualificationType,
   Season,
   SeasonTeamStatus,
   TeamInvitationSourceType,
   TeamInvitationStatus,
+  UserRole,
 } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,8 +22,10 @@ import {
   type TeamStanding,
 } from '../standings/standings.service';
 import {
+  ImportPromotionCandidatesDto,
   RespondTeamInvitationDto,
   SendTeamInvitationDto,
+  UpsertPromotionCandidateDto,
 } from './dto/team-invitation.dto';
 
 const RESPONSE_STATUSES = [
@@ -40,6 +45,10 @@ type InvitationCandidate = {
   invitationStatus: TeamInvitationStatus | null;
   responseReason: string | null;
   deadlineAt: Date | null;
+  sourceCompetition?: string | null;
+  qualificationType?: PromotionQualificationType | null;
+  promotionStatus?: PromotionCandidateStatus | null;
+  sourceNote?: string | null;
   team: {
     id: string;
     name: string;
@@ -48,6 +57,29 @@ type InvitationCandidate = {
     logoUrl: string | null;
     status: string;
   } | null;
+};
+type TeamSummary = NonNullable<InvitationCandidate['team']>;
+type PromotionCandidateWithTeam = Prisma.PromotionCandidateGetPayload<{
+  include: {
+    team: {
+      select: {
+        id: true;
+        name: true;
+        shortName: true;
+        city: true;
+        logoUrl: true;
+        status: true;
+      };
+    };
+  };
+}>;
+type ResolvedPromotionImportRow = {
+  teamId: string;
+  rank: number;
+  sourceCompetition: string;
+  qualificationType: PromotionQualificationType;
+  status: PromotionCandidateStatus;
+  note: string | null;
 };
 
 @Injectable()
@@ -80,6 +112,23 @@ export class TeamInvitationService {
     },
   } satisfies Prisma.TeamInvitationInclude;
 
+  private managerAssignmentInclude = {
+    user: { select: { id: true, email: true, name: true } },
+  } satisfies Prisma.TeamManagerAssignmentInclude;
+
+  private teamSummarySelect = {
+    id: true,
+    name: true,
+    shortName: true,
+    city: true,
+    logoUrl: true,
+    status: true,
+  } satisfies Prisma.TeamSelect;
+
+  private promotionCandidateInclude = {
+    team: { select: this.teamSummarySelect },
+  } satisfies Prisma.PromotionCandidateInclude;
+
   async listForSeason(seasonId: string) {
     await this.ensureSeasonExists(seasonId);
     await this.markExpiredInvitations({ seasonId });
@@ -106,7 +155,10 @@ export class TeamInvitationService {
     const previousSeason = previousSeasonId
       ? await this.prisma.season.findUnique({ where: { id: previousSeasonId } })
       : await this.prisma.season.findFirst({
-          where: { year: targetSeason.year - 1 },
+          where: {
+            status: 'COMPLETED',
+            year: { lt: targetSeason.year },
+          },
           orderBy: { year: 'desc' },
         });
 
@@ -161,24 +213,23 @@ export class TeamInvitationService {
       this.ensureTeamExists(dto.teamId),
     ]);
 
-    const managerAssignments = await this.prisma.teamManagerAssignment.findMany(
-      {
-        where: { seasonId, teamId: dto.teamId },
-        include: {
-          user: { select: { id: true, email: true, name: true } },
-        },
-      },
-    );
+    const managerAssignments =
+      await this.resolveManagerAssignmentsForInvitation(seasonId, dto.teamId);
 
     if (managerAssignments.length === 0) {
       throw new BadRequestException(
-        'CLB này chưa có tài khoản TEAM_MANAGER trong mùa giải nên chưa thể gửi popup lời mời.',
+        'CLB này chưa có tài khoản TEAM_MANAGER được admin gắn cố định nên chưa thể gửi popup lời mời.',
       );
     }
 
     const sentAt = new Date();
     const deadlineAt = this.addDays(sentAt, 14);
     const regulationsSnapshot = await this.buildRegulationsSnapshot(seasonId);
+
+    const promotionNote =
+      dto.sourceType === TeamInvitationSourceType.PROMOTED
+        ? dto.promotionNote?.trim() || null
+        : null;
 
     const invitation = await this.prisma.teamInvitation.upsert({
       where: { seasonId_teamId: { seasonId, teamId: dto.teamId } },
@@ -190,6 +241,7 @@ export class TeamInvitationService {
         sentAt,
         deadlineAt,
         regulationsSnapshot,
+        promotionNote,
       },
       update: {
         sourceType: dto.sourceType,
@@ -199,9 +251,17 @@ export class TeamInvitationService {
         responseAt: null,
         responseReason: null,
         regulationsSnapshot,
+        promotionNote,
       },
       include: this.invitationInclude,
     });
+
+    if (dto.sourceType === TeamInvitationSourceType.PROMOTED) {
+      await this.prisma.promotionCandidate.updateMany({
+        where: { seasonId, teamId: dto.teamId },
+        data: { status: PromotionCandidateStatus.INVITED },
+      });
+    }
 
     const message = this.buildNotificationMessage(
       season.name,
@@ -226,25 +286,303 @@ export class TeamInvitationService {
     return invitation;
   }
 
-  async getPendingForManager(userId: string) {
-    const assignments = await this.prisma.teamManagerAssignment.findMany({
-      where: { userId },
-      select: { seasonId: true, teamId: true },
+  async getReplacementCandidates(seasonId: string) {
+    await this.ensureSeasonExists(seasonId);
+    await this.markExpiredInvitations({ seasonId });
+
+    const TOTAL_REQUIRED = 10;
+
+    // Count distinct teams that are already accepted and/or approved.
+    const [acceptedInvitations, approvedTeams] = await Promise.all([
+      this.prisma.teamInvitation.findMany({
+        where: { seasonId, status: TeamInvitationStatus.ACCEPTED },
+        select: { teamId: true },
+      }),
+      this.prisma.seasonTeam.findMany({
+        where: { seasonId, status: SeasonTeamStatus.APPROVED },
+        select: { teamId: true },
+      }),
+    ]);
+    const filledTeamIds = new Set([
+      ...acceptedInvitations.map((invitation) => invitation.teamId),
+      ...approvedTeams.map((seasonTeam) => seasonTeam.teamId),
+    ]);
+    const filledSlots = filledTeamIds.size;
+    const slotsNeeded = Math.max(0, TOTAL_REQUIRED - filledSlots);
+
+    // Teams that declined or expired
+    const declinedExpiredInvitations =
+      await this.prisma.teamInvitation.findMany({
+        where: {
+          seasonId,
+          status: {
+            in: [TeamInvitationStatus.DECLINED, TeamInvitationStatus.EXPIRED],
+          },
+        },
+        include: this.invitationInclude,
+        orderBy: { responseAt: 'desc' },
+      });
+
+    // All team IDs already involved in this season
+    const involvedTeamIds = new Set(
+      (
+        await this.prisma.teamInvitation.findMany({
+          where: { seasonId },
+          select: { teamId: true },
+        })
+      ).map((i) => i.teamId),
+    );
+    // Also add season teams that were registered directly
+    const seasonTeamIds = (
+      await this.prisma.seasonTeam.findMany({
+        where: { seasonId },
+        select: { teamId: true },
+      })
+    ).map((st) => st.teamId);
+    for (const id of seasonTeamIds) involvedTeamIds.add(id);
+
+    const promotionCandidates = await this.prisma.promotionCandidate.findMany({
+      where: {
+        seasonId,
+        status: PromotionCandidateStatus.ELIGIBLE,
+        teamId: { notIn: [...involvedTeamIds] },
+      },
+      include: this.promotionCandidateInclude,
+      orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+    });
+    const promotionCandidateTeamIds = promotionCandidates.map(
+      (candidate) => candidate.teamId,
+    );
+
+    // Available teams: promotion ranking first, then other ACTIVE teams.
+    const otherActiveTeams = await this.prisma.team.findMany({
+      where: {
+        status: 'ACTIVE',
+        id: { notIn: [...involvedTeamIds, ...promotionCandidateTeamIds] },
+      },
+      select: this.teamSummarySelect,
+      orderBy: { name: 'asc' },
+    });
+    const candidates = [
+      ...promotionCandidates.map((candidate) => ({
+        ...candidate.team,
+        promotionRank: candidate.rank,
+        sourceCompetition: candidate.sourceCompetition,
+        qualificationType: candidate.qualificationType,
+        promotionStatus: candidate.status,
+        sourceNote: candidate.note,
+      })),
+      ...otherActiveTeams,
+    ];
+
+    return {
+      totalRequired: TOTAL_REQUIRED,
+      filledSlots,
+      slotsNeeded,
+      declinedTeams: declinedExpiredInvitations,
+      candidates,
+    };
+  }
+
+  async listPromotionCandidates(seasonId: string) {
+    await this.ensureSeasonExists(seasonId);
+
+    return this.prisma.promotionCandidate.findMany({
+      where: { seasonId },
+      include: this.promotionCandidateInclude,
+      orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  async upsertPromotionCandidate(
+    seasonId: string,
+    dto: UpsertPromotionCandidateDto,
+  ) {
+    await Promise.all([
+      this.ensureSeasonExists(seasonId),
+      this.ensureTeamExists(dto.teamId),
+    ]);
+
+    const sourceCompetition = dto.sourceCompetition.trim();
+    if (!sourceCompetition) {
+      throw new BadRequestException('Vui lòng nhập nguồn giải thăng hạng.');
+    }
+
+    return this.prisma.promotionCandidate.upsert({
+      where: {
+        seasonId_teamId: {
+          seasonId,
+          teamId: dto.teamId,
+        },
+      },
+      create: {
+        seasonId,
+        teamId: dto.teamId,
+        rank: dto.rank,
+        sourceCompetition,
+        qualificationType:
+          dto.qualificationType ?? PromotionQualificationType.RUNNER_UP,
+        status: dto.status ?? PromotionCandidateStatus.ELIGIBLE,
+        note: dto.note?.trim() || null,
+      },
+      update: {
+        rank: dto.rank,
+        sourceCompetition,
+        qualificationType:
+          dto.qualificationType ?? PromotionQualificationType.RUNNER_UP,
+        status: dto.status ?? PromotionCandidateStatus.ELIGIBLE,
+        note: dto.note?.trim() || null,
+      },
+      include: this.promotionCandidateInclude,
+    });
+  }
+
+  async importPromotionCandidates(
+    seasonId: string,
+    dto: ImportPromotionCandidatesDto,
+  ) {
+    await this.ensureSeasonExists(seasonId);
+
+    const sourceCompetition = dto.sourceCompetition?.trim() || '';
+    const teams = await this.prisma.team.findMany({
+      select: this.teamSummarySelect,
+    });
+    const teamsById = new Map(teams.map((team) => [team.id, team]));
+    const teamsByName = this.buildTeamLookup(teams);
+    const errors: string[] = [];
+    const seenTeamIds = new Set<string>();
+    const seenRanks = new Set<number>();
+    const rows: ResolvedPromotionImportRow[] = [];
+
+    dto.rows.forEach((row, index) => {
+      const line = index + 1;
+      const rowSourceCompetition =
+        row.sourceCompetition?.trim() || sourceCompetition;
+      const resolved = this.resolvePromotionImportTeam(
+        row,
+        teamsById,
+        teamsByName,
+      );
+
+      if (!rowSourceCompetition) {
+        errors.push(`Dòng ${line}: thiếu giải nguồn.`);
+      }
+      if (seenRanks.has(row.rank)) {
+        errors.push(`Dòng ${line}: trùng hạng #${row.rank}.`);
+      } else {
+        seenRanks.add(row.rank);
+      }
+      if (resolved.error) {
+        errors.push(`Dòng ${line}: ${resolved.error}`);
+      }
+      if (resolved.team) {
+        if (seenTeamIds.has(resolved.team.id)) {
+          errors.push(`Dòng ${line}: CLB bị trùng trong file import.`);
+        } else {
+          seenTeamIds.add(resolved.team.id);
+        }
+      }
+
+      if (rowSourceCompetition && resolved.team) {
+        rows.push({
+          teamId: resolved.team.id,
+          rank: row.rank,
+          sourceCompetition: rowSourceCompetition,
+          qualificationType:
+            row.qualificationType ??
+            this.inferPromotionQualificationType(row.rank),
+          status: row.status ?? PromotionCandidateStatus.ELIGIBLE,
+          note: row.note?.trim() || null,
+        });
+      }
     });
 
-    if (assignments.length === 0) return [];
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
 
-    const assignmentFilter = assignments.map((assignment) => ({
-      seasonId: assignment.seasonId,
-      teamId: assignment.teamId,
-    }));
-    await this.markExpiredInvitations({ OR: assignmentFilter });
+    const candidates = await this.prisma.$transaction(async (tx) => {
+      if (dto.replaceExisting) {
+        await tx.promotionCandidate.deleteMany({ where: { seasonId } });
+      }
+
+      const imported: PromotionCandidateWithTeam[] = [];
+      for (const row of rows) {
+        imported.push(
+          await tx.promotionCandidate.upsert({
+            where: {
+              seasonId_teamId: {
+                seasonId,
+                teamId: row.teamId,
+              },
+            },
+            create: {
+              seasonId,
+              teamId: row.teamId,
+              rank: row.rank,
+              sourceCompetition: row.sourceCompetition,
+              qualificationType: row.qualificationType,
+              status: row.status,
+              note: row.note,
+            },
+            update: {
+              rank: row.rank,
+              sourceCompetition: row.sourceCompetition,
+              qualificationType: row.qualificationType,
+              status: row.status,
+              note: row.note,
+            },
+            include: this.promotionCandidateInclude,
+          }),
+        );
+      }
+      return imported;
+    });
+
+    return {
+      importedCount: candidates.length,
+      replaced: Boolean(dto.replaceExisting),
+      candidates,
+    };
+  }
+
+  async deletePromotionCandidate(seasonId: string, teamId: string) {
+    await this.ensureSeasonExists(seasonId);
+
+    const result = await this.prisma.promotionCandidate.deleteMany({
+      where: { seasonId, teamId },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException(
+        'Không tìm thấy đội trong snapshot thăng hạng.',
+      );
+    }
+
+    return result;
+  }
+
+  async getPendingForManager(userId: string) {
+    const manager = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, managedTeamId: true },
+    });
+
+    if (
+      !manager ||
+      manager.role !== UserRole.TEAM_MANAGER ||
+      !manager.managedTeamId
+    ) {
+      return [];
+    }
+
+    await this.markExpiredInvitations({ teamId: manager.managedTeamId });
 
     return this.prisma.teamInvitation.findMany({
       where: {
         status: TeamInvitationStatus.SENT,
         deadlineAt: { gte: new Date() },
-        OR: assignmentFilter,
+        teamId: manager.managedTeamId,
       },
       include: this.invitationInclude,
       orderBy: { deadlineAt: 'asc' },
@@ -278,17 +616,29 @@ export class TeamInvitationService {
       throw new BadRequestException('Lời mời đã quá hạn phản hồi.');
     }
 
-    const assignment = await this.prisma.teamManagerAssignment.findFirst({
+    const manager = await this.prisma.user.findFirst({
       where: {
+        id: userId,
+        role: UserRole.TEAM_MANAGER,
+        managedTeamId: invitation.teamId,
+      },
+      select: { id: true },
+    });
+
+    if (!manager) {
+      throw new ForbiddenException('Bạn không có quyền phản hồi lời mời này.');
+    }
+
+    await this.prisma.teamManagerAssignment.upsert({
+      where: { userId_seasonId: { userId, seasonId: invitation.seasonId } },
+      update: { teamId: invitation.teamId },
+      create: {
         userId,
         seasonId: invitation.seasonId,
         teamId: invitation.teamId,
       },
+      include: this.managerAssignmentInclude,
     });
-
-    if (!assignment) {
-      throw new ForbiddenException('Bạn không có quyền phản hồi lời mời này.');
-    }
 
     const responseStatus = dto.responseStatus as TeamInvitationStatus;
     const updatedInvitation = await this.prisma.teamInvitation.update({
@@ -333,6 +683,21 @@ export class TeamInvitationService {
       });
     }
 
+    if (invitation.sourceType === TeamInvitationSourceType.PROMOTED) {
+      await this.prisma.promotionCandidate.updateMany({
+        where: {
+          seasonId: invitation.seasonId,
+          teamId: invitation.teamId,
+        },
+        data: {
+          status:
+            responseStatus === TeamInvitationStatus.ACCEPTED
+              ? PromotionCandidateStatus.ACCEPTED
+              : PromotionCandidateStatus.DECLINED,
+        },
+      });
+    }
+
     return updatedInvitation;
   }
 
@@ -353,25 +718,89 @@ export class TeamInvitationService {
       invitationStatus: TeamInvitationStatus | null;
       responseReason: string | null;
       deadlineAt: Date | null;
+      sourceRank?: number;
+      sourceCompetition?: string | null;
+      qualificationType?: PromotionQualificationType | null;
+      promotionStatus?: PromotionCandidateStatus | null;
+      sourceNote?: string | null;
     }> = [];
+
+    const promotionCandidates = await this.prisma.promotionCandidate.findMany({
+      where: {
+        seasonId,
+        teamId: { notIn: excludedTeamIds },
+        status: {
+          in: [
+            PromotionCandidateStatus.ELIGIBLE,
+            PromotionCandidateStatus.INVITED,
+            PromotionCandidateStatus.ACCEPTED,
+          ],
+        },
+      },
+      include: this.promotionCandidateInclude,
+      orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
+    });
+    const sortedPromotionCandidates = [...promotionCandidates].sort(
+      (a, b) => a.rank - b.rank,
+    );
+    const promotionCandidateTeamIds = sortedPromotionCandidates.map(
+      (candidate) => candidate.teamId,
+    );
+    const promotionCandidateInvitations =
+      promotionCandidateTeamIds.length > 0
+        ? await this.prisma.teamInvitation.findMany({
+            where: { seasonId, teamId: { in: promotionCandidateTeamIds } },
+            select: {
+              id: true,
+              teamId: true,
+              status: true,
+              responseReason: true,
+              deadlineAt: true,
+            },
+          })
+        : [];
+    const invitationsByTeamId = new Map(
+      promotionCandidateInvitations.map((invitation) => [
+        invitation.teamId,
+        invitation,
+      ]),
+    );
+
+    for (const candidate of sortedPromotionCandidates) {
+      if (selected.length >= requiredSlots) break;
+      if (
+        excluded.has(candidate.teamId) ||
+        selectedTeamIds.has(candidate.teamId)
+      ) {
+        continue;
+      }
+
+      const invitation = invitationsByTeamId.get(candidate.teamId);
+      selectedTeamIds.add(candidate.teamId);
+      selected.push({
+        teamId: candidate.teamId,
+        teamName: candidate.team.name,
+        team: candidate.team,
+        invitationId: invitation?.id ?? null,
+        invitationStatus: invitation?.status ?? null,
+        responseReason: invitation?.responseReason ?? null,
+        deadlineAt: invitation?.deadlineAt ?? null,
+        sourceRank: candidate.rank,
+        sourceCompetition: candidate.sourceCompetition,
+        qualificationType: candidate.qualificationType,
+        promotionStatus: candidate.status,
+        sourceNote: candidate.note,
+      });
+    }
 
     const promotedInvitations = await this.prisma.teamInvitation.findMany({
       where: {
         seasonId,
         sourceType: TeamInvitationSourceType.PROMOTED,
-        teamId: { notIn: excludedTeamIds },
+        teamId: { notIn: [...excludedTeamIds, ...selectedTeamIds] },
       },
       include: {
-        team: {
-          select: {
-            id: true,
-            name: true,
-            shortName: true,
-            city: true,
-            logoUrl: true,
-            status: true,
-          },
-        },
+        team: { select: this.teamSummarySelect },
       },
       orderBy: [{ sentAt: 'asc' }, { createdAt: 'asc' }],
     });
@@ -394,6 +823,7 @@ export class TeamInvitationService {
         invitationStatus: invitation.status,
         responseReason: invitation.responseReason,
         deadlineAt: invitation.deadlineAt,
+        sourceNote: invitation.promotionNote,
       });
     }
 
@@ -409,16 +839,7 @@ export class TeamInvitationService {
           },
         },
         include: {
-          team: {
-            select: {
-              id: true,
-              name: true,
-              shortName: true,
-              city: true,
-              logoUrl: true,
-              status: true,
-            },
-          },
+          team: { select: this.teamSummarySelect },
         },
         orderBy: { registeredAt: 'asc' },
       });
@@ -448,11 +869,94 @@ export class TeamInvitationService {
     return selected.map((candidate, index) => ({
       ...candidate,
       sourceType: TeamInvitationSourceType.PROMOTED,
-      sourceRank: index + 1,
+      sourceRank: candidate.sourceRank ?? index + 1,
       points: 0,
       goalDifference: 0,
       played: 0,
     }));
+  }
+
+  private async resolveManagerAssignmentsForInvitation(
+    seasonId: string,
+    teamId: string,
+  ) {
+    const managers = await this.prisma.user.findMany({
+      where: { role: UserRole.TEAM_MANAGER, managedTeamId: teamId },
+      select: { id: true, email: true, name: true },
+    });
+
+    return Promise.all(
+      managers.map((manager) =>
+        this.prisma.teamManagerAssignment.upsert({
+          where: {
+            userId_seasonId: { userId: manager.id, seasonId },
+          },
+          update: { teamId },
+          create: { userId: manager.id, seasonId, teamId },
+          include: this.managerAssignmentInclude,
+        }),
+      ),
+    );
+  }
+
+  private buildTeamLookup(teams: TeamSummary[]) {
+    const lookup = new Map<string, TeamSummary[]>();
+    const add = (value: string | null, team: TeamSummary) => {
+      const key = this.normalizeTeamLookupKey(value);
+      if (!key) return;
+      const matches = lookup.get(key) ?? [];
+      if (!matches.some((match) => match.id === team.id)) {
+        matches.push(team);
+      }
+      lookup.set(key, matches);
+    };
+
+    for (const team of teams) {
+      add(team.name, team);
+      add(team.shortName, team);
+    }
+
+    return lookup;
+  }
+
+  private resolvePromotionImportTeam(
+    row: ImportPromotionCandidatesDto['rows'][number],
+    teamsById: Map<string, TeamSummary>,
+    teamsByName: Map<string, TeamSummary[]>,
+  ): { team?: TeamSummary; error?: string } {
+    if (row.teamId) {
+      const team = teamsById.get(row.teamId);
+      return team
+        ? { team }
+        : { error: `không tìm thấy CLB với ID ${row.teamId}.` };
+    }
+
+    const key = this.normalizeTeamLookupKey(row.teamName);
+    if (!key) {
+      return { error: 'thiếu ID hoặc tên CLB.' };
+    }
+
+    const matches = teamsByName.get(key) ?? [];
+    if (matches.length === 0) {
+      return { error: `không tìm thấy CLB "${row.teamName}".` };
+    }
+    if (matches.length > 1) {
+      return {
+        error: `tên CLB "${row.teamName}" bị trùng, vui lòng dùng teamId.`,
+      };
+    }
+
+    return { team: matches[0] };
+  }
+
+  private normalizeTeamLookupKey(value?: string | null) {
+    return value?.trim().replace(/\s+/g, ' ').toLocaleLowerCase('vi-VN') ?? '';
+  }
+
+  private inferPromotionQualificationType(rank: number) {
+    if (rank === 1) return PromotionQualificationType.CHAMPION;
+    if (rank === 2) return PromotionQualificationType.RUNNER_UP;
+    return PromotionQualificationType.REPLACEMENT_POOL;
   }
 
   private async buildTopLeagueCandidates(

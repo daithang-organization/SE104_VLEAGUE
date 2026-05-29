@@ -48,7 +48,7 @@ import {
   type MatchEvent,
   type RosterPlayer,
 } from '../services/matchApi';
-import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
@@ -136,11 +136,11 @@ export default function MatchesPage() {
 
   // Initial fetch seasons
   useEffect(() => {
-    apiGetSeasons()
-      .then((data) => {
+    Promise.all([apiGetSeasons(), apiGetCurrentSeason().catch(() => null)])
+      .then(([data, current]) => {
         setSeasons(data);
         if (data.length > 0) {
-          const active = data.find((s) => s.status === 'IN_PROGRESS' || s.status === 'UPCOMING');
+          const active = current ?? data.find((s) => s.status === 'IN_PROGRESS');
           const initialSeasonId = active ? active.id : data[0].id;
           setSelectedSeasonId(initialSeasonId);
           loadMatches(initialSeasonId);
@@ -556,9 +556,12 @@ export default function MatchesPage() {
                 </Typography.Title>
                 <Typography.Text type="secondary">
                   {activeRound
-                    ? `${activeRoundMatches.length} trận${
+                    ? `${t('matches.roundMatches', { count: activeRoundMatches.length })}${
                         activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                      } · ${activeRoundFinishedCount}/${activeRoundMatches.length} kết thúc`
+                      } · ${t('matches.roundProgress', {
+                        finished: activeRoundFinishedCount,
+                        total: activeRoundMatches.length,
+                      })}`
                     : ''}
                 </Typography.Text>
               </div>

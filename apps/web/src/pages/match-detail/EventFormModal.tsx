@@ -12,11 +12,14 @@ import {
   Typography,
 } from 'antd';
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   apiAddMatchEvent,
+  apiUpdateMatchEvent,
   type AddMatchEventPayload,
   type Match,
+  type MatchEvent,
   type RosterPlayer,
 } from '../../services/matchApi';
 import { EVENT_TYPE_MAP } from './constants';
@@ -29,6 +32,7 @@ interface Props {
   homeRoster: RosterPlayer[];
   awayRoster: RosterPlayer[];
   rosterLoading: boolean;
+  editingEvent?: MatchEvent | null;
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -39,6 +43,7 @@ export default function EventFormModal({
   homeRoster,
   awayRoster,
   rosterLoading,
+  editingEvent,
   onCancel,
   onSuccess,
 }: Props) {
@@ -49,9 +54,37 @@ export default function EventFormModal({
 
   const currentRoster =
     selectedTeamSide === 'home' ? homeRoster : selectedTeamSide === 'away' ? awayRoster : [];
+  const isEditing = Boolean(editingEvent);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (!editingEvent) {
+      setSelectedTeamSide(null);
+      form.setFieldsValue({ teamSide: undefined, events: [{}] });
+      return;
+    }
+
+    const teamSide = editingEvent.teamId === match.awayTeamId ? 'away' : 'home';
+    setSelectedTeamSide(teamSide);
+    form.setFieldsValue({
+      teamSide,
+      events: [
+        {
+          type: editingEvent.type,
+          minute: editingEvent.minute,
+          playerId: editingEvent.playerId ?? undefined,
+          note: editingEvent.note ?? undefined,
+          goalType: editingEvent.goalType ?? undefined,
+          relatedPlayerId: editingEvent.relatedPlayerId ?? undefined,
+        },
+      ],
+    });
+  }, [editingEvent, form, match.awayTeamId, open]);
 
   const handleCancel = () => {
     setSelectedTeamSide(null);
+    form.resetFields();
     onCancel();
   };
 
@@ -73,6 +106,27 @@ export default function EventFormModal({
         setSaving(false);
         return;
       }
+
+      if (editingEvent) {
+        const evt = events[0];
+        const payload: AddMatchEventPayload = {
+          minute: evt.minute,
+          type: evt.type as AddMatchEventPayload['type'],
+          teamId,
+          playerId: evt.playerId || undefined,
+          note: evt.note || undefined,
+          goalType: evt.goalType || undefined,
+          relatedPlayerId: evt.relatedPlayerId || undefined,
+        };
+        await apiUpdateMatchEvent(match.id, editingEvent.id, payload);
+        message.success('Đã cập nhật sự kiện.');
+        form.resetFields();
+        setSelectedTeamSide(null);
+        onCancel();
+        onSuccess();
+        return;
+      }
+
       let successCount = 0;
       for (const evt of events) {
         try {
@@ -108,12 +162,12 @@ export default function EventFormModal({
 
   return (
     <Modal
-      title={t('eventFormModal.title')}
+      title={isEditing ? 'Cập nhật sự kiện' : t('eventFormModal.title')}
       open={open}
       onCancel={handleCancel}
       onOk={handleSave}
       confirmLoading={saving}
-      okText={t('eventFormModal.okText')}
+      okText={isEditing ? 'Cập nhật' : t('eventFormModal.okText')}
       cancelText={t('eventFormModal.cancel')}
       destroyOnClose
       width={680}
@@ -173,7 +227,7 @@ export default function EventFormModal({
                     <Text strong style={{ fontSize: 13 }} type="secondary">
                       {t('eventFormModal.eventLabel', { index: idx + 1 })}
                     </Text>
-                    {fields.length > 1 && (
+                    {!isEditing && fields.length > 1 && (
                       <Button
                         type="text"
                         danger
@@ -312,15 +366,17 @@ export default function EventFormModal({
                   </Form.Item>
                 </div>
               ))}
-              <Button
-                type="dashed"
-                onClick={() => add({})}
-                block
-                icon={<PlusOutlined />}
-                style={{ marginTop: 4 }}
-              >
-                {t('eventFormModal.addEventBtn')}
-              </Button>
+              {!isEditing && (
+                <Button
+                  type="dashed"
+                  onClick={() => add({})}
+                  block
+                  icon={<PlusOutlined />}
+                  style={{ marginTop: 4 }}
+                >
+                  {t('eventFormModal.addEventBtn')}
+                </Button>
+              )}
             </>
           )}
         </Form.List>

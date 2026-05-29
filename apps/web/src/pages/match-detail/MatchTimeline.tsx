@@ -1,6 +1,8 @@
 import { Card, Tag, Typography } from 'antd';
+import type { CSSProperties } from 'react';
 import type { MatchEvent } from '../../services/matchApi';
 import { useTheme } from '../../shell/ThemeContext';
+import { getTeamLogoUrl, getTeamTheme } from '../../utils/teamLogos';
 import { EVENT_TYPE_MAP } from './constants';
 
 const { Text } = Typography;
@@ -53,6 +55,30 @@ interface MatchTimelineProps {
   onPlayerClick?: (playerId: string) => void;
 }
 
+function getTeamInitials(teamName: string) {
+  return teamName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+function TeamLogo({ teamName }: { teamName: string }) {
+  const logoUrl = getTeamLogoUrl(teamName);
+
+  if (logoUrl) {
+    return <img className="match-timeline-team-logo" src={logoUrl} alt={`${teamName} logo`} />;
+  }
+
+  return (
+    <span className="match-timeline-team-logo match-timeline-team-logo-fallback" aria-hidden="true">
+      {getTeamInitials(teamName)}
+    </span>
+  );
+}
+
 export default function MatchTimeline({
   events,
   homeTeamId,
@@ -64,12 +90,16 @@ export default function MatchTimeline({
   const { isDark } = useTheme();
   const palette = isDark ? DARK_BG : LIGHT_BG;
   const borders = isDark ? DARK_BORDER : LIGHT_BORDER;
-
-  if (sorted.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Chưa có sự kiện nào</div>
-    );
-  }
+  const homeEventCount = sorted.filter((event) => event.team?.id === homeTeamId).length;
+  const awayEventCount = sorted.length - homeEventCount;
+  const homeTheme = getTeamTheme(homeTeamName);
+  const awayTheme = getTeamTheme(awayTeamName);
+  const heroStyle = {
+    '--match-home-primary': homeTheme.primary,
+    '--match-home-border': homeTheme.border,
+    '--match-away-primary': awayTheme.primary,
+    '--match-away-border': awayTheme.border,
+  } as CSSProperties;
 
   // CSS keyframes for slide-in animation
   const animStyles = `
@@ -94,210 +124,222 @@ export default function MatchTimeline({
     <div>
       <style>{animStyles}</style>
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          padding: '8px 16px',
-          marginBottom: 8,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: 8,
-          color: '#fff',
-        }}
-      >
-        <Text strong style={{ color: '#fff', fontSize: 14 }}>
-          {homeTeamName}
-        </Text>
-        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>DIỄN BIẾN TRẬN ĐẤU</Text>
-        <Text strong style={{ color: '#fff', fontSize: 14 }}>
-          {awayTeamName}
-        </Text>
-      </div>
-
-      {/* Timeline */}
-      <div style={{ position: 'relative', padding: '0 8px' }}>
-        {/* Center line */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: 0,
-            bottom: 0,
-            width: 3,
-            background: 'linear-gradient(180deg, #667eea, #764ba2)',
-            transform: 'translateX(-50%)',
-            borderRadius: 2,
-            opacity: 0.3,
-          }}
-        />
-
-        {sorted.map((event, idx) => {
-          const isHome = event.team?.id === homeTeamId;
-          const meta = EVENT_TYPE_MAP[event.type] ?? {
-            label: event.type,
-            color: 'default',
-            icon: '•',
-          };
-
-          const bgColor = palette[event.type] ?? palette.DEFAULT;
-
-          const borderColor = borders[event.type] ?? borders.DEFAULT;
-
-          return (
-            <div
-              key={event.id ?? idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: 8,
-                minHeight: 44,
-                animationDelay: `${idx * 0.08}s`,
-                animationFillMode: 'both',
-              }}
-            >
-              {/* Left (home) side */}
-              <div
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  paddingRight: 16,
-                }}
-              >
-                {isHome && (
-                  <Card
-                    size="small"
-                    className="timeline-event-home"
-                    style={{
-                      background: bgColor,
-                      border: `1px solid ${borderColor}`,
-                      borderRadius: 8,
-                      maxWidth: 280,
-                      cursor: event.playerId ? 'pointer' : 'default',
-                      animationDelay: `${idx * 0.08}s`,
-                    }}
-                    styles={{ body: { padding: '6px 10px' } }}
-                    onClick={() => event.playerId && onPlayerClick?.(event.playerId)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16 }}>{meta.icon}</span>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>
-                          {event.player?.fullName ?? '—'}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#888' }}>
-                          <Tag
-                            color={meta.color}
-                            style={{ fontSize: 10, lineHeight: '16px', marginRight: 4 }}
-                          >
-                            {meta.label}
-                          </Tag>
-                          {event.relatedPlayer && (
-                            <span style={{ color: '#aaa' }}>
-                              {event.type === 'SUBSTITUTION' ? '↘ ' : '🅰 '}
-                              {event.relatedPlayer.fullName}
-                            </span>
-                          )}
-                          {event.goalType && (
-                            <Tag style={{ fontSize: 10, marginLeft: 2 }}>{event.goalType}</Tag>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-              </div>
-
-              {/* Center minute bubble */}
-              <div
-                className="timeline-minute"
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  animationDelay: `${idx * 0.08}s`,
-                  background:
-                    event.type === 'GOAL' || event.type === 'PENALTY'
-                      ? '#52c41a'
-                      : event.type === 'RED_CARD'
-                        ? '#ff4d4f'
-                        : event.type === 'YELLOW_CARD'
-                          ? '#faad14'
-                          : event.type === 'SUBSTITUTION'
-                            ? '#1890ff'
-                            : event.type === 'OWN_GOAL'
-                              ? '#fa8c16'
-                              : '#8c8c8c',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  flexShrink: 0,
-                  zIndex: 1,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                }}
-              >
-                {event.minute}'
-              </div>
-
-              {/* Right (away) side */}
-              <div
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  justifyContent: 'flex-start',
-                  paddingLeft: 16,
-                }}
-              >
-                {!isHome && (
-                  <Card
-                    size="small"
-                    className="timeline-event-away"
-                    style={{
-                      background: bgColor,
-                      border: `1px solid ${borderColor}`,
-                      borderRadius: 8,
-                      maxWidth: 280,
-                      cursor: event.playerId ? 'pointer' : 'default',
-                      animationDelay: `${idx * 0.08}s`,
-                    }}
-                    styles={{ body: { padding: '6px 10px' } }}
-                    onClick={() => event.playerId && onPlayerClick?.(event.playerId)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16 }}>{meta.icon}</span>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>
-                          {event.player?.fullName ?? '—'}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#888' }}>
-                          <Tag
-                            color={meta.color}
-                            style={{ fontSize: 10, lineHeight: '16px', marginRight: 4 }}
-                          >
-                            {meta.label}
-                          </Tag>
-                          {event.relatedPlayer && (
-                            <span style={{ color: '#aaa' }}>
-                              {event.type === 'SUBSTITUTION' ? '↘ ' : '🅰 '}
-                              {event.relatedPlayer.fullName}
-                            </span>
-                          )}
-                          {event.goalType && (
-                            <Tag style={{ fontSize: 10, marginLeft: 2 }}>{event.goalType}</Tag>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-              </div>
+      <section className="match-timeline-hero" style={heroStyle} aria-label="Diễn biến trận đấu">
+        <div className="match-timeline-grid">
+          <article className="match-timeline-grid-card match-timeline-team-card-home">
+            <Text className="match-timeline-card-label">Đội nhà</Text>
+            <div className="match-timeline-team-main">
+              <TeamLogo teamName={homeTeamName} />
+              <strong>{homeTeamName}</strong>
             </div>
-          );
-        })}
-      </div>
+            <span>{homeEventCount} sự kiện</span>
+          </article>
+          <article className="match-timeline-grid-card match-timeline-center-card">
+            <Text className="match-timeline-card-label">Diễn biến trận đấu</Text>
+            <strong>{sorted.length}</strong>
+            <span>Tổng sự kiện</span>
+          </article>
+          <article className="match-timeline-grid-card match-timeline-team-card-away">
+            <Text className="match-timeline-card-label">Đội khách</Text>
+            <div className="match-timeline-team-main">
+              <TeamLogo teamName={awayTeamName} />
+              <strong>{awayTeamName}</strong>
+            </div>
+            <span>{awayEventCount} sự kiện</span>
+          </article>
+        </div>
+      </section>
+
+      {sorted.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Chưa có sự kiện nào</div>
+      ) : (
+        <>
+          {/* Timeline */}
+          <div style={{ position: 'relative', padding: '0 8px' }}>
+            {/* Center line */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: 0,
+                bottom: 0,
+                width: 3,
+                background: 'linear-gradient(180deg, #667eea, #764ba2)',
+                transform: 'translateX(-50%)',
+                borderRadius: 2,
+                opacity: 0.3,
+              }}
+            />
+
+            {sorted.map((event, idx) => {
+              const isHome = event.team?.id === homeTeamId;
+              const meta = EVENT_TYPE_MAP[event.type] ?? {
+                label: event.type,
+                color: 'default',
+                icon: '•',
+              };
+
+              const bgColor = palette[event.type] ?? palette.DEFAULT;
+
+              const borderColor = borders[event.type] ?? borders.DEFAULT;
+
+              return (
+                <div
+                  key={event.id ?? idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginBottom: 8,
+                    minHeight: 44,
+                    animationDelay: `${idx * 0.08}s`,
+                    animationFillMode: 'both',
+                  }}
+                >
+                  {/* Left (home) side */}
+                  <div
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      paddingRight: 16,
+                    }}
+                  >
+                    {isHome && (
+                      <Card
+                        size="small"
+                        className="timeline-event-home"
+                        style={{
+                          background: bgColor,
+                          border: `1px solid ${borderColor}`,
+                          borderRadius: 8,
+                          maxWidth: 280,
+                          cursor: event.playerId ? 'pointer' : 'default',
+                          animationDelay: `${idx * 0.08}s`,
+                        }}
+                        styles={{ body: { padding: '6px 10px' } }}
+                        onClick={() => event.playerId && onPlayerClick?.(event.playerId)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 16 }}>{meta.icon}</span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>
+                              {event.player?.fullName ?? '—'}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888' }}>
+                              <Tag
+                                color={meta.color}
+                                style={{ fontSize: 10, lineHeight: '16px', marginRight: 4 }}
+                              >
+                                {meta.label}
+                              </Tag>
+                              {event.relatedPlayer && (
+                                <span style={{ color: '#aaa' }}>
+                                  {event.type === 'SUBSTITUTION' ? '↘ ' : '🅰 '}
+                                  {event.relatedPlayer.fullName}
+                                </span>
+                              )}
+                              {event.goalType && (
+                                <Tag style={{ fontSize: 10, marginLeft: 2 }}>{event.goalType}</Tag>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+
+                  {/* Center minute bubble */}
+                  <div
+                    className="timeline-minute"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      animationDelay: `${idx * 0.08}s`,
+                      background:
+                        event.type === 'GOAL' || event.type === 'PENALTY'
+                          ? '#52c41a'
+                          : event.type === 'RED_CARD'
+                            ? '#ff4d4f'
+                            : event.type === 'YELLOW_CARD'
+                              ? '#faad14'
+                              : event.type === 'SUBSTITUTION'
+                                ? '#1890ff'
+                                : event.type === 'OWN_GOAL'
+                                  ? '#fa8c16'
+                                  : '#8c8c8c',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      flexShrink: 0,
+                      zIndex: 1,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    {event.minute}'
+                  </div>
+
+                  {/* Right (away) side */}
+                  <div
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      paddingLeft: 16,
+                    }}
+                  >
+                    {!isHome && (
+                      <Card
+                        size="small"
+                        className="timeline-event-away"
+                        style={{
+                          background: bgColor,
+                          border: `1px solid ${borderColor}`,
+                          borderRadius: 8,
+                          maxWidth: 280,
+                          cursor: event.playerId ? 'pointer' : 'default',
+                          animationDelay: `${idx * 0.08}s`,
+                        }}
+                        styles={{ body: { padding: '6px 10px' } }}
+                        onClick={() => event.playerId && onPlayerClick?.(event.playerId)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 16 }}>{meta.icon}</span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>
+                              {event.player?.fullName ?? '—'}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888' }}>
+                              <Tag
+                                color={meta.color}
+                                style={{ fontSize: 10, lineHeight: '16px', marginRight: 4 }}
+                              >
+                                {meta.label}
+                              </Tag>
+                              {event.relatedPlayer && (
+                                <span style={{ color: '#aaa' }}>
+                                  {event.type === 'SUBSTITUTION' ? '↘ ' : '🅰 '}
+                                  {event.relatedPlayer.fullName}
+                                </span>
+                              )}
+                              {event.goalType && (
+                                <Tag style={{ fontSize: 10, marginLeft: 2 }}>{event.goalType}</Tag>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

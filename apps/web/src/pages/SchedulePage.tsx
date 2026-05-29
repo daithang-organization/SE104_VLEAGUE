@@ -37,7 +37,7 @@ import {
   apiPublishSchedule,
   type ScheduleMatch,
 } from '../services/scheduleApi';
-import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { STATUS_MAP } from '../utils/constants';
 
@@ -85,10 +85,10 @@ export default function SchedulePage() {
 
   // Fetch seasons + stadiums on mount
   useEffect(() => {
-    apiGetSeasons()
-      .then((list) => {
+    Promise.all([apiGetSeasons(), apiGetCurrentSeason().catch(() => null)])
+      .then(([list, current]) => {
         setSeasons(list);
-        const active = list.find((s) => s.status === 'IN_PROGRESS' || s.status === 'UPCOMING');
+        const active = current ?? list.find((s) => s.status === 'IN_PROGRESS');
         if (active) setSelectedSeasonId(active.id);
         else if (list.length > 0) setSelectedSeasonId(list[0].id);
       })
@@ -390,7 +390,10 @@ export default function SchedulePage() {
                     {activeRound
                       ? `${t('schedule.roundMatches', { count: activeRoundMatches.length })}${
                           activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                        } · ${activeRoundFinishedCount}/${activeRoundMatches.length} xong`
+                        } · ${t('schedule.roundProgress', {
+                          finished: activeRoundFinishedCount,
+                          total: activeRoundMatches.length,
+                        })}`
                       : ''}
                   </Typography.Text>
                 </div>

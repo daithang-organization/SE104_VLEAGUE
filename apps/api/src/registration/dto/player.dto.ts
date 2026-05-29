@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -23,6 +24,18 @@ export enum PlayerPosition {
 export enum PlayerType {
   DOMESTIC = 'DOMESTIC',
   FOREIGN = 'FOREIGN',
+}
+
+export enum PlayerSortBy {
+  FULL_NAME = 'fullName',
+  DOB = 'dob',
+  HEIGHT_CM = 'heightCm',
+  WEIGHT_KG = 'weightKg',
+}
+
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc',
 }
 
 export class CreatePlayerDto {
@@ -236,6 +249,24 @@ export class ListPlayersQueryDto extends PaginationQueryDto {
   @IsInt()
   @Min(0)
   maxAge?: number;
+
+  @ApiPropertyOptional({
+    description: 'Player sort field',
+    enum: PlayerSortBy,
+    default: PlayerSortBy.FULL_NAME,
+  })
+  @IsOptional()
+  @IsIn(Object.values(PlayerSortBy))
+  sortBy?: PlayerSortBy;
+
+  @ApiPropertyOptional({
+    description: 'Sort order',
+    enum: SortOrder,
+    default: SortOrder.ASC,
+  })
+  @IsOptional()
+  @IsIn(Object.values(SortOrder))
+  sortOrder?: SortOrder;
 }
 
 export class PlayerResponseDto {

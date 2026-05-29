@@ -7,6 +7,10 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import {
+  TeamManagerScopeService,
+  type TeamScopeActor,
+} from '../team-manager/team-manager-scope.service';
 import { AddPlayerToRosterDto, UpdateRosterPlayerDto } from './dto';
 
 /** Fallback limits when no season regulation is available */
@@ -20,6 +24,7 @@ export class RosterService {
   constructor(
     private prisma: PrismaService,
     private regulationHelper: RegulationHelper,
+    private readonly teamManagerScope: TeamManagerScopeService,
   ) {}
 
   /**
@@ -65,7 +70,15 @@ export class RosterService {
   /**
    * Add player to team roster
    */
-  async addPlayerToRoster(teamId: string, dto: AddPlayerToRosterDto) {
+  async addPlayerToRoster(
+    teamId: string,
+    dto: AddPlayerToRosterDto,
+    actor?: TeamScopeActor,
+  ) {
+    if (actor) {
+      await this.teamManagerScope.assertCanManageTeam(actor, teamId);
+    }
+
     // Check team exists
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
@@ -224,7 +237,12 @@ export class RosterService {
     teamId: string,
     playerId: string,
     dto: UpdateRosterPlayerDto,
+    actor?: TeamScopeActor,
   ) {
+    if (actor) {
+      await this.teamManagerScope.assertCanManageTeam(actor, teamId);
+    }
+
     const teamPlayer = await this.prisma.teamPlayer.findFirst({
       where: {
         teamId,
@@ -265,7 +283,15 @@ export class RosterService {
   /**
    * Remove player from roster (mark as left)
    */
-  async removePlayerFromRoster(teamId: string, playerId: string) {
+  async removePlayerFromRoster(
+    teamId: string,
+    playerId: string,
+    actor?: TeamScopeActor,
+  ) {
+    if (actor) {
+      await this.teamManagerScope.assertCanManageTeam(actor, teamId);
+    }
+
     const teamPlayer = await this.prisma.teamPlayer.findFirst({
       where: {
         teamId,

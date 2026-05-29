@@ -1,7 +1,15 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
+  EventType,
+  MatchKitType,
+  MatchLineupRole,
+  MatchLineupStatus,
   MatchStatus,
+  PlayerPosition,
+  PlayerSuspensionStatus,
   PrismaClient,
+  PromotionCandidateStatus,
+  PromotionQualificationType,
   SeasonStatus,
   SeasonTeamStatus,
   TeamInvitationSourceType,
@@ -35,6 +43,8 @@ const REAL_TEAMS = [
 ];
 
 const REQUIRED_APPROVED_TEAMS = 10;
+const DEFAULT_SEASON_NAME = 'V.League 2024-2025';
+const LEGACY_SEASON_NAME = 'V.League 2024-25';
 const INVITATION_REGULATION_KEYS = [
   'MIN_ROSTER',
   'MAX_ROSTER',
@@ -44,6 +54,26 @@ const INVITATION_REGULATION_KEYS = [
   'MIN_STADIUM_FIFA_STARS',
   'PARTICIPATION_FEE_VND',
 ];
+const DEMO_LINEUP_FORMATION = '4-4-2';
+const DEMO_STARTER_SHAPE: { position: PlayerPosition; count: number }[] = [
+  { position: PlayerPosition.GK, count: 1 },
+  { position: PlayerPosition.DF, count: 4 },
+  { position: PlayerPosition.MF, count: 4 },
+  { position: PlayerPosition.FW, count: 2 },
+];
+
+type DemoRosterRow = {
+  playerId: string;
+  jerseyNumber: number | null;
+  player: { position: PlayerPosition };
+};
+
+type DemoMatch = {
+  id: string;
+  roundNo: number;
+  homeTeamId: string;
+  awayTeamId: string;
+};
 
 function slugTeamName(name: string) {
   return name
@@ -65,23 +95,234 @@ function getInvitationSource(index: number) {
   return TeamInvitationSourceType.REPLACEMENT;
 }
 
-async function main() {
-  console.log('🏆 Setting up V.League 2024-25 Season...\n');
+function takeRosterRows(
+  rows: DemoRosterRow[],
+  selectedIds: Set<string>,
+  position: PlayerPosition,
+  count: number,
+) {
+  const picked = rows
+    .filter(
+      (row) =>
+        row.player.position === position && !selectedIds.has(row.playerId),
+    )
+    .slice(0, count);
+  picked.forEach((row) => selectedIds.add(row.playerId));
+  return picked;
+}
 
-  // 1. Create Season
-  const season = await prisma.season.upsert({
-    where: { name: 'V.League 2024-25' },
-    update: {
-      status: SeasonStatus.IN_PROGRESS,
+function buildDemoLineupRows(rosterRows: DemoRosterRow[]) {
+  const selectedIds = new Set<string>();
+  const starters = DEMO_STARTER_SHAPE.flatMap((shape) =>
+    takeRosterRows(rosterRows, selectedIds, shape.position, shape.count),
+  );
+
+  if (starters.length < 11) {
+    const filler = rosterRows
+      .filter((row) => !selectedIds.has(row.playerId))
+      .slice(0, 11 - starters.length);
+    filler.forEach((row) => selectedIds.add(row.playerId));
+    starters.push(...filler);
+  }
+
+  const substitutes = rosterRows
+    .filter((row) => !selectedIds.has(row.playerId))
+    .slice(0, 5);
+
+  return [
+    ...starters.map((row) => ({
+      playerId: row.playerId,
+      role: MatchLineupRole.STARTER,
+      position: row.player.position,
+      shirtNumber: row.jerseyNumber,
+    })),
+    ...substitutes.map((row) => ({
+      playerId: row.playerId,
+      role: MatchLineupRole.SUBSTITUTE,
+      position: row.player.position,
+      shirtNumber: row.jerseyNumber,
+    })),
+  ];
+}
+
+async function seedDemoLineupsAndSuspensions(
+  seasonId: string,
+  round1Matches: DemoMatch[],
+) {
+  const sourceMatch = round1Matches[0];
+  if (!sourceMatch) {
+    console.warn('  ⚠️ Skipping demo suspension: no Round 1 match found.');
+    return;
+  }
+
+  const suspendedTeamId = sourceMatch.homeTeamId;
+  const cardCandidates = await prisma.teamPlayer.findMany({
+    where: { teamId: suspendedTeamId, leftAt: null },
+    include: {
+      player: { select: { fullName: true, position: true } },
     },
-    create: {
-      name: 'V.League 2024-25',
-      year: 2024,
-      startDate: new Date('2024-09-14'),
-      endDate: new Date('2025-06-21'),
-      status: SeasonStatus.IN_PROGRESS,
+    orderBy: [{ jerseyNumber: 'asc' }, { joinedAt: 'asc' }],
+    take: 16,
+  });
+  const suspendedPlayer =
+    cardCandidates.find((row) => row.player.position !== PlayerPosition.GK) ??
+    cardCandidates[0];
+
+  if (!suspendedPlayer) {
+    console.warn(
+      '  ⚠️ Skipping demo suspension: selected team has no active players.',
+    );
+    return;
+  }
+
+  const nextMatch = await prisma.match.findFirst({
+    where: {
+      seasonId,
+      roundNo: { gt: sourceMatch.roundNo },
+      OR: [{ homeTeamId: suspendedTeamId }, { awayTeamId: suspendedTeamId }],
+    },
+    orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
+  });
+
+  if (!nextMatch) {
+    console.warn('  ⚠️ Skipping demo suspension: no next match found.');
+    return;
+  }
+
+  await prisma.match.update({
+    where: { id: nextMatch.id },
+    data: { status: MatchStatus.PUBLISHED },
+  });
+
+  await prisma.matchEvent.create({
+    data: {
+      matchId: sourceMatch.id,
+      teamId: suspendedTeamId,
+      playerId: suspendedPlayer.playerId,
+      type: EventType.RED_CARD,
+      minute: 88,
+      note: 'Demo treo giò vòng kế tiếp',
     },
   });
+
+  await prisma.playerSuspension.upsert({
+    where: {
+      playerId_sourceMatchId_reason: {
+        playerId: suspendedPlayer.playerId,
+        sourceMatchId: sourceMatch.id,
+        reason: 'RED_CARD',
+      },
+    },
+    create: {
+      playerId: suspendedPlayer.playerId,
+      teamId: suspendedTeamId,
+      seasonId,
+      sourceMatchId: sourceMatch.id,
+      effectiveMatchId: nextMatch.id,
+      reason: 'RED_CARD',
+      status: PlayerSuspensionStatus.ACTIVE,
+    },
+    update: {
+      effectiveMatchId: nextMatch.id,
+      status: PlayerSuspensionStatus.ACTIVE,
+      servedAt: null,
+    },
+  });
+
+  for (const teamId of [nextMatch.homeTeamId, nextMatch.awayTeamId]) {
+    const rosterRows = await prisma.teamPlayer.findMany({
+      where: {
+        teamId,
+        leftAt: null,
+        ...(teamId === suspendedTeamId
+          ? { playerId: { not: suspendedPlayer.playerId } }
+          : {}),
+      },
+      include: {
+        player: { select: { position: true } },
+      },
+      orderBy: [{ jerseyNumber: 'asc' }, { joinedAt: 'asc' }],
+    });
+    const lineupPlayers = buildDemoLineupRows(rosterRows);
+
+    if (lineupPlayers.length !== 16) {
+      console.warn(
+        `  ⚠️ Skipping demo lineup for team ${teamId}: only ${lineupPlayers.length}/16 eligible players.`,
+      );
+      continue;
+    }
+
+    await prisma.matchTeamRegistration.upsert({
+      where: { matchId_teamId: { matchId: nextMatch.id, teamId } },
+      create: {
+        matchId: nextMatch.id,
+        teamId,
+        kitType:
+          teamId === nextMatch.homeTeamId
+            ? MatchKitType.PRIMARY
+            : MatchKitType.BACKUP,
+        formation: DEMO_LINEUP_FORMATION,
+        status: MatchLineupStatus.APPROVED,
+        submittedAt: new Date(),
+        reviewedAt: new Date(),
+        lineupPlayers: { create: lineupPlayers },
+      },
+      update: {
+        kitType:
+          teamId === nextMatch.homeTeamId
+            ? MatchKitType.PRIMARY
+            : MatchKitType.BACKUP,
+        formation: DEMO_LINEUP_FORMATION,
+        status: MatchLineupStatus.APPROVED,
+        submittedAt: new Date(),
+        reviewedAt: new Date(),
+        reviewNote: null,
+        lineupPlayers: {
+          deleteMany: {},
+          create: lineupPlayers,
+        },
+      },
+    });
+  }
+
+  console.log(
+    `✅ Seeded demo lineups and suspension for round ${nextMatch.roundNo}. Suspended: ${suspendedPlayer.player.fullName}.`,
+  );
+}
+
+async function main() {
+  console.log(`🏆 Setting up ${DEFAULT_SEASON_NAME} Season...\n`);
+
+  // 1. Create Season
+  let season = await prisma.season.findUnique({
+    where: { name: DEFAULT_SEASON_NAME },
+  });
+  const legacySeason = season
+    ? null
+    : await prisma.season.findUnique({ where: { name: LEGACY_SEASON_NAME } });
+  const existingSeason = season ?? legacySeason;
+  if (existingSeason) {
+    season = await prisma.season.update({
+      where: { id: existingSeason.id },
+      data: {
+        name: DEFAULT_SEASON_NAME,
+        year: 2024,
+        startDate: new Date('2024-09-14'),
+        endDate: new Date('2025-06-21'),
+        status: SeasonStatus.IN_PROGRESS,
+      },
+    });
+  } else {
+    season = await prisma.season.create({
+      data: {
+        name: DEFAULT_SEASON_NAME,
+        year: 2024,
+        startDate: new Date('2024-09-14'),
+        endDate: new Date('2025-06-21'),
+        status: SeasonStatus.IN_PROGRESS,
+      },
+    });
+  }
   console.log(`✅ Season: ${season.name} (ID: ${season.id})`);
 
   // 1.5 Seed Regulations for this season
@@ -150,6 +391,7 @@ async function main() {
       update: {
         role: UserRole.TEAM_MANAGER,
         roleId: teamManagerRole.id,
+        managedTeamId: team.id,
         passwordHash,
         emailVerified: true,
         name: `Manager ${team.shortName ?? team.name}`,
@@ -158,6 +400,7 @@ async function main() {
         email,
         role: UserRole.TEAM_MANAGER,
         roleId: teamManagerRole.id,
+        managedTeamId: team.id,
         passwordHash,
         emailVerified: true,
         name: `Manager ${team.shortName ?? team.name}`,
@@ -190,13 +433,13 @@ async function main() {
         ownerName: `Công ty chủ quản ${team.name}`,
         ownerCountry: 'Việt Nam',
         ownerAddress: team.city ?? 'Việt Nam',
-        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-25.`,
+        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-2025.`,
         primaryKit: 'Áo màu chính thức theo nhận diện CLB',
         backupKit: 'Áo dự bị màu tương phản',
         participationFeePaid: true,
         feePaidAt: new Date(),
         feeReceiptCode: `FEE-${slugTeamName(team.name).toUpperCase()}`,
-        externalCompetitionSchedule: 'Cúp Quốc gia 2024-25',
+        externalCompetitionSchedule: 'Cúp Quốc gia 2024-2025',
         applicationSubmittedAt: new Date(),
         applicationReviewNote: null,
       },
@@ -208,13 +451,13 @@ async function main() {
         ownerName: `Công ty chủ quản ${team.name}`,
         ownerCountry: 'Việt Nam',
         ownerAddress: team.city ?? 'Việt Nam',
-        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-25.`,
+        teamIntroduction: `${team.name} đăng ký tham dự V.League 2024-2025.`,
         primaryKit: 'Áo màu chính thức theo nhận diện CLB',
         backupKit: 'Áo dự bị màu tương phản',
         participationFeePaid: true,
         feePaidAt: new Date(),
         feeReceiptCode: `FEE-${slugTeamName(team.name).toUpperCase()}`,
-        externalCompetitionSchedule: 'Cúp Quốc gia 2024-25',
+        externalCompetitionSchedule: 'Cúp Quốc gia 2024-2025',
         applicationSubmittedAt: new Date(),
       },
     });
@@ -241,6 +484,53 @@ async function main() {
     console.log(`  🕒 Reserve/registered only: ${team.name}`);
   }
 
+  console.log('\n🏅 Seeding promotion ranking snapshot...');
+  const promotedSnapshot = [
+    {
+      team: teams[8],
+      rank: 1,
+      qualificationType: PromotionQualificationType.CHAMPION,
+      status: PromotionCandidateStatus.ACCEPTED,
+      note: 'Vô địch V.League 2 2024',
+    },
+    {
+      team: teams[9],
+      rank: 2,
+      qualificationType: PromotionQualificationType.RUNNER_UP,
+      status: PromotionCandidateStatus.ACCEPTED,
+      note: 'Á quân V.League 2 2024',
+    },
+  ];
+
+  for (const entry of promotedSnapshot) {
+    if (!entry.team) continue;
+    await prisma.promotionCandidate.upsert({
+      where: {
+        seasonId_teamId: {
+          seasonId: season.id,
+          teamId: entry.team.id,
+        },
+      },
+      update: {
+        rank: entry.rank,
+        sourceCompetition: 'V.League 2 2024',
+        qualificationType: entry.qualificationType,
+        status: entry.status,
+        note: entry.note,
+      },
+      create: {
+        seasonId: season.id,
+        teamId: entry.team.id,
+        rank: entry.rank,
+        sourceCompetition: 'V.League 2 2024',
+        qualificationType: entry.qualificationType,
+        status: entry.status,
+        note: entry.note,
+      },
+    });
+    console.log(`  ✅ #${entry.rank} ${entry.team.name}: ${entry.note}`);
+  }
+
   // 2.2 Seed invitations: approved teams are treated as accepted; reserve teams stay pending
   console.log('\n📨 Seeding team invitations and popup notifications...');
   const invitationSnapshot = Object.fromEntries(
@@ -257,26 +547,35 @@ async function main() {
     const status = isApprovedTeam
       ? TeamInvitationStatus.ACCEPTED
       : TeamInvitationStatus.SENT;
+    const sourceType = getInvitationSource(index);
+    const promotionNote =
+      sourceType === TeamInvitationSourceType.PROMOTED
+        ? index === 8
+          ? 'Vô địch V.League 2 2024'
+          : 'Á quân V.League 2 2024'
+        : null;
     const invitation = await prisma.teamInvitation.upsert({
       where: { seasonId_teamId: { seasonId: season.id, teamId: team.id } },
       update: {
-        sourceType: getInvitationSource(index),
+        sourceType,
         status,
         sentAt,
         deadlineAt,
         responseAt: isApprovedTeam ? sentAt : null,
         responseReason: null,
         regulationsSnapshot: invitationSnapshot,
+        promotionNote,
       },
       create: {
         seasonId: season.id,
         teamId: team.id,
-        sourceType: getInvitationSource(index),
+        sourceType,
         status,
         sentAt,
         deadlineAt,
         responseAt: isApprovedTeam ? sentAt : null,
         regulationsSnapshot: invitationSnapshot,
+        promotionNote,
       },
     });
 
@@ -473,7 +772,9 @@ async function main() {
   }
   console.log('✅ Seeded Round 1 results and goals.');
 
-  console.log('\n🚀 V.League 2024-25 Setup Complete!');
+  await seedDemoLineupsAndSuspensions(season.id, round1Matches);
+
+  console.log(`\n🚀 ${DEFAULT_SEASON_NAME} Setup Complete!`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📧 Team manager demo accounts use password:', DEMO_PASSWORD);
   console.log(

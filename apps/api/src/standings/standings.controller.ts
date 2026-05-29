@@ -1,10 +1,15 @@
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Post,
   Query,
+  Req,
   Res,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import {
@@ -16,6 +21,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Role } from '../auth/roles.enum';
 import { toCsv } from '../common/utils/csv';
 import { StandingsService } from './standings.service';
 import type { StandingsMode } from './standings.service';
@@ -27,7 +36,7 @@ export class StandingsController {
   constructor(private readonly standingsService: StandingsService) {}
 
   @Get()
-  @CacheTTL(30000) // Cache for 30 seconds
+  @CacheTTL(30000)
   @ApiOperation({
     summary: 'Lấy bảng xếp hạng',
     description:
@@ -81,39 +90,10 @@ export class StandingsController {
   }
 
   @Get('top-scorers')
-  @ApiOperation({
-    summary: 'Lấy danh sách vua phá lưới',
-    description: 'Trả về danh sách cầu thủ ghi nhiều bàn thắng nhất',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: 'integer',
-    description: 'Số lượng cầu thủ (mặc định: 10)',
-  })
-  @ApiOkResponse({
-    description: 'Danh sách vua phá lưới',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          position: { type: 'integer', example: 1 },
-          playerId: { type: 'string', format: 'uuid' },
-          playerName: { type: 'string', example: 'Nguyễn Quang Hải' },
-          teamId: { type: 'string', format: 'uuid' },
-          teamName: { type: 'string', example: 'Hà Nội FC' },
-          goals: { type: 'integer', example: 12 },
-        },
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Lấy danh sách vua phá lưới' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
+  @ApiOkResponse({ description: 'Danh sách vua phá lưới' })
   getTopScorers(
     @Query('seasonId') seasonId?: string,
     @Query('limit') limit?: number,
@@ -122,39 +102,10 @@ export class StandingsController {
   }
 
   @Get('top-assists')
-  @ApiOperation({
-    summary: 'Lấy danh sách kiến tạo',
-    description: 'Trả về danh sách cầu thủ kiến tạo nhiều nhất',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: 'integer',
-    description: 'Số lượng cầu thủ (mặc định: 10)',
-  })
-  @ApiOkResponse({
-    description: 'Danh sách kiến tạo',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          position: { type: 'integer', example: 1 },
-          playerId: { type: 'string', format: 'uuid' },
-          playerName: { type: 'string', example: 'Nguyễn Quang Hải' },
-          teamId: { type: 'string', format: 'uuid' },
-          teamName: { type: 'string', example: 'Hà Nội FC' },
-          assists: { type: 'integer', example: 8 },
-        },
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Lấy danh sách kiến tạo' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
+  @ApiOkResponse({ description: 'Danh sách kiến tạo' })
   getTopAssists(
     @Query('seasonId') seasonId?: string,
     @Query('limit') limit?: number,
@@ -163,22 +114,9 @@ export class StandingsController {
   }
 
   @Get('card-stats')
-  @ApiOperation({
-    summary: 'Thống kê thẻ phạt',
-    description: 'Trả về danh sách cầu thủ bị thẻ vàng/đỏ nhiều nhất',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: 'integer',
-    description: 'Số lượng (mặc định: 20)',
-  })
+  @ApiOperation({ summary: 'Thống kê thẻ phạt' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
   @ApiOkResponse({ description: 'Danh sách thẻ phạt' })
   getCardStats(
     @Query('seasonId') seasonId?: string,
@@ -188,26 +126,10 @@ export class StandingsController {
   }
 
   @Get('player-of-match')
-  @ApiOperation({
-    summary: 'Thống kê số lần cầu thủ xuất sắc nhất trận',
-    description:
-      'Đếm số lần cầu thủ được chọn là cầu thủ xuất sắc từ báo cáo trận',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    type: 'integer',
-    description: 'Số lượng (mặc định: 20)',
-  })
-  @ApiOkResponse({
-    description: 'Danh sách cầu thủ xuất sắc theo số lần được bầu',
-  })
+  @ApiOperation({ summary: 'Thống kê cầu thủ xuất sắc nhất trận' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiQuery({ name: 'limit', required: false, type: 'integer' })
+  @ApiOkResponse({ description: 'Danh sách cầu thủ xuất sắc' })
   getPlayerOfMatchStats(
     @Query('seasonId') seasonId?: string,
     @Query('limit') limit?: number,
@@ -216,62 +138,99 @@ export class StandingsController {
   }
 
   @Get('suspensions')
-  @ApiOperation({
-    summary: 'Danh sách cầu thủ bị treo giò',
-    description: 'Trả về danh sách treo giò được tạo từ luật thẻ phạt',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
+  @ApiOperation({ summary: 'Danh sách cầu thủ bị treo giò' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiOkResponse({ description: 'Danh sách cầu thủ bị treo giò' })
   getSuspensionStats(@Query('seasonId') seasonId?: string) {
     return this.standingsService.getSuspensionStats(seasonId);
   }
 
   @Get('awards')
-  @ApiOperation({
-    summary: 'Tổng hợp giải thưởng cuối mùa',
-    description:
-      'Trả về vô địch, á quân, vua phá lưới và cầu thủ xuất sắc dựa trên BXH final/thống kê',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
+  @ApiOperation({ summary: 'Tổng hợp giải thưởng cuối mùa' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiOkResponse({ description: 'Danh sách giải thưởng cuối mùa' })
   getSeasonAwards(@Query('seasonId') seasonId?: string) {
     return this.standingsService.getSeasonAwards(seasonId);
   }
 
   @Get('team-stats')
-  @ApiOperation({
-    summary: 'Thống kê theo đội',
-    description:
-      'Trả về thống kê tổng hợp theo đội: trận, bàn thắng, thẻ, sạch lưới',
-  })
-  @ApiQuery({
-    name: 'seasonId',
-    required: false,
-    type: 'string',
-    description: 'ID mùa giải',
-  })
+  @ApiOperation({ summary: 'Thống kê theo đội' })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiOkResponse({ description: 'Thống kê đội' })
   getTeamStats(@Query('seasonId') seasonId?: string) {
     return this.standingsService.getTeamStats(seasonId);
   }
 
-  // ── CSV Export Endpoints ──────────────────────────────────────
+  // ── Draw Lot ──────────────────────────────────────────────────
+
+  @Get('draw-lot/status')
+  @ApiOperation({
+    summary: 'Kiểm tra trạng thái rút thăm',
+    description:
+      'Trả về danh sách đội cần rút thăm và kết quả rút thăm đã lưu (nếu có)',
+  })
+  @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
+  @ApiOkResponse({ description: 'Trạng thái rút thăm' })
+  getDrawLotStatus(@Query('seasonId') seasonId?: string) {
+    return this.standingsService.getDrawLotStatus(seasonId);
+  }
+
+  @Post('draw-lot/:seasonId/execute')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Rút thăm tự động',
+    description:
+      'Hệ thống random thứ hạng cho các đội bằng điểm/đối đầu. Admin cần xác nhận sau.',
+  })
+  @ApiParam({ name: 'seasonId', type: 'string', format: 'uuid' })
+  @ApiOkResponse({ description: 'Kết quả rút thăm tự động' })
+  executeDrawLot(
+    @Param('seasonId') seasonId: string,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.standingsService.executeDrawLot(seasonId, req.user?.id);
+  }
+
+  @Post('draw-lot/:seasonId/confirm')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Xác nhận kết quả rút thăm',
+    description: 'Admin xác nhận kết quả rút thăm hoặc ghi đè thứ hạng tùy ý.',
+  })
+  @ApiParam({ name: 'seasonId', type: 'string', format: 'uuid' })
+  @ApiOkResponse({ description: 'Đã xác nhận' })
+  confirmDrawLot(
+    @Param('seasonId') seasonId: string,
+    @Body()
+    body: { overrides?: Array<{ teamId: string; resolvedRank: number }> },
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.standingsService.confirmDrawLot(
+      seasonId,
+      body.overrides,
+      req.user?.id,
+    );
+  }
+
+  @Delete('draw-lot/:seasonId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Xóa kết quả rút thăm',
+    description: 'Xóa để rút thăm lại hoặc sửa lại.',
+  })
+  @ApiParam({ name: 'seasonId', type: 'string', format: 'uuid' })
+  @ApiOkResponse({ description: 'Đã xóa' })
+  resetDrawLot(@Param('seasonId') seasonId: string) {
+    return this.standingsService.resetDrawLot(seasonId);
+  }
+
+  // ── CSV Export ──────────────────────────────────────────────────
 
   @Get('export/standings')
-  @ApiOperation({
-    summary: 'Export bảng xếp hạng ra CSV',
-    description: 'Tải xuống bảng xếp hạng dưới dạng file CSV',
-  })
+  @ApiOperation({ summary: 'Export bảng xếp hạng ra CSV' })
   @ApiProduces('text/csv')
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   async exportStandingsCsv(
@@ -299,10 +258,6 @@ export class StandingsController {
   }
 
   @Get('export/top-scorers')
-  @ApiOperation({
-    summary: 'Export vua phá lưới ra CSV',
-    description: 'Tải xuống danh sách vua phá lưới dưới dạng file CSV',
-  })
   @ApiProduces('text/csv')
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiQuery({ name: 'limit', required: false, type: 'integer' })
@@ -323,10 +278,6 @@ export class StandingsController {
   }
 
   @Get('export/top-assists')
-  @ApiOperation({
-    summary: 'Export kiến tạo ra CSV',
-    description: 'Tải xuống danh sách kiến tạo dưới dạng file CSV',
-  })
   @ApiProduces('text/csv')
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiQuery({ name: 'limit', required: false, type: 'integer' })
@@ -347,10 +298,6 @@ export class StandingsController {
   }
 
   @Get('export/card-stats')
-  @ApiOperation({
-    summary: 'Export thống kê thẻ phạt ra CSV',
-    description: 'Tải xuống danh sách thẻ phạt dưới dạng file CSV',
-  })
   @ApiProduces('text/csv')
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiQuery({ name: 'limit', required: false, type: 'integer' })
@@ -371,10 +318,6 @@ export class StandingsController {
   }
 
   @Get('export/team-stats')
-  @ApiOperation({
-    summary: 'Export thống kê đội ra CSV',
-    description: 'Tải xuống thống kê tổng hợp theo đội dưới dạng file CSV',
-  })
   @ApiProduces('text/csv')
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   async exportTeamStatsCsv(
@@ -393,18 +336,8 @@ export class StandingsController {
 
   @Get('head-to-head')
   @ApiOperation({ summary: 'Thống kê đối đầu giữa 2 đội' })
-  @ApiQuery({
-    name: 'team1',
-    required: true,
-    type: 'string',
-    description: 'ID đội 1',
-  })
-  @ApiQuery({
-    name: 'team2',
-    required: true,
-    type: 'string',
-    description: 'ID đội 2',
-  })
+  @ApiQuery({ name: 'team1', required: true, type: 'string' })
+  @ApiQuery({ name: 'team2', required: true, type: 'string' })
   @ApiQuery({ name: 'seasonId', required: false, type: 'string' })
   @ApiOkResponse({ description: 'Kết quả đối đầu' })
   getHeadToHead(
@@ -415,7 +348,7 @@ export class StandingsController {
     return this.standingsService.getHeadToHead(team1, team2, seasonId);
   }
 
-  // ── Player Individual Stats ─────────────────────────────────
+  // ── Player Stats ─────────────────────────────────
 
   @Get('player-stats/:playerId')
   @ApiOperation({ summary: 'Thống kê cá nhân cầu thủ' })
@@ -432,10 +365,7 @@ export class StandingsController {
   // ── Season-specific Standings ─────────────────────────────────
 
   @Get(':seasonId')
-  @ApiOperation({
-    summary: 'Lấy bảng xếp hạng theo mùa giải',
-    description: 'Trả về bảng xếp hạng cho mùa giải cụ thể',
-  })
+  @ApiOperation({ summary: 'Lấy bảng xếp hạng theo mùa giải' })
   @ApiParam({ name: 'seasonId', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Bảng xếp hạng' })
   getStandingsBySeason(
