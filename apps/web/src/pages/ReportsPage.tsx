@@ -170,6 +170,9 @@ export default function ReportsPage() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
 
+  const topScorerGoals = scorers.reduce((max, scorer) => Math.max(max, scorer.goals), 0);
+  const topAssistCount = assists.reduce((max, assist) => Math.max(max, assist.assists), 0);
+
   const exportActions = (
     <Space wrap>
       <Button
@@ -213,12 +216,12 @@ export default function ReportsPage() {
         metrics={[
           {
             label: cleanTabLabel(t('reports.tabScorers')),
-            value: scorers.length.toLocaleString('vi-VN'),
+            value: topScorerGoals.toLocaleString('vi-VN'),
             icon: <TrophyOutlined />,
           },
           {
             label: cleanTabLabel(t('reports.tabAssists')),
-            value: assists.length.toLocaleString('vi-VN'),
+            value: topAssistCount.toLocaleString('vi-VN'),
             icon: <RiseOutlined />,
           },
           {

@@ -172,10 +172,12 @@ describe('ReportsPage', () => {
     expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
-  it('shows loaded report counts in the hero metrics', async () => {
+  it('shows top scoring and assist values in the hero metrics', async () => {
     renderPage();
 
     await waitFor(() => {
+      expect(screen.getByText('12')).toBeInTheDocument();
+      expect(screen.getByText('6')).toBeInTheDocument();
       expect(screen.getByText('2')).toBeInTheDocument();
     });
   });

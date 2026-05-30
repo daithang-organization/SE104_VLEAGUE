@@ -306,6 +306,7 @@ async function seedDemoLineupsAndSuspensions(
     where: {
       seasonId,
       roundNo: { gt: sourceMatch.roundNo },
+      status: { not: MatchStatus.FINISHED },
       OR: [{ homeTeamId: suspendedTeamId }, { awayTeamId: suspendedTeamId }],
     },
     orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
