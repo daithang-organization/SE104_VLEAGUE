@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -70,6 +71,29 @@ export class TeamManagerController {
     return this.teamManagerService.createManagementRequest(user.id, dto);
   }
 
+  @Patch('management-requests/:id')
+  @ApiOperation({ summary: 'Manager cập nhật yêu cầu quản lý CLB chưa duyệt' })
+  @ApiOkResponse({ description: 'Yêu cầu đã được cập nhật' })
+  updateManagementRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: CreateTeamManagerRequestDto,
+  ) {
+    return this.teamManagerService.updateManagementRequest(user.id, id, dto);
+  }
+
+  @Delete('management-requests/:id')
+  @ApiOperation({ summary: 'Manager xóa yêu cầu hoặc bỏ quyền quản lý CLB' })
+  @ApiOkResponse({
+    description: 'Yêu cầu đã được xóa hoặc quyền quản lý đã được bỏ',
+  })
+  deleteManagementRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.teamManagerService.deleteManagementRequest(user.id, id);
+  }
+
   @Get('management-requests')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin xem danh sách yêu cầu quản lý CLB' })
@@ -110,6 +134,27 @@ export class TeamManagerController {
     return this.teamManagerService.createPlayerRequest(user.id, dto);
   }
 
+  @Patch('player-requests/:id')
+  @ApiOperation({ summary: 'Manager cập nhật yêu cầu cầu thủ chưa duyệt' })
+  @ApiOkResponse({ description: 'Yêu cầu cầu thủ đã được cập nhật' })
+  updatePlayerRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: CreateManagerPlayerRequestDto,
+  ) {
+    return this.teamManagerService.updatePlayerRequest(user.id, id, dto);
+  }
+
+  @Delete('player-requests/:id')
+  @ApiOperation({ summary: 'Manager xóa yêu cầu cầu thủ của mình' })
+  @ApiOkResponse({ description: 'Yêu cầu cầu thủ đã được xóa' })
+  deletePlayerRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.teamManagerService.deletePlayerRequest(user.id, id);
+  }
+
   @Get('player-requests')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin xem danh sách yêu cầu cầu thủ từ Manager' })
@@ -146,6 +191,27 @@ export class TeamManagerController {
     @Body() dto: CreateManagerStadiumRequestDto,
   ) {
     return this.teamManagerService.createStadiumRequest(user.id, dto);
+  }
+
+  @Patch('stadium-requests/:id')
+  @ApiOperation({ summary: 'Manager cập nhật yêu cầu sân nhà chưa duyệt' })
+  @ApiOkResponse({ description: 'Yêu cầu sân nhà đã được cập nhật' })
+  updateStadiumRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: CreateManagerStadiumRequestDto,
+  ) {
+    return this.teamManagerService.updateStadiumRequest(user.id, id, dto);
+  }
+
+  @Delete('stadium-requests/:id')
+  @ApiOperation({ summary: 'Manager xóa yêu cầu sân nhà của mình' })
+  @ApiOkResponse({ description: 'Yêu cầu sân nhà đã được xóa' })
+  deleteStadiumRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.teamManagerService.deleteStadiumRequest(user.id, id);
   }
 
   @Get('stadium-requests')

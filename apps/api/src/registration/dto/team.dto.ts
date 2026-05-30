@@ -31,7 +31,7 @@ export class CreateTeamDto {
 
   @ApiPropertyOptional({
     description: 'Thành phố',
-    example: 'Pleiku',
+    example: 'Hồ Chí Minh',
   })
   @IsOptional()
   @IsString()
@@ -46,12 +46,21 @@ export class CreateTeamDto {
   stadiumId?: string;
 
   @ApiPropertyOptional({
-    description: 'URL logo đội',
+    description: 'Logo đội',
     example: 'https://example.com/logo.png',
   })
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID Manager quản lý đội bóng',
+    format: 'uuid',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  managerId?: string | null;
 
   @ApiPropertyOptional({
     description: 'Trạng thái đội bóng',
@@ -84,7 +93,7 @@ export class UpdateTeamDto {
 
   @ApiPropertyOptional({
     description: 'Thành phố',
-    example: 'Pleiku',
+    example: 'Hồ Chí Minh',
   })
   @IsOptional()
   @IsString()
@@ -99,11 +108,20 @@ export class UpdateTeamDto {
   stadiumId?: string;
 
   @ApiPropertyOptional({
-    description: 'URL logo đội',
+    description: 'Logo đội',
   })
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID Manager quản lý đội bóng',
+    format: 'uuid',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  managerId?: string | null;
 
   @ApiPropertyOptional({
     description: 'Trạng thái đội bóng',
@@ -125,7 +143,7 @@ export class TeamResponseDto {
   @ApiPropertyOptional({ description: 'Tên viết tắt', example: 'HAGL' })
   shortName?: string;
 
-  @ApiPropertyOptional({ description: 'Thành phố', example: 'Pleiku' })
+  @ApiPropertyOptional({ description: 'Thành phố', example: 'Hồ Chí Minh' })
   city?: string;
 
   @ApiProperty({ description: 'Trạng thái', enum: TeamStatus })

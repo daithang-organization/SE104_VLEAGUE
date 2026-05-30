@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, type Player, type Team } from '@prisma/client';
+import { Prisma, UserRole, type Player, type Team } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
@@ -76,6 +76,11 @@ export class RegistrationService {
       where: { id },
       include: {
         stadium: { select: { id: true, name: true, city: true } },
+        managedUsers: {
+          where: { role: UserRole.TEAM_MANAGER },
+          select: { id: true, email: true, name: true },
+          take: 1,
+        },
         roster: {
           where: { leftAt: null },
           include: {
@@ -126,16 +131,26 @@ export class RegistrationService {
   }
 
   async createTeam(dto: CreateTeamDto): Promise<Team> {
+    const data = {
+      name: dto.name,
+      shortName: dto.shortName,
+      city: dto.city,
+      stadiumId: dto.stadiumId,
+      logoUrl: dto.logoUrl,
+      status: (dto.status ?? 'ACTIVE') as never,
+    };
+
     try {
-      return await this.prisma.team.create({
-        data: {
-          name: dto.name,
-          shortName: dto.shortName,
-          city: dto.city,
-          stadiumId: dto.stadiumId,
-          logoUrl: dto.logoUrl,
-          status: (dto.status ?? 'ACTIVE') as never,
-        },
+      const managerId = dto.managerId;
+      if (!managerId) {
+        return await this.prisma.team.create({ data });
+      }
+
+      return await this.prisma.$transaction(async (tx) => {
+        await this.assertAssignableManager(tx, managerId);
+        const team = await tx.team.create({ data });
+        await this.assignManagerToTeam(tx, managerId, team.id);
+        return team;
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -151,11 +166,37 @@ export class RegistrationService {
 
   async updateTeam(id: string, dto: UpdateTeamDto): Promise<Team> {
     await this.findOneTeam(id);
+    const { managerId, ...teamDto } = dto;
+    const shouldUpdateManager = Object.prototype.hasOwnProperty.call(
+      dto,
+      'managerId',
+    );
 
     try {
-      return await this.prisma.team.update({
-        where: { id },
-        data: dto as never,
+      if (!shouldUpdateManager) {
+        return await this.prisma.team.update({
+          where: { id },
+          data: teamDto as never,
+        });
+      }
+
+      return await this.prisma.$transaction(async (tx) => {
+        const team = await tx.team.update({
+          where: { id },
+          data: teamDto as never,
+        });
+
+        if (managerId) {
+          await this.assertAssignableManager(tx, managerId, id);
+          await this.assignManagerToTeam(tx, managerId, id);
+        } else {
+          await tx.user.updateMany({
+            where: { managedTeamId: id },
+            data: { managedTeamId: null },
+          });
+        }
+
+        return team;
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -174,6 +215,47 @@ export class RegistrationService {
 
     await this.prisma.team.delete({ where: { id } });
     return { success: true };
+  }
+
+  private async assertAssignableManager(
+    tx: Prisma.TransactionClient,
+    managerId: string,
+    currentTeamId?: string,
+  ) {
+    const manager = await tx.user.findUnique({
+      where: { id: managerId },
+      select: { id: true, role: true, managedTeamId: true },
+    });
+
+    if (!manager) {
+      throw new NotFoundException('Không tìm thấy Manager được chọn.');
+    }
+
+    if (manager.role !== UserRole.TEAM_MANAGER) {
+      throw new BadRequestException(
+        'Chỉ tài khoản TEAM_MANAGER được gắn quản lý CLB.',
+      );
+    }
+
+    if (manager.managedTeamId && manager.managedTeamId !== currentTeamId) {
+      throw new BadRequestException('Manager này đã được gắn với CLB khác.');
+    }
+  }
+
+  private async assignManagerToTeam(
+    tx: Prisma.TransactionClient,
+    managerId: string,
+    teamId: string,
+  ) {
+    await tx.user.updateMany({
+      where: { managedTeamId: teamId, id: { not: managerId } },
+      data: { managedTeamId: null },
+    });
+
+    await tx.user.update({
+      where: { id: managerId },
+      data: { managedTeamId: teamId },
+    });
   }
 
   // ───────────────── PLAYERS ─────────────────
