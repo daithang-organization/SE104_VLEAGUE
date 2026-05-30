@@ -33,6 +33,11 @@ enum MatchStatus {
   POSTPONED
 }
 
+enum MatchScoreSource {
+  ADMIN
+  REFEREE
+}
+
 enum SeasonStatus {
   UPCOMING
   IN_PROGRESS
@@ -401,6 +406,7 @@ model Match {
   kickoffAt DateTime? @map("kickoff_at")
   homeScore Int?      @map("home_score")
   awayScore Int?      @map("away_score")
+  scoreSource MatchScoreSource? @map("score_source")
 
   status MatchStatus @default(DRAFT)
 

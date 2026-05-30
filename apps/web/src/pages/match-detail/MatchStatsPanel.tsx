@@ -194,8 +194,8 @@ export default function MatchStatsPanel({ match, events, matchReport }: MatchSta
     {
       key: 'goals',
       label: 'Bàn thắng',
-      home: matchReport?.homeScore ?? match.homeScore ?? eventGoals.home,
-      away: matchReport?.awayScore ?? match.awayScore ?? eventGoals.away,
+      home: match.homeScore ?? matchReport?.homeScore ?? eventGoals.home,
+      away: match.awayScore ?? matchReport?.awayScore ?? eventGoals.away,
     },
     ...eventRows,
     ...technicalRows,

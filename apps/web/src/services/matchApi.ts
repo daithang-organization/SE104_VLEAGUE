@@ -27,6 +27,7 @@ export type MatchEvent = {
   relatedPlayerId?: string | null;
   relatedPlayer?: { id: string; fullName: string } | null;
   note?: string | null;
+  source?: string | null;
 };
 
 export type Match = {
@@ -41,6 +42,7 @@ export type Match = {
   awayTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
   homeScore?: number | null;
   awayScore?: number | null;
+  scoreSource?: 'ADMIN' | 'REFEREE' | null;
   stadiumId?: string | null;
   stadium?: { id: string; name: string } | null;
   kickoffAt?: string | null;
@@ -333,6 +335,12 @@ export function apiGetMatchOfficials(matchId: string) {
 export function apiAssignMatchOfficial(matchId: string, data: AssignMatchOfficialPayload) {
   return api
     .post<MatchOfficialAssignment>(`/matches/${matchId}/officials`, data)
+    .then((res) => res.data);
+}
+
+export function apiRemoveMatchOfficial(matchId: string, assignmentId: string) {
+  return api
+    .delete<{ success: boolean }>(`/matches/${matchId}/officials/${assignmentId}`)
     .then((res) => res.data);
 }
 
