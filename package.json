@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "prepare": "husky",
     "seed:real": "pnpm --filter api exec tsx apps/api/prisma/setup-vleague-2024.ts",
+    "seed:vleague-2025": "pnpm --dir apps/api exec tsx prisma/setup-vleague-2025.ts",
     "db:seed": "pnpm --filter api exec prisma db seed",
     "repair:users": "pnpm --filter api exec tsx apps/api/prisma/repair-users.ts"
   },

@@ -26,6 +26,7 @@
     "db:seed": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed.ts",
     "seed:demo-users": "tsx prisma/seed-demo-users.ts",
     "seed:promotion-candidates": "tsx prisma/seed-promotion-candidates.ts",
+    "seed:vleague-2025": "tsx prisma/setup-vleague-2025.ts",
     "seed:real": "node /app/node_modules/tsx/dist/cli.mjs prisma/seed-stadiums.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-teams.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-players.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/setup-vleague-2024.ts && node /app/node_modules/tsx/dist/cli.mjs prisma/seed-report-demo.ts"
   },
   "dependencies": {
