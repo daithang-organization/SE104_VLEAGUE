@@ -245,6 +245,8 @@ const vi = {
     seasonPlaceholder: 'Mùa giải',
     statusPlaceholder: 'Trạng thái',
     teamFilterPlaceholder: 'Lọc theo đội',
+    played: 'Đã đấu',
+    remaining: 'Còn lại',
     loadError: 'Không thể tải danh sách trận đấu',
     detailError: 'Không thể tải chi tiết trận đấu',
     scoreUpdated: 'Đã cập nhật tỉ số!',

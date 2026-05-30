@@ -222,6 +222,8 @@ const en = {
     seasonPlaceholder: 'Season',
     statusPlaceholder: 'Status',
     teamFilterPlaceholder: 'Filter by team',
+    played: 'Played',
+    remaining: 'Remaining',
     loadError: 'Failed to load matches',
     detailError: 'Failed to load match details',
     scoreUpdated: 'Score updated!',
