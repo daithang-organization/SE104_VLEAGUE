@@ -240,6 +240,7 @@ const mockMatchApi = vi.hoisted(() => ({
   apiGetOfficials: vi.fn(),
   apiGetMatchOfficials: vi.fn(),
   apiAssignMatchOfficial: vi.fn(),
+  apiRemoveMatchOfficial: vi.fn(),
   apiGetMatchReport: vi.fn(),
   apiSubmitMatchReport: vi.fn(),
   apiGetDisciplineReport: vi.fn(),
@@ -303,6 +304,8 @@ function resetMatchApiMocks() {
   mockMatchApi.apiGetMatchOfficials.mockResolvedValue(defaultMatchOfficials);
   mockMatchApi.apiAssignMatchOfficial.mockReset();
   mockMatchApi.apiAssignMatchOfficial.mockResolvedValue({});
+  mockMatchApi.apiRemoveMatchOfficial.mockReset();
+  mockMatchApi.apiRemoveMatchOfficial.mockResolvedValue({ success: true });
   mockMatchApi.apiGetMatchReport.mockReset();
   mockMatchApi.apiGetMatchReport.mockResolvedValue(defaultMatchReport);
   mockMatchApi.apiSubmitMatchReport.mockReset();
@@ -601,6 +604,40 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText('Một cầu thủ phản ứng trọng tài')).toBeInTheDocument();
   });
 
+  it('lets admin remove an official assignment from the officials tab', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+
+    const removeButtons = await screen.findAllByRole('button', { name: /Xóa phân công/ });
+    await userEvent.click(removeButtons[0]);
+    await userEvent.click(await screen.findByRole('button', { name: /Xác nhận|Confirm/ }));
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiRemoveMatchOfficial).toHaveBeenCalledWith('m1', 'assignment-1');
+      expect(mockMatchApi.apiGetMatchOfficials).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('shows the current match score instead of a stale report score', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...matchWithEvents,
+      homeScore: 3,
+      awayScore: 0,
+    });
+    mockMatchApi.apiGetMatchReport.mockResolvedValueOnce({
+      ...defaultMatchReport,
+      homeScore: 1,
+      awayScore: 0,
+    });
+
+    renderPage();
+    await screen.findByRole('heading', { name: /V.ng 1/ });
+    await userEvent.click(screen.getAllByRole('tab')[3]);
+    expect(await screen.findByText(/Tỷ số đã báo cáo: 3 - 0/)).toBeInTheDocument();
+  });
+
   it('submits a zero-zero referee match record from the consolidated report panel', async () => {
     renderPage();
 
@@ -705,6 +742,99 @@ describe('MatchDetailPage', () => {
     });
   }, 60_000);
 
+  it('submits the official match score when a referee report is saved after admin updates score', async () => {
+    const savedReportGoals = [12, 24, 36, 48].map((minute, index) => ({
+      id: `saved-goal-${index + 1}`,
+      minute,
+      type: 'GOAL',
+      teamId: 'home-team',
+      playerId: `h-player-${index + 1}`,
+      player: { id: `h-player-${index + 1}`, fullName: `Home Player ${index + 1}` },
+      team: { id: 'home-team', name: 'Ha Noi FC' },
+      source: 'MATCH_REPORT',
+    }));
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...defaultMatch,
+      homeScore: 4,
+      awayScore: 0,
+      events: savedReportGoals,
+    });
+    mockMatchApi.apiGetMatchReport.mockResolvedValueOnce({
+      ...defaultMatchReport,
+      homeScore: 1,
+      awayScore: 0,
+    });
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: /V.ng 1/ });
+    fireEvent.click(screen.getAllByRole('tab')[3]);
+    const reportPanel = screen.getByTestId('referee-match-report-panel');
+
+    fireEvent.click(within(reportPanel).getAllByRole('button').at(-1) as HTMLElement);
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiSubmitMatchReport).toHaveBeenCalledWith('m1', {
+        homeScore: 4,
+        awayScore: 0,
+        bestPlayerId: 'h-player-1',
+        technicalStats: undefined,
+        note: undefined,
+        events: savedReportGoals.map((event) => ({
+          minute: event.minute,
+          type: event.type,
+          teamId: event.teamId,
+          playerId: event.playerId,
+          relatedPlayerId: undefined,
+          goalType: undefined,
+          note: undefined,
+        })),
+      });
+    });
+  }, 60_000);
+
+  it('blocks submitting a referee report when goal events do not match the official score', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...defaultMatch,
+      homeScore: 6,
+      awayScore: 7,
+      events: [
+        {
+          id: 'saved-goal-home',
+          minute: 6,
+          type: 'GOAL',
+          teamId: 'home-team',
+          playerId: 'h-player-1',
+          player: { id: 'h-player-1', fullName: 'Home Player 1' },
+          team: { id: 'home-team', name: 'Ha Noi FC' },
+          source: 'MATCH_REPORT',
+        },
+        {
+          id: 'saved-goal-away',
+          minute: 7,
+          type: 'GOAL',
+          teamId: 'away-team',
+          playerId: 'a-player-1',
+          player: { id: 'a-player-1', fullName: 'Away Player 1' },
+          team: { id: 'away-team', name: 'Hai Phong FC' },
+          source: 'MATCH_REPORT',
+        },
+      ],
+    });
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: /V.ng 1/ });
+    fireEvent.click(screen.getAllByRole('tab')[3]);
+
+    expect(await screen.findByText(/6 - 7.*1 - 1/)).toBeInTheDocument();
+    const submitButton = screen
+      .getAllByRole('button')
+      .find((button) => button.textContent?.includes('Nộp biên bản trận đấu'));
+    expect(submitButton).toBeDisabled();
+    expect(mockMatchApi.apiSubmitMatchReport).not.toHaveBeenCalled();
+  });
+
   it('submits substitutions with player in and player out from the referee report', async () => {
     renderPage();
 
@@ -750,7 +880,7 @@ describe('MatchDetailPage', () => {
     });
   }, 60_000);
 
-  it('keeps referee score and event entry inside the report flow', async () => {
+  it('keeps referee score and event entry inside the report flow before the first submission', async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u1', email: 'referee@vl.local', role: 'REFEREE' },
       loading: false,
@@ -758,6 +888,7 @@ describe('MatchDetailPage', () => {
       login: vi.fn(),
       logout: vi.fn(),
     });
+    mockMatchApi.apiGetMatchReport.mockResolvedValueOnce(null);
 
     renderPage();
 
@@ -769,5 +900,42 @@ describe('MatchDetailPage', () => {
     await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
     expect(screen.getByRole('button', { name: /Thêm sự kiện/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ })).toBeInTheDocument();
+    expect(mockMatchApi.apiGetDisciplineReport).not.toHaveBeenCalled();
+  });
+
+  it('prevents a referee from submitting the match report again after one exists', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'referee@vl.local', role: 'REFEREE' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: /V.ng 1/ });
+    await userEvent.click(screen.getAllByRole('tab')[3]);
+
+    expect(screen.queryByRole('button', { name: /Nộp biên bản trận đấu/ })).not.toBeInTheDocument();
+    expect(mockMatchApi.apiGetDisciplineReport).not.toHaveBeenCalled();
+  });
+
+  it('prevents a supervisor from submitting the discipline report again after one exists', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'supervisor@vl.local', role: 'SUPERVISOR' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: /V.ng 1/ });
+    await userEvent.click(screen.getAllByRole('tab')[3]);
+
+    expect(screen.queryByRole('button', { name: /Nộp báo cáo giám sát/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Chỉ BTC hoặc giám sát viên/)).toBeInTheDocument();
   });
 });

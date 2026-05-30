@@ -153,13 +153,17 @@ export default function RefereeMatchReportPanel({
     () => (match.events ?? []).map((event) => ({ ...event, teamId: getEventTeamId(event) })),
     [match.events],
   );
+  const savedReportEvents = useMemo(
+    () => savedEvents.filter((event) => event.source === 'MATCH_REPORT'),
+    [savedEvents],
+  );
 
   const savedScoringEvents = useMemo(
     () =>
-      savedEvents
+      savedReportEvents
         .filter((event) => isScoringEventType(event.type))
         .filter((event): event is MatchEvent & { teamId: string } => Boolean(event.teamId)),
-    [savedEvents],
+    [savedReportEvents],
   );
 
   const reportScore = useMemo(
@@ -174,6 +178,28 @@ export default function RefereeMatchReportPanel({
         match,
       ),
     [draftEvents, match, savedScoringEvents],
+  );
+  const currentScore = {
+    home: match.homeScore ?? reportScore.home,
+    away: match.awayScore ?? reportScore.away,
+  };
+  const hasScoreMismatch =
+    currentScore.home !== reportScore.home || currentScore.away !== reportScore.away;
+
+  const savedReportEventPayloads = useMemo(
+    () =>
+      savedReportEvents
+        .filter((event): event is MatchEvent & { teamId: string } => Boolean(event.teamId))
+        .map((event) => ({
+          minute: event.minute,
+          type: event.type,
+          teamId: event.teamId,
+          playerId: event.playerId ?? undefined,
+          relatedPlayerId: event.relatedPlayerId ?? undefined,
+          goalType: event.goalType ?? undefined,
+          note: cleanOptional(event.note ?? undefined),
+        })),
+    [savedReportEvents],
   );
 
   const addDraftEvent = () => {
@@ -251,34 +277,48 @@ export default function RefereeMatchReportPanel({
       message.error(t('matchDetail.reportInvalidEvent'));
       return;
     }
+    if (hasScoreMismatch) {
+      message.error(
+        t('matchDetail.reportScoreMismatchTitle', {
+          expectedHome: currentScore.home,
+          expectedAway: currentScore.away,
+          eventHome: reportScore.home,
+          eventAway: reportScore.away,
+        }),
+      );
+      return;
+    }
 
     const technicalStats = parseTechnicalStats();
     if (technicalStats === null) return;
 
     await onSubmit({
-      homeScore: reportScore.home,
-      awayScore: reportScore.away,
+      homeScore: currentScore.home,
+      awayScore: currentScore.away,
       bestPlayerId,
       technicalStats,
       note: cleanOptional(reportNote),
-      events: draftEvents.map((event) => {
-        const payload: AddMatchEventPayload = {
-          minute: event.minute,
-          type: event.type,
-          teamId: event.teamId as string,
-          playerId: event.playerId,
-          note: cleanOptional(event.note),
-        };
+      events: [
+        ...savedReportEventPayloads,
+        ...draftEvents.map((event) => {
+          const payload: AddMatchEventPayload = {
+            minute: event.minute,
+            type: event.type,
+            teamId: event.teamId as string,
+            playerId: event.playerId,
+            note: cleanOptional(event.note),
+          };
 
-        if (eventUsesGoalType(event.type) && event.goalType) {
-          payload.goalType = event.goalType;
-        }
-        if (eventUsesRelatedPlayer(event.type) && event.relatedPlayerId) {
-          payload.relatedPlayerId = event.relatedPlayerId;
-        }
+          if (eventUsesGoalType(event.type) && event.goalType) {
+            payload.goalType = event.goalType;
+          }
+          if (eventUsesRelatedPlayer(event.type) && event.relatedPlayerId) {
+            payload.relatedPlayerId = event.relatedPlayerId;
+          }
 
-        return payload;
-      }),
+          return payload;
+        }),
+      ],
     });
   };
 
@@ -295,8 +335,8 @@ export default function RefereeMatchReportPanel({
           type="success"
           showIcon
           title={t('matchDetail.reportedScore', {
-            home: matchReport.homeScore,
-            away: matchReport.awayScore,
+            home: currentScore.home,
+            away: currentScore.away,
           })}
           description={
             <Space orientation="vertical" size={2}>
@@ -323,13 +363,27 @@ export default function RefereeMatchReportPanel({
                 })}
               </Tag>
             </Flex>
+            {hasScoreMismatch && (
+              <Alert
+                style={{ marginTop: 10 }}
+                type="warning"
+                showIcon
+                title={t('matchDetail.reportScoreMismatchTitle', {
+                  expectedHome: currentScore.home,
+                  expectedAway: currentScore.away,
+                  eventHome: reportScore.home,
+                  eventAway: reportScore.away,
+                })}
+                description={t('matchDetail.reportScoreMismatchDescription')}
+              />
+            )}
 
             <div style={{ marginTop: 10 }}>
               <Text type="secondary">{t('matchDetail.reportSavedEvents')}</Text>
               <div style={{ marginTop: 6 }}>
-                {savedEvents.length > 0 ? (
+                {savedReportEvents.length > 0 ? (
                   <Space wrap>
-                    {savedEvents.map((event) => (
+                    {savedReportEvents.map((event) => (
                       <Tag key={event.id}>
                         {t(`eventType.${event.type}`)} · {formatEventLabel(match, event)}
                       </Tag>
@@ -563,6 +617,7 @@ export default function RefereeMatchReportPanel({
                 type="primary"
                 icon={<SendOutlined />}
                 loading={submitting}
+                disabled={hasScoreMismatch}
                 onClick={handleSubmit}
               >
                 {t('matchDetail.submitRefereeReportBtn')}

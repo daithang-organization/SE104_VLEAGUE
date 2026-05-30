@@ -24,6 +24,7 @@ import {
   apiGetTeamRoster,
   apiReviewMatchLineup,
   apiRemoveMatchEvent,
+  apiRemoveMatchOfficial,
   apiSubmitDisciplineReport,
   apiSubmitMatchLineup,
   apiSubmitMatchReport,
@@ -194,6 +195,13 @@ describe('matchApi', () => {
     const result = await apiAssignMatchOfficial('m1', payload);
     expect(mockApi.post).toHaveBeenCalledWith('/matches/m1/officials', payload);
     expect(result).toEqual(response);
+  });
+
+  it('apiRemoveMatchOfficial calls DELETE /matches/:id/officials/:assignmentId', async () => {
+    mockApi.delete.mockResolvedValue({ data: { success: true } });
+    const result = await apiRemoveMatchOfficial('m1', 'a1');
+    expect(mockApi.delete).toHaveBeenCalledWith('/matches/m1/officials/a1');
+    expect(result).toEqual({ success: true });
   });
 
   it('apiSubmitMatchReport calls POST /matches/:id/report', async () => {

@@ -154,8 +154,12 @@ export class MatchService {
       updateData.kickoffAt = data.kickoffAt ? new Date(data.kickoffAt) : null;
     if (data.homeScore !== undefined) updateData.homeScore = data.homeScore;
     if (data.awayScore !== undefined) updateData.awayScore = data.awayScore;
+    if (data.homeScore !== undefined || data.awayScore !== undefined) {
+      updateData.scoreSource =
+        data.homeScore === null && data.awayScore === null ? null : 'ADMIN';
+    }
 
-    return this.prisma.match.update({
+    const updatedMatch = await this.prisma.match.update({
       where: { id: matchId },
       data: updateData,
       include: {
@@ -164,6 +168,22 @@ export class MatchService {
         stadium: { select: { id: true, name: true } },
       },
     });
+
+    if (
+      updatedMatch.homeScore !== null &&
+      updatedMatch.awayScore !== null &&
+      (data.homeScore !== undefined || data.awayScore !== undefined)
+    ) {
+      await this.prisma.matchReport.updateMany({
+        where: { matchId },
+        data: {
+          homeScore: updatedMatch.homeScore,
+          awayScore: updatedMatch.awayScore,
+        },
+      });
+    }
+
+    return updatedMatch;
   }
 
   async addEvent(matchId: string, dto: AddMatchEventDto) {

@@ -339,6 +339,10 @@ const en = {
     officialNotePlaceholder: 'Assignment note',
     publishAssignmentBtn: 'Publish assignment',
     assignOfficialsReadonly: 'Only the organizer can assign officials and supervisors.',
+    removeOfficialAssignmentBtn: 'Remove assignment',
+    removeOfficialAssignmentConfirm: 'Remove this official assignment?',
+    removeOfficialAssignmentSuccess: 'Official assignment removed.',
+    removeOfficialAssignmentError: 'Could not remove official assignment.',
     refereeReportTitle: 'Match record',
     reportedScore: 'Reported score: {home} - {away}',
     bestPlayer: 'Player of the match',
@@ -374,6 +378,10 @@ const en = {
     reportSubPlayerOutLabel: 'Player out {index}',
     reportNoteLabel: 'Event note {index}',
     reportSummary: '{events} new events will be submitted with the match record.',
+    reportScoreMismatchTitle:
+      'Score {expectedHome} - {expectedAway} does not match recorded goal events: {eventHome} - {eventAway}.',
+    reportScoreMismatchDescription:
+      'Add the missing goal events or correct the score before submitting the match record.',
     reportInvalidGoal: 'Enter minute, team, and scorer for every goal.',
     reportInvalidEvent: 'Enter minute, type, team, and players for every event.',
     technicalStatsInvalid: 'Technical stats must be a valid JSON object.',

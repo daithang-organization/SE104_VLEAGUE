@@ -362,6 +362,10 @@ const vi = {
     officialNotePlaceholder: 'Ghi chú phân công',
     publishAssignmentBtn: 'Công bố phân công',
     assignOfficialsReadonly: 'Chỉ BTC có quyền phân công trọng tài/giám sát viên.',
+    removeOfficialAssignmentBtn: 'Xóa phân công',
+    removeOfficialAssignmentConfirm: 'Xóa phân công trọng tài/giám sát viên này?',
+    removeOfficialAssignmentSuccess: 'Đã xóa phân công trọng tài/giám sát viên.',
+    removeOfficialAssignmentError: 'Không thể xóa phân công trọng tài/giám sát viên.',
     refereeReportTitle: 'Biên bản trận đấu',
     reportedScore: 'Tỷ số đã báo cáo: {home} - {away}',
     bestPlayer: 'Cầu thủ xuất sắc',
@@ -396,6 +400,10 @@ const vi = {
     reportSubPlayerOutLabel: 'Cầu thủ ra sân {index}',
     reportNoteLabel: 'Ghi chú sự kiện {index}',
     reportSummary: '{events} sự kiện mới sẽ được nộp cùng biên bản.',
+    reportScoreMismatchTitle:
+      'Tỉ số {expectedHome} - {expectedAway} không khớp với sự kiện bàn thắng hiện có: {eventHome} - {eventAway}.',
+    reportScoreMismatchDescription:
+      'Vui lòng bổ sung đủ sự kiện bàn thắng hoặc điều chỉnh tỉ số trước khi nộp biên bản.',
     reportInvalidGoal: 'Vui lòng nhập đủ phút, đội và cầu thủ ghi bàn.',
     reportInvalidEvent: 'Vui lòng nhập đủ phút, loại, đội và cầu thủ cho từng sự kiện.',
     technicalStatsInvalid: 'Thông số chuyên môn phải là JSON object hợp lệ.',
