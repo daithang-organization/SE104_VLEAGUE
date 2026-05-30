@@ -7,10 +7,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import ExportButton from '../components/ExportButton';
+import { useMatchSocket } from '../hooks/useMatchSocket';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetStandings,
+  apiGetTeamStats,
   type StandingsMode,
+  type TeamStat,
   apiGetTopScorers,
   type TeamStanding,
   type TopScorer,
@@ -29,6 +32,7 @@ export default function StandingsPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
+  const [teamStats, setTeamStats] = useState<TeamStat[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string | undefined>();
@@ -44,12 +48,14 @@ export default function StandingsPage() {
     async (seasonId?: string, mode?: StandingsMode) => {
       setLoading(true);
       try {
-        const [standingsData, scorersData] = await Promise.all([
+        const [standingsData, scorersData, teamStatsData] = await Promise.all([
           apiGetStandings(seasonId, mode),
           apiGetTopScorers(seasonId, 10),
+          apiGetTeamStats(seasonId),
         ]);
         setStandings(standingsData);
         setTopScorers(scorersData);
+        setTeamStats(teamStatsData);
       } catch (_err) {
         message.error(t('standings.loadError'));
       } finally {
@@ -59,12 +65,20 @@ export default function StandingsPage() {
     [t],
   );
 
-  useEffect(() => {
+  const reloadStandings = useCallback(() => {
     const selectedSeasonStatus = seasons.find((season) => season.id === selectedSeason)?.status;
     const standingsMode: StandingsMode =
       selectedSeasonStatus === 'COMPLETED' ? 'final' : 'in_progress';
     fetchData(selectedSeason, standingsMode);
-  }, [selectedSeason, seasons, fetchData]);
+  }, [fetchData, seasons, selectedSeason]);
+
+  useEffect(() => {
+    reloadStandings();
+  }, [reloadStandings]);
+
+  useMatchSocket({
+    onStatusChange: reloadStandings,
+  });
 
   useEffect(() => {
     if (user?.role !== 'TEAM_MANAGER') {
@@ -247,8 +261,10 @@ export default function StandingsPage() {
   const standingsTitle = t('standings.title')
     .replace(/^[^\p{L}\p{N}]+/u, '')
     .trim();
-  const totalPlayed = standings.reduce((sum, standing) => sum + standing.played, 0);
-  const leaderPoints = standings[0]?.points ?? 0;
+  const summarySource = teamStats.length > 0 ? teamStats : standings;
+  const totalGoals = summarySource.reduce((sum, team) => sum + team.goalsFor, 0);
+  const totalYellowCards = teamStats.reduce((sum, team) => sum + team.yellowCards, 0);
+  const totalRedCards = teamStats.reduce((sum, team) => sum + team.redCards, 0);
 
   return (
     <div className="page-stack">
@@ -308,13 +324,18 @@ export default function StandingsPage() {
             icon: <TrophyOutlined />,
           },
           {
-            label: t('standings.colPlayed'),
-            value: totalPlayed.toLocaleString('vi-VN'),
+            label: t('standings.totalGoals'),
+            value: totalGoals.toLocaleString('vi-VN'),
             icon: <TrophyOutlined />,
           },
           {
-            label: t('standings.colPoints'),
-            value: leaderPoints.toLocaleString('vi-VN'),
+            label: t('standings.yellowCards'),
+            value: totalYellowCards.toLocaleString('vi-VN'),
+            icon: <CrownOutlined />,
+          },
+          {
+            label: t('standings.redCards'),
+            value: totalRedCards.toLocaleString('vi-VN'),
             icon: <CrownOutlined />,
           },
         ]}

@@ -45,6 +45,24 @@ const mockStandingsApi = vi.hoisted(() => ({
       goals: 12,
     },
   ]),
+  apiGetTeamStats: vi.fn().mockResolvedValue([
+    {
+      teamId: 't1',
+      teamName: 'HÃ  Ná»™i FC',
+      played: 10,
+      goalsFor: 20,
+      yellowCards: 8,
+      redCards: 1,
+    },
+    {
+      teamId: 't2',
+      teamName: 'Háº£i PhÃ²ng FC',
+      played: 10,
+      goalsFor: 18,
+      yellowCards: 7,
+      redCards: 0,
+    },
+  ]),
 }));
 const mockUseAuth = vi.hoisted(() =>
   vi.fn(() => ({
@@ -55,8 +73,10 @@ const mockUseAuth = vi.hoisted(() =>
     logout: vi.fn(),
   })),
 );
+const mockUseMatchSocket = vi.hoisted(() => vi.fn());
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
+vi.mock('../../hooks/useMatchSocket', () => ({ useMatchSocket: mockUseMatchSocket }));
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
 vi.mock('../../services/teamManagerApi', () => ({
@@ -107,6 +127,7 @@ describe('StandingsPage', () => {
     await waitFor(() => {
       expect(mockStandingsApi.apiGetStandings).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalledWith(undefined);
     });
   });
 
