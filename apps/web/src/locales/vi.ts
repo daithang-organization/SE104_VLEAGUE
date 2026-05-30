@@ -753,6 +753,8 @@ const vi = {
     colCountry: 'Quốc gia',
     colAddress: 'Địa chỉ',
     colCapacity: 'Sức chứa',
+    maxCapacity: 'Sức chứa cao nhất',
+    minCapacity: 'Sức chứa thấp nhất',
     colFifaStars: 'Sao FIFA',
     colActions: 'Hành động',
     totalCount: 'Tổng {total} sân vận động',

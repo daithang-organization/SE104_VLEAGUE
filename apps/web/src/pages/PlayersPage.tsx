@@ -110,7 +110,11 @@ export default function PlayersPage() {
   const totalPlayers = pagination.total || players.length;
   const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
   const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
-  const rosteredPlayers = metricPlayers.filter((player) => player.roster?.[0]?.team).length;
+  const domesticPlayers = metricPlayers.filter(
+    (player) =>
+      player.playerType === 'DOMESTIC' ||
+      ['việt nam', 'vietnam'].includes(player.nationality.trim().toLocaleLowerCase('vi-VN')),
+  ).length;
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -520,8 +524,8 @@ export default function PlayersPage() {
               icon: <TeamOutlined />,
             },
             {
-              label: t('players.colClub'),
-              value: rosteredPlayers.toLocaleString('vi-VN'),
+              label: t('playerType.DOMESTIC'),
+              value: domesticPlayers.toLocaleString('vi-VN'),
               icon: <TeamOutlined />,
             },
           ]}

@@ -55,6 +55,7 @@ const INVITATION_REGULATION_KEYS = [
   'PARTICIPATION_FEE_VND',
 ];
 const DEMO_LINEUP_FORMATION = '4-4-2';
+const RESULT_SEED_ROUNDS = 10;
 const DEMO_STARTER_SHAPE: { position: PlayerPosition; count: number }[] = [
   { position: PlayerPosition.GK, count: 1 },
   { position: PlayerPosition.DF, count: 4 },
@@ -93,6 +94,23 @@ function getInvitationSource(index: number) {
   if (index < 8) return TeamInvitationSourceType.PREVIOUS_TOP_8;
   if (index < REQUIRED_APPROVED_TEAMS) return TeamInvitationSourceType.PROMOTED;
   return TeamInvitationSourceType.REPLACEMENT;
+}
+
+function randomInt(min: number, max: number) {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function pickRandom<T>(items: T[]) {
+  if (items.length === 0) return undefined;
+  return items[randomInt(0, items.length - 1)];
+}
+
+function randomGoalMinute(goalIndex: number) {
+  return Math.min(90, randomInt(4, 38) + goalIndex * randomInt(8, 17));
+}
+
+function randomCardMinute() {
+  return randomInt(18, 90);
 }
 
 function takeRosterRows(
@@ -143,6 +161,115 @@ function buildDemoLineupRows(rosterRows: DemoRosterRow[]) {
       shirtNumber: row.jerseyNumber,
     })),
   ];
+}
+
+async function createGoalEvents(
+  match: DemoMatch,
+  teamId: string,
+  goalCount: number,
+) {
+  if (goalCount <= 0) return;
+
+  const players = await prisma.teamPlayer.findMany({
+    where: { teamId, leftAt: null },
+    take: 18,
+  });
+
+  if (players.length === 0) {
+    console.warn(
+      `  ⚠️ Skipping goal events for match ${match.id}: team ${teamId} has no active players.`,
+    );
+    return;
+  }
+
+  for (let index = 0; index < goalCount; index++) {
+    const scorer = pickRandom(players);
+    if (!scorer) continue;
+
+    await prisma.matchEvent.create({
+      data: {
+        matchId: match.id,
+        teamId,
+        playerId: scorer.playerId,
+        type: EventType.GOAL,
+        minute: randomGoalMinute(index),
+      },
+    });
+  }
+}
+
+async function createCardEvents(match: DemoMatch, teamId: string) {
+  const players = await prisma.teamPlayer.findMany({
+    where: { teamId, leftAt: null },
+    include: { player: { select: { position: true } } },
+    take: 18,
+  });
+
+  const cardCandidates = players.filter(
+    (row) => row.player.position !== PlayerPosition.GK,
+  );
+  const pool = cardCandidates.length > 0 ? cardCandidates : players;
+  if (pool.length === 0) return;
+
+  const usedPlayerIds = new Set<string>();
+  const takeCardPlayer = () => {
+    const available = pool.filter((row) => !usedPlayerIds.has(row.playerId));
+    const selected = pickRandom(available.length > 0 ? available : pool);
+    if (selected) usedPlayerIds.add(selected.playerId);
+    return selected;
+  };
+
+  const yellowCards = randomInt(0, 4);
+  const redCards = Math.random() < 0.18 ? 1 : 0;
+
+  for (let index = 0; index < yellowCards; index++) {
+    const player = takeCardPlayer();
+    if (!player) continue;
+
+    await prisma.matchEvent.create({
+      data: {
+        matchId: match.id,
+        teamId,
+        playerId: player.playerId,
+        type: EventType.YELLOW_CARD,
+        minute: randomCardMinute(),
+      },
+    });
+  }
+
+  for (let index = 0; index < redCards; index++) {
+    const player = takeCardPlayer();
+    if (!player) continue;
+
+    await prisma.matchEvent.create({
+      data: {
+        matchId: match.id,
+        teamId,
+        playerId: player.playerId,
+        type: EventType.RED_CARD,
+        minute: randomCardMinute(),
+      },
+    });
+  }
+}
+
+async function seedRandomResult(match: DemoMatch) {
+  const homeScore = randomInt(0, 4);
+  const awayScore = randomInt(0, 4);
+
+  await prisma.match.update({
+    where: { id: match.id },
+    data: {
+      homeScore,
+      awayScore,
+      status: MatchStatus.FINISHED,
+    },
+  });
+
+  await createGoalEvents(match, match.homeTeamId, homeScore);
+  await createGoalEvents(match, match.awayTeamId, awayScore);
+  await createCardEvents(match, match.homeTeamId);
+  await createCardEvents(match, match.awayTeamId);
 }
 
 async function seedDemoLineupsAndSuspensions(
@@ -701,77 +828,28 @@ async function main() {
   await prisma.match.createMany({ data: matches });
   console.log(`✅ Generated ${matches.length} matches.`);
 
-  // 4. Seed some results for Round 1
-  console.log('\n⚽ Seeding results for Round 1...');
-  const round1Matches = await prisma.match.findMany({
-    where: { seasonId: season.id, roundNo: 1 },
+  // 4. Seed random results and discipline events for the first 10 rounds.
+  console.log(
+    `\n⚽ Seeding random results for ${RESULT_SEED_ROUNDS} rounds...`,
+  );
+  const resultSeedMatches = await prisma.match.findMany({
+    where: {
+      seasonId: season.id,
+      roundNo: { lte: RESULT_SEED_ROUNDS },
+    },
+    orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
   });
 
-  for (const m of round1Matches) {
-    const homeScore = Math.floor(Math.random() * 4);
-    const awayScore = Math.floor(Math.random() * 3);
-
-    await prisma.match.update({
-      where: { id: m.id },
-      data: {
-        homeScore,
-        awayScore,
-        status: MatchStatus.FINISHED,
-      },
-    });
-
-    // Seed some goals
-    const totalGoals = homeScore + awayScore;
-    if (totalGoals > 0) {
-      const homePlayers = await prisma.teamPlayer.findMany({
-        where: { teamId: m.homeTeamId, leftAt: null },
-        take: 5,
-      });
-      const awayPlayers = await prisma.teamPlayer.findMany({
-        where: { teamId: m.awayTeamId, leftAt: null },
-        take: 5,
-      });
-
-      for (let i = 0; i < homeScore; i++) {
-        const p = homePlayers[Math.floor(Math.random() * homePlayers.length)];
-        if (!p) {
-          console.warn(
-            `  ⚠️ Skipping home goal event for match ${m.id}: no active players in roster`,
-          );
-          continue;
-        }
-        await prisma.matchEvent.create({
-          data: {
-            matchId: m.id,
-            teamId: m.homeTeamId,
-            playerId: p.playerId,
-            type: 'GOAL',
-            minute: 10 + i * 20,
-          },
-        });
-      }
-      for (let i = 0; i < awayScore; i++) {
-        const p = awayPlayers[Math.floor(Math.random() * awayPlayers.length)];
-        if (!p) {
-          console.warn(
-            `  ⚠️ Skipping away goal event for match ${m.id}: no active players in roster`,
-          );
-          continue;
-        }
-        await prisma.matchEvent.create({
-          data: {
-            matchId: m.id,
-            teamId: m.awayTeamId,
-            playerId: p.playerId,
-            type: 'GOAL',
-            minute: 15 + i * 25,
-          },
-        });
-      }
-    }
+  for (const match of resultSeedMatches) {
+    await seedRandomResult(match);
   }
-  console.log('✅ Seeded Round 1 results and goals.');
+  console.log(
+    `✅ Seeded ${resultSeedMatches.length} matches with random scores, goals, and cards.`,
+  );
 
+  const round1Matches = resultSeedMatches.filter(
+    (match) => match.roundNo === 1,
+  );
   await seedDemoLineupsAndSuspensions(season.id, round1Matches);
 
   console.log(`\n🚀 ${DEFAULT_SEASON_NAME} Setup Complete!`);

@@ -10,6 +10,7 @@ import ExportButton from '../components/ExportButton';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import {
   apiGetStandings,
+  type StandingsMode,
   apiGetTopScorers,
   type TeamStanding,
   type TopScorer,
@@ -39,25 +40,31 @@ export default function StandingsPage() {
       .catch(() => {});
   }, []);
 
-  const fetchData = useCallback(async (seasonId?: string) => {
-    setLoading(true);
-    try {
-      const [standingsData, scorersData] = await Promise.all([
-        apiGetStandings(seasonId),
-        apiGetTopScorers(seasonId, 10),
-      ]);
-      setStandings(standingsData);
-      setTopScorers(scorersData);
-    } catch (_err) {
-      message.error(t('standings.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchData = useCallback(
+    async (seasonId?: string, mode?: StandingsMode) => {
+      setLoading(true);
+      try {
+        const [standingsData, scorersData] = await Promise.all([
+          apiGetStandings(seasonId, mode),
+          apiGetTopScorers(seasonId, 10),
+        ]);
+        setStandings(standingsData);
+        setTopScorers(scorersData);
+      } catch (_err) {
+        message.error(t('standings.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
-    fetchData(selectedSeason);
-  }, [selectedSeason, fetchData]);
+    const selectedSeasonStatus = seasons.find((season) => season.id === selectedSeason)?.status;
+    const standingsMode: StandingsMode =
+      selectedSeasonStatus === 'COMPLETED' ? 'final' : 'in_progress';
+    fetchData(selectedSeason, standingsMode);
+  }, [selectedSeason, seasons, fetchData]);
 
   useEffect(() => {
     if (user?.role !== 'TEAM_MANAGER') {

@@ -175,6 +175,7 @@ describe('PlayersPage', () => {
     renderPage();
 
     await waitFor(() => {
+      expect(screen.getByText('Nội binh')).toBeInTheDocument();
       expect(screen.getByText('Ngoại binh')).toBeInTheDocument();
     });
   });
