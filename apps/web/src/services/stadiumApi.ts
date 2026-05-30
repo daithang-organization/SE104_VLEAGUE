@@ -39,6 +39,7 @@ export type CreateStadiumPayload = {
   country?: string;
   capacity?: number;
   fifaStars?: number;
+  teamId?: string;
 };
 
 export type UpdateStadiumPayload = Partial<CreateStadiumPayload>;

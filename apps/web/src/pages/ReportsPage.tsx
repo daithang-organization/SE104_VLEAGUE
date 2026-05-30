@@ -222,11 +222,6 @@ export default function ReportsPage() {
             icon: <RiseOutlined />,
           },
           {
-            label: cleanTabLabel(t('reports.tabTeamStats')),
-            value: teamStats.length.toLocaleString('vi-VN'),
-            icon: <TeamOutlined />,
-          },
-          {
             label: cleanTabLabel(t('reports.tabPlayerOfMatch')),
             value: playerOfMatchStats.length.toLocaleString('vi-VN'),
             icon: <StarOutlined />,

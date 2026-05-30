@@ -26,7 +26,7 @@ import dayjs from 'dayjs';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiGetStadium, type StadiumDetail, type StadiumMatch } from '../services/stadiumApi';
 
 import { STATUS_MAP } from '../utils/constants';
@@ -37,12 +37,31 @@ const { Title } = Typography;
 export default function StadiumDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const request = state?.request;
   const { t } = useTranslation();
   const [stadium, setStadium] = useState<StadiumDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
+
+    if (id.startsWith('request-') && request) {
+      setStadium({
+        id: request.id,
+        name: request.payload?.name || '',
+        city: request.payload?.city || '',
+        address: request.payload?.address,
+        country: request.payload?.country,
+        capacity: request.payload?.capacity,
+        fifaStars: request.payload?.fifaStars,
+        teams: request.team ? [request.team] : [],
+        matches: [],
+      } as unknown as StadiumDetail);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     const fetch = async () => {
       try {
@@ -59,7 +78,7 @@ export default function StadiumDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, request, t]);
 
   if (loading) {
     return (
@@ -171,7 +190,10 @@ export default function StadiumDetailPage() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/stadiums')}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/stadiums', { state: { tab: request ? 'review' : 'list' } })}
+        >
           {t('stadiumDetail.back')}
         </Button>
         <Title level={3} style={{ margin: 0 }}>
@@ -240,9 +262,43 @@ export default function StadiumDetailPage() {
                   <Descriptions.Item label={t('stadiumDetail.descCapacity')}>
                     {stadium.capacity ? stadium.capacity.toLocaleString('vi-VN') : '—'}
                   </Descriptions.Item>
+                  <Descriptions.Item label="Đội sân nhà">
+                    {stadium.teams && stadium.teams.length > 0
+                      ? stadium.teams.map((t) => t.name).join(', ')
+                      : '—'}
+                  </Descriptions.Item>
+                  {request?.manager && (
+                    <Descriptions.Item label="Người yêu cầu">
+                      {request.manager.name
+                        ? `${request.manager.name} (${request.manager.email})`
+                        : request.manager.email}
+                    </Descriptions.Item>
+                  )}
+                  {request?.requestNote && (
+                    <Descriptions.Item label="Nội dung">{request.requestNote}</Descriptions.Item>
+                  )}
+                  {request && (
+                    <Descriptions.Item label="Trạng thái">
+                      <Tag
+                        color={
+                          request.status === 'APPROVED'
+                            ? 'green'
+                            : request.status === 'REJECTED'
+                              ? 'red'
+                              : 'gold'
+                        }
+                      >
+                        {request.status === 'APPROVED'
+                          ? 'Đã duyệt'
+                          : request.status === 'REJECTED'
+                            ? 'Từ chối'
+                            : 'Chờ duyệt'}
+                      </Tag>
+                    </Descriptions.Item>
+                  )}
                 </Descriptions>
 
-                {stadium.teams.length > 0 && (
+                {!request && stadium.teams.length > 0 && (
                   <Card
                     size="small"
                     title={t('stadiumDetail.homeTeamsTitle')}

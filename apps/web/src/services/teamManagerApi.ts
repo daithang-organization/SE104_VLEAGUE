@@ -187,6 +187,18 @@ export function apiCreateTeamManagerRequest(payload: CreateTeamManagerRequestPay
     .then((res) => res.data);
 }
 
+export function apiUpdateTeamManagerRequest(id: string, payload: CreateTeamManagerRequestPayload) {
+  return api
+    .patch<TeamManagerRequest>(`/team-manager/management-requests/${id}`, payload)
+    .then((res) => res.data);
+}
+
+export function apiDeleteTeamManagerRequest(id: string) {
+  return api
+    .delete<{ success: boolean }>(`/team-manager/management-requests/${id}`)
+    .then((res) => res.data);
+}
+
 export function apiGetTeamManagerRequests(status?: TeamManagerRequestStatus) {
   return api
     .get<TeamManagerRequest[]>('/team-manager/management-requests', { params: { status } })
@@ -206,6 +218,21 @@ export function apiGetMyManagerPlayerRequests() {
 export function apiCreateManagerPlayerRequest(payload: CreateManagerPlayerRequestPayload) {
   return api
     .post<ManagerPlayerRequest>('/team-manager/player-requests', payload)
+    .then((r) => r.data);
+}
+
+export function apiUpdateManagerPlayerRequest(
+  id: string,
+  payload: CreateManagerPlayerRequestPayload,
+) {
+  return api
+    .patch<ManagerPlayerRequest>(`/team-manager/player-requests/${id}`, payload)
+    .then((r) => r.data);
+}
+
+export function apiDeleteManagerPlayerRequest(id: string) {
+  return api
+    .delete<{ success: boolean }>(`/team-manager/player-requests/${id}`)
     .then((r) => r.data);
 }
 
@@ -233,6 +260,21 @@ export function apiGetMyManagerStadiumRequests() {
 export function apiCreateManagerStadiumRequest(payload: CreateManagerStadiumRequestPayload) {
   return api
     .post<ManagerStadiumRequest>('/team-manager/stadium-requests', payload)
+    .then((r) => r.data);
+}
+
+export function apiUpdateManagerStadiumRequest(
+  id: string,
+  payload: CreateManagerStadiumRequestPayload,
+) {
+  return api
+    .patch<ManagerStadiumRequest>(`/team-manager/stadium-requests/${id}`, payload)
+    .then((r) => r.data);
+}
+
+export function apiDeleteManagerStadiumRequest(id: string) {
+  return api
+    .delete<{ success: boolean }>(`/team-manager/stadium-requests/${id}`)
     .then((r) => r.data);
 }
 

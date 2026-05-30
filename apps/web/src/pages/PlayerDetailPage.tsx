@@ -18,11 +18,12 @@ import {
 } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ProfileSkeleton } from '../components';
 import { api } from '../lib/api';
 import { apiGetPlayerStats, type PlayerStats } from '../services/searchApi';
+import type { ManagerPlayerRequest } from '../services/teamManagerApi';
 
 import { POSITION_MAP } from '../utils/constants';
 
@@ -78,7 +79,10 @@ type PlayerDetail = {
 export default function PlayerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { state } = useLocation();
   const { t } = useTranslation();
+  const request = state?.request as ManagerPlayerRequest | undefined;
+  const isRequestDetail = Boolean(id?.startsWith('request-') && request);
   const [player, setPlayer] = useState<PlayerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
@@ -95,6 +99,42 @@ export default function PlayerDetailPage() {
 
   useEffect(() => {
     if (!id) return;
+
+    if (id.startsWith('request-') && request) {
+      const payload = request.payload ?? {};
+      const sourcePlayer = request.player;
+      setPlayer({
+        id: request.playerId ?? request.id,
+        fullName: payload.fullName ?? sourcePlayer?.fullName ?? '',
+        dob: payload.dob ?? sourcePlayer?.dob ?? '',
+        nationality: payload.nationality ?? sourcePlayer?.nationality ?? '',
+        position: payload.position ?? sourcePlayer?.position ?? '',
+        playerType: payload.playerType ?? sourcePlayer?.playerType ?? 'DOMESTIC',
+        birthPlace: payload.birthPlace ?? sourcePlayer?.birthPlace ?? null,
+        heightCm: payload.heightCm ?? sourcePlayer?.heightCm ?? null,
+        weightKg: payload.weightKg ?? sourcePlayer?.weightKg ?? null,
+        roster: request.team
+          ? [
+              {
+                id: request.id,
+                jerseyNumber: null,
+                joinedAt: request.createdAt,
+                leftAt: null,
+                team: {
+                  id: request.team.id,
+                  name: request.team.name,
+                  shortName: request.team.shortName,
+                },
+              },
+            ]
+          : [],
+        matchEvents: [],
+      });
+      setPlayerStats(null);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     const fetchPlayer = async () => {
       try {
@@ -111,17 +151,17 @@ export default function PlayerDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, request]);
 
   // Fetch advanced player stats
   useEffect(() => {
-    if (!id) return;
+    if (!id || isRequestDetail) return;
     setStatsLoading(true);
     apiGetPlayerStats(id, statsSeason)
       .then(setPlayerStats)
       .catch(() => setPlayerStats(null))
       .finally(() => setStatsLoading(false));
-  }, [id, statsSeason]);
+  }, [id, isRequestDetail, statsSeason]);
 
   if (loading) {
     return <ProfileSkeleton />;
@@ -162,6 +202,23 @@ export default function PlayerDetailPage() {
         <Tag color={player.playerType === 'FOREIGN' ? 'purple' : 'cyan'}>
           {t(`playerType.${player.playerType}`)}
         </Tag>
+        {request && (
+          <Tag
+            color={
+              request.status === 'APPROVED'
+                ? 'green'
+                : request.status === 'REJECTED'
+                  ? 'red'
+                  : 'gold'
+            }
+          >
+            {request.status === 'APPROVED'
+              ? 'Đã duyệt'
+              : request.status === 'REJECTED'
+                ? 'Từ chối'
+                : 'Chờ duyệt'}
+          </Tag>
+        )}
       </Space>
 
       {/* Stats Summary */}
@@ -245,6 +302,21 @@ export default function PlayerDetailPage() {
                   <Tag color="default">{t('playerDetail.noTeam')}</Tag>
                 )}
               </Descriptions.Item>
+              {request?.manager && (
+                <Descriptions.Item label="Người yêu cầu">
+                  {request.manager.name
+                    ? `${request.manager.name} (${request.manager.email})`
+                    : request.manager.email}
+                </Descriptions.Item>
+              )}
+              {request?.requestNote && (
+                <Descriptions.Item label="Ghi chú gửi Admin">
+                  {request.requestNote}
+                </Descriptions.Item>
+              )}
+              {request?.adminNote && (
+                <Descriptions.Item label="Ghi chú Admin">{request.adminNote}</Descriptions.Item>
+              )}
             </Descriptions>
           </Card>
         </Col>
@@ -294,7 +366,7 @@ export default function PlayerDetailPage() {
       </Row>
 
       {/* Match Events Timeline */}
-      {(player.matchEvents || []).length > 0 && (
+      {!isRequestDetail && (player.matchEvents || []).length > 0 && (
         <Card title={t('playerDetail.eventsTitle')} size="small" style={{ marginTop: 16 }}>
           <Timeline
             items={(player.matchEvents || []).slice(0, 30).map((evt) => ({
@@ -329,119 +401,121 @@ export default function PlayerDetailPage() {
       )}
 
       {/* Advanced Stats with Chart */}
-      <Card
-        title={t('playerDetail.advancedStatsTitle')}
-        size="small"
-        style={{ marginTop: 16 }}
-        extra={
-          <Select
-            placeholder={t('playerDetail.seasonPlaceholder')}
-            value={statsSeason}
-            onChange={setStatsSeason}
-            allowClear
-            style={{ width: 180 }}
-            size="small"
-          >
-            {seasons.map((s) => (
-              <Select.Option key={s.id} value={s.id}>
-                {s.name}
-              </Select.Option>
-            ))}
-          </Select>
-        }
-      >
-        {statsLoading ? (
-          <div style={{ textAlign: 'center', padding: 24 }}>
-            <Spin />
-          </div>
-        ) : playerStats ? (
-          <Tabs
-            items={[
-              {
-                key: 'overview',
-                label: t('playerDetail.statsTabOverview'),
-                children: (
-                  <Row gutter={[16, 16]}>
-                    <Col xs={8} sm={4}>
-                      <Statistic
-                        title={t('playerDetail.statsMatchesPlayed')}
-                        value={playerStats.matchesPlayed}
-                      />
-                    </Col>
-                    <Col xs={8} sm={4}>
-                      <Statistic
-                        title={t('playerDetail.statsGoals')}
-                        value={playerStats.goals}
-                        styles={{ content: { color: '#52c41a' } }}
-                      />
-                    </Col>
-                    <Col xs={8} sm={4}>
-                      <Statistic
-                        title={t('playerDetail.statsAssists')}
-                        value={playerStats.assists}
-                      />
-                    </Col>
-                    <Col xs={8} sm={4}>
-                      <Statistic
-                        title={t('playerDetail.statsOwnGoals')}
-                        value={playerStats.ownGoals}
-                      />
-                    </Col>
-                    <Col xs={8} sm={4}>
-                      <Statistic
-                        title={t('playerDetail.statsYellowCards')}
-                        value={playerStats.yellowCards}
-                        styles={{ content: { color: '#faad14' } }}
-                      />
-                    </Col>
-                    <Col xs={8} sm={4}>
-                      <Statistic
-                        title={t('playerDetail.statsRedCards')}
-                        value={playerStats.redCards}
-                        styles={{ content: { color: '#ff4d4f' } }}
-                      />
-                    </Col>
-                  </Row>
-                ),
-              },
-              {
-                key: 'chart',
-                label: t('playerDetail.statsTabChart'),
-                children:
-                  playerStats.goalsByRound && Object.keys(playerStats.goalsByRound).length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart
-                        data={Object.entries(playerStats.goalsByRound).map(([round, goals]) => ({
-                          round: Number(round),
-                          goals,
-                        }))}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="round" tick={{ fontSize: 12 }} />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Bar
-                          dataKey="goals"
-                          fill="#1890ff"
-                          name={t('playerDetail.chartBarLabel')}
-                          radius={[4, 4, 0, 0]}
+      {!isRequestDetail && (
+        <Card
+          title={t('playerDetail.advancedStatsTitle')}
+          size="small"
+          style={{ marginTop: 16 }}
+          extra={
+            <Select
+              placeholder={t('playerDetail.seasonPlaceholder')}
+              value={statsSeason}
+              onChange={setStatsSeason}
+              allowClear
+              style={{ width: 180 }}
+              size="small"
+            >
+              {seasons.map((s) => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name}
+                </Select.Option>
+              ))}
+            </Select>
+          }
+        >
+          {statsLoading ? (
+            <div style={{ textAlign: 'center', padding: 24 }}>
+              <Spin />
+            </div>
+          ) : playerStats ? (
+            <Tabs
+              items={[
+                {
+                  key: 'overview',
+                  label: t('playerDetail.statsTabOverview'),
+                  children: (
+                    <Row gutter={[16, 16]}>
+                      <Col xs={8} sm={4}>
+                        <Statistic
+                          title={t('playerDetail.statsMatchesPlayed')}
+                          value={playerStats.matchesPlayed}
                         />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
-                      {t('playerDetail.chartEmpty')}
-                    </div>
+                      </Col>
+                      <Col xs={8} sm={4}>
+                        <Statistic
+                          title={t('playerDetail.statsGoals')}
+                          value={playerStats.goals}
+                          styles={{ content: { color: '#52c41a' } }}
+                        />
+                      </Col>
+                      <Col xs={8} sm={4}>
+                        <Statistic
+                          title={t('playerDetail.statsAssists')}
+                          value={playerStats.assists}
+                        />
+                      </Col>
+                      <Col xs={8} sm={4}>
+                        <Statistic
+                          title={t('playerDetail.statsOwnGoals')}
+                          value={playerStats.ownGoals}
+                        />
+                      </Col>
+                      <Col xs={8} sm={4}>
+                        <Statistic
+                          title={t('playerDetail.statsYellowCards')}
+                          value={playerStats.yellowCards}
+                          styles={{ content: { color: '#faad14' } }}
+                        />
+                      </Col>
+                      <Col xs={8} sm={4}>
+                        <Statistic
+                          title={t('playerDetail.statsRedCards')}
+                          value={playerStats.redCards}
+                          styles={{ content: { color: '#ff4d4f' } }}
+                        />
+                      </Col>
+                    </Row>
                   ),
-              },
-            ]}
-          />
-        ) : (
-          <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
-            {t('playerDetail.statsLoadError')}
-          </div>
-        )}
-      </Card>
+                },
+                {
+                  key: 'chart',
+                  label: t('playerDetail.statsTabChart'),
+                  children:
+                    playerStats.goalsByRound && Object.keys(playerStats.goalsByRound).length > 0 ? (
+                      <ResponsiveContainer width="100%" height={260}>
+                        <BarChart
+                          data={Object.entries(playerStats.goalsByRound).map(([round, goals]) => ({
+                            round: Number(round),
+                            goals,
+                          }))}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="round" tick={{ fontSize: 12 }} />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Bar
+                            dataKey="goals"
+                            fill="#1890ff"
+                            name={t('playerDetail.chartBarLabel')}
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+                        {t('playerDetail.chartEmpty')}
+                      </div>
+                    ),
+                },
+              ]}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', padding: 24, color: '#888' }}>
+              {t('playerDetail.statsLoadError')}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

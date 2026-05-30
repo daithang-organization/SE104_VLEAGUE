@@ -2546,6 +2546,10 @@ select {
   gap: 18px;
 }
 
+.club-card-grid-fixed {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .club-card {
   position: relative;
   min-height: 190px;
@@ -2574,6 +2578,10 @@ select {
   color: var(--text-main);
   text-align: left;
   cursor: pointer;
+}
+
+.club-card-main-static {
+  cursor: default;
 }
 
 .club-card-crest {
@@ -2669,11 +2677,22 @@ select {
   padding: 0 20px 14px;
 }
 
+.club-card-note {
+  padding: 0 20px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .club-card-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   padding: 0 20px 20px;
+}
+
+.club-card-actions-review {
+  grid-template-columns: 1fr 1fr;
 }
 
 .club-card-detail-button {
@@ -4059,7 +4078,8 @@ select {
   }
 
   .club-card-footer,
-  .club-card-actions {
+  .club-card-actions,
+  .club-card-note {
     padding-inline: 16px;
   }
 

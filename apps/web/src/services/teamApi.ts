@@ -15,6 +15,11 @@ export type Team = {
 };
 
 export type TeamDetail = Team & {
+  managedUsers?: {
+    id: string;
+    email: string;
+    name?: string | null;
+  }[];
   roster: {
     id: string;
     jerseyNumber: number | null;
@@ -64,6 +69,7 @@ export type CreateTeamPayload = {
   stadiumId?: string;
   logoUrl?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  managerId?: string | null;
 };
 
 export type UpdateTeamPayload = {
@@ -73,6 +79,7 @@ export type UpdateTeamPayload = {
   stadiumId?: string;
   logoUrl?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  managerId?: string | null;
 };
 
 export type Stadium = {

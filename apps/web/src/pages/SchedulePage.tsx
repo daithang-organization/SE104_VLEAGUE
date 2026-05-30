@@ -38,6 +38,7 @@ import {
   type ScheduleMatch,
 } from '../services/scheduleApi';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { STATUS_MAP } from '../utils/constants';
 
@@ -70,6 +71,7 @@ export default function SchedulePage() {
   const [publishing, setPublishing] = useState(false);
   const [activeLeg, setActiveLeg] = useState<string>('all');
   const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
+  const [managedTeamId, setManagedTeamId] = useState<string | null>(null);
 
   // Edit modal
   const [editingMatch, setEditingMatch] = useState<ScheduleMatch | null>(null);
@@ -82,6 +84,7 @@ export default function SchedulePage() {
   const [generateSeasonId, setGenerateSeasonId] = useState<string | undefined>();
 
   const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'TEAM_MANAGER';
 
   // Fetch seasons + stadiums on mount
   useEffect(() => {
@@ -97,6 +100,29 @@ export default function SchedulePage() {
       .then(setStadiums)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isManager) {
+      setManagedTeamId(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    apiGetTeamManagerManagedTeam()
+      .then((team) => {
+        if (!cancelled) setManagedTeamId(team?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setManagedTeamId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isManager]);
 
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
@@ -184,11 +210,51 @@ export default function SchedulePage() {
     }
   };
 
-  // Filter by leg
+  useEffect(() => {
+    if (isManager && (activeLeg === '1' || activeLeg === '2')) {
+      setActiveLeg('all');
+    } else if (!isManager && activeLeg === 'mine') {
+      setActiveLeg('all');
+    }
+  }, [activeLeg, isManager]);
+
+  const managerMatches = useMemo(() => {
+    if (!managedTeamId) return [];
+    return matches.filter(
+      (match) => match.homeTeamId === managedTeamId || match.awayTeamId === managedTeamId,
+    );
+  }, [managedTeamId, matches]);
+
+  // Filter by selected schedule tab.
   const filteredMatches = useMemo(() => {
+    if (isManager && activeLeg === 'mine') return managerMatches;
     if (activeLeg === 'all') return matches;
     return matches.filter((m) => m.leg === Number(activeLeg));
-  }, [matches, activeLeg]);
+  }, [activeLeg, isManager, managerMatches, matches]);
+
+  const scheduleTabItems = useMemo(() => {
+    if (isManager) {
+      return [
+        { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+        {
+          key: 'mine',
+          label: t('schedule.tabMine', { count: managerMatches.length }),
+        },
+      ];
+    }
+
+    return [
+      { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+      {
+        key: '1',
+        label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
+      },
+      {
+        key: '2',
+        label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
+      },
+    ];
+  }, [isManager, managerMatches.length, matches, t]);
 
   // Group matches by round
   const roundGroups = useMemo(() => {
@@ -344,21 +410,11 @@ export default function SchedulePage() {
       </div>
 
       <Card className="schedule-page-card">
-        {/* Leg tabs */}
+        {/* Schedule tabs */}
         <Tabs
           activeKey={activeLeg}
           onChange={setActiveLeg}
-          items={[
-            { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
-            {
-              key: '1',
-              label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
-            },
-            {
-              key: '2',
-              label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
-            },
-          ]}
+          items={scheduleTabItems}
           style={{ marginBottom: 12 }}
         />
 

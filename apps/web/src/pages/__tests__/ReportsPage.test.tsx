@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
@@ -173,10 +173,16 @@ describe('ReportsPage', () => {
   });
 
   it('shows loaded report counts in the hero metrics', async () => {
-    renderPage();
+    const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('2')).toBeInTheDocument();
+      const cover = container.querySelector('.page-cover');
+      expect(cover).toBeInTheDocument();
+      const coverQueries = within(cover as HTMLElement);
+      expect(coverQueries.getByText('reports.tabScorers')).toBeInTheDocument();
+      expect(coverQueries.getByText('reports.tabAssists')).toBeInTheDocument();
+      expect(coverQueries.getByText('reports.tabPlayerOfMatch')).toBeInTheDocument();
+      expect(coverQueries.queryByText('reports.tabTeamStats')).not.toBeInTheDocument();
     });
   });
 

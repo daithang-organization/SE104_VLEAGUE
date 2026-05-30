@@ -12,6 +12,13 @@ const mockTeamApi = vi.hoisted(() => ({
     status: 'ACTIVE',
     stadiumId: 's1',
     stadium: { id: 's1', name: 'Sân vận động Hàng Đẫy', city: 'Hà Nội' },
+    managedUsers: [
+      {
+        id: 'u-manager',
+        email: 'manager.cahn@demo.local',
+        name: 'Manager CAHN',
+      },
+    ],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     roster: [],
@@ -65,5 +72,11 @@ describe('TeamDetailPage', () => {
     expect(code).toHaveClass('club-detail-code-pill');
     expect(code).not.toHaveClass('club-detail-eyebrow');
     expect(code.closest('.club-detail-facts')).not.toBeNull();
+  });
+
+  it('renders manager information in the overview table', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Manager CAHN (manager.cahn@demo.local)')).toBeInTheDocument();
   });
 });

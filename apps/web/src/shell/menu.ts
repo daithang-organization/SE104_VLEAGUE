@@ -29,7 +29,7 @@ export const MENU: MenuItem[] = [
     key: 'stadiums',
     labelKey: 'menu.stadiums',
     path: '/stadiums',
-    roles: ['ADMIN'],
+    roles: ['ADMIN', 'TEAM_MANAGER'],
   },
   {
     key: 'players',

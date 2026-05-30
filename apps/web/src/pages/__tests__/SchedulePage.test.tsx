@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
 const mockUseAuth = vi.hoisted(() =>
@@ -32,6 +32,21 @@ const mockScheduleApi = vi.hoisted(() => ({
         status: 'FINISHED',
         kickoffAt: '2025-03-15T17:00:00Z',
       },
+      {
+        id: 'm2',
+        roundNo: 1,
+        leg: 2,
+        homeTeamId: 't3',
+        awayTeamId: 't4',
+        homeTeam: { name: 'Da Nang FC', shortName: 'DN' },
+        awayTeam: { name: 'Nam Dinh FC', shortName: 'ND' },
+        stadium: { name: 'Hoa Xuan', city: 'Da Nang' },
+        stadiumId: 's2',
+        homeScore: null,
+        awayScore: null,
+        status: 'PUBLISHED',
+        kickoffAt: '2025-03-16T17:00:00Z',
+      },
     ],
   }),
   apiGenerateSchedule: vi.fn().mockResolvedValue({ message: 'Created 20 matches' }),
@@ -55,11 +70,23 @@ const mockMatchApi = vi.hoisted(() => ({
   apiUpdateMatch: vi.fn().mockResolvedValue({}),
 }));
 
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerManagedTeam: vi.fn().mockResolvedValue({
+    id: 't1',
+    name: 'Ha Noi FC',
+    shortName: 'HN',
+    status: 'ACTIVE',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  }),
+}));
+
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/scheduleApi', () => mockScheduleApi);
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/teamApi', () => mockTeamApi);
 vi.mock('../../services/matchApi', () => mockMatchApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import SchedulePage from '../SchedulePage';
 
@@ -72,7 +99,16 @@ function renderPage() {
 }
 
 describe('SchedulePage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
 
   it('renders the page title', () => {
     const { container } = renderPage();
@@ -118,6 +154,22 @@ describe('SchedulePage', () => {
     expect(screen.getByText(/Tất cả/)).toBeInTheDocument();
     expect(screen.getByText(/Lượt đi/)).toBeInTheDocument();
     expect(screen.getByText(/Lượt về/)).toBeInTheDocument();
+  });
+
+  it('shows manager schedule tabs without leg filters', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u2', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText(/Lịch thi đấu của tôi/)).toBeInTheDocument();
+    expect(screen.queryByText(/Lượt đi/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lượt về/)).not.toBeInTheDocument();
   });
 
   it('renders the active round as a fixture list grouped by match day', async () => {

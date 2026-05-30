@@ -1,5 +1,7 @@
-﻿import {
+import {
   BankOutlined,
+  CheckOutlined,
+  CloseOutlined,
   DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
@@ -18,6 +20,7 @@ import {
   Modal,
   Popconfirm,
   Row,
+  Select,
   Space,
   Table,
   Tabs,
@@ -27,7 +30,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, TableSkeleton } from '../components';
 import { PageCover } from '../components/PageCover';
@@ -39,26 +42,33 @@ import {
   type CreateStadiumPayload,
   type Stadium,
 } from '../services/stadiumApi';
+import { apiGetTeams, type Team } from '../services/teamApi';
 import {
   apiCreateManagerStadiumRequest,
+  apiDeleteManagerStadiumRequest,
   apiGetManagerStadiumRequests,
   apiGetMyManagerStadiumRequests,
   apiGetTeamManagerManagedTeam,
   apiReviewManagerStadiumRequest,
+  apiUpdateManagerStadiumRequest,
   type ManagerStadiumRequest,
 } from '../services/teamManagerApi';
-import type { Team } from '../services/teamApi';
 
 export default function StadiumsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = useMemo(() => user?.role === 'ADMIN', [user]);
   const isManager = user?.role === 'TEAM_MANAGER';
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [managedTeam, setManagedTeam] = useState<Team | null>(null);
   const [managerStadiumRequests, setManagerStadiumRequests] = useState<ManagerStadiumRequest[]>([]);
   const [adminStadiumRequests, setAdminStadiumRequests] = useState<ManagerStadiumRequest[]>([]);
+  const [editingStadiumRequest, setEditingStadiumRequest] = useState<ManagerStadiumRequest | null>(
+    null,
+  );
   const [reviewingRequest, setReviewingRequest] = useState<ManagerStadiumRequest | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [reviewing, setReviewing] = useState(false);
@@ -83,9 +93,20 @@ export default function StadiumsPage() {
     }
   }, []);
 
+  const fetchTeams = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const data = await apiGetTeams();
+      setTeams(data?.data || []);
+    } catch (_err) {
+      setTeams([]);
+    }
+  }, [isAdmin]);
+
   useEffect(() => {
     fetchStadiums();
-  }, [fetchStadiums]);
+    fetchTeams();
+  }, [fetchStadiums, fetchTeams]);
 
   const fetchManagerStadiumState = useCallback(async () => {
     if (!isManager) return;
@@ -119,6 +140,7 @@ export default function StadiumsPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setEditingStadiumRequest(null);
     form.resetFields();
     form.setFieldsValue({ country: 'Việt Nam', fifaStars: 2 });
     setModalOpen(true);
@@ -127,6 +149,7 @@ export default function StadiumsPage() {
   const openManagerHomeStadium = () => {
     const current = stadiums.find((stadium) => stadium.id === managedTeam?.stadiumId);
     setEditing(null);
+    setEditingStadiumRequest(null);
     form.resetFields();
     form.setFieldsValue({
       name: current?.name,
@@ -141,6 +164,7 @@ export default function StadiumsPage() {
 
   const openEdit = (stadium: Stadium) => {
     setEditing(stadium);
+    setEditingStadiumRequest(null);
     form.setFieldsValue({
       name: stadium.name,
       city: stadium.city,
@@ -148,6 +172,26 @@ export default function StadiumsPage() {
       country: stadium.country ?? 'Việt Nam',
       capacity: stadium.capacity,
       fifaStars: stadium.fifaStars,
+      teamId: teams.find((team) => team.stadiumId === stadium.id)?.id,
+    });
+    setModalOpen(true);
+  };
+
+  const openEditRequest = (request: ManagerStadiumRequest) => {
+    if (request.status === 'APPROVED') return;
+
+    const payload = request.payload ?? {};
+    setEditing(null);
+    setEditingStadiumRequest(request);
+    form.resetFields();
+    form.setFieldsValue({
+      name: payload.name ?? request.stadium?.name,
+      city: payload.city ?? request.stadium?.city ?? request.team?.city,
+      address: payload.address ?? request.stadium?.address ?? '',
+      country: payload.country ?? request.stadium?.country ?? 'Việt Nam',
+      capacity: payload.capacity ?? request.stadium?.capacity ?? undefined,
+      fifaStars: payload.fifaStars ?? request.stadium?.fifaStars ?? 2,
+      requestNote: request.requestNote ?? undefined,
     });
     setModalOpen(true);
   };
@@ -164,9 +208,19 @@ export default function StadiumsPage() {
         country: values.country?.trim() || undefined,
         capacity: values.capacity || undefined,
         fifaStars: values.fifaStars ?? undefined,
+        teamId: !isManager ? values.teamId || undefined : undefined,
       };
 
-      if (isManager) {
+      if (isManager && editingStadiumRequest) {
+        await apiUpdateManagerStadiumRequest(editingStadiumRequest.id, {
+          requestType: editingStadiumRequest.requestType,
+          stadiumId: editingStadiumRequest.stadiumId ?? managedTeam?.stadiumId ?? undefined,
+          ...payload,
+          requestNote: values.requestNote || undefined,
+        });
+        message.success('Đã cập nhật và gửi lại yêu cầu sân nhà đến Admin');
+        fetchManagerStadiumState();
+      } else if (isManager) {
         await apiCreateManagerStadiumRequest({
           requestType: managedTeam?.stadiumId ? 'UPDATE_HOME_STADIUM' : 'CREATE_HOME_STADIUM',
           stadiumId: managedTeam?.stadiumId ?? undefined,
@@ -184,6 +238,7 @@ export default function StadiumsPage() {
       }
 
       setModalOpen(false);
+      setEditingStadiumRequest(null);
       fetchStadiums();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
@@ -203,11 +258,20 @@ export default function StadiumsPage() {
     }
   };
 
-  const handleReviewStadiumRequest = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!reviewingRequest) return;
+  const handleDeleteStadiumRequest = async (request: ManagerStadiumRequest) => {
+    try {
+      await apiDeleteManagerStadiumRequest(request.id);
+      message.success('Đã xóa yêu cầu sân nhà');
+      fetchManagerStadiumState();
+    } catch (_err) {
+      message.error('Không thể xóa yêu cầu sân nhà');
+    }
+  };
+
+  const submitReview = async (request: ManagerStadiumRequest, status: 'APPROVED' | 'REJECTED') => {
     setReviewing(true);
     try {
-      await apiReviewManagerStadiumRequest(reviewingRequest.id, {
+      await apiReviewManagerStadiumRequest(request.id, {
         status,
         adminNote: reviewNote || undefined,
       });
@@ -223,6 +287,11 @@ export default function StadiumsPage() {
     } finally {
       setReviewing(false);
     }
+  };
+
+  const handleReviewStadiumRequest = async (status: 'APPROVED' | 'REJECTED') => {
+    if (!reviewingRequest) return;
+    await submitReview(reviewingRequest, status);
   };
 
   const filtered = stadiums.filter(
@@ -390,8 +459,21 @@ export default function StadiumsPage() {
         pageSizeOptions: [10, 15, 20, 50],
         showSizeChanger: true,
         showTotal: (total) => t('stadiums.totalCount', { total }),
+        hideOnSinglePage: false,
       }}
       size="middle"
+      onRow={(record) => ({
+        onClick: (e) => {
+          if (
+            (e.target as HTMLElement).closest('button') ||
+            (e.target as HTMLElement).closest('a')
+          ) {
+            return;
+          }
+          navigate(`/stadiums/${record.id}`);
+        },
+        style: { cursor: 'pointer' },
+      })}
     />
   );
 
@@ -409,16 +491,45 @@ export default function StadiumsPage() {
 
   const requestColumns: ColumnsType<ManagerStadiumRequest> = [
     {
+      title: '#',
+      key: 'index',
+      width: 60,
+      render: (_, __, i) => i + 1,
+    },
+    {
       title: 'Loại yêu cầu',
       dataIndex: 'requestType',
-      width: 180,
+      width: 150,
       render: (type: ManagerStadiumRequest['requestType']) =>
         type === 'CREATE_HOME_STADIUM' ? 'Tạo sân nhà' : 'Chỉnh sửa sân nhà',
     },
     {
-      title: 'Nội dung',
-      key: 'summary',
-      render: (_, record) => renderRequestSummary(record),
+      title: 'Tên sân vận động',
+      key: 'name',
+      render: (_, record) => {
+        const name = record.payload?.name || record.stadium?.name || '—';
+        return (
+          <a
+            onClick={() =>
+              navigate(`/stadiums/${record.stadiumId || `request-${record.id}`}`, {
+                state: { request: record },
+              })
+            }
+            style={{ fontWeight: 600 }}
+          >
+            {name}
+          </a>
+        );
+      },
+    },
+    {
+      title: 'Người yêu cầu',
+      key: 'manager',
+      render: (_, record) => {
+        const m = record.manager;
+        if (!m) return '—';
+        return m.name ? `${m.name} (${m.email})` : m.email;
+      },
     },
     {
       title: 'Trạng thái',
@@ -435,21 +546,68 @@ export default function StadiumsPage() {
           {
             title: t('stadiums.colActions'),
             key: 'actions',
-            width: 120,
+            width: 100,
             render: (_: unknown, record: ManagerStadiumRequest) => (
-              <Button
-                type="link"
-                onClick={() => {
-                  setReviewingRequest(record);
-                  setReviewNote(record.adminNote ?? '');
-                }}
-              >
-                Chi tiết
-              </Button>
+              <Space>
+                <Button
+                  type="text"
+                  style={{ color: '#52c41a' }}
+                  icon={<CheckOutlined />}
+                  loading={reviewing && reviewingRequest?.id === record.id}
+                  disabled={record.status !== 'PENDING'}
+                  onClick={() => submitReview(record, 'APPROVED')}
+                />
+                <Button
+                  danger
+                  type="text"
+                  icon={<CloseOutlined />}
+                  disabled={record.status !== 'PENDING'}
+                  onClick={() => {
+                    setReviewingRequest(record);
+                    setReviewNote(record.adminNote ?? '');
+                  }}
+                />
+              </Space>
             ),
           },
         ]
-      : []),
+      : isManager
+        ? [
+            {
+              title: t('stadiums.colActions'),
+              key: 'actions',
+              width: 120,
+              render: (_: unknown, record: ManagerStadiumRequest) => (
+                <Space>
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    disabled={record.status === 'APPROVED'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditRequest(record);
+                    }}
+                  />
+                  <Popconfirm
+                    title="Xóa yêu cầu sân nhà?"
+                    description="Yêu cầu này sẽ bị xóa khỏi danh sách của bạn."
+                    onConfirm={() => handleDeleteStadiumRequest(record)}
+                    okText="Xóa"
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </Popconfirm>
+                </Space>
+              ),
+            },
+          ]
+        : []),
   ];
 
   const renderRequestsTable = (requests: ManagerStadiumRequest[]) => (
@@ -457,9 +615,29 @@ export default function StadiumsPage() {
       columns={requestColumns}
       dataSource={requests}
       rowKey="id"
-      pagination={{ pageSize: 8 }}
+      pagination={{
+        defaultPageSize: 15,
+        pageSizeOptions: [10, 15, 20, 50],
+        showSizeChanger: true,
+        showTotal: (total) => t('stadiums.totalCount', { total }),
+        hideOnSinglePage: false,
+      }}
       size="middle"
       locale={{ emptyText: t('common.noData') }}
+      onRow={(record) => ({
+        onClick: (e) => {
+          if (
+            (e.target as HTMLElement).closest('button') ||
+            (e.target as HTMLElement).closest('a')
+          ) {
+            return;
+          }
+          navigate(`/stadiums/${record.stadiumId || `request-${record.id}`}`, {
+            state: { request: record },
+          });
+        },
+        style: { cursor: 'pointer' },
+      })}
     />
   );
 
@@ -483,6 +661,7 @@ export default function StadiumsPage() {
         <Card>
           {isAdmin ? (
             <Tabs
+              defaultActiveKey={location.state?.tab || 'list'}
               items={[
                 {
                   key: 'list',
@@ -491,7 +670,7 @@ export default function StadiumsPage() {
                 },
                 {
                   key: 'review',
-                  label: 'Duyệt từ Manager',
+                  label: 'Duyệt sân vận động',
                   children: renderRequestsTable(adminStadiumRequests),
                 },
               ]}
@@ -501,18 +680,18 @@ export default function StadiumsPage() {
               items={[
                 {
                   key: 'all',
-                  label: 'Tất cả sân vận động',
+                  label: 'Danh sách sân vận động',
                   children: renderStadiumTable(filtered),
                 },
                 {
                   key: 'mine',
-                  label: 'Sân nhà của tôi',
-                  children: (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                      {renderRequestsTable(managerStadiumRequests)}
-                      {renderStadiumTable(homeStadium ? [homeStadium] : [])}
-                    </Space>
-                  ),
+                  label: 'Sân vận động của tôi',
+                  children: renderStadiumTable(homeStadium ? [homeStadium] : []),
+                },
+                {
+                  key: 'requests',
+                  label: 'Yêu cầu sân vận động',
+                  children: renderRequestsTable(managerStadiumRequests),
                 },
               ]}
             />
@@ -525,18 +704,23 @@ export default function StadiumsPage() {
       <Modal
         title={
           isManager
-            ? managedTeam?.stadiumId
-              ? 'Đề xuất chỉnh sửa sân nhà'
-              : 'Đề xuất thêm sân nhà'
+            ? editingStadiumRequest
+              ? 'Cập nhật yêu cầu sân nhà'
+              : managedTeam?.stadiumId
+                ? 'Đề xuất chỉnh sửa sân nhà'
+                : 'Đề xuất thêm sân nhà'
             : editing
               ? t('stadiums.modalEditTitle')
               : t('stadiums.modalCreateTitle')
         }
         open={modalOpen}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false);
+          setEditingStadiumRequest(null);
+        }}
         onOk={handleSave}
         confirmLoading={saving}
-        okText={editing ? t('common.save') : t('common.create')}
+        okText={editingStadiumRequest ? 'Gửi lại' : editing ? t('common.save') : t('common.create')}
         cancelText={t('common.cancel')}
         destroyOnClose
         width={600}
@@ -549,6 +733,21 @@ export default function StadiumsPage() {
           >
             <Input placeholder={t('stadiums.formNamePlaceholder')} />
           </Form.Item>
+
+          {isAdmin && (
+            <Form.Item name="teamId" label={t('stadiums.formTeam')}>
+              <Select
+                placeholder={t('stadiums.formTeamPlaceholder')}
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                options={teams.map((team) => ({
+                  value: team.id,
+                  label: `${team.name}${team.city ? ` (${team.city})` : ''}`,
+                }))}
+              />
+            </Form.Item>
+          )}
 
           <Row gutter={16}>
             <Col span={12}>

@@ -29,13 +29,57 @@ const mockStadiumApi = vi.hoisted(() => ({
   apiDeleteStadium: vi.fn(),
 }));
 
+const mockTeamApi = vi.hoisted(() => ({
+  apiGetTeams: vi.fn().mockResolvedValue({
+    data: [
+      {
+        id: 't1',
+        name: 'TP.HCM FC',
+        city: 'TP.HCM',
+        status: 'ACTIVE',
+        stadiumId: 's2',
+      },
+      {
+        id: 't2',
+        name: 'Hà Nội FC',
+        city: 'Hà Nội',
+        status: 'ACTIVE',
+        stadiumId: null,
+      },
+    ],
+  }),
+}));
+
 const mockAuth = vi.hoisted(() => ({
   useAuth: vi.fn().mockReturnValue({ user: { role: 'ADMIN' } }),
 }));
 
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiCreateManagerStadiumRequest: vi.fn(),
+  apiDeleteManagerStadiumRequest: vi.fn(),
+  apiGetManagerStadiumRequests: vi.fn().mockResolvedValue([]),
+  apiGetMyManagerStadiumRequests: vi.fn().mockResolvedValue([]),
+  apiGetTeamManagerManagedTeam: vi.fn().mockResolvedValue({
+    id: 't1',
+    name: 'TP.HCM FC',
+    shortName: 'HCM',
+    status: 'ACTIVE',
+    stadiumId: 's2',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  }),
+  apiReviewManagerStadiumRequest: vi.fn(),
+  apiUpdateManagerStadiumRequest: vi.fn(),
+}));
+
 vi.mock('../../services/stadiumApi', () => mockStadiumApi);
+vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 vi.mock('../../auth/AuthContext', () => mockAuth);
-vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
+vi.mock('react-router-dom', () => ({
+  useLocation: () => ({ state: null }),
+  useNavigate: () => vi.fn(),
+}));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -102,6 +146,19 @@ describe('StadiumsPage', () => {
       expect(mockStadiumApi.apiGetStadiums).toHaveBeenCalledTimes(1);
     });
     expect(screen.queryByText('stadiums.addBtn')).not.toBeInTheDocument();
+  });
+
+  it('renders manager stadium tabs and home stadium action', async () => {
+    mockAuth.useAuth.mockReturnValue({ user: { role: 'TEAM_MANAGER' } });
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Danh sách sân vận động')).toBeInTheDocument();
+      expect(screen.getByText('Sân vận động của tôi')).toBeInTheDocument();
+      expect(screen.getByText('Chỉnh sửa sân nhà')).toBeInTheDocument();
+    });
+    expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
+    expect(mockTeamManagerApi.apiGetMyManagerStadiumRequests).toHaveBeenCalled();
   });
 
   it('lets admin update stadium country and FIFA stars', async () => {
