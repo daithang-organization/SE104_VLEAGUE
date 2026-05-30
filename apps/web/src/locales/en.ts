@@ -723,6 +723,8 @@ const en = {
     colCountry: 'Country',
     colAddress: 'Address',
     colCapacity: 'Capacity',
+    maxCapacity: 'Highest capacity',
+    minCapacity: 'Lowest capacity',
     colFifaStars: 'FIFA Stars',
     colActions: 'Actions',
     totalCount: 'Total {total} stadiums',
