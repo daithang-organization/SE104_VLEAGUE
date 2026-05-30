@@ -1,8 +1,12 @@
-﻿import {
+import {
   CheckCircleOutlined,
+  CheckOutlined,
+  CloseOutlined,
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SearchOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
@@ -11,6 +15,7 @@
 import {
   Button,
   Card,
+  Descriptions,
   Form,
   Input,
   message,
@@ -19,6 +24,7 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -28,7 +34,12 @@ import { useTranslation } from 'react-i18next';
 import { AppMenuIcon } from '../components';
 import { PageCover } from '../components/PageCover';
 import { TableSkeleton } from '../components/LoadingSkeleton';
-import { apiGetTeams, type Team } from '../services/teamApi';
+import {
+  apiGetTeamManagerRequests,
+  apiReviewTeamManagerRequest,
+  type TeamManagerRequest,
+  type TeamManagerRequestStatus,
+} from '../services/teamManagerApi';
 import {
   apiCreateUser,
   apiDeleteUser,
@@ -48,6 +59,20 @@ const ROLE_COLORS: Record<string, string> = {
 
 const ROLE_KEYS = ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'] as const;
 
+function requestStatusTag(status: TeamManagerRequestStatus) {
+  if (status === 'APPROVED') return <Tag color="success">Đã duyệt</Tag>;
+  if (status === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
+  return <Tag color="processing">Chờ duyệt</Tag>;
+}
+
+function requestTypeLabel(request: TeamManagerRequest) {
+  return request.requestType === 'CREATE_TEAM' ? 'Tạo CLB mới' : 'Nhận quản lý CLB có sẵn';
+}
+
+function requestTeamName(request: TeamManagerRequest) {
+  return request.team?.name ?? request.proposedTeamName ?? '—';
+}
+
 export default function UsersPage() {
   const { t } = useTranslation();
   const roleOptions = useMemo(
@@ -57,16 +82,21 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
 
-  // Create user modal
+  const [requests, setRequests] = useState<TeamManagerRequest[]>([]);
+  const [requestStatus, setRequestStatus] = useState<TeamManagerRequestStatus | undefined>(
+    'PENDING',
+  );
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<TeamManagerRequest | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewForm] = Form.useForm<{ adminNote?: string }>();
+
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm] = Form.useForm();
-  const createRole = Form.useWatch('role', createForm);
   const [creating, setCreating] = useState(false);
 
-  // Edit role modal
   const [editOpen, setEditOpen] = useState(false);
   const [editForm] = Form.useForm();
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -84,33 +114,30 @@ export default function UsersPage() {
     }
   }, []);
 
+  const fetchRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const data = await apiGetTeamManagerRequests(requestStatus);
+      setRequests(data);
+    } catch (_err) {
+      message.error('Không thể tải yêu cầu quản lý CLB');
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, [requestStatus]);
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   useEffect(() => {
-    const fetchTeams = async () => {
-      setTeamsLoading(true);
-      try {
-        const data = await apiGetTeams(1, 100);
-        setTeams(data.data);
-      } catch (_err) {
-        message.error(t('users.teamLoadError'));
-      } finally {
-        setTeamsLoading(false);
-      }
-    };
+    fetchRequests();
+  }, [fetchRequests]);
 
-    fetchTeams();
-  }, [t]);
-
-  // ─── Create ─────────────────
   const handleCreate = async (values: CreateUserPayload) => {
     setCreating(true);
     try {
-      const payload =
-        values.role === 'TEAM_MANAGER' ? values : { ...values, managedTeamId: undefined };
-      await apiCreateUser(payload);
+      await apiCreateUser({ ...values, managedTeamId: undefined });
       message.success(t('users.createSuccess'));
       setCreateOpen(false);
       createForm.resetFields();
@@ -125,7 +152,6 @@ export default function UsersPage() {
     }
   };
 
-  // ─── Edit Role ──────────────
   const openEditModal = (user: User) => {
     setEditingUser(user);
     editForm.setFieldsValue({ role: user.role });
@@ -147,7 +173,6 @@ export default function UsersPage() {
     }
   };
 
-  // ─── Delete ─────────────────
   const handleDelete = async (id: string) => {
     try {
       await apiDeleteUser(id);
@@ -155,6 +180,37 @@ export default function UsersPage() {
       fetchUsers();
     } catch (_err) {
       message.error(t('users.deleteError'));
+    }
+  };
+
+  const openReviewModal = (request: TeamManagerRequest) => {
+    setSelectedRequest(request);
+    reviewForm.setFieldsValue({ adminNote: request.adminNote ?? '' });
+    setReviewOpen(true);
+  };
+
+  const handleReviewRequest = async (status: 'APPROVED' | 'REJECTED') => {
+    if (!selectedRequest) return;
+    const values = reviewForm.getFieldsValue();
+
+    setReviewing(true);
+    try {
+      await apiReviewTeamManagerRequest(selectedRequest.id, {
+        status,
+        adminNote: values.adminNote?.trim() || undefined,
+      });
+      message.success(status === 'APPROVED' ? 'Đã duyệt yêu cầu' : 'Đã từ chối yêu cầu');
+      setReviewOpen(false);
+      setSelectedRequest(null);
+      fetchRequests();
+      fetchUsers();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Không thể xét duyệt yêu cầu';
+      message.error(msg);
+    } finally {
+      setReviewing(false);
     }
   };
 
@@ -175,23 +231,22 @@ export default function UsersPage() {
     {
       title: t('users.colName'),
       dataIndex: 'name',
-      render: (v: string | null) => v || '—',
+      render: (value: string | null) => value || '—',
     },
     {
       title: t('users.colRole'),
       dataIndex: 'role',
-      width: 140,
-      filters: roleOptions.map((r) => ({ text: r.label, value: r.value })),
+      width: 150,
+      filters: roleOptions.map((role) => ({ text: role.label, value: role.value })),
       onFilter: (value, record) => record.role === value,
-      render: (role: string) => {
-        const color = ROLE_COLORS[role] || 'default';
-        return <Tag color={color}>{t(`role.${role}`)}</Tag>;
-      },
+      render: (role: string) => (
+        <Tag color={ROLE_COLORS[role] || 'default'}>{t(`role.${role}`)}</Tag>
+      ),
     },
     {
       title: t('users.colManagedTeam'),
       key: 'managedTeam',
-      width: 180,
+      width: 190,
       render: (_, record) =>
         record.role === 'TEAM_MANAGER' ? (
           record.managedTeam ? (
@@ -211,18 +266,19 @@ export default function UsersPage() {
       dataIndex: 'emailVerified',
       width: 130,
       align: 'center',
-      render: (v: boolean) => (v ? <Tag color="success">✓</Tag> : <Tag color="error">✗</Tag>),
+      render: (value: boolean) =>
+        value ? <Tag color="success">✓</Tag> : <Tag color="error">✗</Tag>,
     },
     {
       title: t('users.colOAuth'),
       key: 'oauth',
-      width: 100,
+      width: 110,
       align: 'center',
-      render: (_, r) => (
+      render: (_, record) => (
         <Space size={4}>
-          {r.googleId && <Tag color="red">Google</Tag>}
-          {r.facebookId && <Tag color="blue">FB</Tag>}
-          {!r.googleId && !r.facebookId && '—'}
+          {record.googleId && <Tag color="red">Google</Tag>}
+          {record.facebookId && <Tag color="blue">FB</Tag>}
+          {!record.googleId && !record.facebookId && '—'}
         </Space>
       ),
     },
@@ -230,7 +286,7 @@ export default function UsersPage() {
       title: t('users.colCreatedAt'),
       dataIndex: 'createdAt',
       width: 130,
-      render: (v: string) => dayjs(v).format('DD/MM/YYYY'),
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
       sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     {
@@ -250,6 +306,46 @@ export default function UsersPage() {
             <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
+      ),
+    },
+  ];
+
+  const requestColumns: ColumnsType<TeamManagerRequest> = [
+    {
+      title: 'Manager',
+      key: 'manager',
+      render: (_, record) => record.manager?.email ?? '—',
+    },
+    {
+      title: 'Loại yêu cầu',
+      key: 'requestType',
+      render: (_, record) => requestTypeLabel(record),
+    },
+    {
+      title: 'CLB',
+      key: 'team',
+      render: (_, record) => requestTeamName(record),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      width: 130,
+      render: (status: TeamManagerRequestStatus) => requestStatusTag(status),
+    },
+    {
+      title: 'Ngày gửi',
+      dataIndex: 'createdAt',
+      width: 130,
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 120,
+      render: (_, record) => (
+        <Button icon={<EyeOutlined />} onClick={() => openReviewModal(record)}>
+          Chi tiết
+        </Button>
       ),
     },
   ];
@@ -297,42 +393,78 @@ export default function UsersPage() {
       </div>
 
       <Card>
-        {loading && filteredUsers.length === 0 ? (
-          <TableSkeleton rows={8} />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={filteredUsers}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total) => t('users.totalCount', { total }),
-            }}
-            size="middle"
-            locale={{ emptyText: t('common.noData') }}
-          />
-        )}
+        <Tabs
+          items={[
+            {
+              key: 'users',
+              label: 'Người dùng',
+              children:
+                loading && filteredUsers.length === 0 ? (
+                  <TableSkeleton rows={8} />
+                ) : (
+                  <Table
+                    columns={columns}
+                    dataSource={filteredUsers}
+                    rowKey="id"
+                    loading={loading}
+                    pagination={{
+                      pageSize: 10,
+                      showSizeChanger: true,
+                      showTotal: (total) => t('users.totalCount', { total }),
+                    }}
+                    size="middle"
+                    locale={{ emptyText: t('common.noData') }}
+                  />
+                ),
+            },
+            {
+              key: 'requests',
+              label: 'Yêu cầu quản lý CLB',
+              children: (
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Space wrap>
+                    <Select
+                      value={requestStatus ?? 'ALL'}
+                      onChange={(value) =>
+                        setRequestStatus(
+                          value === 'ALL' ? undefined : (value as TeamManagerRequestStatus),
+                        )
+                      }
+                      style={{ width: 180 }}
+                      options={[
+                        { value: 'PENDING', label: 'Chờ duyệt' },
+                        { value: 'APPROVED', label: 'Đã duyệt' },
+                        { value: 'REJECTED', label: 'Từ chối' },
+                        { value: 'ALL', label: 'Tất cả' },
+                      ]}
+                    />
+                    <Button icon={<ReloadOutlined />} onClick={fetchRequests}>
+                      Tải lại
+                    </Button>
+                  </Space>
+                  <Table
+                    columns={requestColumns}
+                    dataSource={requests}
+                    rowKey="id"
+                    loading={requestsLoading}
+                    pagination={{ pageSize: 10, showSizeChanger: true }}
+                    size="middle"
+                    locale={{ emptyText: t('common.noData') }}
+                  />
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Card>
 
-      {/* Create User Modal */}
       <Modal
         title={t('users.createModalTitle')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
       >
-        <Form
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreate}
-          onValuesChange={(changedValues) => {
-            if ('role' in changedValues && changedValues.role !== 'TEAM_MANAGER') {
-              createForm.setFieldsValue({ managedTeamId: undefined });
-            }
-          }}
-        >
+        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
           <Form.Item
             name="email"
             label={t('users.formEmail')}
@@ -360,24 +492,6 @@ export default function UsersPage() {
           >
             <Select options={roleOptions} placeholder={t('users.formRolePlaceholder')} />
           </Form.Item>
-          {createRole === 'TEAM_MANAGER' && (
-            <Form.Item
-              name="managedTeamId"
-              label={t('users.formManagedTeam')}
-              rules={[{ required: true, message: t('users.formManagedTeamRequired') }]}
-            >
-              <Select
-                showSearch
-                loading={teamsLoading}
-                placeholder={t('users.formManagedTeamPlaceholder')}
-                optionFilterProp="label"
-                options={teams.map((team) => ({
-                  value: team.id,
-                  label: team.name,
-                }))}
-              />
-            </Form.Item>
-          )}
           <Form.Item name="name" label={t('users.formName')}>
             <Input placeholder={t('users.formNamePlaceholder')} />
           </Form.Item>
@@ -392,7 +506,6 @@ export default function UsersPage() {
         </Form>
       </Modal>
 
-      {/* Edit Role Modal */}
       <Modal
         title={t('users.editRoleModalTitle', { email: editingUser?.email ?? '' })}
         open={editOpen}
@@ -416,6 +529,72 @@ export default function UsersPage() {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Chi tiết yêu cầu quản lý CLB"
+        open={reviewOpen}
+        onCancel={() => setReviewOpen(false)}
+        width={720}
+        footer={
+          <Space>
+            <Button onClick={() => setReviewOpen(false)}>{t('common.cancel')}</Button>
+            {selectedRequest?.status === 'PENDING' && (
+              <>
+                <Button
+                  danger
+                  icon={<CloseOutlined />}
+                  loading={reviewing}
+                  onClick={() => handleReviewRequest('REJECTED')}
+                >
+                  Từ chối
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<CheckOutlined />}
+                  loading={reviewing}
+                  onClick={() => handleReviewRequest('APPROVED')}
+                >
+                  Duyệt
+                </Button>
+              </>
+            )}
+          </Space>
+        }
+      >
+        {selectedRequest && (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Manager">
+                {selectedRequest.manager?.email ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Loại yêu cầu">
+                {requestTypeLabel(selectedRequest)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                {requestStatusTag(selectedRequest.status)}
+              </Descriptions.Item>
+              <Descriptions.Item label="CLB">{requestTeamName(selectedRequest)}</Descriptions.Item>
+              <Descriptions.Item label="Tên viết tắt đề xuất">
+                {selectedRequest.proposedTeamShortName ?? selectedRequest.team?.shortName ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thành phố">
+                {selectedRequest.proposedTeamCity ?? selectedRequest.team?.city ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ghi chú Manager">
+                {selectedRequest.requestNote || '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày gửi">
+                {dayjs(selectedRequest.createdAt).format('DD/MM/YYYY HH:mm')}
+              </Descriptions.Item>
+            </Descriptions>
+            <Form form={reviewForm} layout="vertical">
+              <Form.Item name="adminNote" label="Ghi chú xét duyệt">
+                <Input.TextArea rows={3} placeholder="Nhập lý do duyệt/từ chối nếu cần" />
+              </Form.Item>
+            </Form>
+          </Space>
+        )}
       </Modal>
     </div>
   );

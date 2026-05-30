@@ -524,7 +524,7 @@ const vi = {
 
   players: {
     title: 'Quản lý cầu thủ',
-    searchPlaceholder: 'Tìm kiếm theo tên hoặc quốc tịch...',
+    searchPlaceholder: 'Danh sách các cầu thủ đang hoạt động trong mùa giải',
     addBtn: 'Thêm cầu thủ',
     loadError: 'Không thể tải danh sách cầu thủ',
     createSuccess: 'Tạo cầu thủ thành công!',

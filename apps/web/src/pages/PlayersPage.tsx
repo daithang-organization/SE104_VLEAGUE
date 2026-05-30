@@ -21,7 +21,9 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
+  Typography,
 } from 'antd';
 import type { FilterValue, SorterResult, SortOrder as AntSortOrder } from 'antd/es/table/interface';
 import type { ColumnsType } from 'antd/es/table';
@@ -42,7 +44,14 @@ import {
   type PlayerSortOrder,
 } from '../services/playerApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
-import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
+import {
+  apiCreateManagerPlayerRequest,
+  apiGetManagerPlayerRequests,
+  apiGetMyManagerPlayerRequests,
+  apiReviewManagerPlayerRequest,
+  apiGetTeamManagerManagedTeam,
+  type ManagerPlayerRequest,
+} from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const POSITION_LABELS: Record<string, string> = {
@@ -101,16 +110,23 @@ export default function PlayersPage() {
   const [filterSourcePlayers, setFilterSourcePlayers] = useState<Player[]>([]);
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
   const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
+  const [managerPlayerTab, setManagerPlayerTab] = useState<'all' | 'mine'>('all');
+  const [managerPlayerRequests, setManagerPlayerRequests] = useState<ManagerPlayerRequest[]>([]);
+  const [adminPlayerRequests, setAdminPlayerRequests] = useState<ManagerPlayerRequest[]>([]);
+  const [reviewingRequest, setReviewingRequest] = useState<ManagerPlayerRequest | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewing, setReviewing] = useState(false);
   const [form] = Form.useForm();
 
   const isTeamManager = user?.role === 'TEAM_MANAGER';
+  const isManagerMineTab = isTeamManager && managerPlayerTab === 'mine';
   const canEdit = useMemo(() => {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
   const totalPlayers = pagination.total || players.length;
   const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
   const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
-  const rosteredPlayers = metricPlayers.filter((player) => player.roster?.[0]?.team).length;
+  const domesticPlayers = metricPlayers.filter((player) => player.playerType === 'DOMESTIC').length;
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -144,13 +160,38 @@ export default function PlayersPage() {
     };
   }, [isTeamManager]);
 
+  const fetchManagerPlayerRequests = useCallback(async () => {
+    if (!isTeamManager) return;
+    try {
+      const data = await apiGetMyManagerPlayerRequests();
+      setManagerPlayerRequests(data);
+    } catch (_err) {
+      setManagerPlayerRequests([]);
+    }
+  }, [isTeamManager]);
+
+  const fetchAdminPlayerRequests = useCallback(async () => {
+    if (user?.role !== 'ADMIN') return;
+    try {
+      const data = await apiGetManagerPlayerRequests();
+      setAdminPlayerRequests(data);
+    } catch (_err) {
+      setAdminPlayerRequests([]);
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    fetchManagerPlayerRequests();
+    fetchAdminPlayerRequests();
+  }, [fetchAdminPlayerRequests, fetchManagerPlayerRequests]);
+
   const fetchPlayers = useCallback(
     async (page = 1, limit = 20, searchQuery?: string) => {
       setLoading(true);
       try {
         const res = await apiGetPlayers(page, limit, {
           search: searchQuery || undefined,
-          teamId: managerTeamId || columnFilters.teamId || undefined,
+          teamId: isManagerMineTab ? managerTeamId || undefined : columnFilters.teamId || undefined,
           nationality: columnFilters.nationality,
           position: columnFilters.position,
           playerType: columnFilters.playerType,
@@ -175,6 +216,7 @@ export default function PlayersPage() {
       columnFilters.playerType,
       columnFilters.position,
       columnFilters.teamId,
+      isManagerMineTab,
       managerTeamId,
       sortState.sortBy,
       sortState.sortOrder,
@@ -184,7 +226,7 @@ export default function PlayersPage() {
 
   useEffect(() => {
     if (isTeamManager && !managerTeamLoaded) return;
-    if (isTeamManager && !managerTeamId) {
+    if (isManagerMineTab && !managerTeamId) {
       setPlayers([]);
       setPagination((prev) => ({ ...prev, total: 0 }));
       setLoading(false);
@@ -193,7 +235,7 @@ export default function PlayersPage() {
     fetchPlayers(pagination.page, pagination.limit, search);
   }, [
     fetchPlayers,
-    isTeamManager,
+    isManagerMineTab,
     managerTeamId,
     managerTeamLoaded,
     pagination.limit,
@@ -203,13 +245,13 @@ export default function PlayersPage() {
 
   useEffect(() => {
     if (isTeamManager && !managerTeamLoaded) return;
-    if (isTeamManager && !managerTeamId) {
+    if (isManagerMineTab && !managerTeamId) {
       setFilterSourcePlayers([]);
       return;
     }
 
     let cancelled = false;
-    apiGetPlayers(1, 1000, { teamId: managerTeamId || undefined })
+    apiGetPlayers(1, 1000, { teamId: isManagerMineTab ? managerTeamId || undefined : undefined })
       .then((res) => {
         if (!cancelled) setFilterSourcePlayers(res.data);
       })
@@ -220,7 +262,7 @@ export default function PlayersPage() {
     return () => {
       cancelled = true;
     };
-  }, [isTeamManager, managerTeamId, managerTeamLoaded]);
+  }, [isManagerMineTab, isTeamManager, managerTeamId, managerTeamLoaded]);
 
   useEffect(() => {
     apiGetTeams()
@@ -257,7 +299,7 @@ export default function PlayersPage() {
 
     setSortState(nextSortState);
     setColumnFilters({
-      teamId: managerTeamId || firstFilterValue(filters.club),
+      teamId: isManagerMineTab ? managerTeamId || undefined : firstFilterValue(filters.club),
       nationality: firstFilterValue(filters.nationality),
       position: firstFilterValue(filters.position),
       playerType: firstFilterValue(filters.playerType),
@@ -267,6 +309,12 @@ export default function PlayersPage() {
       page: nextPagination.current ?? 1,
       limit: nextPagination.pageSize ?? prev.limit,
     }));
+  };
+
+  const handleManagerTabChange = (key: string) => {
+    setManagerPlayerTab(key === 'mine' ? 'mine' : 'all');
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setColumnFilters((prev) => ({ ...prev, teamId: undefined }));
   };
 
   const openCreateModal = () => {
@@ -310,11 +358,32 @@ export default function PlayersPage() {
       };
 
       if (editingPlayer) {
-        await apiUpdatePlayer(editingPlayer.id, payload);
-        message.success(t('players.updateSuccess'));
+        if (isTeamManager) {
+          await apiCreateManagerPlayerRequest({
+            requestType: 'UPDATE_PLAYER',
+            playerId: editingPlayer.id,
+            ...payload,
+            requestNote: values.requestNote || undefined,
+          });
+          message.success('Đã gửi yêu cầu chỉnh sửa cầu thủ đến Admin');
+          fetchManagerPlayerRequests();
+        } else {
+          await apiUpdatePlayer(editingPlayer.id, payload);
+          message.success(t('players.updateSuccess'));
+        }
       } else {
-        await apiCreatePlayer(payload);
-        message.success(t('players.createSuccess'));
+        if (isTeamManager) {
+          await apiCreateManagerPlayerRequest({
+            requestType: 'ADD_PLAYER',
+            ...payload,
+            requestNote: values.requestNote || undefined,
+          });
+          message.success('Đã gửi yêu cầu thêm cầu thủ đến Admin');
+          fetchManagerPlayerRequests();
+        } else {
+          await apiCreatePlayer(payload);
+          message.success(t('players.createSuccess'));
+        }
       }
 
       setModalOpen(false);
@@ -339,11 +408,42 @@ export default function PlayersPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await apiDeletePlayer(id);
-      message.success(t('players.deleteSuccess'));
+      if (isTeamManager) {
+        await apiCreateManagerPlayerRequest({
+          requestType: 'REMOVE_FROM_TEAM',
+          playerId: id,
+        });
+        message.success('Đã gửi yêu cầu gỡ cầu thủ khỏi CLB đến Admin');
+        fetchManagerPlayerRequests();
+      } else {
+        await apiDeletePlayer(id);
+        message.success(t('players.deleteSuccess'));
+      }
       fetchPlayers(pagination.page, pagination.limit, search);
     } catch (_err) {
       message.error(t('players.deleteError'));
+    }
+  };
+
+  const handleReviewPlayerRequest = async (status: 'APPROVED' | 'REJECTED') => {
+    if (!reviewingRequest) return;
+    setReviewing(true);
+    try {
+      await apiReviewManagerPlayerRequest(reviewingRequest.id, {
+        status,
+        adminNote: reviewNote || undefined,
+      });
+      message.success(
+        status === 'APPROVED' ? 'Đã duyệt yêu cầu cầu thủ' : 'Đã từ chối yêu cầu cầu thủ',
+      );
+      setReviewingRequest(null);
+      setReviewNote('');
+      fetchAdminPlayerRequests();
+      fetchPlayers(pagination.page, pagination.limit, search);
+    } catch (_err) {
+      message.error('Không thể xét duyệt yêu cầu cầu thủ');
+    } finally {
+      setReviewing(false);
     }
   };
 
@@ -482,10 +582,14 @@ export default function PlayersPage() {
                 />
                 <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
                 <Popconfirm
-                  title={t('players.deleteConfirmTitle')}
-                  description={t('players.deleteConfirmDesc', { name: record.fullName })}
+                  title={isTeamManager ? 'Gỡ cầu thủ khỏi CLB?' : t('players.deleteConfirmTitle')}
+                  description={
+                    isTeamManager
+                      ? `Gửi yêu cầu gỡ "${record.fullName}" khỏi CLB đến Admin?`
+                      : t('players.deleteConfirmDesc', { name: record.fullName })
+                  }
                   onConfirm={() => handleDelete(record.id)}
-                  okText={t('players.deleteOk')}
+                  okText={isTeamManager ? 'Gửi yêu cầu' : t('players.deleteOk')}
                   cancelText={t('players.deleteCancel')}
                   okButtonProps={{ danger: true }}
                 >
@@ -497,6 +601,102 @@ export default function PlayersPage() {
         ]
       : []),
   ];
+
+  const renderPlayersTable = () =>
+    loading && players.length === 0 ? (
+      <TableSkeleton rows={8} />
+    ) : (
+      <Table
+        columns={columns}
+        dataSource={players}
+        rowKey="id"
+        loading={loading}
+        scroll={{ x: 1000 }}
+        pagination={{
+          current: pagination.page,
+          pageSize: pagination.limit,
+          total: pagination.total,
+          showSizeChanger: true,
+          showTotal: (total) => t('players.totalCount', { total }),
+        }}
+        onChange={handleTableChange}
+        size="middle"
+        locale={{ emptyText: t('common.noData') }}
+      />
+    );
+
+  const renderRequestSummary = (request: ManagerPlayerRequest) => {
+    const payload = request.payload || {};
+    const name = payload.fullName || request.player?.fullName || '—';
+    return (
+      <Space direction="vertical" size={2}>
+        <Typography.Text strong>{String(name)}</Typography.Text>
+        <Typography.Text type="secondary">
+          {request.team?.name ?? '—'} · {request.requestNote || 'Không có ghi chú'}
+        </Typography.Text>
+      </Space>
+    );
+  };
+
+  const playerRequestColumns: ColumnsType<ManagerPlayerRequest> = [
+    {
+      title: 'Loại yêu cầu',
+      dataIndex: 'requestType',
+      width: 180,
+      render: (type: ManagerPlayerRequest['requestType']) =>
+        type === 'ADD_PLAYER'
+          ? 'Thêm cầu thủ'
+          : type === 'UPDATE_PLAYER'
+            ? 'Chỉnh sửa cầu thủ'
+            : 'Gỡ khỏi CLB',
+    },
+    {
+      title: 'Nội dung',
+      key: 'summary',
+      render: (_, record) => renderRequestSummary(record),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      width: 130,
+      render: (status: ManagerPlayerRequest['status']) => (
+        <Tag color={status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'gold'}>
+          {status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+        </Tag>
+      ),
+    },
+    ...(user?.role === 'ADMIN'
+      ? [
+          {
+            title: t('players.colActions'),
+            key: 'actions',
+            width: 120,
+            render: (_: unknown, record: ManagerPlayerRequest) => (
+              <Button
+                type="link"
+                onClick={() => {
+                  setReviewingRequest(record);
+                  setReviewNote(record.adminNote ?? '');
+                }}
+              >
+                Chi tiết
+              </Button>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  const renderPlayerRequestsTable = (requests: ManagerPlayerRequest[]) => (
+    <Table
+      columns={playerRequestColumns}
+      dataSource={requests}
+      rowKey="id"
+      pagination={{ pageSize: 8 }}
+      size="middle"
+      locale={{ emptyText: t('common.noData') }}
+    />
+  );
 
   return (
     <>
@@ -518,8 +718,8 @@ export default function PlayersPage() {
               icon: <TeamOutlined />,
             },
             {
-              label: t('players.colClub'),
-              value: rosteredPlayers.toLocaleString('vi-VN'),
+              label: t('playerType.DOMESTIC'),
+              value: domesticPlayers.toLocaleString('vi-VN'),
               icon: <TeamOutlined />,
             },
           ]}
@@ -543,26 +743,45 @@ export default function PlayersPage() {
         </div>
 
         <Card>
-          {loading && players.length === 0 ? (
-            <TableSkeleton rows={8} />
-          ) : (
-            <Table
-              columns={columns}
-              dataSource={players}
-              rowKey="id"
-              loading={loading}
-              scroll={{ x: 1000 }}
-              pagination={{
-                current: pagination.page,
-                pageSize: pagination.limit,
-                total: pagination.total,
-                showSizeChanger: true,
-                showTotal: (total) => t('players.totalCount', { total }),
-              }}
-              onChange={handleTableChange}
-              size="middle"
-              locale={{ emptyText: t('common.noData') }}
+          {user?.role === 'ADMIN' ? (
+            <Tabs
+              items={[
+                {
+                  key: 'list',
+                  label: 'Danh sách cầu thủ',
+                  children: renderPlayersTable(),
+                },
+                {
+                  key: 'review',
+                  label: 'Duyệt từ Manager',
+                  children: renderPlayerRequestsTable(adminPlayerRequests),
+                },
+              ]}
             />
+          ) : isTeamManager ? (
+            <Tabs
+              activeKey={managerPlayerTab}
+              onChange={handleManagerTabChange}
+              items={[
+                {
+                  key: 'all',
+                  label: 'Tất cả cầu thủ',
+                  children: renderPlayersTable(),
+                },
+                {
+                  key: 'mine',
+                  label: 'Cầu thủ của tôi',
+                  children: (
+                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                      {renderPlayerRequestsTable(managerPlayerRequests)}
+                      {renderPlayersTable()}
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          ) : (
+            renderPlayersTable()
           )}
         </Card>
       </div>
@@ -680,7 +899,52 @@ export default function PlayersPage() {
               </Form.Item>
             </Col>
           </Row>
+
+          {isTeamManager && (
+            <Form.Item name="requestNote" label="Ghi chú gửi Admin">
+              <Input.TextArea rows={3} placeholder="Nhập lý do hoặc thông tin bổ sung..." />
+            </Form.Item>
+          )}
         </Form>
+      </Modal>
+
+      <Modal
+        title="Chi tiết yêu cầu cầu thủ"
+        open={!!reviewingRequest}
+        onCancel={() => setReviewingRequest(null)}
+        footer={[
+          <Button
+            key="reject"
+            danger
+            loading={reviewing}
+            onClick={() => handleReviewPlayerRequest('REJECTED')}
+          >
+            Từ chối
+          </Button>,
+          <Button
+            key="approve"
+            type="primary"
+            loading={reviewing}
+            onClick={() => handleReviewPlayerRequest('APPROVED')}
+          >
+            Duyệt
+          </Button>,
+        ]}
+      >
+        {reviewingRequest && (
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            {renderRequestSummary(reviewingRequest)}
+            <pre className="request-payload-preview">
+              {JSON.stringify(reviewingRequest.payload, null, 2)}
+            </pre>
+            <Input.TextArea
+              rows={3}
+              placeholder="Ghi chú xét duyệt"
+              value={reviewNote}
+              onChange={(event) => setReviewNote(event.target.value)}
+            />
+          </Space>
+        )}
       </Modal>
     </>
   );

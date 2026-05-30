@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -173,7 +174,7 @@ describe('PlayersPage', () => {
     });
   });
 
-  it('loads managed club players for team managers even when no current season exists', async () => {
+  it('shows all players by default and loads managed club players in the manager tab', async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u-manager', email: 'manager.hanoi@demo.local', role: 'TEAM_MANAGER' },
       loading: false,
@@ -186,12 +187,24 @@ describe('PlayersPage', () => {
 
     await waitFor(() => {
       expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
-      expect(mockPlayerApi.apiGetPlayers).toHaveBeenNthCalledWith(
-        1,
+      expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalledWith(
         1,
         20,
         expect.objectContaining({
           search: undefined,
+          teamId: undefined,
+        }),
+      );
+    });
+
+    expect(screen.getByRole('tab', { name: 'Tất cả cầu thủ' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Cầu thủ của tôi' }));
+
+    await waitFor(() => {
+      expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalledWith(
+        1,
+        20,
+        expect.objectContaining({
           teamId: 't1',
         }),
       );

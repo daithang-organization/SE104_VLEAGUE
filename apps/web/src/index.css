@@ -288,6 +288,13 @@ select {
   opacity: 0.94;
 }
 
+.sidebar-menu-icon-head-to-head,
+.sidebar-menu-icon-regulations,
+.sidebar-menu-icon-users {
+  width: 22px;
+  transform: translateX(-2px);
+}
+
 .sidebar-menu-ant-icon.anticon {
   flex: 0 0 auto;
   width: 22px;
@@ -303,8 +310,8 @@ select {
 
 .page-cover-mask-icon {
   display: inline-block;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   vertical-align: middle;
   background: currentColor;
   opacity: 0.94;
@@ -347,6 +354,7 @@ select {
 .app-sidebar.ant-layout-sider-collapsed .sidebar-menu-icon {
   width: 24px;
   height: 24px;
+  transform: translateX(5px);
 }
 
 :root[data-theme='light'] .ant-layout-sider-trigger {
@@ -577,6 +585,42 @@ select {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 14px 28px rgba(127, 29, 29, 0.22);
+}
+
+.dashboard-manager-cover {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, auto);
+}
+
+.dashboard-manager-cover .page-hero-side {
+  justify-self: end;
+  width: 100%;
+  max-width: 460px;
+}
+
+.dashboard-manager-cover .page-hero-metrics {
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  min-width: 0;
+}
+
+.teams-manager-cover .page-hero-side {
+  justify-self: end;
+}
+
+.teams-manager-cover .page-hero-metrics {
+  min-width: min(540px, 100%);
+}
+
+.request-payload-preview {
+  max-height: 220px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.28);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .page-hero-compact {
@@ -2069,6 +2113,11 @@ select {
   display: grid;
   grid-template-columns: repeat(4, minmax(170px, 1fr));
   gap: 16px;
+}
+
+.dashboard-stat-grid.dashboard-manager-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
 }
 
 .dashboard-stat-grid-three {
@@ -3795,7 +3844,8 @@ select {
   }
 
   .page-hero-metrics,
-  .page-hero-compact .page-hero-metrics {
+  .page-hero-compact .page-hero-metrics,
+  .dashboard-manager-cover .page-hero-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     min-width: 0;
   }
@@ -3937,13 +3987,18 @@ select {
   }
 
   .page-hero-metrics,
-  .page-hero-compact .page-hero-metrics {
+  .page-hero-compact .page-hero-metrics,
+  .dashboard-manager-cover .page-hero-metrics {
     grid-template-columns: 1fr;
   }
 
   .dashboard-stat-grid,
   .dashboard-stat-grid-three,
   .dashboard-team-select-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-stat-grid.dashboard-manager-info-grid {
     grid-template-columns: 1fr;
   }
 
