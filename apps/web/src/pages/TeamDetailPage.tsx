@@ -1,6 +1,7 @@
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
+  EyeOutlined,
   LeftOutlined,
   RightOutlined,
   TeamOutlined,
@@ -18,6 +19,7 @@ import {
   Table,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import dayjs from 'dayjs';
@@ -25,7 +27,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
-import { ProfileSkeleton } from '../components';
+import { MatchFixtureCard, ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
 import { POSITION_MAP, STATUS_MAP } from '../utils/constants';
@@ -128,6 +130,20 @@ export default function TeamDetailPage() {
   const activeMatchMonth =
     activeMatchMonthIndex >= 0 ? matchMonthGroups[activeMatchMonthIndex] : undefined;
   const activeMonthMatches = activeMatchMonth?.[1] ?? [];
+  const activeMonthMatchGroups = (() => {
+    const map = new Map<string, typeof activeMonthMatches>();
+    for (const match of activeMonthMatches) {
+      const key = match.kickoffAt ? dayjs(match.kickoffAt).format('YYYY-MM-DD') : 'unscheduled';
+      const list = map.get(key) ?? [];
+      list.push(match);
+      map.set(key, list);
+    }
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return a.localeCompare(b);
+    });
+  })();
   const activeMonthLabel =
     activeMatchMonth?.[0] === 'unscheduled'
       ? 'Chưa xếp lịch'
@@ -146,7 +162,8 @@ export default function TeamDetailPage() {
     if (side === match.side) {
       return {
         id: team.id,
-        name: team.shortName || team.name,
+        name: team.name,
+        shortName: team.shortName,
         logoUrl: getTeamLogoUrl(team),
       };
     }
@@ -154,62 +171,52 @@ export default function TeamDetailPage() {
     const opponent = match.side === 'home' ? match.awayTeam : match.homeTeam;
     return {
       id: opponent?.id,
-      name: opponent?.shortName || opponent?.name || '—',
+      name: opponent?.name || '—',
+      shortName: opponent?.shortName,
       logoUrl: getTeamLogoUrl(opponent),
     };
   };
 
-  const renderTeamLogo = (displayTeam: ReturnType<typeof getTeamDisplay>) =>
-    displayTeam.logoUrl ? (
-      <img src={displayTeam.logoUrl} alt={displayTeam.name} className="team-match-logo" />
-    ) : (
-      <div className="team-match-logo team-match-logo-fallback">
-        {displayTeam.name.slice(0, 2).toUpperCase()}
-      </div>
-    );
-
   const renderTeamFixture = (match: (typeof allMatches)[0]) => {
-    const leftTeam = getTeamDisplay(match, 'home');
-    const rightTeam = getTeamDisplay(match, 'away');
-    const hasScore = match.homeScore != null && match.awayScore != null;
-    const scoreText = hasScore
-      ? `${match.homeScore} - ${match.awayScore}`
-      : match.kickoffAt
-        ? dayjs(match.kickoffAt).format('HH:mm')
-        : 'vs';
+    const homeTeam = getTeamDisplay(match, 'home');
+    const awayTeam = getTeamDisplay(match, 'away');
+    const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
 
     return (
-      <div key={match.id} className="team-fixture-row">
-        <div className="team-fixture-meta">
-          <span className="team-fixture-round">Vòng {match.roundNo}</span>
-          <Tag color={STATUS_MAP[match.status]?.color}>
-            {STATUS_MAP[match.status]?.label ?? match.status}
-          </Tag>
-        </div>
-        <button
-          type="button"
-          className="team-fixture-team team-fixture-team-left"
-          onClick={() => leftTeam.id && navigate(`/teams/${leftTeam.id}`)}
-        >
-          <span>{leftTeam.name}</span>
-          {renderTeamLogo(leftTeam)}
-        </button>
-        <button
-          type="button"
-          className={`team-fixture-score${hasScore ? ' is-final' : ''}`}
-          onClick={() => navigate(`/matches/${match.id}`)}
-        >
-          {scoreText}
-        </button>
-        <button
-          type="button"
-          className="team-fixture-team team-fixture-team-right"
-          onClick={() => rightTeam.id && navigate(`/teams/${rightTeam.id}`)}
-        >
-          {renderTeamLogo(rightTeam)}
-          <span>{rightTeam.name}</span>
-        </button>
-      </div>
+      <MatchFixtureCard
+        key={match.id}
+        id={match.id}
+        className="results-fixture-row"
+        actionClassName="results-fixture-action"
+        roundLabel={`Vòng ${match.roundNo}`}
+        statusLabel={status.label}
+        statusColor={status.color}
+        homeTeamId={homeTeam.id ?? team.id}
+        awayTeamId={awayTeam.id ?? team.id}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        homeScore={match.homeScore}
+        awayScore={match.awayScore}
+        kickoffAt={match.kickoffAt}
+        stadiumName={match.stadium?.name}
+        stadiumFallback={t('schedule.stadiumNotSet')}
+        kickoffFallback={t('schedule.kickoffNotSet')}
+        scoreMode="kickoff-or-vs"
+        onTeamClick={(teamId) => navigate(`/teams/${teamId}`)}
+        onMatchClick={(matchId) => navigate(`/matches/${matchId}`)}
+        actions={
+          <Tooltip title={t('matches.btnDetail')}>
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/matches/${match.id}`)}
+            >
+              {t('matches.btnDetail')}
+            </Button>
+          </Tooltip>
+        }
+      />
     );
   };
 
@@ -422,7 +429,7 @@ export default function TeamDetailPage() {
             key: 'matches',
             label: t('teamDetail.tabMatches', { count: allMatches.length }),
             children: (
-              <Card className="team-fixtures-card">
+              <Card className="schedule-page-card team-fixtures-card">
                 {matchMonthGroups.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
                     {t('common.noData')}
@@ -464,25 +471,17 @@ export default function TeamDetailPage() {
                         }
                       />
                     </Space>
-                    <div className="team-fixtures-list">
-                      {activeMonthMatches.map((match, index) => {
-                        const previous = activeMonthMatches[index - 1];
-                        const showDate =
-                          index === 0 ||
-                          formatMatchDateLabel(previous.kickoffAt) !==
-                            formatMatchDateLabel(match.kickoffAt);
-
-                        return (
-                          <div key={match.id} className="team-fixture-day-group">
-                            {showDate && (
-                              <Typography.Title level={5} className="team-fixture-date">
-                                {formatMatchDateLabel(match.kickoffAt)}
-                              </Typography.Title>
-                            )}
-                            {renderTeamFixture(match)}
+                    <div className="schedule-fixture-list">
+                      {activeMonthMatchGroups.map(([dayKey, dayMatches]) => (
+                        <div key={dayKey} className="schedule-fixture-day-group">
+                          <Typography.Title level={5} className="schedule-fixture-date">
+                            {formatMatchDateLabel(dayMatches[0]?.kickoffAt)}
+                          </Typography.Title>
+                          <div className="schedule-fixture-day-list">
+                            {dayMatches.map((match) => renderTeamFixture(match))}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   </>
                 )}
