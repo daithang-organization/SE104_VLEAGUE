@@ -64,12 +64,6 @@ export class UsersService {
   async updateRole(id: string, role: UserRole) {
     const user = await this.findOne(id);
 
-    if (role === UserRole.TEAM_MANAGER && !user.managedTeamId) {
-      throw new BadRequestException(
-        'Tài khoản TEAM_MANAGER phải được gắn với một CLB cố định.',
-      );
-    }
-
     return this.prisma.user.update({
       where: { id },
       data: {
@@ -102,8 +96,8 @@ export class UsersService {
         role,
         name: dto.name,
         managedTeamId:
-          role === UserRole.TEAM_MANAGER ? dto.managedTeamId : null,
-        emailVerified: true, // Admin-created accounts are pre-verified
+          role === UserRole.TEAM_MANAGER ? (dto.managedTeamId ?? null) : null,
+        emailVerified: true,
       },
       select: this.userSelect,
     });
@@ -112,7 +106,6 @@ export class UsersService {
   async deleteUser(id: string) {
     await this.findOne(id);
 
-    // Delete related records first
     await this.prisma.otpCode.deleteMany({ where: { userId: id } });
     await this.prisma.refreshToken.deleteMany({ where: { userId: id } });
     await this.prisma.user.delete({ where: { id } });
@@ -127,17 +120,13 @@ export class UsersService {
     if (role !== UserRole.TEAM_MANAGER) {
       if (managedTeamId) {
         throw new BadRequestException(
-          'Chỉ tài khoản TEAM_MANAGER được gắn CLB cố định.',
+          'Chỉ tài khoản TEAM_MANAGER được gắn CLB.',
         );
       }
       return;
     }
 
-    if (!managedTeamId) {
-      throw new BadRequestException(
-        'Vui lòng chọn CLB cố định cho tài khoản TEAM_MANAGER.',
-      );
-    }
+    if (!managedTeamId) return;
 
     const team = await this.prisma.team.findUnique({
       where: { id: managedTeamId },

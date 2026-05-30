@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { TeamManagerService } from './team-manager.service';
@@ -44,6 +48,10 @@ describe('TeamManagerService application workflow', () => {
               findFirst: jest.fn(),
               create: jest.fn(),
               upsert: jest.fn(),
+            },
+            teamManagerRequest: {
+              findFirst: jest.fn(),
+              create: jest.fn(),
             },
             user: { findUnique: jest.fn() },
             team: { findUnique: jest.fn() },
@@ -169,5 +177,60 @@ describe('TeamManagerService application workflow', () => {
         ownerName: '',
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('creates a request to claim an existing club when manager has no approved club', async () => {
+    jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+      ...managerUser,
+      managedTeamId: null,
+    } as any);
+    jest.spyOn(prisma.teamManagerRequest, 'findFirst').mockResolvedValue(null);
+    jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+      id: 'team-2',
+      status: 'ACTIVE',
+      managedUsers: [],
+    } as any);
+    jest.spyOn(prisma.teamManagerRequest, 'create').mockResolvedValue({
+      id: 'request-1',
+      managerId: 'manager-1',
+      teamId: 'team-2',
+      requestType: 'CLAIM_EXISTING_TEAM',
+      status: 'PENDING',
+    } as any);
+
+    const result = await service.createManagementRequest('manager-1', {
+      requestType: 'CLAIM_EXISTING_TEAM' as any,
+      teamId: 'team-2',
+      requestNote: 'Tôi đang điều hành CLB này',
+    });
+
+    expect(result.id).toBe('request-1');
+    expect(prisma.teamManagerRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          managerId: 'manager-1',
+          requestType: 'CLAIM_EXISTING_TEAM',
+          teamId: 'team-2',
+        }),
+      }),
+    );
+  });
+
+  it('prevents a manager from opening a second pending request', async () => {
+    jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+      ...managerUser,
+      managedTeamId: null,
+    } as any);
+    jest
+      .spyOn(prisma.teamManagerRequest, 'findFirst')
+      .mockResolvedValue({ id: 'request-1' } as any);
+
+    await expect(
+      service.createManagementRequest('manager-1', {
+        requestType: 'CLAIM_EXISTING_TEAM' as any,
+        teamId: 'team-2',
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.teamManagerRequest.create).not.toHaveBeenCalled();
   });
 });

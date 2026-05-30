@@ -126,6 +126,34 @@ enum UserRole {
   PUBLIC
 }
 
+enum TeamManagerRequestType {
+  CREATE_TEAM
+  CLAIM_EXISTING_TEAM
+}
+
+enum TeamManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ManagerPlayerRequestType {
+  ADD_PLAYER
+  UPDATE_PLAYER
+  REMOVE_FROM_TEAM
+}
+
+enum ManagerStadiumRequestType {
+  CREATE_HOME_STADIUM
+  UPDATE_HOME_STADIUM
+}
+
 enum OtpType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
@@ -162,6 +190,12 @@ model User {
   refreshTokens RefreshToken[]
   otpCodes      OtpCode[]
   teamManagerAssignments TeamManagerAssignment[]
+  teamManagerRequests TeamManagerRequest[] @relation("TeamManagerRequests")
+  reviewedTeamManagerRequests TeamManagerRequest[] @relation("ReviewedTeamManagerRequests")
+  managerPlayerRequests ManagerPlayerRequest[] @relation("ManagerPlayerRequests")
+  reviewedManagerPlayerRequests ManagerPlayerRequest[] @relation("ReviewedManagerPlayerRequests")
+  managerStadiumRequests ManagerStadiumRequest[] @relation("ManagerStadiumRequests")
+  reviewedManagerStadiumRequests ManagerStadiumRequest[] @relation("ReviewedManagerStadiumRequests")
 
   @@index([roleId])
   @@index([managedTeamId])
@@ -243,6 +277,9 @@ model Team {
   standings    Standing[]
   managerAssignments TeamManagerAssignment[]
   managedUsers User[] @relation("ManagedTeam")
+  managerRequests TeamManagerRequest[]
+  managerPlayerRequests ManagerPlayerRequest[]
+  managerStadiumRequests ManagerStadiumRequest[]
   invitations TeamInvitation[]
   drawLotResults DrawLotResult[]
   promotionCandidates PromotionCandidate[]
@@ -271,6 +308,7 @@ model Player {
   lineupSelections MatchLineupPlayer[]
   suspensions PlayerSuspension[]
   bestPlayerReports MatchReport[]
+  managerRequests ManagerPlayerRequest[]
 
   @@index([fullName], map: "players_full_name_idx")
   @@index([nationality], map: "players_nationality_idx")
@@ -294,6 +332,7 @@ model Stadium {
   // Relations
   teams   Team[]
   matches Match[]
+  managerRequests ManagerStadiumRequest[]
 
   @@map("stadiums")
 }
@@ -688,6 +727,102 @@ model TeamManagerAssignment {
   @@index([teamId])
   @@index([seasonId])
   @@map("team_manager_assignments")
+}
+
+model TeamManagerRequest {
+  id        String                   @id @default(uuid()) @db.Uuid
+  managerId String                   @map("manager_id") @db.Uuid
+  manager   User                     @relation("TeamManagerRequests", fields: [managerId], references: [id], onDelete: Cascade)
+  requestType TeamManagerRequestType @map("request_type")
+  status    TeamManagerRequestStatus @default(PENDING)
+
+  teamId String? @map("team_id") @db.Uuid
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  proposedTeamName      String? @map("proposed_team_name")
+  proposedTeamShortName String? @map("proposed_team_short_name")
+  proposedTeamCity      String? @map("proposed_team_city")
+  proposedTeamLogoUrl   String? @map("proposed_team_logo_url")
+  proposedStadiumId     String? @map("proposed_stadium_id") @db.Uuid
+
+  requestNote String? @map("request_note") @db.Text
+  adminNote   String? @map("admin_note") @db.Text
+
+  reviewedById String? @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?   @relation("ReviewedTeamManagerRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime? @map("reviewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([managerId])
+  @@index([teamId])
+  @@index([status])
+  @@index([requestType])
+  @@index([reviewedById])
+  @@map("team_manager_requests")
+}
+
+model ManagerPlayerRequest {
+  id          String                   @id @default(uuid()) @db.Uuid
+  managerId   String                   @map("manager_id") @db.Uuid
+  manager     User                     @relation("ManagerPlayerRequests", fields: [managerId], references: [id], onDelete: Cascade)
+  teamId      String                   @map("team_id") @db.Uuid
+  team        Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId    String?                  @map("player_id") @db.Uuid
+  player      Player?                  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  requestType ManagerPlayerRequestType @map("request_type")
+  status      ManagerRequestStatus     @default(PENDING)
+  payload     Json
+
+  requestNote String? @map("request_note") @db.Text
+  adminNote   String? @map("admin_note") @db.Text
+
+  reviewedById String?   @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?     @relation("ReviewedManagerPlayerRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime? @map("reviewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([managerId])
+  @@index([teamId])
+  @@index([playerId])
+  @@index([status])
+  @@index([requestType])
+  @@index([reviewedById])
+  @@map("manager_player_requests")
+}
+
+model ManagerStadiumRequest {
+  id          String                    @id @default(uuid()) @db.Uuid
+  managerId   String                    @map("manager_id") @db.Uuid
+  manager     User                      @relation("ManagerStadiumRequests", fields: [managerId], references: [id], onDelete: Cascade)
+  teamId      String                    @map("team_id") @db.Uuid
+  team        Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  stadiumId   String?                   @map("stadium_id") @db.Uuid
+  stadium     Stadium?                  @relation(fields: [stadiumId], references: [id], onDelete: SetNull)
+  requestType ManagerStadiumRequestType @map("request_type")
+  status      ManagerRequestStatus      @default(PENDING)
+  payload     Json
+
+  requestNote String? @map("request_note") @db.Text
+  adminNote   String? @map("admin_note") @db.Text
+
+  reviewedById String?   @map("reviewed_by_id") @db.Uuid
+  reviewedBy   User?     @relation("ReviewedManagerStadiumRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime? @map("reviewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([managerId])
+  @@index([teamId])
+  @@index([stadiumId])
+  @@index([status])
+  @@index([requestType])
+  @@index([reviewedById])
+  @@map("manager_stadium_requests")
 }
 
 model PromotionCandidate {

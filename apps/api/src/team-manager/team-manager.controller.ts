@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -10,7 +19,12 @@ import {
 import { CurrentUser, JwtAuthGuard, Role, Roles, RolesGuard } from '../auth';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import {
+  CreateManagerPlayerRequestDto,
+  CreateManagerStadiumRequestDto,
   CreateTeamManagerAssignmentDto,
+  CreateTeamManagerRequestDto,
+  ReviewManagerChangeRequestDto,
+  ReviewTeamManagerRequestDto,
   SubmitTeamApplicationDto,
 } from './dto/team-manager-assignment.dto';
 import { TeamManagerService } from './team-manager.service';
@@ -30,6 +44,129 @@ export class TeamManagerController {
   })
   getManagedTeam(@CurrentUser() user: CurrentUserPayload) {
     return this.teamManagerService.getManagedTeam(user.id);
+  }
+
+  @Get('management-request')
+  @ApiOperation({ summary: 'Lấy yêu cầu quản lý CLB mới nhất của manager' })
+  @ApiOkResponse({ description: 'Yêu cầu mới nhất hoặc null' })
+  getLatestManagementRequest(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.getLatestManagementRequest(user.id);
+  }
+
+  @Get('claimable-teams')
+  @ApiOperation({ summary: 'Lấy danh sách CLB chưa có manager để gửi yêu cầu' })
+  @ApiOkResponse({ description: 'Danh sách CLB có thể nhận quản lý' })
+  getClaimableTeams() {
+    return this.teamManagerService.getClaimableTeams();
+  }
+
+  @Post('management-requests')
+  @ApiOperation({ summary: 'Manager gửi yêu cầu tạo/nhận quản lý CLB' })
+  @ApiOkResponse({ description: 'Yêu cầu đã được tạo' })
+  createManagementRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreateTeamManagerRequestDto,
+  ) {
+    return this.teamManagerService.createManagementRequest(user.id, dto);
+  }
+
+  @Get('management-requests')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin xem danh sách yêu cầu quản lý CLB' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiOkResponse({ description: 'Danh sách yêu cầu quản lý CLB' })
+  listManagementRequests(@Query('status') status?: string) {
+    return this.teamManagerService.listManagementRequests(status);
+  }
+
+  @Patch('management-requests/:id/review')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin duyệt/từ chối yêu cầu quản lý CLB' })
+  @ApiOkResponse({ description: 'Yêu cầu đã được xét duyệt' })
+  reviewManagementRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: ReviewTeamManagerRequestDto,
+  ) {
+    return this.teamManagerService.reviewManagementRequest(id, user.id, dto);
+  }
+
+  @Get('player-requests/mine')
+  @ApiOperation({
+    summary: 'Manager xem yêu cầu thay đổi cầu thủ của CLB mình',
+  })
+  @ApiOkResponse({ description: 'Danh sách yêu cầu cầu thủ của Manager' })
+  listMyPlayerRequests(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.listMyPlayerRequests(user.id);
+  }
+
+  @Post('player-requests')
+  @ApiOperation({ summary: 'Manager gửi yêu cầu thêm/sửa/gỡ cầu thủ' })
+  @ApiOkResponse({ description: 'Yêu cầu cầu thủ đã được tạo' })
+  createPlayerRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreateManagerPlayerRequestDto,
+  ) {
+    return this.teamManagerService.createPlayerRequest(user.id, dto);
+  }
+
+  @Get('player-requests')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin xem danh sách yêu cầu cầu thủ từ Manager' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiOkResponse({ description: 'Danh sách yêu cầu cầu thủ' })
+  listPlayerRequests(@Query('status') status?: string) {
+    return this.teamManagerService.listPlayerRequests(status);
+  }
+
+  @Patch('player-requests/:id/review')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin duyệt/từ chối yêu cầu cầu thủ' })
+  @ApiOkResponse({ description: 'Yêu cầu cầu thủ đã được xét duyệt' })
+  reviewPlayerRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: ReviewManagerChangeRequestDto,
+  ) {
+    return this.teamManagerService.reviewPlayerRequest(id, user.id, dto);
+  }
+
+  @Get('stadium-requests/mine')
+  @ApiOperation({ summary: 'Manager xem yêu cầu sân nhà của CLB mình' })
+  @ApiOkResponse({ description: 'Danh sách yêu cầu sân nhà của Manager' })
+  listMyStadiumRequests(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.listMyStadiumRequests(user.id);
+  }
+
+  @Post('stadium-requests')
+  @ApiOperation({ summary: 'Manager gửi yêu cầu tạo/chỉnh sửa sân nhà' })
+  @ApiOkResponse({ description: 'Yêu cầu sân nhà đã được tạo' })
+  createStadiumRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: CreateManagerStadiumRequestDto,
+  ) {
+    return this.teamManagerService.createStadiumRequest(user.id, dto);
+  }
+
+  @Get('stadium-requests')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin xem danh sách yêu cầu sân nhà từ Manager' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiOkResponse({ description: 'Danh sách yêu cầu sân nhà' })
+  listStadiumRequests(@Query('status') status?: string) {
+    return this.teamManagerService.listStadiumRequests(status);
+  }
+
+  @Patch('stadium-requests/:id/review')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Admin duyệt/từ chối yêu cầu sân nhà' })
+  @ApiOkResponse({ description: 'Yêu cầu sân nhà đã được xét duyệt' })
+  reviewStadiumRequest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: ReviewManagerChangeRequestDto,
+  ) {
+    return this.teamManagerService.reviewStadiumRequest(id, user.id, dto);
   }
 
   @Get('assignment')

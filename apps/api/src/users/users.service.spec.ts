@@ -267,17 +267,32 @@ describe('UsersService', () => {
       });
     });
 
-    it('requires a fixed CLB when creating a team manager account', async () => {
+    it('allows creating a team manager account without a fixed CLB', async () => {
       jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.user, 'create').mockResolvedValue({
+        ...mockUserSelect,
+        email: 'manager@vleague.local',
+        role: 'TEAM_MANAGER',
+        managedTeamId: null,
+      } as any);
 
-      await expect(
-        service.createUser({
-          email: 'manager@vleague.local',
-          password: 'Password@123',
-          role: 'TEAM_MANAGER' as any,
+      const result = await service.createUser({
+        email: 'manager@vleague.local',
+        password: 'Password@123',
+        role: 'TEAM_MANAGER' as any,
+      });
+
+      expect(result.managedTeamId).toBeNull();
+      expect(prisma.team.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            email: 'manager@vleague.local',
+            role: 'TEAM_MANAGER',
+            managedTeamId: null,
+          }),
         }),
-      ).rejects.toThrow(BadRequestException);
-      expect(prisma.user.create).not.toHaveBeenCalled();
+      );
     });
 
     it('rejects a fixed CLB for non team-manager accounts', async () => {
