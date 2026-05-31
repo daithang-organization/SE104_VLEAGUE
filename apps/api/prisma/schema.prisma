@@ -129,6 +129,8 @@ enum UserRole {
 enum TeamManagerRequestType {
   CREATE_TEAM
   CLAIM_EXISTING_TEAM
+  UPDATE_MANAGED_TEAM
+  DELETE_MANAGED_TEAM
 }
 
 enum TeamManagerRequestStatus {
@@ -152,6 +154,7 @@ enum ManagerPlayerRequestType {
 enum ManagerStadiumRequestType {
   CREATE_HOME_STADIUM
   UPDATE_HOME_STADIUM
+  REMOVE_HOME_STADIUM
 }
 
 enum OtpType {

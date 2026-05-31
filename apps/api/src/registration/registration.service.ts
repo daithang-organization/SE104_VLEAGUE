@@ -55,7 +55,14 @@ export class RegistrationService {
       this.prisma.team.findMany({
         where,
         orderBy: { name: 'asc' },
-        include: { stadium: { select: { id: true, name: true } } },
+        include: {
+          stadium: { select: { id: true, name: true } },
+          managedUsers: {
+            where: { role: UserRole.TEAM_MANAGER },
+            select: { id: true, email: true, name: true },
+            take: 1,
+          },
+        },
         skip,
         take: limit,
       }),

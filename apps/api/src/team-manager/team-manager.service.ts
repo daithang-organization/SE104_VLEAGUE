@@ -185,6 +185,11 @@ export class TeamManagerService {
         createdAt: true,
         updatedAt: true,
         stadium: { select: { id: true, name: true, city: true } },
+        managedUsers: {
+          where: { role: UserRole.TEAM_MANAGER },
+          select: { id: true, email: true, name: true },
+          take: 1,
+        },
       },
     });
   }
@@ -234,6 +239,39 @@ export class TeamManagerService {
     const user = await this.getTeamManagerUser(userId);
 
     if (user.managedTeamId) {
+      if (
+        dto.requestType === TeamManagerRequestType.UPDATE_MANAGED_TEAM ||
+        dto.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM
+      ) {
+        const pendingRequest = await this.prisma.teamManagerRequest.findFirst({
+          where: {
+            managerId: userId,
+            status: TeamManagerRequestStatus.PENDING,
+          },
+          select: { id: true },
+        });
+
+        if (pendingRequest) {
+          throw new ConflictException(
+            'Bạn đã có yêu cầu đang chờ Admin xét duyệt.',
+          );
+        }
+
+        if (dto.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM) {
+          return this.createDeleteManagedTeamRequest(
+            userId,
+            user.managedTeamId,
+            dto,
+          );
+        }
+
+        return this.createUpdateManagedTeamRequest(
+          userId,
+          user.managedTeamId,
+          dto,
+        );
+      }
+
       throw new ConflictException('Tài khoản này đã được duyệt quản lý CLB.');
     }
 
@@ -256,6 +294,13 @@ export class TeamManagerService {
       return this.createNewTeamRequest(userId, dto);
     }
 
+    if (
+      dto.requestType === TeamManagerRequestType.UPDATE_MANAGED_TEAM ||
+      dto.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM
+    ) {
+      throw new BadRequestException('Bạn chưa có CLB để gửi yêu cầu này.');
+    }
+
     throw new BadRequestException('Loại yêu cầu không hợp lệ.');
   }
 
@@ -264,11 +309,17 @@ export class TeamManagerService {
     requestId: string,
     dto: CreateTeamManagerRequestDto,
   ) {
-    await this.getTeamManagerUser(userId);
+    const user = await this.getTeamManagerUser(userId);
 
     const request = await this.prisma.teamManagerRequest.findUnique({
       where: { id: requestId },
-      select: { id: true, managerId: true, status: true },
+      select: {
+        id: true,
+        managerId: true,
+        status: true,
+        teamId: true,
+        requestType: true,
+      },
     });
 
     if (!request) {
@@ -281,6 +332,24 @@ export class TeamManagerService {
 
     if (request.status === TeamManagerRequestStatus.APPROVED) {
       throw new BadRequestException('Yêu cầu đã duyệt không thể chỉnh sửa.');
+    }
+
+    if (dto.requestType === TeamManagerRequestType.UPDATE_MANAGED_TEAM) {
+      const teamId = request.teamId ?? user.managedTeamId;
+      if (!teamId || teamId !== user.managedTeamId) {
+        throw new ForbiddenException('Bạn không có quyền cập nhật CLB này.');
+      }
+
+      return this.updateManagedTeamRequest(requestId, teamId, dto);
+    }
+
+    if (dto.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM) {
+      const teamId = request.teamId ?? user.managedTeamId;
+      if (!teamId || teamId !== user.managedTeamId) {
+        throw new ForbiddenException('Bạn không có quyền xóa CLB này.');
+      }
+
+      return this.updateDeleteManagedTeamRequest(requestId, teamId, dto);
     }
 
     if (dto.requestType === TeamManagerRequestType.CLAIM_EXISTING_TEAM) {
@@ -364,7 +433,13 @@ export class TeamManagerService {
 
     const request = await this.prisma.teamManagerRequest.findUnique({
       where: { id: requestId },
-      select: { id: true, managerId: true, status: true, teamId: true },
+      select: {
+        id: true,
+        managerId: true,
+        status: true,
+        teamId: true,
+        requestType: true,
+      },
     });
 
     if (!request) {
@@ -378,6 +453,8 @@ export class TeamManagerService {
     await this.prisma.$transaction(async (tx) => {
       if (
         request.status === TeamManagerRequestStatus.APPROVED &&
+        (request.requestType === TeamManagerRequestType.CREATE_TEAM ||
+          request.requestType === TeamManagerRequestType.CLAIM_EXISTING_TEAM) &&
         user.managedTeamId &&
         user.managedTeamId === request.teamId
       ) {
@@ -388,6 +465,30 @@ export class TeamManagerService {
       }
 
       await tx.teamManagerRequest.delete({ where: { id: requestId } });
+    });
+
+    return { success: true };
+  }
+
+  async leaveManagedTeam(userId: string) {
+    const user = await this.getTeamManagerUser(userId);
+
+    if (!user.managedTeamId) {
+      throw new BadRequestException('Bạn chưa quản lý CLB nào.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { managedTeamId: null },
+      });
+
+      await tx.teamManagerRequest.deleteMany({
+        where: {
+          managerId: userId,
+          teamId: user.managedTeamId,
+        },
+      });
     });
 
     return { success: true };
@@ -439,6 +540,34 @@ export class TeamManagerService {
         },
         include: this.requestInclude,
       });
+    }
+
+    if (request.requestType === TeamManagerRequestType.UPDATE_MANAGED_TEAM) {
+      if (!request.teamId || request.manager.managedTeamId !== request.teamId) {
+        throw new ForbiddenException('Manager không còn quản lý CLB này.');
+      }
+
+      return this.approveUpdateManagedTeamRequest(
+        request.id,
+        reviewerId,
+        request.teamId,
+        request,
+        dto.adminNote,
+      );
+    }
+
+    if (request.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM) {
+      if (!request.teamId || request.manager.managedTeamId !== request.teamId) {
+        throw new ForbiddenException('Manager không còn quản lý CLB này.');
+      }
+
+      return this.approveDeleteManagedTeamRequest(
+        request.id,
+        reviewerId,
+        request.teamId,
+        request.managerId,
+        dto.adminNote,
+      );
     }
 
     if (request.manager.managedTeamId) {
@@ -705,10 +834,20 @@ export class TeamManagerService {
     }
 
     const payload = this.buildStadiumRequestPayload(dto);
-    this.assertRequiredStadiumPayload(payload);
+    const isRemoveRequest =
+      dto.requestType === ManagerStadiumRequestType.REMOVE_HOME_STADIUM;
+
+    if (isRemoveRequest) {
+      if (!team.stadiumId && !dto.stadiumId) {
+        throw new BadRequestException('CLB chưa có sân nhà để xóa.');
+      }
+    } else {
+      this.assertRequiredStadiumPayload(payload);
+    }
 
     const stadiumId =
-      dto.requestType === ManagerStadiumRequestType.UPDATE_HOME_STADIUM
+      dto.requestType === ManagerStadiumRequestType.UPDATE_HOME_STADIUM ||
+      isRemoveRequest
         ? (dto.stadiumId ?? team.stadiumId)
         : dto.stadiumId;
 
@@ -781,10 +920,20 @@ export class TeamManagerService {
     }
 
     const payload = this.buildStadiumRequestPayload(dto);
-    this.assertRequiredStadiumPayload(payload);
+    const isRemoveRequest =
+      dto.requestType === ManagerStadiumRequestType.REMOVE_HOME_STADIUM;
+
+    if (isRemoveRequest) {
+      if (!team.stadiumId && !dto.stadiumId) {
+        throw new BadRequestException('CLB chưa có sân nhà để xóa.');
+      }
+    } else {
+      this.assertRequiredStadiumPayload(payload);
+    }
 
     const stadiumId =
-      dto.requestType === ManagerStadiumRequestType.UPDATE_HOME_STADIUM
+      dto.requestType === ManagerStadiumRequestType.UPDATE_HOME_STADIUM ||
+      isRemoveRequest
         ? (dto.stadiumId ?? team.stadiumId)
         : dto.stadiumId;
 
@@ -872,6 +1021,20 @@ export class TeamManagerService {
         },
         include: this.stadiumRequestInclude,
       });
+    }
+
+    if (request.requestType === ManagerStadiumRequestType.REMOVE_HOME_STADIUM) {
+      if (!request.stadiumId) {
+        throw new BadRequestException('Yêu cầu chưa có sân nhà để xóa.');
+      }
+
+      return this.approveRemoveStadiumRequest(
+        request.id,
+        reviewerId,
+        request.teamId,
+        request.stadiumId,
+        dto.adminNote,
+      );
     }
 
     const payload = this.getJsonObject(request.payload);
@@ -1229,20 +1392,43 @@ export class TeamManagerService {
     adminNote?: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      await tx.teamPlayer.updateMany({
-        where: { teamId, playerId, leftAt: null },
-        data: { leftAt: new Date() },
+      const lineupCount = await tx.matchLineupPlayer.count({
+        where: { playerId },
+      });
+      const otherTeamRosterCount = await tx.teamPlayer.count({
+        where: {
+          playerId,
+          teamId: { not: teamId },
+        },
       });
 
       await tx.managerPlayerRequest.update({
         where: { id: requestId },
         data: {
           status: ManagerRequestStatus.APPROVED,
+          playerId: null,
           adminNote: adminNote?.trim() || null,
           reviewedById: reviewerId,
           reviewedAt: new Date(),
         },
       });
+
+      if (lineupCount > 0) {
+        throw new BadRequestException(
+          'Không thể xóa cầu thủ vì cầu thủ đã nằm trong đội hình trận đấu. Hãy gỡ khỏi CLB thay vì xóa dữ liệu.',
+        );
+      }
+
+      if (otherTeamRosterCount > 0) {
+        throw new BadRequestException(
+          'Không thể xóa cầu thủ vì cầu thủ còn lịch sử ở CLB khác.',
+        );
+      }
+
+      await tx.teamPlayer.deleteMany({
+        where: { teamId, playerId },
+      });
+      await tx.player.delete({ where: { id: playerId } });
 
       return tx.managerPlayerRequest.findUniqueOrThrow({
         where: { id: requestId },
@@ -1278,6 +1464,51 @@ export class TeamManagerService {
           reviewedAt: new Date(),
         },
       });
+
+      return tx.managerStadiumRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        include: this.stadiumRequestInclude,
+      });
+    });
+  }
+
+  private approveRemoveStadiumRequest(
+    requestId: string,
+    reviewerId: string,
+    teamId: string,
+    stadiumId: string,
+    adminNote?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const otherTeamsUsingStadium = await tx.team.count({
+        where: {
+          stadiumId,
+          id: { not: teamId },
+        },
+      });
+
+      if (otherTeamsUsingStadium > 0) {
+        throw new BadRequestException(
+          'Không thể xóa sân vì sân đang được CLB khác sử dụng.',
+        );
+      }
+
+      await tx.managerStadiumRequest.update({
+        where: { id: requestId },
+        data: {
+          status: ManagerRequestStatus.APPROVED,
+          stadiumId: null,
+          adminNote: adminNote?.trim() || null,
+          reviewedById: reviewerId,
+          reviewedAt: new Date(),
+        },
+      });
+
+      await tx.team.update({
+        where: { id: teamId },
+        data: { stadiumId: null },
+      });
+      await tx.stadium.delete({ where: { id: stadiumId } });
 
       return tx.managerStadiumRequest.findUniqueOrThrow({
         where: { id: requestId },
@@ -1375,6 +1606,116 @@ export class TeamManagerService {
     } catch (error) {
       this.handleRequestConflict(error);
       throw error;
+    }
+  }
+
+  private async createUpdateManagedTeamRequest(
+    userId: string,
+    teamId: string,
+    dto: CreateTeamManagerRequestDto,
+  ) {
+    await this.assertManagedTeamUpdatePayload(teamId, dto);
+
+    return this.prisma.teamManagerRequest.create({
+      data: {
+        managerId: userId,
+        requestType: TeamManagerRequestType.UPDATE_MANAGED_TEAM,
+        teamId,
+        proposedTeamName: dto.proposedTeamName!.trim(),
+        proposedTeamShortName: dto.proposedTeamShortName?.trim() || null,
+        proposedTeamCity: dto.proposedTeamCity?.trim() || null,
+        proposedTeamLogoUrl: dto.proposedTeamLogoUrl?.trim() || null,
+        proposedStadiumId: null,
+        requestNote: dto.requestNote?.trim() || null,
+      },
+      include: this.requestInclude,
+    });
+  }
+
+  private async createDeleteManagedTeamRequest(
+    userId: string,
+    teamId: string,
+    dto: CreateTeamManagerRequestDto,
+  ) {
+    return this.prisma.teamManagerRequest.create({
+      data: {
+        managerId: userId,
+        requestType: TeamManagerRequestType.DELETE_MANAGED_TEAM,
+        teamId,
+        requestNote: dto.requestNote?.trim() || null,
+      },
+      include: this.requestInclude,
+    });
+  }
+
+  private async updateManagedTeamRequest(
+    requestId: string,
+    teamId: string,
+    dto: CreateTeamManagerRequestDto,
+  ) {
+    await this.assertManagedTeamUpdatePayload(teamId, dto);
+
+    return this.prisma.teamManagerRequest.update({
+      where: { id: requestId },
+      data: {
+        requestType: TeamManagerRequestType.UPDATE_MANAGED_TEAM,
+        status: TeamManagerRequestStatus.PENDING,
+        teamId,
+        proposedTeamName: dto.proposedTeamName!.trim(),
+        proposedTeamShortName: dto.proposedTeamShortName?.trim() || null,
+        proposedTeamCity: dto.proposedTeamCity?.trim() || null,
+        proposedTeamLogoUrl: dto.proposedTeamLogoUrl?.trim() || null,
+        proposedStadiumId: null,
+        requestNote: dto.requestNote?.trim() || null,
+        adminNote: null,
+        reviewedById: null,
+        reviewedAt: null,
+      },
+      include: this.requestInclude,
+    });
+  }
+
+  private async updateDeleteManagedTeamRequest(
+    requestId: string,
+    teamId: string,
+    dto: CreateTeamManagerRequestDto,
+  ) {
+    return this.prisma.teamManagerRequest.update({
+      where: { id: requestId },
+      data: {
+        requestType: TeamManagerRequestType.DELETE_MANAGED_TEAM,
+        status: TeamManagerRequestStatus.PENDING,
+        teamId,
+        proposedTeamName: null,
+        proposedTeamShortName: null,
+        proposedTeamCity: null,
+        proposedTeamLogoUrl: null,
+        proposedStadiumId: null,
+        requestNote: dto.requestNote?.trim() || null,
+        adminNote: null,
+        reviewedById: null,
+        reviewedAt: null,
+      },
+      include: this.requestInclude,
+    });
+  }
+
+  private async assertManagedTeamUpdatePayload(
+    teamId: string,
+    dto: CreateTeamManagerRequestDto,
+  ) {
+    const proposedTeamName = dto.proposedTeamName?.trim();
+    if (!proposedTeamName) {
+      throw new BadRequestException('Vui lòng nhập tên CLB đề xuất.');
+    }
+
+    const existingTeam = await this.prisma.team.findUnique({
+      where: { name: proposedTeamName },
+      select: { id: true },
+    });
+
+    if (existingTeam && existingTeam.id !== teamId) {
+      throw new ConflictException('Tên CLB này đã tồn tại.');
     }
   }
 
@@ -1480,6 +1821,103 @@ export class TeamManagerService {
         error.code === 'P2002'
       ) {
         throw new ConflictException('Tên CLB này đã tồn tại.');
+      }
+      throw error;
+    }
+  }
+
+  private async approveUpdateManagedTeamRequest(
+    requestId: string,
+    reviewerId: string,
+    teamId: string,
+    request: {
+      proposedTeamName: string | null;
+      proposedTeamShortName: string | null;
+      proposedTeamCity: string | null;
+      proposedTeamLogoUrl: string | null;
+    },
+    adminNote?: string,
+  ) {
+    if (!request.proposedTeamName?.trim()) {
+      throw new BadRequestException('Yêu cầu chưa có tên CLB đề xuất.');
+    }
+
+    const existingTeam = await this.prisma.team.findUnique({
+      where: { name: request.proposedTeamName },
+      select: { id: true },
+    });
+
+    if (existingTeam && existingTeam.id !== teamId) {
+      throw new ConflictException('Tên CLB này đã tồn tại.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.team.update({
+        where: { id: teamId },
+        data: {
+          name: request.proposedTeamName!.trim(),
+          shortName: request.proposedTeamShortName?.trim() || null,
+          city: request.proposedTeamCity?.trim() || null,
+          logoUrl: request.proposedTeamLogoUrl?.trim() || null,
+        },
+      });
+
+      await tx.teamManagerRequest.update({
+        where: { id: requestId },
+        data: {
+          status: TeamManagerRequestStatus.APPROVED,
+          adminNote: adminNote?.trim() || null,
+          reviewedById: reviewerId,
+          reviewedAt: new Date(),
+        },
+      });
+
+      return tx.teamManagerRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        include: this.requestInclude,
+      });
+    });
+  }
+
+  private async approveDeleteManagedTeamRequest(
+    requestId: string,
+    reviewerId: string,
+    teamId: string,
+    managerId: string,
+    adminNote?: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: managerId },
+          data: { managedTeamId: null },
+        });
+
+        await tx.teamManagerRequest.update({
+          where: { id: requestId },
+          data: {
+            status: TeamManagerRequestStatus.APPROVED,
+            adminNote: adminNote?.trim() || null,
+            reviewedById: reviewerId,
+            reviewedAt: new Date(),
+          },
+        });
+
+        await tx.team.delete({ where: { id: teamId } });
+
+        return tx.teamManagerRequest.findUniqueOrThrow({
+          where: { id: requestId },
+          include: this.requestInclude,
+        });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new ConflictException(
+          'Không thể xóa CLB vì đang có dữ liệu ràng buộc.',
+        );
       }
       throw error;
     }

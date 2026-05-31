@@ -94,6 +94,13 @@ export class TeamManagerController {
     return this.teamManagerService.deleteManagementRequest(user.id, id);
   }
 
+  @Delete('managed-team')
+  @ApiOperation({ summary: 'Manager rời khỏi CLB đang quản lý' })
+  @ApiOkResponse({ description: 'Manager đã rời khỏi CLB' })
+  leaveManagedTeam(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.leaveManagedTeam(user.id);
+  }
+
   @Get('management-requests')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Admin xem danh sách yêu cầu quản lý CLB' })
