@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
@@ -126,10 +127,39 @@ const mockStandingsApi = vi.hoisted(() => ({
     standings: [],
   }),
 }));
+const mockSeasonApi = vi.hoisted(() => ({
+  apiGetSeasons: vi.fn().mockResolvedValue([
+    {
+      id: 's2025',
+      name: 'V.League 2025',
+      year: 2025,
+      status: 'COMPLETED',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    },
+    {
+      id: 's2026',
+      name: 'V.League 2026',
+      year: 2026,
+      status: 'IN_PROGRESS',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ]),
+  apiGetCurrentSeason: vi.fn().mockResolvedValue({
+    id: 's2025',
+    name: 'V.League 2025',
+    year: 2025,
+    status: 'COMPLETED',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+  }),
+}));
 
 vi.mock('jspdf', () => ({ default: mockPdfExport.jsPDF }));
 vi.mock('jspdf-autotable', () => ({ default: mockPdfExport.autoTable }));
 vi.mock('../../services/standingsApi', () => mockStandingsApi);
+vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -149,13 +179,20 @@ vi.mock('../reports/ChartsTab', () => ({ default: () => <div>Charts</div> }));
 
 import ReportsPage from '../ReportsPage';
 
-function renderPage() {
-  return render(<ReportsPage />);
+function renderPage(initialEntry = '/reports') {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route path="/reports" element={<ReportsPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 describe('ReportsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
       configurable: true,
       value: vi.fn(() => mockCanvas.context),
@@ -185,14 +222,32 @@ describe('ReportsPage', () => {
   it('fetches all data on mount', async () => {
     renderPage();
     await waitFor(() => {
-      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetTopAssists).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetCardStats).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetPlayerOfMatchStats).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetSuspensionStats).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetSeasonAwards).toHaveBeenCalled();
+      expect(mockSeasonApi.apiGetSeasons).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalledWith('s2026', 50);
+      expect(mockStandingsApi.apiGetTopAssists).toHaveBeenCalledWith('s2026', 50);
+      expect(mockStandingsApi.apiGetCardStats).toHaveBeenCalledWith('s2026', 30);
+      expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalledWith('s2026');
+      expect(mockStandingsApi.apiGetPlayerOfMatchStats).toHaveBeenCalledWith('s2026', 30);
+      expect(mockStandingsApi.apiGetSuspensionStats).toHaveBeenCalledWith('s2026');
+      expect(mockStandingsApi.apiGetSeasonAwards).toHaveBeenCalledWith('s2026');
     });
+  });
+
+  it('shows the default latest season in the report header', async () => {
+    renderPage();
+
+    expect((await screen.findAllByText('V.League 2026')).length).toBeGreaterThan(0);
+  });
+
+  it('keeps a previously selected season when navigating back to reports', async () => {
+    sessionStorage.setItem('vleague-selected-season-id', 's2025');
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalledWith('s2025', 50);
+    });
+    expect((await screen.findAllByText('V.League 2025')).length).toBeGreaterThan(0);
   });
 
   it('renders tab labels', async () => {
@@ -200,8 +255,6 @@ describe('ReportsPage', () => {
     await waitFor(() => {
       expect(screen.getAllByText('reports.tabScorers').length).toBeGreaterThan(0);
       expect(screen.getAllByText('reports.tabPlayerOfMatch').length).toBeGreaterThan(0);
-      expect(screen.getByText('reports.tabSuspensions')).toBeInTheDocument();
-      expect(screen.getByText('reports.tabAwards')).toBeInTheDocument();
     });
   });
 

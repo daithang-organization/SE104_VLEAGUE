@@ -1,5 +1,5 @@
 ﻿import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
-import { AimOutlined } from '@ant-design/icons';
+import { AimOutlined, StopOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons';
 import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
@@ -9,7 +9,7 @@ import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import ExportButton from '../components/ExportButton';
 import { useMatchSocket } from '../hooks/useMatchSocket';
-import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { useSeasonSelection } from '../hooks/useSeasonSelection';
 import {
   apiGetStandings,
   apiGetTeamStats,
@@ -36,18 +36,17 @@ export default function StandingsPage() {
   const [standings, setStandings] = useState<TeamStanding[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStat[]>([]);
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
-  const [seasons, setSeasons] = useState<Season[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<string | undefined>();
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiGetSeasons()
-      .then(setSeasons)
-      .catch(() => {});
-  }, []);
+  const {
+    loading: seasonsLoading,
+    seasons,
+    selectedSeason,
+    selectedSeasonId,
+    setSelectedSeasonId,
+  } = useSeasonSelection();
 
   const fetchData = useCallback(
-    async (seasonId?: string, mode?: StandingsMode) => {
+    async (seasonId: string, mode: StandingsMode) => {
       setLoading(true);
       try {
         const [standingsData, scorersData, teamStatsData] = await Promise.all([
@@ -68,11 +67,15 @@ export default function StandingsPage() {
   );
 
   const reloadStandings = useCallback(() => {
-    const selectedSeasonStatus = seasons.find((season) => season.id === selectedSeason)?.status;
+    if (!selectedSeasonId) {
+      if (!seasonsLoading) setLoading(false);
+      return;
+    }
+
     const standingsMode: StandingsMode =
-      selectedSeasonStatus === 'COMPLETED' ? 'final' : 'in_progress';
-    fetchData(selectedSeason, standingsMode);
-  }, [fetchData, seasons, selectedSeason]);
+      selectedSeason?.status === 'COMPLETED' ? 'final' : 'in_progress';
+    fetchData(selectedSeasonId, standingsMode);
+  }, [fetchData, seasonsLoading, selectedSeason?.status, selectedSeasonId]);
 
   useEffect(() => {
     reloadStandings();
@@ -87,12 +90,15 @@ export default function StandingsPage() {
       setManagerTeamId(null);
       return;
     }
+    if (!selectedSeasonId) {
+      setManagerTeamId(null);
+      return;
+    }
 
     let cancelled = false;
     const loadAssignment = async () => {
       try {
-        const seasonId = selectedSeason ?? (await apiGetCurrentSeason())?.id;
-        const assignment = seasonId ? await apiGetTeamManagerAssignment(seasonId) : null;
+        const assignment = await apiGetTeamManagerAssignment(selectedSeasonId);
         if (!cancelled) setManagerTeamId(assignment?.teamId ?? null);
       } catch (_err) {
         if (!cancelled) setManagerTeamId(null);
@@ -103,10 +109,10 @@ export default function StandingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedSeason, user?.role]);
+  }, [selectedSeasonId, user?.role]);
 
   const handleSeasonChange = (value: string) => {
-    setSelectedSeason(value || undefined);
+    setSelectedSeasonId(value);
   };
 
   const totalTeams = standings.length;
@@ -265,6 +271,10 @@ export default function StandingsPage() {
   const totalGoals = summarySource.reduce((sum, team) => sum + team.goalsFor, 0);
   const totalYellowCards = teamStats.reduce((sum, team) => sum + team.yellowCards, 0);
   const totalRedCards = teamStats.reduce((sum, team) => sum + team.redCards, 0);
+  const champion =
+    selectedSeason?.status === 'COMPLETED'
+      ? standings.find((team) => team.position === 1)
+      : undefined;
 
   return (
     <div className="page-stack">
@@ -318,10 +328,19 @@ export default function StandingsPage() {
         description={t('standings.subtitle')}
         icon={<AppMenuIcon menuKey="standings" />}
         metrics={[
+          ...(champion
+            ? [
+                {
+                  label: t('standings.champion'),
+                  value: champion.teamName,
+                  icon: <TrophyOutlined />,
+                },
+              ]
+            : []),
           {
             label: t('standings.colTeam'),
             value: totalTeams.toLocaleString('vi-VN'),
-            icon: <TrophyOutlined />,
+            icon: <TeamOutlined />,
           },
           {
             label: t('standings.totalGoals'),
@@ -331,12 +350,12 @@ export default function StandingsPage() {
           {
             label: t('standings.yellowCards'),
             value: totalYellowCards.toLocaleString('vi-VN'),
-            icon: <CrownOutlined />,
+            icon: <WarningOutlined />,
           },
           {
             label: t('standings.redCards'),
             value: totalRedCards.toLocaleString('vi-VN'),
-            icon: <CrownOutlined />,
+            icon: <StopOutlined />,
           },
         ]}
       />
@@ -345,10 +364,9 @@ export default function StandingsPage() {
         <Space wrap>
           <Select
             placeholder={t('standings.seasonPlaceholder')}
-            value={selectedSeason}
+            value={selectedSeasonId}
             onChange={handleSeasonChange}
             style={{ width: 200 }}
-            allowClear
           >
             {seasons.map((s) => (
               <Select.Option key={s.id} value={s.id}>
