@@ -11,6 +11,11 @@ export type Team = {
   status: 'ACTIVE' | 'INACTIVE';
   stadiumId?: string | null;
   stadium?: { id: string; name: string; city?: string } | null;
+  managedUsers?: {
+    id: string;
+    email: string;
+    name?: string | null;
+  }[];
   createdAt: string;
   updatedAt: string;
 };
@@ -78,6 +83,7 @@ export type CreateTeamPayload = {
   logoUrl?: string;
   coachName?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  managerId?: string | null;
 };
 
 export type UpdateTeamPayload = {
@@ -88,6 +94,7 @@ export type UpdateTeamPayload = {
   logoUrl?: string;
   coachName?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  managerId?: string | null;
 };
 
 export type Stadium = {

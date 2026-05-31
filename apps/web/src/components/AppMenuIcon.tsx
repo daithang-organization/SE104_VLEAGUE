@@ -57,9 +57,11 @@ export function AppMenuIcon({ menuKey, variant = 'cover' }: AppMenuIconProps) {
       const src = maskIconByKey[menuKey];
       if (!src) return null;
 
+      const maskClassName = getMaskClassName(variant);
+
       return (
         <span
-          className={getMaskClassName(variant)}
+          className={`${maskClassName} ${maskClassName}-${menuKey}`}
           aria-hidden="true"
           style={{
             WebkitMask: `url(${src}) center / contain no-repeat`,

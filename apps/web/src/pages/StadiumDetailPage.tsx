@@ -26,7 +26,8 @@ import dayjs from 'dayjs';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { apiGetStadium, type StadiumDetail, type StadiumMatch } from '../services/stadiumApi';
 
 import { STATUS_MAP } from '../utils/constants';
@@ -36,13 +37,33 @@ const { Title } = Typography;
 
 export default function StadiumDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const request = state?.request;
   const { t } = useTranslation();
   const [stadium, setStadium] = useState<StadiumDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
+
+    if (id.startsWith('request-') && request) {
+      setStadium({
+        id: request.id,
+        name: request.payload?.name || '',
+        city: request.payload?.city || '',
+        address: request.payload?.address,
+        country: request.payload?.country,
+        capacity: request.payload?.capacity,
+        fifaStars: request.payload?.fifaStars,
+        teams: request.team ? [request.team] : [],
+        matches: [],
+      } as unknown as StadiumDetail);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     const fetch = async () => {
       try {
@@ -59,7 +80,7 @@ export default function StadiumDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, request, t]);
 
   if (loading) {
     return (
@@ -80,6 +101,8 @@ export default function StadiumDetailPage() {
 
   const finishedMatches = stadium.matches.filter((m) => m.status === 'FINISHED');
   const upcomingMatches = stadium.matches.filter((m) => m.status !== 'FINISHED');
+  const visibleManagerRequestNote = user?.role === 'ADMIN' ? request?.requestNote : null;
+  const visibleAdminDecisionNote = user?.role === 'TEAM_MANAGER' ? request?.adminNote : null;
 
   const renderTeamLogo = (team: { name: string }) => {
     const logoUrl = getTeamLogoUrl(team);
@@ -171,7 +194,14 @@ export default function StadiumDetailPage() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/stadiums')}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() =>
+            navigate('/stadiums', {
+              state: { tab: state?.fromTab || (request ? 'review' : 'list') },
+            })
+          }
+        >
           {t('stadiumDetail.back')}
         </Button>
         <Title level={3} style={{ margin: 0 }}>
@@ -240,9 +270,57 @@ export default function StadiumDetailPage() {
                   <Descriptions.Item label={t('stadiumDetail.descCapacity')}>
                     {stadium.capacity ? stadium.capacity.toLocaleString('vi-VN') : '—'}
                   </Descriptions.Item>
+                  <Descriptions.Item label="Đội sân nhà">
+                    {stadium.teams && stadium.teams.length > 0
+                      ? stadium.teams.map((t) => t.name).join(', ')
+                      : '—'}
+                  </Descriptions.Item>
+                  {request?.manager && (
+                    <Descriptions.Item label="Người yêu cầu">
+                      {request.manager.name
+                        ? `${request.manager.name} (${request.manager.email})`
+                        : request.manager.email}
+                    </Descriptions.Item>
+                  )}
+                  {request && (
+                    <Descriptions.Item label="Trạng thái">
+                      <Tag
+                        color={
+                          request.status === 'APPROVED'
+                            ? 'green'
+                            : request.status === 'REJECTED'
+                              ? 'red'
+                              : 'gold'
+                        }
+                      >
+                        {request.status === 'APPROVED'
+                          ? 'Đã duyệt'
+                          : request.status === 'REJECTED'
+                            ? 'Từ chối'
+                            : 'Chờ duyệt'}
+                      </Tag>
+                    </Descriptions.Item>
+                  )}
                 </Descriptions>
 
-                {stadium.teams.length > 0 && (
+                {(visibleManagerRequestNote || visibleAdminDecisionNote) && (
+                  <div className="team-detail-note-grid">
+                    {visibleManagerRequestNote && (
+                      <div className="team-detail-note-card">
+                        <span className="team-detail-note-label">Ghi chú</span>
+                        <p>{visibleManagerRequestNote}</p>
+                      </div>
+                    )}
+                    {visibleAdminDecisionNote && (
+                      <div className="team-detail-note-card team-detail-note-card-admin">
+                        <span className="team-detail-note-label">Phản hồi</span>
+                        <p>{visibleAdminDecisionNote}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!request && stadium.teams.length > 0 && (
                   <Card
                     size="small"
                     title={t('stadiumDetail.homeTeamsTitle')}

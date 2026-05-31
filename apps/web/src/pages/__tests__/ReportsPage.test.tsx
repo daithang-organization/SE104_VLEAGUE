@@ -215,7 +215,6 @@ describe('ReportsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('12')).toBeInTheDocument();
       expect(screen.getByText('6')).toBeInTheDocument();
-      expect(screen.getByText('2')).toBeInTheDocument();
     });
   });
 

@@ -12,6 +12,13 @@ const mockTeamApi = vi.hoisted(() => ({
     status: 'ACTIVE',
     stadiumId: 's1',
     stadium: { id: 's1', name: 'Sân vận động Hàng Đẫy', city: 'Hà Nội' },
+    managedUsers: [
+      {
+        id: 'u-manager',
+        email: 'manager.cahn@demo.local',
+        name: 'Manager CAHN',
+      },
+    ],
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     roster: [],
@@ -21,6 +28,17 @@ const mockTeamApi = vi.hoisted(() => ({
   }),
 }));
 
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: { id: 'u-admin', email: 'admin@demo.local', role: 'ADMIN' },
+    loading: false,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+  })),
+);
+
+vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/teamApi', () => mockTeamApi);
 
 import TeamDetailPage from '../TeamDetailPage';
@@ -65,5 +83,11 @@ describe('TeamDetailPage', () => {
     expect(code).toHaveClass('club-detail-code-pill');
     expect(code).not.toHaveClass('club-detail-eyebrow');
     expect(code.closest('.club-detail-facts')).not.toBeNull();
+  });
+
+  it('renders manager information in the overview table', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Manager CAHN (manager.cahn@demo.local)')).toBeInTheDocument();
   });
 });

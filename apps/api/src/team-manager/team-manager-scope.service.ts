@@ -21,7 +21,7 @@ export class TeamManagerScopeService {
 
     if (!user || user.role !== UserRole.TEAM_MANAGER || !user.managedTeamId) {
       throw new ForbiddenException(
-        'Tài khoản này chưa được admin gắn với CLB nào.',
+        'Tài khoản này chưa được Admin duyệt quyền quản lý CLB.',
       );
     }
 
@@ -34,7 +34,7 @@ export class TeamManagerScopeService {
 
     if (managedTeamId !== teamId) {
       throw new ForbiddenException(
-        'Tài khoản này chỉ được thao tác với CLB đã được admin gắn.',
+        'Tài khoản này chỉ được thao tác với CLB đã được Admin duyệt.',
       );
     }
   }
@@ -48,7 +48,7 @@ export class TeamManagerScopeService {
 
     if (requestedTeamId && requestedTeamId !== managedTeamId) {
       throw new ForbiddenException(
-        'Tài khoản này chỉ được thao tác với CLB đã được admin gắn.',
+        'Tài khoản này chỉ được thao tác với CLB đã được Admin duyệt.',
       );
     }
 

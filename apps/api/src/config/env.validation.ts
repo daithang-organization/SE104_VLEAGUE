@@ -33,7 +33,7 @@ export class EnvironmentVariables {
   PORT: number = 8080;
 
   @IsString()
-  DATABASE_URL: string;
+  DATABASE_URL!: string;
 
   @IsString()
   @IsOptional()

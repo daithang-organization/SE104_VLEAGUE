@@ -19,7 +19,7 @@ export class CreateTeamDto {
   })
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional({
     description: 'Tên viết tắt',
@@ -31,7 +31,7 @@ export class CreateTeamDto {
 
   @ApiPropertyOptional({
     description: 'Thành phố',
-    example: 'Pleiku',
+    example: 'Hồ Chí Minh',
   })
   @IsOptional()
   @IsString()
@@ -46,12 +46,21 @@ export class CreateTeamDto {
   stadiumId?: string;
 
   @ApiPropertyOptional({
-    description: 'URL logo đội',
+    description: 'Logo đội',
     example: 'https://example.com/logo.png',
   })
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID Manager quản lý đội bóng',
+    format: 'uuid',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  managerId?: string | null;
 
   @ApiPropertyOptional({
     description: 'Tên huấn luyện viên trưởng',
@@ -92,7 +101,7 @@ export class UpdateTeamDto {
 
   @ApiPropertyOptional({
     description: 'Thành phố',
-    example: 'Pleiku',
+    example: 'Hồ Chí Minh',
   })
   @IsOptional()
   @IsString()
@@ -107,11 +116,20 @@ export class UpdateTeamDto {
   stadiumId?: string;
 
   @ApiPropertyOptional({
-    description: 'URL logo đội',
+    description: 'Logo đội',
   })
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID Manager quản lý đội bóng',
+    format: 'uuid',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsUUID()
+  managerId?: string | null;
 
   @ApiPropertyOptional({
     description: 'Tên huấn luyện viên trưởng',
@@ -133,15 +151,15 @@ export class UpdateTeamDto {
 
 export class TeamResponseDto {
   @ApiProperty({ description: 'ID đội bóng', format: 'uuid' })
-  id: string;
+  id!: string;
 
   @ApiProperty({ description: 'Tên đội bóng', example: 'Hoàng Anh Gia Lai' })
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional({ description: 'Tên viết tắt', example: 'HAGL' })
   shortName?: string;
 
-  @ApiPropertyOptional({ description: 'Thành phố', example: 'Pleiku' })
+  @ApiPropertyOptional({ description: 'Thành phố', example: 'Hồ Chí Minh' })
   city?: string;
 
   @ApiPropertyOptional({
@@ -151,11 +169,11 @@ export class TeamResponseDto {
   coachName?: string;
 
   @ApiProperty({ description: 'Trạng thái', enum: TeamStatus })
-  status: TeamStatus;
+  status!: TeamStatus;
 
   @ApiProperty({ description: 'Ngày tạo' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty({ description: 'Ngày cập nhật' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

@@ -63,9 +63,21 @@ const mockSeasonApi = vi.hoisted(() => ({
     .mockResolvedValue({ id: 's1', name: 'V.League 2025', year: 2025, status: 'IN_PROGRESS' }),
 }));
 
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerManagedTeam: vi.fn().mockResolvedValue({
+    id: 't1',
+    name: 'Ha Noi FC',
+    shortName: 'HN',
+    status: 'ACTIVE',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  }),
+}));
+
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/matchApi', () => mockMatchApi);
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import MatchesPage from '../MatchesPage';
 
@@ -78,7 +90,16 @@ function renderPage() {
 }
 
 describe('MatchesPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
 
   it('renders the page title', () => {
     const { container } = renderPage();
@@ -120,6 +141,22 @@ describe('MatchesPage', () => {
       },
       { timeout: 5000 },
     );
+  });
+
+  it('shows manager result tabs without leg filters', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u2', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText(/Kết quả trận đấu của tôi/)).toBeInTheDocument();
+    expect(screen.queryByText(/Lượt đi/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lượt về/)).not.toBeInTheDocument();
   });
 
   it('renders status tags', async () => {

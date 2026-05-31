@@ -48,6 +48,10 @@ describe('TeamManagerService application workflow', () => {
               create: jest.fn(),
               upsert: jest.fn(),
             },
+            teamManagerRequest: {
+              findFirst: jest.fn(),
+              create: jest.fn(),
+            },
             user: { findUnique: jest.fn() },
             team: { findUnique: jest.fn(), update: jest.fn() },
             seasonTeam: {
@@ -117,27 +121,6 @@ describe('TeamManagerService application workflow', () => {
     expect(prisma.team.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'team-1' },
-      }),
-    );
-    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
-  });
-
-  it('updates the fixed managed club coach name', async () => {
-    jest.spyOn(prisma.team, 'update').mockResolvedValue({
-      id: 'team-1',
-      name: 'Hà Nội FC',
-      coachName: 'HLV Mới',
-    } as any);
-
-    const result = await service.updateManagedTeam('manager-1', {
-      coachName: '  HLV Mới  ',
-    });
-
-    expect(result.coachName).toBe('HLV Mới');
-    expect(prisma.team.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'team-1' },
-        data: { coachName: 'HLV Mới' },
       }),
     );
     expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();

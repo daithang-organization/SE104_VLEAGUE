@@ -218,7 +218,7 @@ export class TeamInvitationService {
 
     if (managerAssignments.length === 0) {
       throw new BadRequestException(
-        'CLB này chưa có tài khoản TEAM_MANAGER được admin gắn cố định nên chưa thể gửi popup lời mời.',
+        'CLB này chưa có Manager được Admin duyệt nên chưa thể gửi popup lời mời.',
       );
     }
 

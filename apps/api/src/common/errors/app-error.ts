@@ -25,10 +25,10 @@ export class AppError extends HttpException {
 
 export class ErrorResponseDto {
   @ApiProperty({ example: 'AUTH_INVALID_CREDENTIALS' })
-  code: string;
+  code!: string;
 
   @ApiProperty({ example: 'Invalid email or password' })
-  message: string;
+  message!: string;
 
   @ApiProperty({
     example: { email: 'Invalid email format' },

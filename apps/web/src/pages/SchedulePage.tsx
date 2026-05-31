@@ -17,7 +17,6 @@ import {
   Form,
   message,
   Modal,
-  Segmented,
   Select,
   Space,
   Spin,
@@ -39,8 +38,8 @@ import {
   type ScheduleMatch,
 } from '../services/scheduleApi';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
-import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
 import { STATUS_MAP } from '../utils/constants';
 
 function formatScheduleDateLabel(kickoffAt?: string | null) {
@@ -59,8 +58,6 @@ function compareMatchesByKickoff(a: ScheduleMatch, b: ScheduleMatch) {
   return timeDiff || a.id.localeCompare(b.id);
 }
 
-type ScheduleFixtureScope = 'all' | 'managed';
-
 export default function SchedulePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -73,9 +70,8 @@ export default function SchedulePage() {
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [activeLeg, setActiveLeg] = useState<string>('all');
-  const [activeFixtureScope, setActiveFixtureScope] = useState<ScheduleFixtureScope>('all');
-  const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
   const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
+  const [managedTeamId, setManagedTeamId] = useState<string | null>(null);
 
   // Edit modal
   const [editingMatch, setEditingMatch] = useState<ScheduleMatch | null>(null);
@@ -88,7 +84,7 @@ export default function SchedulePage() {
   const [generateSeasonId, setGenerateSeasonId] = useState<string | undefined>();
 
   const isAdmin = user?.role === 'ADMIN';
-  const isTeamManager = user?.role === 'TEAM_MANAGER';
+  const isManager = user?.role === 'TEAM_MANAGER';
 
   // Fetch seasons + stadiums on mount
   useEffect(() => {
@@ -105,6 +101,29 @@ export default function SchedulePage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isManager) {
+      setManagedTeamId(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    apiGetTeamManagerManagedTeam()
+      .then((team) => {
+        if (!cancelled) setManagedTeamId(team?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setManagedTeamId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isManager]);
+
   const fetchSchedule = useCallback(async () => {
     setLoading(true);
     try {
@@ -120,41 +139,6 @@ export default function SchedulePage() {
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
-
-  useEffect(() => {
-    if (!isTeamManager) {
-      setManagerTeamId(null);
-      setActiveFixtureScope('all');
-      return;
-    }
-
-    if (!selectedSeasonId) {
-      setManagerTeamId(null);
-      return;
-    }
-
-    let cancelled = false;
-    setManagerTeamId(null);
-
-    const loadManagerAssignment = async () => {
-      try {
-        const assignment = await apiGetTeamManagerAssignment(selectedSeasonId);
-        if (cancelled) return;
-        setManagerTeamId(assignment?.teamId ?? null);
-        if (!assignment?.teamId) setActiveFixtureScope('all');
-      } catch (_err) {
-        if (!cancelled) {
-          setManagerTeamId(null);
-          setActiveFixtureScope('all');
-        }
-      }
-    };
-
-    loadManagerAssignment();
-    return () => {
-      cancelled = true;
-    };
-  }, [isTeamManager, selectedSeasonId]);
 
   const openGenerateModal = () => {
     setGenerateSeasonId(selectedSeasonId);
@@ -226,21 +210,51 @@ export default function SchedulePage() {
     }
   };
 
+  useEffect(() => {
+    if (isManager && (activeLeg === '1' || activeLeg === '2')) {
+      setActiveLeg('all');
+    } else if (!isManager && activeLeg === 'mine') {
+      setActiveLeg('all');
+    }
+  }, [activeLeg, isManager]);
+
   const managerMatches = useMemo(() => {
-    if (!managerTeamId) return [];
-    return matches.filter((m) => m.homeTeamId === managerTeamId || m.awayTeamId === managerTeamId);
-  }, [managerTeamId, matches]);
+    if (!managedTeamId) return [];
+    return matches.filter(
+      (match) => match.homeTeamId === managedTeamId || match.awayTeamId === managedTeamId,
+    );
+  }, [managedTeamId, matches]);
 
-  const scopedMatches = useMemo(() => {
-    if (activeFixtureScope === 'managed' && managerTeamId) return managerMatches;
-    return matches;
-  }, [activeFixtureScope, managerMatches, managerTeamId, matches]);
-
-  // Filter by manager scope and leg
+  // Filter by selected schedule tab.
   const filteredMatches = useMemo(() => {
-    if (activeLeg === 'all') return scopedMatches;
-    return scopedMatches.filter((m) => m.leg === Number(activeLeg));
-  }, [scopedMatches, activeLeg]);
+    if (isManager && activeLeg === 'mine') return managerMatches;
+    if (activeLeg === 'all') return matches;
+    return matches.filter((m) => m.leg === Number(activeLeg));
+  }, [activeLeg, isManager, managerMatches, matches]);
+
+  const scheduleTabItems = useMemo(() => {
+    if (isManager) {
+      return [
+        { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+        {
+          key: 'mine',
+          label: t('schedule.tabMine', { count: managerMatches.length }),
+        },
+      ];
+    }
+
+    return [
+      { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+      {
+        key: '1',
+        label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
+      },
+      {
+        key: '2',
+        label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
+      },
+    ];
+  }, [isManager, managerMatches.length, matches, t]);
 
   // Group matches by round
   const roundGroups = useMemo(() => {
@@ -373,19 +387,6 @@ export default function SchedulePage() {
               }))}
             />
           )}
-          {isTeamManager && managerTeamId && (
-            <Segmented
-              value={activeFixtureScope}
-              onChange={(value) => setActiveFixtureScope(value as ScheduleFixtureScope)}
-              options={[
-                { value: 'all', label: t('schedule.scopeAll', { count: matches.length }) },
-                {
-                  value: 'managed',
-                  label: t('schedule.scopeManaged', { count: managerMatches.length }),
-                },
-              ]}
-            />
-          )}
           <Button icon={<ReloadOutlined />} onClick={fetchSchedule} loading={loading}>
             {t('schedule.reloadBtn')}
           </Button>
@@ -409,25 +410,11 @@ export default function SchedulePage() {
       </div>
 
       <Card className="schedule-page-card">
-        {/* Leg tabs */}
+        {/* Schedule tabs */}
         <Tabs
           activeKey={activeLeg}
           onChange={setActiveLeg}
-          items={[
-            { key: 'all', label: t('schedule.tabAll', { count: scopedMatches.length }) },
-            {
-              key: '1',
-              label: t('schedule.tabLeg1', {
-                count: scopedMatches.filter((m) => m.leg === 1).length,
-              }),
-            },
-            {
-              key: '2',
-              label: t('schedule.tabLeg2', {
-                count: scopedMatches.filter((m) => m.leg === 2).length,
-              }),
-            },
-          ]}
+          items={scheduleTabItems}
           style={{ marginBottom: 12 }}
         />
 

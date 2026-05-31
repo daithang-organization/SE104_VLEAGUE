@@ -23,11 +23,12 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
-import type { ColumnsType } from 'antd/es/table';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { MatchFixtureCard, ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
@@ -39,6 +40,13 @@ const { Title } = Typography;
 export default function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const requestNote = state?.requestNote;
+  const requestStatus = state?.requestStatus;
+  const adminNote = state?.adminNote;
+  const stateManagerName = state?.managerName;
+  const stateManagerEmail = state?.managerEmail;
+  const { user } = useAuth();
   const { t } = useTranslation();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +70,7 @@ export default function TeamDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   // Merge home + away matches, sort by kickoff date for the monthly team fixture view.
   const allMatches = useMemo(
@@ -302,19 +310,58 @@ export default function TeamDetailPage() {
   const currentStanding = (team.standings || []).length > 0 ? team.standings[0] : null;
   const teamLogoUrl = getTeamLogoUrl(team);
   const teamInitials = (team.shortName || team.name).slice(0, 2).toUpperCase();
+  const manager = team.managedUsers?.[0] ?? null;
+  const getFallbackManagerDisplay = () => {
+    if (stateManagerName && stateManagerEmail) {
+      return `${stateManagerName} (${stateManagerEmail})`;
+    }
+    return stateManagerName || stateManagerEmail || '—';
+  };
+
+  const managerDisplay = manager
+    ? manager.name
+      ? `${manager.name} (${manager.email})`
+      : manager.email
+    : getFallbackManagerDisplay();
+
+  const renderStatusTag = (isHero = false) => {
+    if (requestStatus === 'PENDING') return <Tag color="red-inverse">Đang chờ duyệt</Tag>;
+    if (requestStatus === 'APPROVED') return <Tag color="green-inverse">Đã phê duyệt</Tag>;
+    if (requestStatus === 'REJECTED') return <Tag color="default">Đã từ chối</Tag>;
+
+    return (
+      <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
+        {team.status === 'ACTIVE'
+          ? t('teamDetail.statusActive')
+          : isHero
+            ? t('teamDetail.statusInactive')
+            : t('teamDetail.statusInactiveShort')}
+      </Tag>
+    );
+  };
+
+  const managerRequestNote =
+    typeof requestNote === 'string' && requestNote.trim() ? requestNote.trim() : null;
+  const adminDecisionNote =
+    typeof adminNote === 'string' && adminNote.trim() ? adminNote.trim() : null;
+  const visibleManagerRequestNote = user?.role === 'ADMIN' ? managerRequestNote : null;
+  const visibleAdminDecisionNote = user?.role === 'TEAM_MANAGER' ? adminDecisionNote : null;
 
   return (
     <div className="club-detail-page">
       <section className="club-detail-hero" style={getTeamThemeStyle(team)}>
         <div className="club-detail-hero-top">
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/teams')}>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() =>
+              navigate('/teams', {
+                state: { tab: state?.fromTab || (requestStatus ? 'review' : 'list') },
+              })
+            }
+          >
             {t('teamDetail.back')}
           </Button>
-          <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
-            {team.status === 'ACTIVE'
-              ? t('teamDetail.statusActive')
-              : t('teamDetail.statusInactive')}
-          </Tag>
+          {renderStatusTag(true)}
         </div>
 
         <div className="club-detail-hero-main">
@@ -384,17 +431,37 @@ export default function TeamDetailPage() {
                   <Descriptions.Item label={t('teamDetail.descStadium')}>
                     {team.stadium?.name ?? '—'}
                   </Descriptions.Item>
+                  <Descriptions.Item label={t('teamDetail.descManager')}>
+                    {managerDisplay}
+                  </Descriptions.Item>
                   <Descriptions.Item label={t('teamDetail.descCoachName')}>
                     {team.coachName ?? '—'}
                   </Descriptions.Item>
                   <Descriptions.Item label={t('teamDetail.descStatus')}>
-                    <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
-                      {team.status === 'ACTIVE'
-                        ? t('teamDetail.statusActive')
-                        : t('teamDetail.statusInactiveShort')}
-                    </Tag>
+                    {renderStatusTag(false)}
                   </Descriptions.Item>
                 </Descriptions>
+
+                {(visibleManagerRequestNote || visibleAdminDecisionNote) && (
+                  <div className="team-detail-note-grid">
+                    {visibleManagerRequestNote && (
+                      <div className="team-detail-note-card">
+                        <span className="team-detail-note-label">
+                          {t('teamDetail.managerRequestNoteTitle')}
+                        </span>
+                        <p>{visibleManagerRequestNote}</p>
+                      </div>
+                    )}
+                    {visibleAdminDecisionNote && (
+                      <div className="team-detail-note-card team-detail-note-card-admin">
+                        <span className="team-detail-note-label">
+                          {t('teamDetail.adminDecisionNoteTitle')}
+                        </span>
+                        <p>{visibleAdminDecisionNote}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {currentStanding && (
                   <Card

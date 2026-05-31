@@ -1,7 +1,9 @@
 ﻿import {
   BarChartOutlined,
   CalendarOutlined,
+  EnvironmentOutlined,
   FileDoneOutlined,
+  HomeOutlined,
   PlusOutlined,
   SaveOutlined,
   SettingOutlined,
@@ -50,12 +52,13 @@ import {
 } from '../services/standingsApi';
 import { apiGetTeam, apiGetTeams, type TeamDetail } from '../services/teamApi';
 import {
-  apiGetTeamManagerAssignment,
   apiGetTeamManagerApplication,
+  apiGetTeamManagerAssignment,
+  apiGetTeamManagerManagementRequest,
   apiSubmitTeamManagerApplication,
-  apiUpdateTeamManagerManagedTeam,
   type SubmitTeamManagerApplicationPayload,
   type TeamManagerApplication,
+  type TeamManagerRequest,
 } from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
@@ -133,15 +136,15 @@ function getApplicationStatus(application: TeamManagerApplication | null) {
 }
 
 function TeamManagerDashboard() {
+  const navigate = useNavigate();
   const [applicationForm] = Form.useForm<SubmitTeamManagerApplicationPayload>();
-  const [coachForm] = Form.useForm<{ coachName?: string }>();
   const [loading, setLoading] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [application, setApplication] = useState<TeamManagerApplication | null>(null);
   const [applicationSaving, setApplicationSaving] = useState(false);
-  const [coachSaving, setCoachSaving] = useState(false);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
+  const [managementRequest, setManagementRequest] = useState<TeamManagerRequest | null>(null);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
   const [seasonMatches, setSeasonMatches] = useState<Match[]>([]);
   const [teamMatches, setTeamMatches] = useState<Match[]>([]);
@@ -156,10 +159,12 @@ function TeamManagerDashboard() {
         const seasonsData = await apiGetSeasons();
         const season = getDashboardSeason(seasonsData);
         const assignment = season?.id ? await apiGetTeamManagerAssignment(season.id) : null;
+        const request = assignment?.teamId ? null : await apiGetTeamManagerManagementRequest();
 
         if (cancelled) return;
         setCurrentSeason(season);
         setSelectedTeamId(assignment?.teamId ?? null);
+        setManagementRequest(request);
       } catch (_err) {
         if (!cancelled) message.error('Không tải được dữ liệu CLB quản lý');
       } finally {
@@ -252,15 +257,6 @@ function TeamManagerDashboard() {
     });
   }, [application, applicationForm, currentSeason]);
 
-  useEffect(() => {
-    if (!team) {
-      coachForm.resetFields();
-      return;
-    }
-
-    coachForm.setFieldsValue({ coachName: team.coachName ?? '' });
-  }, [coachForm, team]);
-
   const handleSubmitApplication = async (values: SubmitTeamManagerApplicationPayload) => {
     if (!currentSeason?.id) return;
 
@@ -281,30 +277,6 @@ function TeamManagerDashboard() {
       message.error('Không thể nộp hồ sơ. Hãy kiểm tra các thông tin bắt buộc.');
     } finally {
       setApplicationSaving(false);
-    }
-  };
-
-  const handleSaveCoach = async (values: { coachName?: string }) => {
-    setCoachSaving(true);
-    try {
-      const updatedTeam = await apiUpdateTeamManagerManagedTeam({
-        coachName: values.coachName?.trim() || null,
-      });
-      setTeam((currentTeam) =>
-        currentTeam
-          ? {
-              ...currentTeam,
-              coachName: updatedTeam.coachName ?? null,
-              updatedAt: updatedTeam.updatedAt ?? currentTeam.updatedAt,
-            }
-          : currentTeam,
-      );
-      coachForm.setFieldsValue({ coachName: updatedTeam.coachName ?? '' });
-      message.success('Đã cập nhật tên HLV trưởng');
-    } catch (_err) {
-      message.error('Không thể cập nhật tên HLV trưởng');
-    } finally {
-      setCoachSaving(false);
     }
   };
 
@@ -343,28 +315,82 @@ function TeamManagerDashboard() {
   const teamLogoUrl = getTeamLogoUrl(team);
 
   if (!selectedTeamId) {
+    const pendingRequest = managementRequest?.status === 'PENDING';
+    const rejectedRequest = managementRequest?.status === 'REJECTED';
+
     return (
       <div className="page-stack dashboard-page dashboard-manager-page">
         <PageCover
+          className="dashboard-manager-cover"
           eyebrow="VLeague"
-          title="Chưa được gắn CLB"
-          description="Tài khoản TEAM_MANAGER cần được admin gắn với một CLB cố định trước khi sử dụng trang quản lý đội bóng."
-          icon={<TeamOutlined />}
+          title="Manager"
+          description="Quản lý đội bóng, cầu thủ và sân vận động của CLB"
+          icon={<HomeOutlined />}
           metrics={[
             {
-              label: 'Mùa giải',
-              value: currentSeason?.name ?? '...',
-              icon: <TrophyOutlined />,
+              label: 'Cầu thủ',
+              value: '0',
+              icon: <UserOutlined />,
+            },
+            {
+              label: 'Trận đấu',
+              value: '0',
+              icon: <CalendarOutlined />,
             },
           ]}
         />
 
-        <Alert
-          type="warning"
-          showIcon
-          message="Tài khoản chưa có CLB cố định"
-          description="Vui lòng liên hệ admin để gắn tài khoản này với đúng CLB trong màn hình Quản lý người dùng."
-        />
+        <div className="dashboard-stat-grid dashboard-manager-info-grid">
+          <Card loading={loading} hoverable className="dashboard-stat-card">
+            <Statistic
+              title="CLB quản lý"
+              value={
+                managementRequest?.requestType === 'CREATE_TEAM'
+                  ? (managementRequest.proposedTeamName ?? '—')
+                  : (managementRequest?.team?.name ?? '—')
+              }
+              prefix={<TeamOutlined />}
+            />
+          </Card>
+          <Card loading={loading} hoverable className="dashboard-stat-card">
+            <Statistic
+              title="Sân vận động"
+              value={
+                managementRequest?.requestType === 'CLAIM_EXISTING_TEAM'
+                  ? (managementRequest.team?.stadium?.name ?? '—')
+                  : '—'
+              }
+              prefix={<EnvironmentOutlined />}
+            />
+          </Card>
+        </div>
+
+        <Card>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Alert
+              type={pendingRequest ? 'info' : rejectedRequest ? 'error' : 'warning'}
+              showIcon
+              message={
+                pendingRequest
+                  ? 'Yêu cầu quản lý CLB đang chờ duyệt'
+                  : rejectedRequest
+                    ? 'Yêu cầu quản lý CLB đã bị từ chối'
+                    : 'Bạn chưa gửi yêu cầu quản lý CLB'
+              }
+              description={
+                pendingRequest
+                  ? 'Admin sẽ xét duyệt yêu cầu của bạn. Sau khi được duyệt, dashboard sẽ tự hiển thị CLB đã gắn.'
+                  : rejectedRequest
+                    ? managementRequest?.adminNote ||
+                      'Bạn có thể gửi yêu cầu mới từ trang Đội bóng.'
+                    : 'Hãy chọn tạo CLB mới hoặc nhận quản lý một CLB chưa có Manager trong trang Đội bóng.'
+              }
+            />
+            <Button type="primary" icon={<TeamOutlined />} onClick={() => navigate('/teams')}>
+              Đi đến trang Đội bóng
+            </Button>
+          </Space>
+        </Card>
       </div>
     );
   }
@@ -372,16 +398,11 @@ function TeamManagerDashboard() {
   return (
     <div className="page-stack dashboard-page dashboard-manager-page">
       <PageCover
+        className="dashboard-manager-cover"
         eyebrow="Quản lý CLB"
-        title={`CLB ${team?.name ?? '...'}`}
-        description="Theo dõi hồ sơ tham dự, lực lượng, lịch thi đấu và chỉ số phong độ của đội bóng trong một màn hình."
-        icon={
-          teamLogoUrl ? (
-            <img className="dashboard-hero-logo" src={teamLogoUrl} alt={`${team?.name} logo`} />
-          ) : (
-            <TeamOutlined />
-          )
-        }
+        title="Manager"
+        description="Quản lý đội bóng, cầu thủ và sân vận động của CLB"
+        icon={<HomeOutlined />}
         metrics={[
           {
             label: 'Cầu thủ',
@@ -393,45 +414,56 @@ function TeamManagerDashboard() {
             value: teamMatches.length.toLocaleString('vi-VN'),
             icon: <CalendarOutlined />,
           },
-          {
-            label: 'Hồ sơ',
-            value: applicationStatus.label,
-            icon: <FileDoneOutlined />,
-          },
         ]}
       />
 
+      <div className="dashboard-stat-grid dashboard-manager-info-grid">
+        <Card loading={loading} hoverable className="dashboard-stat-card">
+          <Space align="center">
+            {teamLogoUrl && (
+              <img
+                src={teamLogoUrl}
+                alt={`${team?.name ?? 'CLB quản lý'} logo`}
+                className="dashboard-stat-logo"
+              />
+            )}
+            <Statistic title="CLB quản lý" value={team?.name ?? '...'} />
+          </Space>
+        </Card>
+        <Card loading={loading} hoverable className="dashboard-stat-card">
+          <Statistic
+            title="Sân vận động"
+            value={team?.stadium?.name ?? '—'}
+            prefix={<EnvironmentOutlined />}
+          />
+        </Card>
+      </div>
+
       <Card
-        title={<DashboardCardTitle icon={<UserOutlined />}>Thông tin HLV</DashboardCardTitle>}
+        title={<DashboardCardTitle icon={<UserOutlined />}>Thông tin CLB</DashboardCardTitle>}
         className="dashboard-panel-card"
         size="small"
         loading={loading && !team}
       >
-        <Form form={coachForm} layout="vertical" onFinish={handleSaveCoach}>
-          <Row gutter={[16, 8]} align="bottom">
-            <Col xs={24} md={16}>
-              <Form.Item
-                name="coachName"
-                label="Tên HLV trưởng"
-                rules={[{ max: 120, message: 'Tên HLV tối đa 120 ký tự' }]}
-              >
-                <Input maxLength={120} placeholder="Nhập tên HLV trưởng" />
-              </Form.Item>
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Row gutter={[16, 12]}>
+            <Col xs={24} md={12}>
+              <Typography.Text type="secondary">Tên HLV trưởng</Typography.Text>
+              <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
+                {team?.coachName || '—'}
+              </Typography.Title>
             </Col>
-            <Col xs={24} md={8}>
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  icon={<SaveOutlined />}
-                  loading={coachSaving}
-                >
-                  Lưu HLV
-                </Button>
-              </Form.Item>
+            <Col xs={24} md={12}>
+              <Typography.Text type="secondary">CLB quản lý</Typography.Text>
+              <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
+                {team?.name || '—'}
+              </Typography.Title>
             </Col>
           </Row>
-        </Form>
+          <Button type="primary" icon={<TeamOutlined />} onClick={() => navigate('/teams')}>
+            Chỉnh sửa đội bóng
+          </Button>
+        </Space>
       </Card>
 
       <Card
@@ -555,27 +587,6 @@ function TeamManagerDashboard() {
           </Form>
         )}
       </Card>
-
-      <div className="dashboard-stat-grid dashboard-stat-grid-three">
-        <Card loading={loading} hoverable className="dashboard-stat-card">
-          <Space align="center">
-            {teamLogoUrl && (
-              <img
-                src={teamLogoUrl}
-                alt={`${team?.name ?? 'Đội bóng'} logo`}
-                className="dashboard-stat-logo"
-              />
-            )}
-            <Statistic title="Đội bóng" value={team?.name ?? '...'} />
-          </Space>
-        </Card>
-        <Card loading={loading} hoverable className="dashboard-stat-card">
-          <Statistic title="Cầu thủ" value={team?.roster?.length ?? 0} prefix={<UserOutlined />} />
-        </Card>
-        <Card loading={loading} hoverable className="dashboard-stat-card">
-          <Statistic title="Trận đấu" value={teamMatches.length} prefix={<CalendarOutlined />} />
-        </Card>
-      </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>

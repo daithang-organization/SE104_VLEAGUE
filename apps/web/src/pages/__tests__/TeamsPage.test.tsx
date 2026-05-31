@@ -39,14 +39,25 @@ const mockTeamApi = vi.hoisted(() => ({
     ],
     total: 2,
   }),
-  apiGetStadiums: vi.fn().mockResolvedValue([{ id: 's1', name: 'Hàng Đẫy', city: 'Hà Nội' }]),
   apiCreateTeam: vi.fn().mockResolvedValue({}),
   apiUpdateTeam: vi.fn().mockResolvedValue({}),
   apiDeleteTeam: vi.fn().mockResolvedValue({}),
 }));
 
+const mockUserApi = vi.hoisted(() => ({
+  apiGetUsers: vi.fn().mockResolvedValue([
+    {
+      id: 'manager-1',
+      email: 'manager@test.com',
+      role: 'TEAM_MANAGER',
+      managedTeamId: null,
+    },
+  ]),
+}));
+
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/userApi', () => mockUserApi);
 
 import TeamsPage from '../TeamsPage';
 
@@ -75,11 +86,10 @@ describe('TeamsPage', () => {
     expect(screen.getByText('Quản lý đội bóng')).toBeInTheDocument();
   });
 
-  it('calls apiGetTeams and apiGetStadiums on mount', async () => {
+  it('calls apiGetTeams on mount', async () => {
     renderPage();
     await waitFor(() => {
       expect(mockTeamApi.apiGetTeams).toHaveBeenCalled();
-      expect(mockTeamApi.apiGetStadiums).toHaveBeenCalled();
     });
   });
 

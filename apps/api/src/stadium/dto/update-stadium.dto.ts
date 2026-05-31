@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class UpdateStadiumDto {
   @ApiPropertyOptional({
@@ -53,4 +53,12 @@ export class UpdateStadiumDto {
   @IsInt()
   @Min(2)
   fifaStars?: number;
+
+  @ApiPropertyOptional({
+    description: 'ID đội bóng sử dụng sân này làm sân nhà',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  teamId?: string;
 }

@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,8 +51,8 @@ const mockTeamManagerApi = vi.hoisted(() => ({
   apiCreateTeamManagerAssignment: vi.fn(),
   apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
   apiGetTeamManagerApplication: vi.fn().mockResolvedValue(null),
+  apiGetTeamManagerManagementRequest: vi.fn().mockResolvedValue(null),
   apiSubmitTeamManagerApplication: vi.fn(),
-  apiUpdateTeamManagerManagedTeam: vi.fn(),
 }));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
@@ -186,7 +186,7 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
   });
 
-  it('lets assigned team managers update their head coach name', async () => {
+  it('shows team information and edit CTA for assigned team managers', async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
       loading: false,
@@ -197,7 +197,7 @@ describe('DashboardPage', () => {
     mockTeamApi.apiGetTeam.mockResolvedValue({
       id: 'team-1',
       name: 'CLB Bình Định',
-      coachName: 'HLV Cũ',
+      coachName: 'HLV Trưởng',
       roster: [],
       homeMatches: [],
       awayMatches: [],
@@ -227,25 +227,13 @@ describe('DashboardPage', () => {
       participationFeePaid: false,
       team: { id: 'team-1', name: 'CLB Bình Định' },
     });
-    mockTeamManagerApi.apiUpdateTeamManagerManagedTeam.mockResolvedValue({
-      id: 'team-1',
-      name: 'CLB Bình Định',
-      coachName: 'HLV Mới',
-    });
-
     renderPage();
 
     await waitFor(() => {
       expect(mockTeamApi.apiGetTeam).toHaveBeenCalledWith('team-1');
     });
-    const coachInput = await screen.findByLabelText('Tên HLV trưởng', {}, { timeout: 3000 });
-    fireEvent.change(coachInput, { target: { value: 'HLV Mới' } });
-    fireEvent.click(screen.getByRole('button', { name: /Lưu HLV/i }));
-
-    await waitFor(() => {
-      expect(mockTeamManagerApi.apiUpdateTeamManagerManagedTeam).toHaveBeenCalledWith({
-        coachName: 'HLV Mới',
-      });
-    });
+    expect(await screen.findByText('Thông tin CLB')).toBeInTheDocument();
+    expect(screen.getByText('HLV Trưởng')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Chỉnh sửa đội bóng/i })).toBeInTheDocument();
   });
 });

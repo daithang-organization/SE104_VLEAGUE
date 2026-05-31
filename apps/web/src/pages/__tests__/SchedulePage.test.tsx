@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -35,17 +35,17 @@ const mockScheduleApi = vi.hoisted(() => ({
       {
         id: 'm2',
         roundNo: 1,
-        leg: 1,
+        leg: 2,
         homeTeamId: 't3',
         awayTeamId: 't4',
-        homeTeam: { name: 'Binh Duong FC', shortName: 'BD' },
-        awayTeam: { name: 'Da Nang FC', shortName: 'DN' },
-        stadium: { name: 'Binh Duong', city: 'Binh Duong' },
+        homeTeam: { name: 'Da Nang FC', shortName: 'DN' },
+        awayTeam: { name: 'Nam Dinh FC', shortName: 'ND' },
+        stadium: { name: 'Hoa Xuan', city: 'Da Nang' },
         stadiumId: 's2',
-        homeScore: 1,
-        awayScore: 1,
-        status: 'FINISHED',
-        kickoffAt: '2025-03-15T19:00:00Z',
+        homeScore: null,
+        awayScore: null,
+        status: 'PUBLISHED',
+        kickoffAt: '2025-03-16T17:00:00Z',
       },
     ],
   }),
@@ -66,17 +66,19 @@ const mockTeamApi = vi.hoisted(() => ({
   apiGetStadiums: vi.fn().mockResolvedValue([{ id: 'st1', name: 'Hang Day', city: 'Ha Noi' }]),
 }));
 
-const mockTeamManagerApi = vi.hoisted(() => ({
-  apiGetTeamManagerAssignment: vi.fn().mockResolvedValue({
-    id: 'assignment-1',
-    userId: 'u-manager',
-    seasonId: 's1',
-    teamId: 't1',
-  }),
-}));
-
 const mockMatchApi = vi.hoisted(() => ({
   apiUpdateMatch: vi.fn().mockResolvedValue({}),
+}));
+
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerManagedTeam: vi.fn().mockResolvedValue({
+    id: 't1',
+    name: 'Ha Noi FC',
+    shortName: 'HN',
+    status: 'ACTIVE',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  }),
 }));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
@@ -97,7 +99,16 @@ function renderPage() {
 }
 
 describe('SchedulePage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
 
   it('renders the page title', () => {
     const { container } = renderPage();
@@ -145,6 +156,22 @@ describe('SchedulePage', () => {
     expect(screen.getByText(/Lượt về/)).toBeInTheDocument();
   });
 
+  it('shows manager schedule tabs without leg filters', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u2', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText(/Lịch thi đấu của tôi/)).toBeInTheDocument();
+    expect(screen.queryByText(/Lượt đi/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lượt về/)).not.toBeInTheDocument();
+  });
+
   it('renders the active round as a fixture list grouped by match day', async () => {
     const { container } = renderPage();
 
@@ -173,21 +200,17 @@ describe('SchedulePage', () => {
     renderPage();
 
     expect(await screen.findByText('HN')).toBeInTheDocument();
-    expect(screen.getAllByText('BD').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('DN').length).toBeGreaterThan(0);
 
     await waitFor(() => {
-      expect(mockTeamManagerApi.apiGetTeamManagerAssignment).toHaveBeenCalledWith('s1');
+      expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
     });
 
-    const toolbar = document.querySelector('.page-toolbar') as HTMLElement;
-    expect(toolbar).toBeInTheDocument();
-    expect(within(toolbar).getByText(/CLB của tôi/)).toBeInTheDocument();
-
-    fireEvent.click(within(toolbar).getByText(/CLB của tôi/));
+    fireEvent.click(screen.getByText(/Lịch thi đấu của tôi/));
 
     await waitFor(() => {
       expect(screen.getByText('HN')).toBeInTheDocument();
-      expect(screen.queryAllByText('BD')).toHaveLength(0);
+      expect(screen.queryAllByText('DN')).toHaveLength(0);
     });
   });
 });

@@ -49,6 +49,7 @@ import {
   type RosterPlayer,
 } from '../services/matchApi';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
@@ -81,6 +82,7 @@ export default function MatchesPage() {
   const [filterTeam, setFilterTeam] = useState<string | undefined>();
   const [activeLeg, setActiveLeg] = useState<string>('all');
   const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
+  const [managedTeamId, setManagedTeamId] = useState<string | null>(null);
 
   // Detail modal
   const [detailMatch, setDetailMatch] = useState<Match | null>(null);
@@ -98,6 +100,30 @@ export default function MatchesPage() {
   const [rosterLoading, setRosterLoading] = useState(false);
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
+  const isManager = user?.role === 'TEAM_MANAGER';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isManager) {
+      setManagedTeamId(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    apiGetTeamManagerManagedTeam()
+      .then((team) => {
+        if (!cancelled) setManagedTeamId(team?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setManagedTeamId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isManager]);
 
   const loadMatches = useCallback(
     async (seasonId?: string, search?: string, status?: string, teamId?: string) => {
@@ -171,11 +197,51 @@ export default function MatchesPage() {
     loadMatches(val, searchText, filterStatus, filterTeam);
   };
 
+  useEffect(() => {
+    if (isManager && (activeLeg === '1' || activeLeg === '2')) {
+      setActiveLeg('all');
+    } else if (!isManager && activeLeg === 'mine') {
+      setActiveLeg('all');
+    }
+  }, [activeLeg, isManager]);
+
+  const managerMatches = useMemo(() => {
+    if (!managedTeamId) return [];
+    return matches.filter(
+      (match) => match.homeTeamId === managedTeamId || match.awayTeamId === managedTeamId,
+    );
+  }, [managedTeamId, matches]);
+
   // Group matches by round
   const filteredMatches = useMemo(() => {
+    if (isManager && activeLeg === 'mine') return managerMatches;
     if (activeLeg === 'all') return matches;
     return matches.filter((m) => m.leg === Number(activeLeg));
-  }, [matches, activeLeg]);
+  }, [activeLeg, isManager, managerMatches, matches]);
+
+  const resultTabItems = useMemo(() => {
+    if (isManager) {
+      return [
+        { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+        {
+          key: 'mine',
+          label: t('matches.tabMine', { count: managerMatches.length }),
+        },
+      ];
+    }
+
+    return [
+      { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
+      {
+        key: '1',
+        label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
+      },
+      {
+        key: '2',
+        label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
+      },
+    ];
+  }, [isManager, managerMatches.length, matches, t]);
 
   const availableTeams = useMemo(() => {
     const teamMap = new Map<string, string>();
@@ -515,17 +581,7 @@ export default function MatchesPage() {
         <Tabs
           activeKey={activeLeg}
           onChange={setActiveLeg}
-          items={[
-            { key: 'all', label: t('schedule.tabAll', { count: matches.length }) },
-            {
-              key: '1',
-              label: t('schedule.tabLeg1', { count: matches.filter((m) => m.leg === 1).length }),
-            },
-            {
-              key: '2',
-              label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
-            },
-          ]}
+          items={resultTabItems}
           style={{ marginBottom: 12 }}
         />
         {loading && matches.length === 0 ? (

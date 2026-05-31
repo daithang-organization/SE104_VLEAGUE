@@ -89,7 +89,7 @@ export default function App() {
             <Route
               path="/stadiums"
               element={
-                <RequireRole allow={['ADMIN']}>
+                <RequireRole allow={['ADMIN', 'TEAM_MANAGER']}>
                   <StadiumsPage />
                 </RequireRole>
               }
@@ -97,7 +97,7 @@ export default function App() {
             <Route
               path="/stadiums/:id"
               element={
-                <RequireRole allow={['ADMIN']}>
+                <RequireRole allow={['ADMIN', 'TEAM_MANAGER']}>
                   <StadiumDetailPage />
                 </RequireRole>
               }

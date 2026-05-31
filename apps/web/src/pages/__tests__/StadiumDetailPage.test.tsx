@@ -34,7 +34,12 @@ const mockStadiumApi = vi.hoisted(() => ({
   }),
 }));
 
+const mockAuth = vi.hoisted(() => ({
+  useAuth: vi.fn().mockReturnValue({ user: { role: 'ADMIN' } }),
+}));
+
 vi.mock('../../services/stadiumApi', () => mockStadiumApi);
+vi.mock('../../auth/AuthContext', () => mockAuth);
 
 import StadiumDetailPage from '../StadiumDetailPage';
 

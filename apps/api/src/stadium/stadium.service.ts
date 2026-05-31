@@ -52,13 +52,39 @@ export class StadiumService {
 
   async create(dto: CreateStadiumDto): Promise<Stadium> {
     this.assertEligibleStadium(dto);
+    const { teamId, ...stadiumDto } = dto;
+    const data = {
+      ...stadiumDto,
+      country: stadiumDto.country ?? 'Việt Nam',
+    };
 
     try {
-      return await this.prisma.stadium.create({
-        data: {
-          ...dto,
-          country: dto.country ?? 'Việt Nam',
-        } as never,
+      if (!teamId) {
+        return await this.prisma.stadium.create({
+          data: data as never,
+        });
+      }
+
+      return await this.prisma.$transaction(async (tx) => {
+        const team = await tx.team.findUnique({
+          where: { id: teamId },
+          select: { id: true },
+        });
+
+        if (!team) {
+          throw new NotFoundException(`Team with ID ${teamId} not found`);
+        }
+
+        const stadium = await tx.stadium.create({
+          data: data as never,
+        });
+
+        await tx.team.update({
+          where: { id: teamId },
+          data: { stadiumId: stadium.id },
+        });
+
+        return stadium;
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -75,11 +101,37 @@ export class StadiumService {
   async update(id: string, dto: UpdateStadiumDto): Promise<Stadium> {
     await this.findOne(id);
     this.assertEligibleStadium(dto);
+    const { teamId, ...stadiumDto } = dto;
 
     try {
-      return await this.prisma.stadium.update({
-        where: { id },
-        data: dto as never,
+      if (!teamId) {
+        return await this.prisma.stadium.update({
+          where: { id },
+          data: stadiumDto as never,
+        });
+      }
+
+      return await this.prisma.$transaction(async (tx) => {
+        const team = await tx.team.findUnique({
+          where: { id: teamId },
+          select: { id: true },
+        });
+
+        if (!team) {
+          throw new NotFoundException(`Team with ID ${teamId} not found`);
+        }
+
+        const stadium = await tx.stadium.update({
+          where: { id },
+          data: stadiumDto as never,
+        });
+
+        await tx.team.update({
+          where: { id: teamId },
+          data: { stadiumId: stadium.id },
+        });
+
+        return stadium;
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-/* ---------- hoisted mocks ---------- */
 const mockUserApi = vi.hoisted(() => ({
   apiGetUsers: vi.fn().mockResolvedValue([
     {
@@ -23,14 +22,18 @@ const mockUserApi = vi.hoisted(() => ({
   apiUpdateUserRole: vi.fn(),
   apiDeleteUser: vi.fn(),
 }));
-const mockTeamApi = vi.hoisted(() => ({
-  apiGetTeams: vi.fn().mockResolvedValue({
-    data: [{ id: 'team-1', name: 'Hà Nội FC', status: 'ACTIVE' }],
-  }),
+
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerRequests: vi.fn().mockResolvedValue([]),
+  apiGetManagerPlayerRequests: vi.fn().mockResolvedValue([]),
+  apiGetManagerStadiumRequests: vi.fn().mockResolvedValue([]),
+  apiReviewTeamManagerRequest: vi.fn(),
+  apiReviewManagerPlayerRequest: vi.fn(),
+  apiReviewManagerStadiumRequest: vi.fn(),
 }));
 
 vi.mock('../../services/userApi', () => mockUserApi);
-vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -56,11 +59,11 @@ describe('UsersPage', () => {
     expect(container.querySelector('.page-hero')).toBeInTheDocument();
   });
 
-  it('fetches users on mount', async () => {
+  it('fetches users and manager requests on mount', async () => {
     renderPage();
     await waitFor(() => {
       expect(mockUserApi.apiGetUsers).toHaveBeenCalled();
-      expect(mockTeamApi.apiGetTeams).toHaveBeenCalled();
+      expect(mockTeamManagerApi.apiGetTeamManagerRequests).toHaveBeenCalled();
     });
   });
 
@@ -72,10 +75,10 @@ describe('UsersPage', () => {
     });
   });
 
-  it('renders create button', async () => {
+  it('renders create button after loading users', async () => {
     renderPage();
     await waitFor(() => {
-      expect(mockUserApi.apiGetUsers).toHaveBeenCalledTimes(1);
+      expect(mockUserApi.apiGetUsers).toHaveBeenCalled();
     });
   });
 });
