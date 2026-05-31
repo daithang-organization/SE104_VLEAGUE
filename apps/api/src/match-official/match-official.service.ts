@@ -301,7 +301,6 @@ export class MatchOfficialService {
       });
     }
 
-    return report;
     if (
       submittedByUser?.role === 'SUPERVISOR' &&
       dto.organizationRating === 'ISSUES_FOUND' &&
