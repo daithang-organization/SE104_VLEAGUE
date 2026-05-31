@@ -199,6 +199,52 @@ describe('StandingsService', () => {
       expect(teamB?.position).toBe(1);
     });
 
+    it('calculates standings after a requested round only', async () => {
+      const seasonTeams = [
+        { team: { id: 'team-a', name: 'A FC' } },
+        { team: { id: 'team-b', name: 'B FC' } },
+      ];
+      const matches = [
+        {
+          homeTeamId: 'team-a',
+          awayTeamId: 'team-b',
+          homeScore: 2,
+          awayScore: 0,
+          roundNo: 1,
+        },
+        {
+          homeTeamId: 'team-b',
+          awayTeamId: 'team-a',
+          homeScore: 4,
+          awayScore: 0,
+          roundNo: 2,
+        },
+      ];
+
+      jest
+        .spyOn(prisma.seasonTeam, 'findMany')
+        .mockResolvedValue(seasonTeams as any);
+      jest
+        .spyOn(prisma.match, 'findMany')
+        .mockResolvedValue([matches[0]] as any);
+
+      const result = await service.getStandings('season-1', 'in_progress', 1);
+      const teamA = result.find((standing) => standing.teamId === 'team-a');
+      const teamB = result.find((standing) => standing.teamId === 'team-b');
+
+      expect(teamA?.points).toBe(3);
+      expect(teamA?.played).toBe(1);
+      expect(teamB?.points).toBe(0);
+      expect(teamB?.played).toBe(1);
+      expect(prisma.match.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            roundNo: { lte: 1 },
+          }),
+        }),
+      );
+    });
+
     it('uses two-leg head-to-head aggregate to break final ties', async () => {
       const seasonTeams = [
         { team: { id: 'team-a', name: 'A FC' } },

@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -126,6 +125,12 @@ describe('PlayersPage', () => {
     expect(screen.getByText('Thêm cầu thủ')).toBeInTheDocument();
   });
 
+  it('shows a career summary field in the player form', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Thêm cầu thủ'));
+    expect(await screen.findByLabelText('Tóm tắt tiểu sử chơi bóng')).toBeInTheDocument();
+  });
+
   it('hides add button for public users', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u2', email: 'user@vl.local', role: 'PUBLIC' },
@@ -170,6 +175,7 @@ describe('PlayersPage', () => {
     renderPage();
 
     await waitFor(() => {
+      expect(screen.getByText('Nội binh')).toBeInTheDocument();
       expect(screen.getByText('Ngoại binh')).toBeInTheDocument();
     });
   });

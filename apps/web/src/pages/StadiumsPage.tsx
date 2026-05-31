@@ -320,7 +320,11 @@ export default function StadiumsPage() {
       s.city.toLowerCase().includes(search.toLowerCase()) ||
       (s.country ?? '').toLowerCase().includes(search.toLowerCase()),
   );
-  const totalCapacity = stadiums.reduce((sum, stadium) => sum + (stadium.capacity ?? 0), 0);
+  const capacities = stadiums
+    .map((stadium) => stadium.capacity)
+    .filter((capacity): capacity is number => typeof capacity === 'number' && capacity > 0);
+  const maxCapacity = capacities.length > 0 ? Math.max(...capacities) : null;
+  const minCapacity = capacities.length > 0 ? Math.min(...capacities) : null;
   const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
   const homeStadium = stadiums.find((stadium) => stadium.id === managedTeam?.stadiumId);
   const hasPendingStadiumRequest = managerStadiumRequests.some(
@@ -345,8 +349,13 @@ export default function StadiumsPage() {
           icon: <BankOutlined />,
         },
         {
-          label: t('stadiumDetail.statCapacity'),
-          value: totalCapacity.toLocaleString('vi-VN'),
+          label: t('stadiums.maxCapacity'),
+          value: maxCapacity != null ? maxCapacity.toLocaleString('vi-VN') : '—',
+          icon: <TeamOutlined />,
+        },
+        {
+          label: t('stadiums.minCapacity'),
+          value: minCapacity != null ? minCapacity.toLocaleString('vi-VN') : '—',
           icon: <TeamOutlined />,
         },
         {

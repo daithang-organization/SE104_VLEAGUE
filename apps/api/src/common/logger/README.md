@@ -5,6 +5,7 @@ Hệ thống logging chuyên nghiệp cho VLeague API sử dụng [nestjs-pino](
 ## Tính năng
 
 ### ✅ Log có màu sắc, dễ đọc (Development)
+
 ```
 INFO  [12:34:56.789] [Bootstrap] 🚀 Application started successfully
 INFO  [12:34:56.790] [Bootstrap] 📍 Server running on: http://localhost:3000
@@ -14,20 +15,31 @@ INFO  [12:34:56.890] [RequestPerformance] ⬅️  [GET] /api/teams 🟢 98ms
 ```
 
 ### ✅ JSON logs cho Production
+
 ```json
-{"level":30,"time":1706620496789,"msg":"GET /api/teams completed","context":"HTTP","req":{"id":"abc-123","method":"GET","url":"/api/teams"},"res":{"statusCode":200}}
+{
+  "level": 30,
+  "time": 1706620496789,
+  "msg": "GET /api/teams completed",
+  "context": "HTTP",
+  "req": { "id": "abc-123", "method": "GET", "url": "/api/teams" },
+  "res": { "statusCode": 200 }
+}
 ```
 
 ### ✅ Request ID tracking
+
 - Tự động tạo UUID cho mỗi request
 - Hỗ trợ `x-request-id` header từ client/gateway
 - Đính kèm trong error response
 
 ### ✅ Performance monitoring
+
 - Đo thời gian xử lý của mỗi request
 - Hiển thị indicator: 🟢 (<100ms) 🟡 (<500ms) 🔴 (>500ms)
 
 ### ✅ Security
+
 - Tự động ẩn sensitive data: `authorization`, `password`, `cookie`
 
 ## Sử dụng trong Code
@@ -58,13 +70,13 @@ export class TeamsService {
 
 ### Log Levels
 
-| Level | Method | Khi nào dùng |
-|-------|--------|--------------|
-| `error` | `logger.error()` | Lỗi nghiêm trọng cần fix ngay |
-| `warn` | `logger.warn()` | Cảnh báo, có thể xử lý được |
-| `log/info` | `logger.log()` | Thông tin quan trọng (default) |
-| `debug` | `logger.debug()` | Chi tiết để debug |
-| `verbose` | `logger.verbose()` | Chi tiết tối đa |
+| Level      | Method             | Khi nào dùng                   |
+| ---------- | ------------------ | ------------------------------ |
+| `error`    | `logger.error()`   | Lỗi nghiêm trọng cần fix ngay  |
+| `warn`     | `logger.warn()`    | Cảnh báo, có thể xử lý được    |
+| `log/info` | `logger.log()`     | Thông tin quan trọng (default) |
+| `debug`    | `logger.debug()`   | Chi tiết để debug              |
+| `verbose`  | `logger.verbose()` | Chi tiết tối đa                |
 
 ### Sử dụng PinoLogger (Khuyến nghị)
 
@@ -90,10 +102,11 @@ export class TeamsService {
 
 ### Environment Variables
 
-| Variable | Default | Mô tả |
-|----------|---------|-------|
-| `NODE_ENV` | `development` | `production` = JSON logs, `development` = pretty logs |
-| `LOG_LEVEL` | `debug` (dev) / `info` (prod) | Log level tối thiểu |
+| Variable               | Default                       | Mô tả                                                 |
+| ---------------------- | ----------------------------- | ----------------------------------------------------- |
+| `NODE_ENV`             | `development`                 | `production` = JSON logs, `development` = pretty logs |
+| `LOG_LEVEL`            | `debug` (dev) / `info` (prod) | Log level tối thiểu                                   |
+| `HEALTH_HEAP_LIMIT_MB` | `512`                         | Ngưỡng heap tối đa cho readiness check                |
 
 ### Tùy chỉnh trong LoggerModule
 
@@ -121,6 +134,7 @@ redact: {
 ## Output Samples
 
 ### Request thành công
+
 ```
 INFO  [14:30:15.123] [HTTP] GET /api/teams completed
 DEBUG [14:30:15.100] [RequestPerformance] ➡️  [GET] /api/teams → TeamsController.findAll()
@@ -128,11 +142,13 @@ INFO  [14:30:15.123] [RequestPerformance] ⬅️  [GET] /api/teams 🟢 23ms
 ```
 
 ### Request lỗi validation
+
 ```
 WARN  [14:30:45.456] [HttpExceptionFilter] [POST] /api/teams - 400 - VALIDATION_ERROR: Dữ liệu không hợp lệ
 ```
 
 ### Request lỗi server
+
 ```
 ERROR [14:31:00.789] [HttpExceptionFilter] Unhandled exception: Connection refused
     at PrismaService.connect (...)

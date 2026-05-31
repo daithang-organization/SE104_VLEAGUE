@@ -25,6 +25,24 @@ async function main() {
   }
 
   await prisma.$executeRaw`
+    DELETE FROM match_events e
+    USING matches m
+    WHERE e.match_id = m.id
+      AND m.season_id = ${season.id}::uuid
+      AND m.status <> 'FINISHED'
+      AND e.note LIKE 'report-demo-%'
+  `;
+
+  await prisma.$executeRaw`
+    DELETE FROM match_reports r
+    USING matches m
+    WHERE r.match_id = m.id
+      AND m.season_id = ${season.id}::uuid
+      AND m.status <> 'FINISHED'
+      AND r.note = 'report-demo-player-of-match'
+  `;
+
+  await prisma.$executeRaw`
     WITH goal_candidates AS (
       SELECT e.id AS event_id, tp.player_id AS assist_player_id
       FROM match_events e
@@ -39,6 +57,7 @@ async function main() {
         LIMIT 1
       ) tp ON TRUE
       WHERE m.season_id = ${season.id}::uuid
+        AND m.status = 'FINISHED'
         AND e.type IN ('GOAL', 'PENALTY')
         AND e.related_player_id IS NULL
       ORDER BY e.minute, e.id
@@ -55,7 +74,7 @@ async function main() {
       SELECT m.id, m.round_no, m.home_team_id, m.away_team_id
       FROM matches m
       WHERE m.season_id = ${season.id}::uuid
-        AND m.status IN ('FINISHED','LOCKED','PUBLISHED')
+        AND m.status = 'FINISHED'
       ORDER BY m.round_no, m.kickoff_at NULLS LAST, m.id
       LIMIT 8
     ), card_rows AS (
@@ -107,7 +126,7 @@ async function main() {
         AND e.type IN ('GOAL','PENALTY')
         AND e.player_id IS NOT NULL
       WHERE m.season_id = ${season.id}::uuid
-        AND m.status IN ('FINISHED','LOCKED','PUBLISHED')
+        AND m.status = 'FINISHED'
       ORDER BY m.id, e.minute
       LIMIT 8
     )
@@ -130,6 +149,7 @@ async function main() {
       FROM match_events e
       JOIN matches m ON m.id = e.match_id
       WHERE m.season_id = ${season.id}::uuid
+        AND m.status = 'FINISHED'
         AND e.type = 'RED_CARD'
         AND e.player_id IS NOT NULL
         AND e.team_id IS NOT NULL

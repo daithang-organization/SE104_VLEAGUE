@@ -151,6 +151,8 @@ function TeamManagerDashboard() {
   const [topScorers, setTopScorers] = useState<TopScorer[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadBootstrap = async () => {
       setLoading(true);
       try {
@@ -159,17 +161,22 @@ function TeamManagerDashboard() {
         const assignment = season?.id ? await apiGetTeamManagerAssignment(season.id) : null;
         const request = assignment?.teamId ? null : await apiGetTeamManagerManagementRequest();
 
+        if (cancelled) return;
         setCurrentSeason(season);
         setSelectedTeamId(assignment?.teamId ?? null);
         setManagementRequest(request);
       } catch (_err) {
-        message.error('Không tải được dữ liệu CLB quản lý');
+        if (!cancelled) message.error('Không tải được dữ liệu CLB quản lý');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadBootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -183,6 +190,8 @@ function TeamManagerDashboard() {
       return;
     }
 
+    let cancelled = false;
+
     const loadTeamDashboard = async () => {
       setLoading(true);
       try {
@@ -194,6 +203,8 @@ function TeamManagerDashboard() {
             apiGetTopScorers(currentSeason.id, 100),
             apiGetTeamManagerApplication(currentSeason.id),
           ]);
+
+        if (cancelled) return;
 
         const matches = matchesData.data.filter(
           (match) => match.homeTeamId === selectedTeamId || match.awayTeamId === selectedTeamId,
@@ -212,13 +223,17 @@ function TeamManagerDashboard() {
             .map((scorer, index) => ({ ...scorer, position: index + 1 })),
         );
       } catch (_err) {
-        message.error('Không tải được dashboard đội bóng');
+        if (!cancelled) message.error('Không tải được dashboard đội bóng');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadTeamDashboard();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentSeason, selectedTeamId]);
 
   useEffect(() => {
@@ -237,6 +252,7 @@ function TeamManagerDashboard() {
       backupKit: application?.backupKit ?? '',
       participationFeePaid: application?.participationFeePaid ?? false,
       feeReceiptCode: application?.feeReceiptCode ?? '',
+      feeReceiptUrl: application?.feeReceiptUrl ?? '',
       externalCompetitionSchedule: application?.externalCompetitionSchedule ?? '',
     });
   }, [application, applicationForm, currentSeason]);
@@ -251,7 +267,8 @@ function TeamManagerDashboard() {
         seasonId: currentSeason.id,
         ownerAddress: values.ownerAddress?.trim() || undefined,
         feeReceiptCode: values.feeReceiptCode?.trim() || undefined,
-        externalCompetitionSchedule: values.externalCompetitionSchedule?.trim() || undefined,
+        feeReceiptUrl: values.feeReceiptUrl?.trim() || undefined,
+        externalCompetitionSchedule: values.externalCompetitionSchedule.trim(),
         participationFeePaid: values.participationFeePaid ?? false,
       });
       setApplication(updatedApplication);
@@ -504,6 +521,11 @@ function TeamManagerDashboard() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="feeReceiptUrl" label="Link chứng từ nộp lệ phí">
+                  <Input placeholder="https://..." />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item
                   name="participationFeePaid"
                   label="Lệ phí tham dự"
@@ -516,6 +538,9 @@ function TeamManagerDashboard() {
                 <Form.Item
                   name="externalCompetitionSchedule"
                   label="Lịch giải khác đã/đang tham gia"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập lịch giải khác đã/đang tham gia' },
+                  ]}
                 >
                   <Input.TextArea
                     rows={2}
@@ -764,9 +789,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       if (user?.role === 'TEAM_MANAGER') {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
         return;
       }
 
@@ -791,6 +818,8 @@ export default function DashboardPage() {
           apiGetTopScorers(undefined, 5),
           apiGetCardStats(undefined, 5),
         ]);
+
+        if (cancelled) return;
 
         setStats({
           teams: teams.status === 'fulfilled' ? teams.value.total : 0,
@@ -831,10 +860,13 @@ export default function DashboardPage() {
                 .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
               null)
             : null);
+
+        if (cancelled) return;
         setCurrentSeason(dashboardSeason);
 
         if (dashboardSeason) {
           const seasonMatches = await apiGetMatches(dashboardSeason.id, 1, 1000);
+          if (cancelled) return;
           const teamIds = new Set<string>();
           let finishedMatches = 0;
           const sortedSeasonMatches = [...seasonMatches.data].sort((a, b) => {
@@ -887,6 +919,8 @@ export default function DashboardPage() {
           setCardStats(cardStatsData.value.slice(0, 5));
         }
 
+        if (cancelled) return;
+
         if (matchesData.status === 'fulfilled') {
           const finished = matchesData.value.data.filter((m: Match) => m.status === 'FINISHED');
           const roundGoals = new Map<number, number>();
@@ -905,13 +939,17 @@ export default function DashboardPage() {
           setGoalsPerRound(chartData);
         }
       } catch (_err) {
-        message.error(t('dashboard.errorLoad'));
+        if (!cancelled) message.error(t('dashboard.errorLoad'));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [t, user?.role]);
 
   const standingsCols: ColumnsType<TeamStanding> = [

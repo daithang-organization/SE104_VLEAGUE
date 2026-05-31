@@ -91,6 +91,22 @@ export class MatchOfficialService {
     });
   }
 
+  async removeAssignment(matchId: string, assignmentId: string) {
+    await this.ensureMatch(matchId);
+
+    const result = await this.prisma.matchOfficialAssignment.deleteMany({
+      where: { id: assignmentId, matchId },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException(
+        'Không tìm thấy phân công trọng tài/giám sát viên.',
+      );
+    }
+
+    return { success: true };
+  }
+
   async getMatchReport(matchId: string) {
     await this.ensureMatch(matchId);
 
@@ -107,18 +123,46 @@ export class MatchOfficialService {
     submittedByUser: CurrentUserPayload | undefined,
     dto: SubmitMatchReportDto,
   ) {
-    await this.ensureMatch(matchId);
+    const match = await this.ensureMatch(matchId);
     await this.ensureRefereeCanReport(matchId, submittedByUser);
-
-    await this.prisma.match.update({
-      where: { id: matchId },
-      data: { homeScore: dto.homeScore, awayScore: dto.awayScore },
+    const existingReport = await this.prisma.matchReport.findUnique({
+      where: { matchId },
+      select: { id: true },
     });
+    if (submittedByUser?.role === 'REFEREE' && existingReport) {
+      throw new BadRequestException('Biên bản trọng tài chỉ được nộp một lần.');
+    }
 
-    const events = dto.events ?? [];
-    if (events.length > 0) {
+    const adminScoreLocked = match.scoreSource === 'ADMIN';
+    const homeScore = adminScoreLocked
+      ? (match.homeScore ?? dto.homeScore)
+      : dto.homeScore;
+    const awayScore = adminScoreLocked
+      ? (match.awayScore ?? dto.awayScore)
+      : dto.awayScore;
+    const submittedEvents = dto.events ?? [];
+    const scoreEvents =
+      dto.events ?? (await this.getExistingReportEvents(matchId));
+    const eventScore = this.calculateEventScore(scoreEvents, match);
+
+    if (
+      eventScore.homeScore !== homeScore ||
+      eventScore.awayScore !== awayScore
+    ) {
+      throw new BadRequestException(
+        `Tỉ số ${homeScore} - ${awayScore} không khớp với sự kiện bàn thắng hiện có: ${eventScore.homeScore} - ${eventScore.awayScore}.`,
+      );
+    }
+
+    if (dto.events !== undefined) {
+      await this.prisma.matchEvent.deleteMany({
+        where: { matchId, source: 'MATCH_REPORT' },
+      });
+    }
+
+    if (dto.events !== undefined && submittedEvents.length > 0) {
       await this.prisma.matchEvent.createMany({
-        data: events.map((event) => ({
+        data: submittedEvents.map((event) => ({
           matchId,
           minute: event.minute,
           type: event.type,
@@ -127,16 +171,27 @@ export class MatchOfficialService {
           relatedPlayerId: event.relatedPlayerId,
           goalType: event.goalType,
           note: event.note,
+          source: 'MATCH_REPORT',
         })),
-        skipDuplicates: true,
+      });
+    }
+
+    if (!adminScoreLocked) {
+      await this.prisma.match.update({
+        where: { id: matchId },
+        data: {
+          homeScore: dto.homeScore,
+          awayScore: dto.awayScore,
+          scoreSource: 'REFEREE',
+        },
       });
     }
 
     const submittedAt = new Date();
     const reportData = {
       submittedByUserId: submittedByUser?.id ?? null,
-      homeScore: dto.homeScore,
-      awayScore: dto.awayScore,
+      homeScore,
+      awayScore,
       bestPlayerId: dto.bestPlayerId ?? null,
       technicalStats: dto.technicalStats as Prisma.InputJsonValue | undefined,
       note: this.cleanOptional(dto.note),
@@ -171,6 +226,14 @@ export class MatchOfficialService {
     dto: SubmitDisciplineReportDto,
   ) {
     await this.ensureMatch(matchId);
+    const existingReport = await this.prisma.disciplineReport.findUnique({
+      where: { matchId },
+      select: { id: true },
+    });
+    if (submittedByUser?.role === 'SUPERVISOR' && existingReport) {
+      throw new BadRequestException('Báo cáo giám sát chỉ được nộp một lần.');
+    }
+
     const supervisor = await this.ensureOfficial(dto.supervisorId);
     await this.ensureSupervisorAssignment(matchId, dto.supervisorId);
     this.ensureOfficialMatchesUser(
@@ -292,5 +355,32 @@ export class MatchOfficialService {
   private cleanOptional(value?: string) {
     const trimmed = value?.trim();
     return trimmed ? trimmed : undefined;
+  }
+
+  private async getExistingReportEvents(matchId: string) {
+    return this.prisma.matchEvent.findMany({
+      where: { matchId, source: 'MATCH_REPORT' },
+      select: { type: true, teamId: true },
+    });
+  }
+
+  private calculateEventScore(
+    events: Array<{ type: string; teamId?: string | null }>,
+    match: { homeTeamId: string; awayTeamId: string },
+  ) {
+    return events.reduce(
+      (score, event) => {
+        if (event.type === 'GOAL' || event.type === 'PENALTY') {
+          if (event.teamId === match.homeTeamId) score.homeScore += 1;
+          if (event.teamId === match.awayTeamId) score.awayScore += 1;
+        }
+        if (event.type === 'OWN_GOAL') {
+          if (event.teamId === match.homeTeamId) score.awayScore += 1;
+          if (event.teamId === match.awayTeamId) score.homeScore += 1;
+        }
+        return score;
+      },
+      { homeScore: 0, awayScore: 0 },
+    );
   }
 }

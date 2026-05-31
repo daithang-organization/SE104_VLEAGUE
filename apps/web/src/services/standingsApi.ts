@@ -82,8 +82,8 @@ function buildQuery(params: Record<string, string | number | undefined>) {
 }
 
 // ─────────── API calls ───────────
-export function apiGetStandings(seasonId?: string, mode?: StandingsMode) {
-  const query = buildQuery({ seasonId, mode });
+export function apiGetStandings(seasonId?: string, mode?: StandingsMode, roundNo?: number) {
+  const query = buildQuery({ seasonId, mode, roundNo });
   return api.get<TeamStanding[]>(`/standings${query}`).then((res) => res.data);
 }
 

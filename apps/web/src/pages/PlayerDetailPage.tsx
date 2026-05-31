@@ -72,6 +72,7 @@ type PlayerDetail = {
   birthPlace?: string | null;
   heightCm?: number | null;
   weightKg?: number | null;
+  careerSummary?: string | null;
   roster: TeamHistory[];
   matchEvents: MatchEvent[];
 };
@@ -297,6 +298,9 @@ export default function PlayerDetailPage() {
                   {player.weightKg} kg
                 </Descriptions.Item>
               )}
+              <Descriptions.Item label={t('playerDetail.descCareerSummary')}>
+                {player.careerSummary ?? '—'}
+              </Descriptions.Item>
               <Descriptions.Item label={t('playerDetail.descCurrentTeam')}>
                 {currentTeam ? (
                   <a onClick={() => navigate(`/teams/${currentTeam.team.id}`)}>

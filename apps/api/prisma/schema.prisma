@@ -33,6 +33,11 @@ enum MatchStatus {
   POSTPONED
 }
 
+enum MatchScoreSource {
+  ADMIN
+  REFEREE
+}
+
 enum SeasonStatus {
   UPCOMING
   IN_PROGRESS
@@ -300,6 +305,7 @@ model Player {
   heightCm    Int?           @map("height_cm")
   weightKg    Int?           @map("weight_kg")
   playerType  PlayerType     @default(DOMESTIC) @map("player_type")
+  careerSummary String?      @map("career_summary") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -406,6 +412,7 @@ model SeasonTeam {
   participationFeePaid Boolean @default(false) @map("participation_fee_paid")
   feePaidAt       DateTime? @map("fee_paid_at")
   feeReceiptCode  String? @map("fee_receipt_code")
+  feeReceiptUrl   String? @map("fee_receipt_url")
   externalCompetitionSchedule String? @map("external_competition_schedule") @db.Text
   applicationSubmittedAt DateTime? @map("application_submitted_at")
   applicationReviewNote String? @map("application_review_note")
@@ -441,6 +448,7 @@ model Match {
   kickoffAt DateTime? @map("kickoff_at")
   homeScore Int?      @map("home_score")
   awayScore Int?      @map("away_score")
+  scoreSource MatchScoreSource? @map("score_source")
 
   status MatchStatus @default(DRAFT)
 
@@ -483,6 +491,7 @@ model MatchEvent {
   team            Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   note String?
+  source String @default("MANUAL")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -491,6 +500,7 @@ model MatchEvent {
   @@index([playerId])
   @@index([teamId])
   @@index([type], map: "match_events_type_idx")
+  @@index([matchId, source], map: "match_events_match_id_source_idx")
   @@map("match_events")
 }
 

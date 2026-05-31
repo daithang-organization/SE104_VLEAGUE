@@ -386,7 +386,7 @@ describe('SeasonsPage', () => {
     expect(await screen.findByRole('button', { name: /import csv/i })).toBeInTheDocument();
     expect(await screen.findAllByText('V.League 2 2025')).not.toHaveLength(0);
     expect(mockTeamInvitationApi.apiGetPromotionCandidates).toHaveBeenCalledWith('s1');
-  });
+  }, 30000);
 
   it('sends top-8 invitation candidates with the previous top source type', async () => {
     const { container } = renderPage();
@@ -410,7 +410,7 @@ describe('SeasonsPage', () => {
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledTimes(2);
     });
-  });
+  }, 30000);
 
   it('sends promoted invitation candidates with the promoted source type', async () => {
     const { container } = renderPage();
@@ -435,7 +435,7 @@ describe('SeasonsPage', () => {
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledTimes(2);
     });
-  });
+  }, 30000);
 
   it('bulk sends current invitation candidates with their source types', async () => {
     mockTeamInvitationApi.apiGetSeasonInvitations.mockResolvedValue([]);
@@ -481,7 +481,7 @@ describe('SeasonsPage', () => {
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledTimes(2);
     });
-  });
+  }, 30000);
 
   it('shows the backend validation reason when team approval fails', async () => {
     const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);

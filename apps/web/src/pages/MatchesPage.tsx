@@ -521,12 +521,12 @@ export default function MatchesPage() {
             icon: <TrophyOutlined />,
           },
           {
-            label: t('matches.colStatus'),
+            label: t('matches.played'),
             value: finishedMatches.toLocaleString('vi-VN'),
             icon: <FieldTimeOutlined />,
           },
           {
-            label: t('matches.statusPlaceholder'),
+            label: t('matches.remaining'),
             value: openMatches.toLocaleString('vi-VN'),
             icon: <FieldTimeOutlined />,
           },

@@ -52,6 +52,9 @@ describe('MatchService', () => {
               update: jest.fn(),
               delete: jest.fn(),
             },
+            matchReport: {
+              updateMany: jest.fn(),
+            },
           },
         },
         {
@@ -150,6 +153,35 @@ describe('MatchService', () => {
       expect(prisma.match.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { seasonId: 'season-1' },
+        }),
+      );
+    });
+  });
+
+  describe('updateMatch', () => {
+    it('syncs an existing match report score when the admin score is updated', async () => {
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...mockMatch,
+        homeScore: 3,
+        awayScore: 0,
+      } as any);
+
+      const result = await service.updateMatch('match-1', {
+        homeScore: 3,
+        awayScore: 0,
+      });
+
+      expect(result.homeScore).toBe(3);
+      expect(prisma.matchReport.updateMany).toHaveBeenCalledWith({
+        where: { matchId: 'match-1' },
+        data: { homeScore: 3, awayScore: 0 },
+      });
+      expect(prisma.match.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ scoreSource: 'ADMIN' }),
         }),
       );
     });

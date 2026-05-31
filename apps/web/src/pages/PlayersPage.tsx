@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
@@ -141,7 +141,11 @@ export default function PlayersPage() {
   const totalPlayers = pagination.total || players.length;
   const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
   const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
-  const domesticPlayers = metricPlayers.filter((player) => player.playerType === 'DOMESTIC').length;
+  const domesticPlayers = metricPlayers.filter(
+    (player) =>
+      player.playerType === 'DOMESTIC' ||
+      ['việt nam', 'vietnam'].includes(player.nationality.trim().toLocaleLowerCase('vi-VN')),
+  ).length;
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -357,6 +361,7 @@ export default function PlayersPage() {
       birthPlace: player.birthPlace ?? '',
       heightCm: player.heightCm ?? undefined,
       weightKg: player.weightKg ?? undefined,
+      careerSummary: player.careerSummary ?? '',
       teamId: managerTeamId ?? (player.roster || [])[0]?.team?.id ?? undefined,
     });
     setModalOpen(true);
@@ -395,9 +400,10 @@ export default function PlayersPage() {
         nationality: values.nationality,
         position: values.position,
         playerType: values.playerType || undefined,
-        birthPlace: values.birthPlace || undefined,
-        heightCm: values.heightCm || undefined,
-        weightKg: values.weightKg || undefined,
+        birthPlace: values.birthPlace.trim(),
+        heightCm: values.heightCm,
+        weightKg: values.weightKg,
+        careerSummary: values.careerSummary.trim(),
         teamId: managerTeamId ?? values.teamId ?? undefined,
       };
 
@@ -1087,7 +1093,11 @@ export default function PlayersPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="birthPlace" label={t('players.formBirthPlace')}>
+              <Form.Item
+                name="birthPlace"
+                label={t('players.formBirthPlace')}
+                rules={[{ required: true, message: t('players.formBirthPlaceRequired') }]}
+              >
                 <Input placeholder={t('players.formBirthPlacePlaceholder')} />
               </Form.Item>
             </Col>
@@ -1129,7 +1139,11 @@ export default function PlayersPage() {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="heightCm" label={t('players.formHeight')}>
+              <Form.Item
+                name="heightCm"
+                label={t('players.formHeight')}
+                rules={[{ required: true, message: t('players.formHeightRequired') }]}
+              >
                 <InputNumber
                   min={100}
                   max={250}
@@ -1139,7 +1153,11 @@ export default function PlayersPage() {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="weightKg" label={t('players.formWeight')}>
+              <Form.Item
+                name="weightKg"
+                label={t('players.formWeight')}
+                rules={[{ required: true, message: t('players.formWeightRequired') }]}
+              >
                 <InputNumber
                   min={30}
                   max={200}
@@ -1150,11 +1168,18 @@ export default function PlayersPage() {
             </Col>
           </Row>
 
-          {isTeamManager && (
-            <Form.Item name="requestNote" label="Ghi chú gửi Admin">
-              <Input.TextArea rows={3} placeholder="Nhập lý do hoặc thông tin bổ sung..." />
-            </Form.Item>
-          )}
+          <Form.Item
+            name="careerSummary"
+            label={t('players.formCareerSummary')}
+            rules={[{ required: true, message: t('players.formCareerSummaryRequired') }]}
+          >
+            <Input.TextArea
+              rows={3}
+              maxLength={2000}
+              showCount
+              placeholder={t('players.formCareerSummaryPlaceholder')}
+            />
+          </Form.Item>
         </Form>
       </Modal>
 

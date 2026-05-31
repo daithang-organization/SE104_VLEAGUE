@@ -13,6 +13,9 @@ describe('MatchOfficialService', () => {
     roundNo: 1,
     homeTeamId: 'team-home',
     awayTeamId: 'team-away',
+    homeScore: null,
+    awayScore: null,
+    scoreSource: null,
   };
   const official = {
     id: 'official-1',
@@ -42,15 +45,19 @@ describe('MatchOfficialService', () => {
               findFirst: jest.fn(),
               count: jest.fn(),
               upsert: jest.fn(),
+              deleteMany: jest.fn(),
             },
             matchReport: {
+              findUnique: jest.fn(),
               upsert: jest.fn(),
             },
             disciplineReport: {
+              findUnique: jest.fn(),
               upsert: jest.fn(),
             },
             matchEvent: {
               createMany: jest.fn(),
+              deleteMany: jest.fn(),
             },
           },
         },
@@ -70,6 +77,8 @@ describe('MatchOfficialService', () => {
       officialId: 'official-1',
       role: 'MAIN_REFEREE',
     } as any);
+    jest.spyOn(prisma.matchReport, 'findUnique').mockResolvedValue(null);
+    jest.spyOn(prisma.disciplineReport, 'findUnique').mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -156,15 +165,39 @@ describe('MatchOfficialService', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('submits a referee report, updates score, stores best player, and records events', async () => {
+  it('removes an official assignment from a match', async () => {
+    jest
+      .spyOn(prisma.matchOfficialAssignment, 'deleteMany')
+      .mockResolvedValue({ count: 1 } as any);
+
+    const result = await service.removeAssignment('match-1', 'assignment-1');
+
+    expect(result).toEqual({ success: true });
+    expect(prisma.matchOfficialAssignment.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'assignment-1', matchId: 'match-1' },
+    });
+  });
+
+  it('throws when removing a missing official assignment', async () => {
+    jest
+      .spyOn(prisma.matchOfficialAssignment, 'deleteMany')
+      .mockResolvedValue({ count: 0 } as any);
+
+    await expect(
+      service.removeAssignment('match-1', 'missing-assignment'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('submits a referee report, updates the score when admin has not supplied one, stores best player, and records events', async () => {
     jest.spyOn(prisma.match, 'update').mockResolvedValue({
       ...match,
       homeScore: 2,
       awayScore: 1,
+      scoreSource: 'REFEREE',
     } as any);
     jest
       .spyOn(prisma.matchEvent, 'createMany')
-      .mockResolvedValue({ count: 2 } as any);
+      .mockResolvedValue({ count: 4 } as any);
     jest.spyOn(prisma.matchReport, 'upsert').mockResolvedValue({
       id: 'report-1',
       matchId: 'match-1',
@@ -191,6 +224,18 @@ describe('MatchOfficialService', () => {
             playerId: 'player-1',
           },
           {
+            minute: 35,
+            type: 'GOAL',
+            teamId: 'team-home',
+            playerId: 'player-2',
+          },
+          {
+            minute: 52,
+            type: 'GOAL',
+            teamId: 'team-away',
+            playerId: 'player-8',
+          },
+          {
             minute: 88,
             type: 'YELLOW_CARD',
             teamId: 'team-away',
@@ -203,7 +248,10 @@ describe('MatchOfficialService', () => {
     expect(result.bestPlayerId).toBe('player-1');
     expect(prisma.match.update).toHaveBeenCalledWith({
       where: { id: 'match-1' },
-      data: { homeScore: 2, awayScore: 1 },
+      data: { homeScore: 2, awayScore: 1, scoreSource: 'REFEREE' },
+    });
+    expect(prisma.matchEvent.deleteMany).toHaveBeenCalledWith({
+      where: { matchId: 'match-1', source: 'MATCH_REPORT' },
     });
     expect(prisma.matchEvent.createMany).toHaveBeenCalledWith({
       data: [
@@ -216,6 +264,29 @@ describe('MatchOfficialService', () => {
           relatedPlayerId: undefined,
           goalType: undefined,
           note: undefined,
+          source: 'MATCH_REPORT',
+        },
+        {
+          matchId: 'match-1',
+          minute: 35,
+          type: 'GOAL',
+          teamId: 'team-home',
+          playerId: 'player-2',
+          relatedPlayerId: undefined,
+          goalType: undefined,
+          note: undefined,
+          source: 'MATCH_REPORT',
+        },
+        {
+          matchId: 'match-1',
+          minute: 52,
+          type: 'GOAL',
+          teamId: 'team-away',
+          playerId: 'player-8',
+          relatedPlayerId: undefined,
+          goalType: undefined,
+          note: undefined,
+          source: 'MATCH_REPORT',
         },
         {
           matchId: 'match-1',
@@ -226,9 +297,9 @@ describe('MatchOfficialService', () => {
           relatedPlayerId: undefined,
           goalType: undefined,
           note: undefined,
+          source: 'MATCH_REPORT',
         },
       ],
-      skipDuplicates: true,
     });
     expect(prisma.matchReport.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -239,6 +310,91 @@ describe('MatchOfficialService', () => {
         }),
       }),
     );
+  });
+
+  it('keeps the official admin score when a referee report submits a different calculated score', async () => {
+    jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+      ...match,
+      homeScore: 4,
+      awayScore: 0,
+      scoreSource: 'ADMIN',
+    } as any);
+    jest.spyOn(prisma.matchReport, 'upsert').mockResolvedValue({
+      id: 'report-1',
+      matchId: 'match-1',
+      homeScore: 4,
+      awayScore: 0,
+    } as any);
+
+    await service.submitMatchReport(
+      'match-1',
+      { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+      {
+        homeScore: 2,
+        awayScore: 0,
+        events: [
+          { minute: 1, type: 'GOAL', teamId: 'team-home' },
+          { minute: 2, type: 'GOAL', teamId: 'team-home' },
+          { minute: 3, type: 'GOAL', teamId: 'team-home' },
+          { minute: 4, type: 'GOAL', teamId: 'team-home' },
+        ],
+      },
+    );
+
+    expect(prisma.match.update).not.toHaveBeenCalled();
+    expect(prisma.matchReport.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          homeScore: 4,
+          awayScore: 0,
+        }),
+        update: expect.objectContaining({
+          homeScore: 4,
+          awayScore: 0,
+        }),
+      }),
+    );
+  });
+
+  it('rejects a referee report when goal events do not match the submitted score', async () => {
+    await expect(
+      service.submitMatchReport(
+        'match-1',
+        { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+        {
+          homeScore: 2,
+          awayScore: 1,
+          events: [{ minute: 12, type: 'GOAL', teamId: 'team-home' }],
+        },
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.match.update).not.toHaveBeenCalled();
+    expect(prisma.matchEvent.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.matchEvent.createMany).not.toHaveBeenCalled();
+    expect(prisma.matchReport.upsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects a second referee report submission', async () => {
+    jest.spyOn(prisma.matchReport, 'findUnique').mockResolvedValue({
+      id: 'report-1',
+    } as any);
+
+    await expect(
+      service.submitMatchReport(
+        'match-1',
+        { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+        {
+          homeScore: 0,
+          awayScore: 0,
+          events: [],
+        },
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.match.update).not.toHaveBeenCalled();
+    expect(prisma.matchEvent.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.matchReport.upsert).not.toHaveBeenCalled();
   });
 
   it('submits supervisor discipline report with issue notes', async () => {
@@ -280,5 +436,56 @@ describe('MatchOfficialService', () => {
         }),
       }),
     );
+  });
+
+  it('rejects a second supervisor discipline report submission', async () => {
+    jest
+      .spyOn(prisma.disciplineReport, 'findUnique')
+      .mockResolvedValue({ id: 'discipline-1' } as any);
+
+    await expect(
+      service.submitDisciplineReport(
+        'match-1',
+        {
+          id: 'user-supervisor',
+          email: 'referee@demo.local',
+          role: 'SUPERVISOR',
+        },
+        {
+          supervisorId: 'official-1',
+          organizationRating: 'GOOD',
+        },
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.disciplineReport.upsert).not.toHaveBeenCalled();
+  });
+
+  it('allows admin to update an existing supervisor discipline report', async () => {
+    jest
+      .spyOn(prisma.disciplineReport, 'findUnique')
+      .mockResolvedValue({ id: 'discipline-1' } as any);
+    jest.spyOn(prisma.disciplineReport, 'upsert').mockResolvedValue({
+      id: 'discipline-1',
+      matchId: 'match-1',
+      supervisorId: 'official-1',
+      organizationRating: 'ACCEPTABLE',
+    } as any);
+
+    const result = await service.submitDisciplineReport(
+      'match-1',
+      {
+        id: 'user-admin',
+        email: 'admin@demo.local',
+        role: 'ADMIN',
+      },
+      {
+        supervisorId: 'official-1',
+        organizationRating: 'ACCEPTABLE',
+      },
+    );
+
+    expect(result.organizationRating).toBe('ACCEPTABLE');
+    expect(prisma.disciplineReport.upsert).toHaveBeenCalled();
   });
 });

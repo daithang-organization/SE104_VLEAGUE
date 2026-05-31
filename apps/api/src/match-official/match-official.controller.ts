@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -67,6 +75,18 @@ export class MatchOfficialController {
     @Body() dto: AssignOfficialDto,
   ) {
     return this.matchOfficialService.assignOfficial(matchId, dto);
+  }
+
+  @Delete('matches/:matchId/officials/:assignmentId')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Xóa phân công trọng tài/giám sát viên khỏi trận' })
+  @ApiParam({ name: 'matchId', type: 'string', format: 'uuid' })
+  @ApiParam({ name: 'assignmentId', type: 'string', format: 'uuid' })
+  removeAssignment(
+    @Param('matchId') matchId: string,
+    @Param('assignmentId') assignmentId: string,
+  ) {
+    return this.matchOfficialService.removeAssignment(matchId, assignmentId);
   }
 
   @Get('matches/:matchId/report')

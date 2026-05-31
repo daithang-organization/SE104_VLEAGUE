@@ -3,6 +3,7 @@ import {
   CalendarOutlined,
   CheckOutlined,
   CloseOutlined,
+  DeleteOutlined,
   EditOutlined,
   EnvironmentOutlined,
   HomeOutlined,
@@ -19,6 +20,7 @@ import {
   Flex,
   Input,
   message,
+  Popconfirm,
   Row,
   Select,
   Space,
@@ -47,6 +49,7 @@ import {
   apiGetMatchSuspensions,
   apiGetTeamRoster,
   apiAssignMatchOfficial,
+  apiRemoveMatchOfficial,
   apiReviewMatchLineup,
   apiSubmitDisciplineReport,
   apiSubmitMatchLineup,
@@ -162,6 +165,7 @@ export default function MatchDetailPage() {
     useState<MatchOfficialRole>('MAIN_REFEREE');
   const [officialNote, setOfficialNote] = useState('');
   const [officialAssigning, setOfficialAssigning] = useState(false);
+  const [officialDeletingId, setOfficialDeletingId] = useState<string | null>(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [disciplineSupervisorId, setDisciplineSupervisorId] = useState<string>();
   const [disciplineRating, setDisciplineRating] = useState('GOOD');
@@ -185,6 +189,10 @@ export default function MatchDetailPage() {
     () =>
       user?.role &&
       ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'].includes(user.role),
+    [user],
+  );
+  const canViewDisciplineReport = useMemo(
+    () => user?.role === 'ADMIN' || user?.role === 'SUPERVISOR',
     [user],
   );
 
@@ -235,7 +243,7 @@ export default function MatchDetailPage() {
             apiGetOfficials(),
             apiGetMatchOfficials(matchId),
             apiGetMatchReport(matchId),
-            apiGetDisciplineReport(matchId),
+            canViewDisciplineReport ? apiGetDisciplineReport(matchId) : Promise.resolve(null),
           ]);
         setOfficials(nextOfficials ?? []);
         setOfficialAssignments(nextAssignments ?? []);
@@ -258,7 +266,7 @@ export default function MatchDetailPage() {
         setOfficialLoading(false);
       }
     },
-    [setDisciplineSupervisorId],
+    [canViewDisciplineReport, setDisciplineSupervisorId],
   );
 
   const fetchMatch = useCallback(async () => {
@@ -364,8 +372,9 @@ export default function MatchDetailPage() {
   const canSubmitLineupForMatch = match?.status === 'PUBLISHED';
   const canReviewLineup = user?.role === 'ADMIN' || user?.role === 'REFEREE';
   const canAssignOfficials = user?.role === 'ADMIN';
-  const canSubmitMatchReport = user?.role === 'ADMIN' || user?.role === 'REFEREE';
-  const canSubmitDisciplineReport = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR';
+  const canSubmitMatchReport = user?.role === 'ADMIN' || (user?.role === 'REFEREE' && !matchReport);
+  const canSubmitDisciplineReport =
+    user?.role === 'ADMIN' || (user?.role === 'SUPERVISOR' && !disciplineReport);
 
   const selectedRoster = useMemo(() => {
     if (!match || !selectedLineupTeamId) return [];
@@ -560,6 +569,25 @@ export default function MatchDetailPage() {
       message.error((msg as string) || 'Không thể phân công trọng tài/giám sát viên.');
     } finally {
       setOfficialAssigning(false);
+    }
+  };
+
+  const handleRemoveOfficialAssignment = async (assignmentId: string) => {
+    if (!match) return;
+    setOfficialDeletingId(assignmentId);
+    try {
+      await apiRemoveMatchOfficial(match.id, assignmentId);
+      message.success(t('matchDetail.removeOfficialAssignmentSuccess'));
+      loadOfficialData(match.id);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || t('matchDetail.removeOfficialAssignmentError'));
+    } finally {
+      setOfficialDeletingId(null);
     }
   };
 
@@ -944,6 +972,33 @@ export default function MatchDetailPage() {
       key: 'note',
       render: (note: string | null) => note || '—',
     },
+    ...(canAssignOfficials
+      ? [
+          {
+            title: t('common.operations'),
+            key: 'action',
+            width: 120,
+            render: (_: unknown, assignment: MatchOfficialAssignment) => (
+              <Popconfirm
+                title={t('matchDetail.removeOfficialAssignmentConfirm')}
+                okText={t('common.confirm')}
+                cancelText={t('common.cancel')}
+                onConfirm={() => handleRemoveOfficialAssignment(assignment.id)}
+              >
+                <Button
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  loading={officialDeletingId === assignment.id}
+                  aria-label={t('matchDetail.removeOfficialAssignmentBtn')}
+                >
+                  {t('matchDetail.removeOfficialAssignmentBtn')}
+                </Button>
+              </Popconfirm>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const renderTeamLogo = (team: Match['homeTeam'], fallback: string) => {
@@ -976,7 +1031,9 @@ export default function MatchDetailPage() {
         <Title level={4} style={{ margin: 0 }}>
           {t('matchDetail.title', { round: match.roundNo })}
         </Title>
-        {isConnected && <Badge status="processing" text="Live" style={{ marginLeft: 12 }} />}
+        {isConnected && match.status === 'LOCKED' && (
+          <Badge status="processing" text="Live" style={{ marginLeft: 12 }} />
+        )}
       </Space>
 
       {/* Scoreboard */}

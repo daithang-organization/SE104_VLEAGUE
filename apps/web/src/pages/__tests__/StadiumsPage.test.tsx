@@ -114,7 +114,12 @@ describe('StadiumsPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('65.000')).toBeInTheDocument();
+      expect(
+        screen.getByText('stadiums.maxCapacity').closest('.page-hero-metric'),
+      ).toHaveTextContent('40.000');
+      expect(
+        screen.getByText('stadiums.minCapacity').closest('.page-hero-metric'),
+      ).toHaveTextContent('25.000');
     });
   });
 
