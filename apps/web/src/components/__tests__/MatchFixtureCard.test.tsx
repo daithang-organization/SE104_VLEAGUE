@@ -54,8 +54,8 @@ describe('MatchFixtureCard', () => {
     expect(onMatchClick).toHaveBeenCalledWith('m1');
   });
 
-  it('renders coach names under both fixture teams', () => {
-    render(
+  it('does not render coach names on fixture cards', () => {
+    const { container } = render(
       <MatchFixtureCard
         id="m-coaches"
         roundLabel="Vong 3"
@@ -79,8 +79,9 @@ describe('MatchFixtureCard', () => {
       />,
     );
 
-    expect(screen.getByText('L. Enrique')).toHaveClass('schedule-fixture-coach');
-    expect(screen.getByText('M. Arteta')).toHaveClass('schedule-fixture-coach');
+    expect(screen.queryByText('L. Enrique')).not.toBeInTheDocument();
+    expect(screen.queryByText('M. Arteta')).not.toBeInTheDocument();
+    expect(container.querySelector('.schedule-fixture-coach')).not.toBeInTheDocument();
   });
 
   it('uses schedule time or result placeholder when a match has no score', () => {
