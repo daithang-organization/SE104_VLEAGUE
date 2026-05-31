@@ -29,27 +29,101 @@ const prisma = new PrismaClient({ adapter });
 const DEMO_PASSWORD = 'Demo@12345';
 const CORE_DEMO_USERS = [
   { email: 'admin@demo.local', role: UserRole.ADMIN, name: 'Admin Demo' },
-  { email: 'referee@demo.local', role: UserRole.REFEREE, name: 'Referee Demo' },
-  {
-    email: 'supervisor@demo.local',
-    role: UserRole.SUPERVISOR,
-    name: 'Supervisor Demo',
-  },
 ] as const;
+
+type DemoOfficialSeed = {
+  fullName: string;
+  email: string;
+  userRole: UserRole;
+  assignmentRole: MatchOfficialRole;
+  note: string;
+};
+
+const DEMO_REFEREE_OFFICIALS: DemoOfficialSeed[] = [
+  {
+    fullName: 'Trần Minh Khang',
+    email: 'referee.tran.minh.khang@demo.local',
+    userRole: UserRole.REFEREE,
+    assignmentRole: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Trọng tài chính - Việt Nam',
+  },
+  {
+    fullName: 'Lê Hoàng Duy',
+    email: 'referee.le.hoang.duy@demo.local',
+    userRole: UserRole.REFEREE,
+    assignmentRole: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Trọng tài chính - Việt Nam',
+  },
+  {
+    fullName: 'Phạm Đức Thành',
+    email: 'referee.pham.duc.thanh@demo.local',
+    userRole: UserRole.REFEREE,
+    assignmentRole: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Trọng tài chính - Việt Nam',
+  },
+  {
+    fullName: 'Michael Andersson',
+    email: 'referee.michael.andersson@demo.local',
+    userRole: UserRole.REFEREE,
+    assignmentRole: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Trọng tài chính - quốc tế',
+  },
+  {
+    fullName: 'Carlos Mendes',
+    email: 'referee.carlos.mendes@demo.local',
+    userRole: UserRole.REFEREE,
+    assignmentRole: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Trọng tài chính - quốc tế',
+  },
+];
+
+const DEMO_SUPERVISOR_OFFICIALS: DemoOfficialSeed[] = [
+  {
+    fullName: 'Đỗ Quốc Hưng',
+    email: 'supervisor.do.quoc.hung@demo.local',
+    userRole: UserRole.SUPERVISOR,
+    assignmentRole: MatchOfficialRole.SUPERVISOR,
+    note: 'Giám sát viên trận đấu',
+  },
+  {
+    fullName: 'Võ Thành Luân',
+    email: 'supervisor.vo.thanh.luan@demo.local',
+    userRole: UserRole.SUPERVISOR,
+    assignmentRole: MatchOfficialRole.SUPERVISOR,
+    note: 'Giám sát viên trận đấu',
+  },
+  {
+    fullName: 'Bùi Anh Tuấn',
+    email: 'supervisor.bui.anh.tuan@demo.local',
+    userRole: UserRole.SUPERVISOR,
+    assignmentRole: MatchOfficialRole.SUPERVISOR,
+    note: 'Giám sát viên trận đấu',
+  },
+  {
+    fullName: 'Huỳnh Gia Bảo',
+    email: 'supervisor.huynh.gia.bao@demo.local',
+    userRole: UserRole.SUPERVISOR,
+    assignmentRole: MatchOfficialRole.SUPERVISOR,
+    note: 'Giám sát viên trận đấu',
+  },
+  {
+    fullName: 'Nguyễn Hữu Phước',
+    email: 'supervisor.nguyen.huu.phuoc@demo.local',
+    userRole: UserRole.SUPERVISOR,
+    assignmentRole: MatchOfficialRole.SUPERVISOR,
+    note: 'Giám sát viên trận đấu',
+  },
+];
+
 const DEMO_OFFICIALS = [
-  {
-    fullName: 'Referee Demo',
-    email: 'referee@demo.local',
-    role: MatchOfficialRole.MAIN_REFEREE,
-    note: 'Demo main referee assignment',
-  },
-  {
-    fullName: 'Supervisor Demo',
-    email: 'supervisor@demo.local',
-    role: MatchOfficialRole.SUPERVISOR,
-    note: 'Demo supervisor assignment',
-  },
-] as const;
+  ...DEMO_REFEREE_OFFICIALS,
+  ...DEMO_SUPERVISOR_OFFICIALS,
+];
+
+const LEGACY_DEMO_OFFICIAL_EMAILS = [
+  'referee@demo.local',
+  'supervisor@demo.local',
+];
 const REAL_TEAMS = [
   'Thép Xanh Nam Định',
   'Hà Nội FC',
@@ -165,53 +239,119 @@ async function seedCoreDemoUsersAndOfficialAssignments(
   const seasonMatches = await prisma.match.findMany({
     where: { seasonId },
     select: { id: true },
+    orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
+  });
+  const seasonMatchIds = seasonMatches.map((match) => match.id);
+
+  await prisma.matchOfficialAssignment.deleteMany({
+    where: { matchId: { in: seasonMatchIds } },
   });
 
-  for (const officialData of DEMO_OFFICIALS) {
+  const seededReferees: Array<{ id: string; seed: DemoOfficialSeed }> = [];
+  const seededSupervisors: Array<{ id: string; seed: DemoOfficialSeed }> = [];
+
+  for (const [index, officialData] of DEMO_OFFICIALS.entries()) {
+    const roleDescription =
+      officialData.userRole === UserRole.REFEREE
+        ? 'Trọng tài'
+        : 'Giám sát viên';
+    const role = await prisma.role.upsert({
+      where: { name: officialData.userRole },
+      update: { description: roleDescription },
+      create: { name: officialData.userRole, description: roleDescription },
+    });
+
+    await prisma.user.upsert({
+      where: { email: officialData.email },
+      update: {
+        role: officialData.userRole,
+        roleId: role.id,
+        passwordHash,
+        emailVerified: true,
+        name: officialData.fullName,
+      },
+      create: {
+        email: officialData.email,
+        role: officialData.userRole,
+        roleId: role.id,
+        passwordHash,
+        emailVerified: true,
+        name: officialData.fullName,
+      },
+    });
+
     const existingOfficial = await prisma.official.findFirst({
       where: { email: { equals: officialData.email, mode: 'insensitive' } },
       orderBy: { createdAt: 'asc' },
     });
-    const official = existingOfficial
-      ? await prisma.official.update({
-          where: { id: existingOfficial.id },
-          data: {
-            fullName: officialData.fullName,
-            email: officialData.email,
-            status: OfficialStatus.ACTIVE,
-          },
-        })
-      : await prisma.official.create({
-          data: {
-            fullName: officialData.fullName,
-            email: officialData.email,
-            status: OfficialStatus.ACTIVE,
-          },
-        });
 
-    for (const match of seasonMatches) {
+    const legacyEmail =
+      index === 0
+        ? LEGACY_DEMO_OFFICIAL_EMAILS[0]
+        : index === DEMO_REFEREE_OFFICIALS.length
+          ? LEGACY_DEMO_OFFICIAL_EMAILS[1]
+          : undefined;
+    const existingLegacyOfficial =
+      !existingOfficial && legacyEmail
+        ? await prisma.official.findFirst({
+            where: { email: { equals: legacyEmail, mode: 'insensitive' } },
+            orderBy: { createdAt: 'asc' },
+          })
+        : null;
+
+    const official =
+      existingOfficial || existingLegacyOfficial
+        ? await prisma.official.update({
+            where: { id: (existingOfficial ?? existingLegacyOfficial)!.id },
+            data: {
+              fullName: officialData.fullName,
+              email: officialData.email,
+              status: OfficialStatus.ACTIVE,
+            },
+          })
+        : await prisma.official.create({
+            data: {
+              fullName: officialData.fullName,
+              email: officialData.email,
+              status: OfficialStatus.ACTIVE,
+            },
+          });
+
+    if (officialData.assignmentRole === MatchOfficialRole.MAIN_REFEREE) {
+      seededReferees.push({ id: official.id, seed: officialData });
+    } else {
+      seededSupervisors.push({ id: official.id, seed: officialData });
+    }
+  }
+
+  for (const [index, match] of seasonMatches.entries()) {
+    const referee = seededReferees[index % seededReferees.length];
+    const supervisor = seededSupervisors[index % seededSupervisors.length];
+
+    for (const assignment of [referee, supervisor]) {
       await prisma.matchOfficialAssignment.upsert({
         where: {
           matchId_officialId_role: {
             matchId: match.id,
-            officialId: official.id,
-            role: officialData.role,
+            officialId: assignment.id,
+            role: assignment.seed.assignmentRole,
           },
         },
         create: {
           matchId: match.id,
-          officialId: official.id,
-          role: officialData.role,
-          note: officialData.note,
+          officialId: assignment.id,
+          role: assignment.seed.assignmentRole,
+          note: assignment.seed.note,
         },
-        update: { note: officialData.note },
+        update: { note: assignment.seed.note, publishedAt: new Date() },
       });
     }
   }
 
   console.log(
-    `  ✅ Demo referee/supervisor assigned to ${seasonMatches.length} matches.`,
+    `  ✅ ${seededReferees.length} referees and ${seededSupervisors.length} supervisors assigned across ${seasonMatches.length} matches.`,
   );
+  console.log(`  🔑 Official demo password: ${DEMO_PASSWORD}`);
 }
 
 function getInvitationSource(index: number) {
