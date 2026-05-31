@@ -650,9 +650,10 @@ describe('MatchDetailPage', () => {
 
     expect(homeTeam.querySelector('.match-center-team-coach')).not.toBeInTheDocument();
     expect(awayTeam.querySelector('.match-center-team-coach')).not.toBeInTheDocument();
-    expect(coachFields).toHaveTextContent('HLV Ha Noi FC');
+    expect(within(coachFields).getAllByText('Huấn Luyện Viên')).toHaveLength(2);
+    expect(coachFields).not.toHaveTextContent('HLV Ha Noi FC');
     expect(coachFields).toHaveTextContent('L. Enrique');
-    expect(coachFields).toHaveTextContent('HLV Hai Phong FC');
+    expect(coachFields).not.toHaveTextContent('HLV Hai Phong FC');
     expect(coachFields).toHaveTextContent('M. Arteta');
   });
 

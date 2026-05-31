@@ -214,7 +214,8 @@ export default function MatchDetailPage() {
     () => user?.role === 'ADMIN' || user?.role === 'SUPERVISOR',
     [user],
   );
-  const canViewRefereeReportTab = user?.role !== 'SUPERVISOR';
+  const canViewRefereeReportTab =
+    user?.role !== 'SUPERVISOR' && Boolean(canViewOfficialAssignments || canViewMatchReport);
 
   const loadRosters = useCallback(async (m: Match) => {
     setRosterLoading(true);
@@ -1547,11 +1548,13 @@ export default function MatchDetailPage() {
             ? [
                 {
                   key: 'referee-report',
-                  label: t('matchDetail.refereeReportTitle'),
+                  label: canViewMatchReport
+                    ? t('matchDetail.refereeReportTitle')
+                    : t('matchDetail.tabOfficials'),
                   children: (
                     <Space direction="vertical" size={16} style={{ width: '100%' }}>
                       {officialAssignmentsContent}
-                      {refereeReportContent}
+                      {canViewMatchReport && refereeReportContent}
                     </Space>
                   ),
                 },
