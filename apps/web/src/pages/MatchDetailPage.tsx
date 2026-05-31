@@ -9,6 +9,9 @@ import {
   HomeOutlined,
   PlusOutlined,
   SendOutlined,
+  SwapOutlined,
+  TrophyOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -185,10 +188,18 @@ export default function MatchDetailPage() {
     () => user?.role && ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR'].includes(user.role),
     [user],
   );
-  const canViewOfficialData = useMemo(
+  const canViewOfficialAssignments = useMemo(
     () =>
       user?.role &&
       ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'].includes(user.role),
+    [user],
+  );
+  const canViewOfficialsDirectory = useMemo(
+    () => user?.role && ['ADMIN', 'REFEREE', 'SUPERVISOR'].includes(user.role),
+    [user],
+  );
+  const canViewMatchReport = useMemo(
+    () => user?.role && ['ADMIN', 'REFEREE', 'SUPERVISOR'].includes(user.role),
     [user],
   );
   const canViewDisciplineReport = useMemo(
@@ -240,9 +251,9 @@ export default function MatchDetailPage() {
       try {
         const [nextOfficials, nextAssignments, nextReport, nextDisciplineReport] =
           await Promise.all([
-            apiGetOfficials(),
+            canViewOfficialsDirectory ? apiGetOfficials() : Promise.resolve([]),
             apiGetMatchOfficials(matchId),
-            apiGetMatchReport(matchId),
+            canViewMatchReport ? apiGetMatchReport(matchId) : Promise.resolve(null),
             canViewDisciplineReport ? apiGetDisciplineReport(matchId) : Promise.resolve(null),
           ]);
         setOfficials(nextOfficials ?? []);
@@ -266,7 +277,12 @@ export default function MatchDetailPage() {
         setOfficialLoading(false);
       }
     },
-    [canViewDisciplineReport, setDisciplineSupervisorId],
+    [
+      canViewDisciplineReport,
+      canViewMatchReport,
+      canViewOfficialsDirectory,
+      setDisciplineSupervisorId,
+    ],
   );
 
   const fetchMatch = useCallback(async () => {
@@ -282,7 +298,7 @@ export default function MatchDetailPage() {
         setLineups([]);
         setSuspensions([]);
       }
-      if (canViewOfficialData) {
+      if (canViewOfficialAssignments) {
         loadOfficialData(data.id);
       } else {
         setOfficials([]);
@@ -297,7 +313,7 @@ export default function MatchDetailPage() {
     }
   }, [
     canViewLineupData,
-    canViewOfficialData,
+    canViewOfficialAssignments,
     id,
     loadLineupData,
     loadOfficialData,
@@ -528,13 +544,20 @@ export default function MatchDetailPage() {
     status: Extract<MatchLineupStatus, 'APPROVED' | 'REJECTED'>,
   ) => {
     if (!match) return;
+    const reviewNote = lineupReviewNotes[lineup.teamId]?.trim();
+    if (status === 'REJECTED' && !reviewNote) {
+      message.warning('Vui lòng nhập lý do từ chối để CLB có thể nộp lại.');
+      return;
+    }
+
     setLineupReviewingKey(`${lineup.teamId}:${status}`);
     try {
       await apiReviewMatchLineup(match.id, lineup.teamId, {
         status,
-        reviewNote: lineupReviewNotes[lineup.teamId]?.trim() || undefined,
+        reviewNote: reviewNote || undefined,
       });
       message.success(status === 'APPROVED' ? 'Đã duyệt đội hình.' : 'Đã từ chối đội hình.');
+      setLineupReviewNotes((prev) => ({ ...prev, [lineup.teamId]: '' }));
       loadLineupData(match.id);
     } catch (err: unknown) {
       const msg =
@@ -749,7 +772,7 @@ export default function MatchDetailPage() {
       <div className="match-detail-event-stack">
         {groupByPlayer(goals).map(([pid, { name, minutes }]) => (
           <div key={pid} className="match-detail-event-line" style={{ textAlign: align }}>
-            ⚽ <span className="match-detail-event-player">{name}</span>{' '}
+            <TrophyOutlined /> <span className="match-detail-event-player">{name}</span>{' '}
             <span className="match-detail-event-minute">
               {minutes
                 .sort((a, b) => a.minute - b.minute)
@@ -777,7 +800,9 @@ export default function MatchDetailPage() {
               .map((m, i) => (
                 <span key={i}>
                   {i > 0 && ', '}
-                  {m.type === 'RED_CARD' ? '🟥' : '🟨'}
+                  <WarningOutlined
+                    style={{ color: m.type === 'RED_CARD' ? '#cf1322' : '#d48806' }}
+                  />
                 </span>
               ))}{' '}
             <span className="match-detail-event-player">{name}</span>{' '}
@@ -1520,6 +1545,12 @@ export default function MatchDetailPage() {
                               color: 'default',
                               label: lineup.status,
                             };
+                            const canReviewThisLineup =
+                              canReviewLineup && lineup.status === 'SUBMITTED';
+                            const rejectionReason =
+                              lineup.status === 'REJECTED'
+                                ? lineup.reviewNote?.trim() || 'BTC chưa nhập lý do cụ thể.'
+                                : null;
                             const lineupPlayers = [...(lineup.lineupPlayers ?? [])].sort((a, b) => {
                               if (a.role !== b.role) return a.role === 'STARTER' ? -1 : 1;
                               return (a.shirtNumber ?? 99) - (b.shirtNumber ?? 99);
@@ -1549,11 +1580,34 @@ export default function MatchDetailPage() {
                                     {starters.length} chính thức · {substitutes.length} dự bị
                                   </Text>
                                 </Flex>
-                                {lineup.reviewNote && (
+                                {rejectionReason ? (
                                   <Alert
                                     style={{ marginTop: 8 }}
-                                    type={lineup.status === 'REJECTED' ? 'error' : 'info'}
-                                    message={lineup.reviewNote}
+                                    showIcon
+                                    type="error"
+                                    message="Danh sách bị từ chối"
+                                    description={
+                                      <Space direction="vertical" size={2}>
+                                        <Text>{rejectionReason}</Text>
+                                        <Text>Vui lòng chỉnh sửa và nộp lại danh sách.</Text>
+                                      </Space>
+                                    }
+                                  />
+                                ) : (
+                                  lineup.reviewNote && (
+                                    <Alert
+                                      style={{ marginTop: 8 }}
+                                      type="info"
+                                      message={lineup.reviewNote}
+                                    />
+                                  )
+                                )}
+                                {lineup.status === 'APPROVED' && !lineup.reviewNote && (
+                                  <Alert
+                                    style={{ marginTop: 8 }}
+                                    showIcon
+                                    type="success"
+                                    message="Đội hình đã được duyệt"
                                   />
                                 )}
                                 <Table
@@ -1564,7 +1618,7 @@ export default function MatchDetailPage() {
                                   pagination={false}
                                   size="small"
                                 />
-                                {canReviewLineup && (
+                                {canReviewThisLineup && (
                                   <Space
                                     direction="vertical"
                                     size={8}
@@ -1804,7 +1858,7 @@ export default function MatchDetailPage() {
             <Statistic
               title={t('matchDetail.statTotalGoals')}
               value={homeGoals.length + awayGoals.length}
-              prefix="⚽"
+              prefix={<TrophyOutlined />}
             />
           </Card>
         </Col>
@@ -1813,7 +1867,7 @@ export default function MatchDetailPage() {
             <Statistic
               title={t('matchDetail.statTotalCards')}
               value={homeYellows + awayYellows + homeReds + awayReds}
-              prefix="🃏"
+              prefix={<WarningOutlined />}
             />
           </Card>
         </Col>
@@ -1822,7 +1876,7 @@ export default function MatchDetailPage() {
             <Statistic
               title={t('matchDetail.statSubstitutions')}
               value={homeSubs + awaySubs}
-              prefix="🔄"
+              prefix={<SwapOutlined />}
             />
           </Card>
         </Col>

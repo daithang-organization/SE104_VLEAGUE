@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockApi = vi.hoisted(() => ({
   get: vi.fn(),
+  patch: vi.fn(),
   post: vi.fn(),
 }));
 
@@ -11,6 +12,7 @@ import {
   apiGetTeamManagerApplication,
   apiGetTeamManagerManagedTeam,
   apiSubmitTeamManagerApplication,
+  apiUpdateTeamManagerManagedTeam,
 } from '../teamManagerApi';
 
 describe('teamManagerApi application calls', () => {
@@ -35,6 +37,17 @@ describe('teamManagerApi application calls', () => {
     const result = await apiGetTeamManagerManagedTeam();
 
     expect(mockApi.get).toHaveBeenCalledWith('/team-manager/managed-team');
+    expect(result).toEqual(team);
+  });
+
+  it('apiUpdateTeamManagerManagedTeam calls PATCH /team-manager/managed-team', async () => {
+    const payload = { coachName: 'HLV Mới' };
+    const team = { id: 'team-1', name: 'Hà Nội FC', coachName: 'HLV Mới' };
+    mockApi.patch.mockResolvedValue({ data: team });
+
+    const result = await apiUpdateTeamManagerManagedTeam(payload);
+
+    expect(mockApi.patch).toHaveBeenCalledWith('/team-manager/managed-team', payload);
     expect(result).toEqual(team);
   });
 

@@ -9,11 +9,13 @@ type FixtureTeam = {
   name?: string | null;
   shortName?: string | null;
   logoUrl?: string | null;
+  coachName?: string | null;
 };
 
 type FixtureTeamDisplay = {
   id: string;
   name: string;
+  coachName?: string | null;
   logoUrl?: string;
   source: FixtureTeam | string;
 };
@@ -51,6 +53,7 @@ function getTeamDisplay(
   return {
     id: team?.id ?? fallbackId,
     name,
+    coachName: team?.coachName,
     logoUrl: getTeamLogoUrl(team ?? name),
     source: team ?? name,
   };
@@ -136,7 +139,10 @@ export default function MatchFixtureCard({
         className="schedule-fixture-team schedule-fixture-team-left match-fixture-team-home"
         onClick={() => onTeamClick?.(home.id)}
       >
-        <span>{home.name}</span>
+        <span className="schedule-fixture-team-copy">
+          <span className="schedule-fixture-team-name">{home.name}</span>
+          {home.coachName && <span className="schedule-fixture-coach">{home.coachName}</span>}
+        </span>
         {renderTeamLogo(home)}
       </button>
 
@@ -154,7 +160,10 @@ export default function MatchFixtureCard({
         onClick={() => onTeamClick?.(away.id)}
       >
         {renderTeamLogo(away)}
-        <span>{away.name}</span>
+        <span className="schedule-fixture-team-copy">
+          <span className="schedule-fixture-team-name">{away.name}</span>
+          {away.coachName && <span className="schedule-fixture-coach">{away.coachName}</span>}
+        </span>
       </button>
 
       <div className="schedule-fixture-detail">

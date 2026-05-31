@@ -32,6 +32,10 @@ export type SubmitTeamManagerApplicationPayload = {
   externalCompetitionSchedule: string;
 };
 
+export type UpdateTeamManagerManagedTeamPayload = {
+  coachName?: string | null;
+};
+
 export function apiGetTeamManagerAssignment(seasonId: string) {
   return api
     .get<TeamManagerAssignment | null>('/team-manager/assignment', { params: { seasonId } })
@@ -40,6 +44,10 @@ export function apiGetTeamManagerAssignment(seasonId: string) {
 
 export function apiGetTeamManagerManagedTeam() {
   return api.get<Team | null>('/team-manager/managed-team').then((res) => res.data);
+}
+
+export function apiUpdateTeamManagerManagedTeam(payload: UpdateTeamManagerManagedTeamPayload) {
+  return api.patch<Team>('/team-manager/managed-team', payload).then((res) => res.data);
 }
 
 export function apiCreateTeamManagerAssignment(seasonId: string, teamId: string) {

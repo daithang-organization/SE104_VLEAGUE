@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -52,6 +52,7 @@ const mockTeamManagerApi = vi.hoisted(() => ({
   apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
   apiGetTeamManagerApplication: vi.fn().mockResolvedValue(null),
   apiSubmitTeamManagerApplication: vi.fn(),
+  apiUpdateTeamManagerManagedTeam: vi.fn(),
 }));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
@@ -183,5 +184,68 @@ describe('DashboardPage', () => {
     expect(await screen.findByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
     expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
+  });
+
+  it('lets assigned team managers update their head coach name', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamApi.apiGetTeam.mockResolvedValue({
+      id: 'team-1',
+      name: 'CLB Bình Định',
+      coachName: 'HLV Cũ',
+      roster: [],
+      homeMatches: [],
+      awayMatches: [],
+      standings: [],
+    });
+    mockTeamManagerApi.apiGetTeamManagerAssignment.mockResolvedValue({
+      id: 'assignment-1',
+      userId: 'u-manager',
+      seasonId: 's1',
+      teamId: 'team-1',
+      season: { id: 's1', name: 'V.League 2025', status: 'IN_PROGRESS' },
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    });
+    mockTeamManagerApi.apiGetTeamManagerApplication.mockResolvedValue({
+      id: 'season-team-1',
+      seasonId: 's1',
+      teamId: 'team-1',
+      status: 'REGISTERED',
+      applicationSubmittedAt: null,
+      ownerName: null,
+      ownerCountry: null,
+      teamIntroduction: null,
+      primaryKit: null,
+      backupKit: null,
+      participationFeePaid: false,
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+    });
+    mockTeamManagerApi.apiUpdateTeamManagerManagedTeam.mockResolvedValue({
+      id: 'team-1',
+      name: 'CLB Bình Định',
+      coachName: 'HLV Mới',
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockTeamApi.apiGetTeam).toHaveBeenCalledWith('team-1');
+    });
+    const coachInput = await screen.findByLabelText('Tên HLV trưởng', {}, { timeout: 3000 });
+    fireEvent.change(coachInput, { target: { value: 'HLV Mới' } });
+    fireEvent.click(screen.getByRole('button', { name: /Lưu HLV/i }));
+
+    await waitFor(() => {
+      expect(mockTeamManagerApi.apiUpdateTeamManagerManagedTeam).toHaveBeenCalledWith({
+        coachName: 'HLV Mới',
+      });
+    });
   });
 });

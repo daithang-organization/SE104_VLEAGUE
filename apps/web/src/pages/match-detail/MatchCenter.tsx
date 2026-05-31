@@ -88,6 +88,8 @@ function MatchCenterTeam({
   teamName: string;
   side: TeamSide;
 }) {
+  const coachName = team?.coachName?.trim();
+
   return (
     <span className={`match-center-team match-center-team-${side}`}>
       <TeamLogoMark
@@ -96,7 +98,10 @@ function MatchCenterTeam({
         className="match-center-team-logo"
         fallbackClassName="match-center-team-logo-fallback"
       />
-      <strong>{teamName}</strong>
+      <span className="match-center-team-copy">
+        <strong>{teamName}</strong>
+        {coachName && <span className="match-center-team-coach">{coachName}</span>}
+      </span>
     </span>
   );
 }

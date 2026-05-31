@@ -53,6 +53,7 @@ import {
   apiGetTeamManagerAssignment,
   apiGetTeamManagerApplication,
   apiSubmitTeamManagerApplication,
+  apiUpdateTeamManagerManagedTeam,
   type SubmitTeamManagerApplicationPayload,
   type TeamManagerApplication,
 } from '../services/teamManagerApi';
@@ -133,11 +134,13 @@ function getApplicationStatus(application: TeamManagerApplication | null) {
 
 function TeamManagerDashboard() {
   const [applicationForm] = Form.useForm<SubmitTeamManagerApplicationPayload>();
+  const [coachForm] = Form.useForm<{ coachName?: string }>();
   const [loading, setLoading] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [application, setApplication] = useState<TeamManagerApplication | null>(null);
   const [applicationSaving, setApplicationSaving] = useState(false);
+  const [coachSaving, setCoachSaving] = useState(false);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
   const [seasonMatches, setSeasonMatches] = useState<Match[]>([]);
@@ -249,6 +252,15 @@ function TeamManagerDashboard() {
     });
   }, [application, applicationForm, currentSeason]);
 
+  useEffect(() => {
+    if (!team) {
+      coachForm.resetFields();
+      return;
+    }
+
+    coachForm.setFieldsValue({ coachName: team.coachName ?? '' });
+  }, [coachForm, team]);
+
   const handleSubmitApplication = async (values: SubmitTeamManagerApplicationPayload) => {
     if (!currentSeason?.id) return;
 
@@ -269,6 +281,30 @@ function TeamManagerDashboard() {
       message.error('Không thể nộp hồ sơ. Hãy kiểm tra các thông tin bắt buộc.');
     } finally {
       setApplicationSaving(false);
+    }
+  };
+
+  const handleSaveCoach = async (values: { coachName?: string }) => {
+    setCoachSaving(true);
+    try {
+      const updatedTeam = await apiUpdateTeamManagerManagedTeam({
+        coachName: values.coachName?.trim() || null,
+      });
+      setTeam((currentTeam) =>
+        currentTeam
+          ? {
+              ...currentTeam,
+              coachName: updatedTeam.coachName ?? null,
+              updatedAt: updatedTeam.updatedAt ?? currentTeam.updatedAt,
+            }
+          : currentTeam,
+      );
+      coachForm.setFieldsValue({ coachName: updatedTeam.coachName ?? '' });
+      message.success('Đã cập nhật tên HLV trưởng');
+    } catch (_err) {
+      message.error('Không thể cập nhật tên HLV trưởng');
+    } finally {
+      setCoachSaving(false);
     }
   };
 
@@ -364,6 +400,39 @@ function TeamManagerDashboard() {
           },
         ]}
       />
+
+      <Card
+        title={<DashboardCardTitle icon={<UserOutlined />}>Thông tin HLV</DashboardCardTitle>}
+        className="dashboard-panel-card"
+        size="small"
+        loading={loading && !team}
+      >
+        <Form form={coachForm} layout="vertical" onFinish={handleSaveCoach}>
+          <Row gutter={[16, 8]} align="bottom">
+            <Col xs={24} md={16}>
+              <Form.Item
+                name="coachName"
+                label="Tên HLV trưởng"
+                rules={[{ max: 120, message: 'Tên HLV tối đa 120 ký tự' }]}
+              >
+                <Input maxLength={120} placeholder="Nhập tên HLV trưởng" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  icon={<SaveOutlined />}
+                  loading={coachSaving}
+                >
+                  Lưu HLV
+                </Button>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
 
       <Card
         title={

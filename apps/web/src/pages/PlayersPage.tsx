@@ -2,7 +2,12 @@
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  FireOutlined,
+  GlobalOutlined,
+  HomeOutlined,
   PlusOutlined,
+  SafetyOutlined,
+  SettingOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -26,7 +31,7 @@ import {
 import type { FilterValue, SorterResult, SortOrder as AntSortOrder } from 'antd/es/table/interface';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -43,13 +48,21 @@ import {
 } from '../services/playerApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
+import { cleanDecorativeLabel } from '../utils/textLabels';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
-const POSITION_LABELS: Record<string, string> = {
-  GK: 'Thủ môn',
-  DF: 'Hậu vệ',
-  MF: 'Tiền vệ',
-  FW: 'Tiền đạo',
+const POSITION_TRANSLATION_KEYS: Record<string, string> = {
+  GK: 'players.formPositionGK',
+  DF: 'players.formPositionDF',
+  MF: 'players.formPositionMF',
+  FW: 'players.formPositionFW',
+};
+
+const POSITION_ICONS: Record<string, ReactNode> = {
+  GK: <UserOutlined />,
+  DF: <SafetyOutlined />,
+  MF: <SettingOutlined />,
+  FW: <FireOutlined />,
 };
 
 const POSITION_COLORS: Record<string, string> = {
@@ -57,6 +70,11 @@ const POSITION_COLORS: Record<string, string> = {
   DF: 'blue',
   MF: 'green',
   FW: 'red',
+};
+
+const PLAYER_TYPE_ICONS: Record<string, ReactNode> = {
+  DOMESTIC: <HomeOutlined />,
+  FOREIGN: <GlobalOutlined />,
 };
 
 const CAN_EDIT_ROLES = ['ADMIN', 'TEAM_MANAGER'];
@@ -80,6 +98,15 @@ const firstFilterValue = (value?: FilterValue | null) =>
 
 const toAntSortOrder = (sortOrder: PlayerSortOrder): AntSortOrder =>
   sortOrder === 'asc' ? 'ascend' : 'descend';
+
+function iconLabel(icon: ReactNode, label: string) {
+  return (
+    <Space size={6}>
+      {icon}
+      <span>{cleanDecorativeLabel(label)}</span>
+    </Space>
+  );
+}
 
 export default function PlayersPage() {
   const { user } = useAuth();
@@ -115,6 +142,12 @@ export default function PlayersPage() {
       player.playerType === 'DOMESTIC' ||
       ['việt nam', 'vietnam'].includes(player.nationality.trim().toLocaleLowerCase('vi-VN')),
   ).length;
+  const getPositionLabel = (position: string) =>
+    cleanDecorativeLabel(t(POSITION_TRANSLATION_KEYS[position] ?? position));
+  const getPlayerTypeLabel = (type: string) =>
+    cleanDecorativeLabel(
+      type === 'FOREIGN' ? t('players.formTypeForeign') : t('players.formTypeDomestic'),
+    );
 
   useEffect(() => {
     if (!isTeamManager) {
@@ -434,10 +467,12 @@ export default function PlayersPage() {
       dataIndex: 'position',
       width: 100,
       render: (pos: string) => (
-        <Tag color={POSITION_COLORS[pos]}>{POSITION_LABELS[pos] ?? pos}</Tag>
+        <Tag icon={POSITION_ICONS[pos]} color={POSITION_COLORS[pos]}>
+          {getPositionLabel(pos)}
+        </Tag>
       ),
-      filters: Object.entries(POSITION_LABELS).map(([value, text]) => ({
-        text,
+      filters: Object.keys(POSITION_TRANSLATION_KEYS).map((value) => ({
+        text: iconLabel(POSITION_ICONS[value], getPositionLabel(value)),
         value,
       })),
       filteredValue: columnFilters.position ? [columnFilters.position] : null,
@@ -447,13 +482,19 @@ export default function PlayersPage() {
       dataIndex: 'playerType',
       width: 100,
       render: (type: string) => (
-        <Tag color={type === 'FOREIGN' ? 'purple' : 'cyan'}>
-          {type === 'FOREIGN' ? t('players.formTypeForeign') : t('players.formTypeDomestic')}
+        <Tag icon={PLAYER_TYPE_ICONS[type]} color={type === 'FOREIGN' ? 'purple' : 'cyan'}>
+          {getPlayerTypeLabel(type)}
         </Tag>
       ),
       filters: [
-        { text: t('players.formTypeDomestic'), value: 'DOMESTIC' },
-        { text: t('players.formTypeForeign'), value: 'FOREIGN' },
+        {
+          text: iconLabel(PLAYER_TYPE_ICONS.DOMESTIC, getPlayerTypeLabel('DOMESTIC')),
+          value: 'DOMESTIC',
+        },
+        {
+          text: iconLabel(PLAYER_TYPE_ICONS.FOREIGN, getPlayerTypeLabel('FOREIGN')),
+          value: 'FOREIGN',
+        },
       ],
       filteredValue: columnFilters.playerType ? [columnFilters.playerType] : null,
     },
@@ -647,8 +688,12 @@ export default function PlayersPage() {
             <Col span={12}>
               <Form.Item name="playerType" label={t('players.formType')}>
                 <Select>
-                  <Select.Option value="DOMESTIC">{t('players.formTypeDomestic')}</Select.Option>
-                  <Select.Option value="FOREIGN">{t('players.formTypeForeign')}</Select.Option>
+                  <Select.Option value="DOMESTIC">
+                    {iconLabel(PLAYER_TYPE_ICONS.DOMESTIC, getPlayerTypeLabel('DOMESTIC'))}
+                  </Select.Option>
+                  <Select.Option value="FOREIGN">
+                    {iconLabel(PLAYER_TYPE_ICONS.FOREIGN, getPlayerTypeLabel('FOREIGN'))}
+                  </Select.Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -662,10 +707,11 @@ export default function PlayersPage() {
                 rules={[{ required: true, message: t('players.formPositionRequired') }]}
               >
                 <Select placeholder={t('players.formPositionPlaceholder')}>
-                  <Select.Option value="GK">{t('players.formPositionGK')}</Select.Option>
-                  <Select.Option value="DF">{t('players.formPositionDF')}</Select.Option>
-                  <Select.Option value="MF">{t('players.formPositionMF')}</Select.Option>
-                  <Select.Option value="FW">{t('players.formPositionFW')}</Select.Option>
+                  {Object.keys(POSITION_TRANSLATION_KEYS).map((position) => (
+                    <Select.Option key={position} value={position}>
+                      {iconLabel(POSITION_ICONS[position], getPositionLabel(position))}
+                    </Select.Option>
+                  ))}
                 </Select>
               </Form.Item>
             </Col>

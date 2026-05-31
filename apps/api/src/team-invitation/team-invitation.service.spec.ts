@@ -107,6 +107,7 @@ describe('TeamInvitationService', () => {
           provide: NotificationService,
           useValue: {
             createForUser: jest.fn(),
+            notifyAdmins: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -793,6 +794,15 @@ describe('TeamInvitationService', () => {
           approvedAt: null,
         },
       });
+      expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'CLB phản hồi lời mời',
+          message: expect.stringContaining('Hà Nội FC'),
+          type: 'TEAM_INVITATION',
+          entityType: 'team_invitation',
+          entityId: 'invitation-1',
+        }),
+      );
     });
 
     it('prevents a manager from responding for another team', async () => {

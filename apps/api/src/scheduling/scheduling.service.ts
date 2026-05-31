@@ -23,8 +23,12 @@ export class SchedulingService {
     const matches = await this.prisma.match.findMany({
       where,
       include: {
-        homeTeam: { select: { id: true, name: true, shortName: true } },
-        awayTeam: { select: { id: true, name: true, shortName: true } },
+        homeTeam: {
+          select: { id: true, name: true, shortName: true, coachName: true },
+        },
+        awayTeam: {
+          select: { id: true, name: true, shortName: true, coachName: true },
+        },
         stadium: { select: { id: true, name: true, city: true } },
       },
       orderBy: [{ leg: 'asc' }, { roundNo: 'asc' }],

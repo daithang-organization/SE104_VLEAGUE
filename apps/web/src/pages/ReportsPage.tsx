@@ -38,14 +38,13 @@ import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
 import { exportPdf } from '../utils/pdfExport';
-
-const cleanTabLabel = (label: string) => label.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+import { cleanDecorativeLabel } from '../utils/textLabels';
 
 function reportTabLabel(icon: ReactNode, label: string) {
   return (
     <Space size={6}>
       {icon}
-      <span>{cleanTabLabel(label)}</span>
+      <span>{cleanDecorativeLabel(label)}</span>
     </Space>
   );
 }
@@ -215,22 +214,22 @@ export default function ReportsPage() {
         icon={<AppMenuIcon menuKey="reports" />}
         metrics={[
           {
-            label: cleanTabLabel(t('reports.tabScorers')),
+            label: cleanDecorativeLabel(t('reports.tabScorers')),
             value: topScorerGoals.toLocaleString('vi-VN'),
             icon: <TrophyOutlined />,
           },
           {
-            label: cleanTabLabel(t('reports.tabAssists')),
+            label: cleanDecorativeLabel(t('reports.tabAssists')),
             value: topAssistCount.toLocaleString('vi-VN'),
             icon: <RiseOutlined />,
           },
           {
-            label: cleanTabLabel(t('reports.tabTeamStats')),
+            label: cleanDecorativeLabel(t('reports.tabTeamStats')),
             value: teamStats.length.toLocaleString('vi-VN'),
             icon: <TeamOutlined />,
           },
           {
-            label: cleanTabLabel(t('reports.tabPlayerOfMatch')),
+            label: cleanDecorativeLabel(t('reports.tabPlayerOfMatch')),
             value: playerOfMatchStats.length.toLocaleString('vi-VN'),
             icon: <StarOutlined />,
           },

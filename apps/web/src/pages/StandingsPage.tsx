@@ -19,6 +19,7 @@ import {
   type TopScorer,
 } from '../services/standingsApi';
 import { apiGetTeamManagerAssignment } from '../services/teamManagerApi';
+import { cleanDecorativeLabel } from '../utils/textLabels';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
 // VLeague: top 2 qualify for AFC Champions League, bottom 2 get relegated
@@ -258,9 +259,7 @@ export default function StandingsPage() {
     if (record.teamId === managerTeamId) classes.push('standings-manager-team');
     return classes.join(' ');
   };
-  const standingsTitle = t('standings.title')
-    .replace(/^[^\p{L}\p{N}]+/u, '')
-    .trim();
+  const standingsTitle = cleanDecorativeLabel(t('standings.title'));
   const summarySource = teamStats.length > 0 ? teamStats : standings;
   const totalGoals = summarySource.reduce((sum, team) => sum + team.goalsFor, 0);
   const totalYellowCards = teamStats.reduce((sum, team) => sum + team.yellowCards, 0);
@@ -438,7 +437,10 @@ export default function StandingsPage() {
       <Card>
         <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
           <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
-            {t('standings.topScorersTitle')}
+            <Space size={8}>
+              <TrophyOutlined />
+              <span>{cleanDecorativeLabel(t('standings.topScorersTitle'))}</span>
+            </Space>
           </Typography.Title>
           <ExportButton
             columns={[

@@ -7,8 +7,8 @@ export type ScheduleMatch = {
   leg: number;
   homeTeamId: string;
   awayTeamId: string;
-  homeTeam?: { id: string; name: string; shortName?: string | null };
-  awayTeam?: { id: string; name: string; shortName?: string | null };
+  homeTeam?: { id: string; name: string; shortName?: string | null; coachName?: string | null };
+  awayTeam?: { id: string; name: string; shortName?: string | null; coachName?: string | null };
   stadium?: { id: string; name: string; city?: string } | null;
   stadiumId?: string | null;
   kickoffAt?: string | null;

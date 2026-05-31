@@ -111,8 +111,12 @@ describe('SchedulingService', () => {
       expect(prisma.match.findMany).toHaveBeenCalledWith({
         where: {},
         include: {
-          homeTeam: { select: { id: true, name: true, shortName: true } },
-          awayTeam: { select: { id: true, name: true, shortName: true } },
+          homeTeam: {
+            select: { id: true, name: true, shortName: true, coachName: true },
+          },
+          awayTeam: {
+            select: { id: true, name: true, shortName: true, coachName: true },
+          },
           stadium: { select: { id: true, name: true, city: true } },
         },
         orderBy: [{ leg: 'asc' }, { roundNo: 'asc' }],

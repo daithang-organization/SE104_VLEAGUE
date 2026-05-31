@@ -6,6 +6,7 @@ export type Team = {
   name: string;
   shortName?: string | null;
   logoUrl?: string | null;
+  coachName?: string | null;
   city?: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   stadiumId?: string | null;
@@ -52,8 +53,20 @@ type MatchSummary = {
   awayScore: number | null;
   status: string;
   kickoffAt: string | null;
-  homeTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
-  awayTeam?: { id: string; name: string; shortName?: string | null; logoUrl?: string | null };
+  homeTeam?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+    logoUrl?: string | null;
+    coachName?: string | null;
+  };
+  awayTeam?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+    logoUrl?: string | null;
+    coachName?: string | null;
+  };
   stadium?: { name: string } | null;
 };
 
@@ -63,6 +76,7 @@ export type CreateTeamPayload = {
   city?: string;
   stadiumId?: string;
   logoUrl?: string;
+  coachName?: string;
   status?: 'ACTIVE' | 'INACTIVE';
 };
 
@@ -72,6 +86,7 @@ export type UpdateTeamPayload = {
   city?: string;
   stadiumId?: string;
   logoUrl?: string;
+  coachName?: string;
   status?: 'ACTIVE' | 'INACTIVE';
 };
 

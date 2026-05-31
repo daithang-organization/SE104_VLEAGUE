@@ -229,6 +229,7 @@ model Team {
   shortName String?    @map("short_name")
   city      String?
   logoUrl   String?    @map("logo_url")
+  coachName String?    @map("coach_name")
   status    TeamStatus @default(ACTIVE)
 
   stadiumId String?  @map("stadium_id") @db.Uuid

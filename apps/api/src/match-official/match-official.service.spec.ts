@@ -1,11 +1,13 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchOfficialService } from './match-official.service';
 
 describe('MatchOfficialService', () => {
   let service: MatchOfficialService;
   let prisma: PrismaService;
+  let notificationService: NotificationService;
 
   const match = {
     id: 'match-1',
@@ -61,11 +63,18 @@ describe('MatchOfficialService', () => {
             },
           },
         },
+        {
+          provide: NotificationService,
+          useValue: {
+            notifyAdmins: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<MatchOfficialService>(MatchOfficialService);
     prisma = module.get<PrismaService>(PrismaService);
+    notificationService = module.get<NotificationService>(NotificationService);
 
     jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
     jest
@@ -310,6 +319,15 @@ describe('MatchOfficialService', () => {
         }),
       }),
     );
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Trọng tài nộp biên bản',
+        message: expect.stringContaining('2 - 1'),
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
+      }),
+    );
   });
 
   it('keeps the official admin score when a referee report submits a different calculated score', async () => {
@@ -434,6 +452,15 @@ describe('MatchOfficialService', () => {
           playerIssues: 'Một cầu thủ phản ứng trọng tài',
           sentToDisciplinaryAt: expect.any(Date),
         }),
+      }),
+    );
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Giám sát viên nộp báo cáo kỷ luật',
+        message: expect.stringContaining('GOOD'),
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
       }),
     );
   });

@@ -142,6 +142,26 @@ describe('MatchService', () => {
       expect(result.page).toBe(1);
     });
 
+    it('includes club coach names for fixture display', async () => {
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.match, 'count').mockResolvedValue(0);
+
+      await service.findAll();
+
+      expect(prisma.match.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            homeTeam: {
+              select: expect.objectContaining({ coachName: true }),
+            },
+            awayTeam: {
+              select: expect.objectContaining({ coachName: true }),
+            },
+          }),
+        }),
+      );
+    });
+
     it('should filter by seasonId if provided', async () => {
       jest
         .spyOn(prisma.match, 'findMany')

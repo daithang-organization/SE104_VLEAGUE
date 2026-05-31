@@ -15,6 +15,14 @@ import { MatchGateway } from './match.gateway';
 /** Fallback for max goal minute when no regulation is available */
 const DEFAULT_MAX_GOAL_TIME = 96;
 
+const MATCH_TEAM_SELECT = {
+  id: true,
+  name: true,
+  shortName: true,
+  logoUrl: true,
+  coachName: true,
+};
+
 // Valid match status transitions
 const MATCH_STATUS_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['PUBLISHED', 'POSTPONED'],
@@ -40,8 +48,8 @@ export class MatchService {
     const match = await this.prisma.match.findUnique({
       where: { id },
       include: {
-        homeTeam: { select: { id: true, name: true, logoUrl: true } },
-        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        homeTeam: { select: MATCH_TEAM_SELECT },
+        awayTeam: { select: MATCH_TEAM_SELECT },
         stadium: { select: { id: true, name: true } },
         season: { select: { id: true, name: true } },
         events: {
@@ -104,8 +112,8 @@ export class MatchService {
       this.prisma.match.findMany({
         where,
         include: {
-          homeTeam: { select: { id: true, name: true, logoUrl: true } },
-          awayTeam: { select: { id: true, name: true, logoUrl: true } },
+          homeTeam: { select: MATCH_TEAM_SELECT },
+          awayTeam: { select: MATCH_TEAM_SELECT },
           stadium: { select: { id: true, name: true } },
         },
         orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
@@ -163,8 +171,8 @@ export class MatchService {
       where: { id: matchId },
       data: updateData,
       include: {
-        homeTeam: { select: { id: true, name: true, logoUrl: true } },
-        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        homeTeam: { select: MATCH_TEAM_SELECT },
+        awayTeam: { select: MATCH_TEAM_SELECT },
         stadium: { select: { id: true, name: true } },
       },
     });
@@ -472,8 +480,8 @@ export class MatchService {
       where: { id: matchId },
       data: { status: newStatus as never },
       include: {
-        homeTeam: { select: { id: true, name: true, logoUrl: true } },
-        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        homeTeam: { select: MATCH_TEAM_SELECT },
+        awayTeam: { select: MATCH_TEAM_SELECT },
       },
     });
 

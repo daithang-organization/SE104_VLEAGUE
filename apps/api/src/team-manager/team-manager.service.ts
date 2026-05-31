@@ -5,12 +5,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { SubmitTeamApplicationDto } from './dto/team-manager-assignment.dto';
+import {
+  SubmitTeamApplicationDto,
+  UpdateManagedTeamDto,
+} from './dto/team-manager-assignment.dto';
 
 @Injectable()
 export class TeamManagerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   private assignmentInclude = {
     season: {
@@ -29,6 +36,7 @@ export class TeamManagerService {
         name: true,
         shortName: true,
         logoUrl: true,
+        coachName: true,
         city: true,
         status: true,
         stadium: { select: { id: true, name: true, city: true } },
@@ -58,6 +66,34 @@ export class TeamManagerService {
         name: true,
         shortName: true,
         logoUrl: true,
+        coachName: true,
+        city: true,
+        status: true,
+        stadiumId: true,
+        createdAt: true,
+        updatedAt: true,
+        stadium: { select: { id: true, name: true, city: true } },
+      },
+    });
+  }
+
+  async updateManagedTeam(userId: string, dto: UpdateManagedTeamDto) {
+    const user = await this.getTeamManagerUser(userId);
+    if (!user.managedTeamId) {
+      throw new ForbiddenException(
+        'Tài khoản này chưa được admin gắn với CLB nào.',
+      );
+    }
+
+    return this.prisma.team.update({
+      where: { id: user.managedTeamId },
+      data: { coachName: dto.coachName?.trim() || null },
+      select: {
+        id: true,
+        name: true,
+        shortName: true,
+        logoUrl: true,
+        coachName: true,
         city: true,
         status: true,
         stadiumId: true,
@@ -115,7 +151,7 @@ export class TeamManagerService {
       );
     }
 
-    return this.prisma.seasonTeam.update({
+    const application = await this.prisma.seasonTeam.update({
       where: {
         seasonId_teamId: {
           seasonId: dto.seasonId,
@@ -146,6 +182,16 @@ export class TeamManagerService {
         season: true,
       },
     });
+
+    await this.notificationService.notifyAdmins({
+      title: 'CLB nộp hồ sơ mùa giải',
+      message: `${application.team.name} đã nộp hồ sơ tham dự ${application.season.name}. Vui lòng kiểm tra và xét duyệt.`,
+      type: 'SYSTEM',
+      entityType: 'season_team',
+      entityId: application.id,
+    });
+
+    return application;
   }
 
   async createAssignment(userId: string, seasonId: string, teamId: string) {

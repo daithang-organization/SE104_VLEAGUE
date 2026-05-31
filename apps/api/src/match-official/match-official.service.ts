@@ -5,8 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import type { CurrentUserPayload } from '../auth';
+import { NotificationService } from '../notification/notification.service';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   AssignOfficialDto,
   CreateOfficialDto,
@@ -16,7 +17,10 @@ import {
 
 @Injectable()
 export class MatchOfficialService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   listOfficials() {
     return this.prisma.official.findMany({
@@ -198,7 +202,7 @@ export class MatchOfficialService {
       submittedAt,
     };
 
-    return this.prisma.matchReport.upsert({
+    const report = await this.prisma.matchReport.upsert({
       where: { matchId },
       create: {
         matchId,
@@ -209,6 +213,18 @@ export class MatchOfficialService {
         bestPlayer: { select: { id: true, fullName: true } },
       },
     });
+
+    if (submittedByUser?.role === 'REFEREE') {
+      await this.notificationService.notifyAdmins({
+        title: 'Trọng tài nộp biên bản',
+        message: `Trọng tài đã nộp biên bản trận đấu với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
+
+    return report;
   }
 
   async getDisciplineReport(matchId: string) {
@@ -254,7 +270,7 @@ export class MatchOfficialService {
       submittedAt: new Date(),
     };
 
-    return this.prisma.disciplineReport.upsert({
+    const report = await this.prisma.disciplineReport.upsert({
       where: { matchId },
       create: {
         matchId,
@@ -263,6 +279,18 @@ export class MatchOfficialService {
       update: reportData,
       include: { supervisor: true },
     });
+
+    if (submittedByUser?.role === 'SUPERVISOR') {
+      await this.notificationService.notifyAdmins({
+        title: 'Giám sát viên nộp báo cáo kỷ luật',
+        message: `Giám sát viên đã nộp báo cáo kỷ luật trận đấu với mức đánh giá ${report.organizationRating}. Vui lòng kiểm tra.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
+
+    return report;
   }
 
   private async ensureMatch(matchId: string) {
