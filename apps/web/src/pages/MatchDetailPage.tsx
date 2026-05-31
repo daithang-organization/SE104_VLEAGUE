@@ -132,6 +132,14 @@ export default function MatchDetailPage() {
     FOURTH_OFFICIAL: t('matchDetail.officialRoleFourthOfficial'),
     SUPERVISOR: t('matchDetail.officialRoleSupervisor'),
   };
+  const disciplineRatingMeta: Record<
+    string,
+    { alertType: 'success' | 'warning' | 'error' | 'info'; label: string }
+  > = {
+    GOOD: { alertType: 'success', label: t('matchDetail.ratingGood') },
+    ACCEPTABLE: { alertType: 'warning', label: t('matchDetail.ratingAcceptable') },
+    ISSUES_FOUND: { alertType: 'error', label: t('matchDetail.ratingIssuesFound') },
+  };
 
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
@@ -195,6 +203,7 @@ export default function MatchDetailPage() {
     () => user?.role === 'ADMIN' || user?.role === 'SUPERVISOR',
     [user],
   );
+  const canViewRefereeReportTab = user?.role !== 'SUPERVISOR';
 
   const loadRosters = useCallback(async (m: Match) => {
     setRosterLoading(true);
@@ -1021,6 +1030,292 @@ export default function MatchDetailPage() {
     );
   };
 
+  const refereeReportContent = (
+    <RefereeMatchReportPanel
+      match={match}
+      matchReport={matchReport}
+      homeRoster={homeRoster}
+      awayRoster={awayRoster}
+      canSubmit={Boolean(canSubmitMatchReport)}
+      loading={officialLoading}
+      submitting={reportSubmitting}
+      onSubmit={handleSubmitMatchReport}
+    />
+  );
+
+  const supervisorReportContent = (
+    <Card title={t('matchDetail.supervisorReportTitle')} size="small" loading={officialLoading}>
+      {disciplineReport &&
+        (() => {
+          const ratingMeta = disciplineRatingMeta[disciplineReport.organizationRating] ?? {
+            alertType: 'info' as const,
+            label: disciplineReport.organizationRating,
+          };
+
+          return (
+            <Alert
+              style={{ marginBottom: 12 }}
+              type={ratingMeta.alertType}
+              showIcon
+              message={t('matchDetail.organizationRatingReported', {
+                rating: ratingMeta.label,
+              })}
+              description={
+                <Space direction="vertical" size={2}>
+                  <Text>
+                    {t('matchDetail.supervisorLabel')}{' '}
+                    {disciplineReport.supervisor?.fullName ?? disciplineReport.supervisorId}
+                  </Text>
+                  {disciplineReport.refereeIssues && (
+                    <Text>
+                      {t('matchDetail.refereeIssuesLabel')} {disciplineReport.refereeIssues}
+                    </Text>
+                  )}
+                  {disciplineReport.playerIssues && (
+                    <Text>
+                      {t('matchDetail.playerIssuesLabel')} {disciplineReport.playerIssues}
+                    </Text>
+                  )}
+                  {disciplineReport.organizerIssues && (
+                    <Text>
+                      {t('matchDetail.organizerIssuesLabel')} {disciplineReport.organizerIssues}
+                    </Text>
+                  )}
+                </Space>
+              }
+            />
+          );
+        })()}
+      {canSubmitDisciplineReport ? (
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong>{t('matchDetail.supervisorFieldLabel')}</Text>
+            <Select
+              value={disciplineSupervisorId}
+              placeholder={t('matchDetail.supervisorSelectPlaceholder')}
+              style={{ width: '100%' }}
+              onChange={setDisciplineSupervisorId}
+              options={
+                supervisorAssignments.length
+                  ? supervisorAssignments.map((assignment) => ({
+                      value: assignment.officialId,
+                      label: assignment.official?.fullName ?? assignment.officialId,
+                    }))
+                  : officials.map((official) => ({
+                      value: official.id,
+                      label: official.fullName,
+                    }))
+              }
+            />
+          </Space>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong>{t('matchDetail.organizationRatingLabel')}</Text>
+            <Select
+              value={disciplineRating}
+              style={{ width: '100%' }}
+              onChange={setDisciplineRating}
+              options={[
+                { value: 'GOOD', label: t('matchDetail.ratingGood') },
+                { value: 'ACCEPTABLE', label: t('matchDetail.ratingAcceptable') },
+                { value: 'ISSUES_FOUND', label: t('matchDetail.ratingIssuesFound') },
+              ]}
+            />
+          </Space>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong>{t('matchDetail.refereeIssuesPlaceholder')}</Text>
+            <Input.TextArea
+              rows={2}
+              value={refereeIssues}
+              placeholder={t('matchDetail.refereeIssuesPlaceholder')}
+              onChange={(event) => setRefereeIssues(event.target.value)}
+            />
+          </Space>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong>{t('matchDetail.playerIssuesPlaceholder')}</Text>
+            <Input.TextArea
+              rows={2}
+              value={playerIssues}
+              placeholder={t('matchDetail.playerIssuesPlaceholder')}
+              onChange={(event) => setPlayerIssues(event.target.value)}
+            />
+          </Space>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong>{t('matchDetail.organizerIssuesPlaceholder')}</Text>
+            <Input.TextArea
+              rows={2}
+              value={organizerIssues}
+              placeholder={t('matchDetail.organizerIssuesPlaceholder')}
+              onChange={(event) => setOrganizerIssues(event.target.value)}
+            />
+          </Space>
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Text strong>{t('matchDetail.supervisorNotesPlaceholder')}</Text>
+            <Input.TextArea
+              rows={2}
+              value={disciplineNotes}
+              placeholder={t('matchDetail.supervisorNotesPlaceholder')}
+              onChange={(event) => setDisciplineNotes(event.target.value)}
+            />
+          </Space>
+          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
+            <Space>
+              <Switch checked={sendToDisciplinary} onChange={setSendToDisciplinary} />
+              <Text>{t('matchDetail.sendToDiscipline')}</Text>
+            </Space>
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              loading={disciplineSubmitting}
+              disabled={!disciplineSupervisorId}
+              onClick={handleSubmitDisciplineReport}
+            >
+              {t('matchDetail.submitSupervisorReportBtn')}
+            </Button>
+          </Flex>
+        </Space>
+      ) : (
+        <Text type="secondary">{t('matchDetail.supervisorReportReadonly')}</Text>
+      )}
+    </Card>
+  );
+
+  const eventsContent = (
+    <Card size="small">
+      {events.length === 0 ? (
+        <Text type="secondary">{t('matchDetail.noEvents')}</Text>
+      ) : (
+        <Timeline
+          items={[...events]
+            .sort((a, b) => a.minute - b.minute)
+            .map((e) => {
+              const meta = EVENT_TYPE_MAP[e.type] ?? {
+                label: e.type,
+                color: 'default',
+                icon: '•',
+              };
+              return {
+                color: meta.color,
+                children: (
+                  <Flex justify="space-between" align="flex-start" gap={8}>
+                    <div>
+                      <strong>
+                        {meta.icon} {e.minute}'
+                      </strong>{' '}
+                      — <Tag color={meta.color}>{meta.label}</Tag>
+                      {e.player && (
+                        <a onClick={() => navigate(`/players/${e.playerId}`)}>
+                          {e.player.fullName}
+                        </a>
+                      )}
+                      {e.relatedPlayer && (
+                        <span style={{ color: '#888', marginLeft: 4 }}>
+                          (
+                          {e.type === 'SUBSTITUTION'
+                            ? t('matchDetail.relatedSub', {
+                                name: e.relatedPlayer.fullName,
+                              })
+                            : t('matchDetail.relatedAssist', {
+                                name: e.relatedPlayer.fullName,
+                              })}
+                          )
+                        </span>
+                      )}
+                      {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
+                      {e.goalType && <Tag style={{ marginLeft: 4 }}>{e.goalType}</Tag>}
+                      {e.note && <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>}
+                    </div>
+                    {canAssignOfficials && (
+                      <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        aria-label={`Sửa sự kiện ${e.minute}'`}
+                        onClick={() => handleOpenEditEvent(e)}
+                      >
+                        Sửa
+                      </Button>
+                    )}
+                  </Flex>
+                ),
+              };
+            })}
+        />
+      )}
+    </Card>
+  );
+
+  const officialAssignmentsContent = (
+    <Row gutter={[16, 16]}>
+      <Col xs={24} lg={14}>
+        <Card
+          title={t('matchDetail.officialAssignmentsTitle')}
+          size="small"
+          loading={officialLoading}
+        >
+          <Table
+            dataSource={officialAssignments}
+            columns={officialAssignmentColumns}
+            rowKey="id"
+            pagination={false}
+            size="small"
+            locale={{ emptyText: t('matchDetail.officialAssignmentsEmpty') }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} lg={10}>
+        <Card title={t('matchDetail.assignOfficialsTitle')} size="small" loading={officialLoading}>
+          {canAssignOfficials ? (
+            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Text strong>{t('matchDetail.officialSelectLabel')}</Text>
+                <Select
+                  value={selectedOfficialId}
+                  placeholder={t('matchDetail.officialSelectPlaceholder')}
+                  style={{ width: '100%' }}
+                  onChange={setSelectedOfficialId}
+                  options={officials.map((official) => ({
+                    value: official.id,
+                    label: official.fullName,
+                  }))}
+                />
+              </Space>
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Text strong>{t('matchDetail.officialRoleLabel')}</Text>
+                <Select
+                  value={selectedOfficialRole}
+                  style={{ width: '100%' }}
+                  onChange={(value) => setSelectedOfficialRole(value as MatchOfficialRole)}
+                  options={(Object.keys(officialRoleLabel) as MatchOfficialRole[]).map((role) => ({
+                    value: role,
+                    label: officialRoleLabel[role],
+                  }))}
+                />
+              </Space>
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Text strong>{t('matchDetail.officialNoteLabel')}</Text>
+                <Input
+                  value={officialNote}
+                  placeholder={t('matchDetail.officialNotePlaceholder')}
+                  onChange={(event) => setOfficialNote(event.target.value)}
+                />
+              </Space>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                loading={officialAssigning}
+                disabled={!selectedOfficialId}
+                onClick={handleAssignOfficial}
+              >
+                {t('matchDetail.publishAssignmentBtn')}
+              </Button>
+            </Space>
+          ) : (
+            <Text type="secondary">{t('matchDetail.assignOfficialsReadonly')}</Text>
+          )}
+        </Card>
+      </Col>
+    </Row>
+  );
+
   return (
     <div>
       {/* Header */}
@@ -1209,299 +1504,43 @@ export default function MatchDetailPage() {
             key: 'timeline',
             label: `⏱ ${t('matchDetail.tabTimeline')}`,
             children: (
-              <Card size="small">
-                <MatchTimeline
-                  events={events}
-                  homeTeamId={match.homeTeamId}
-                  homeTeamName={match.homeTeam?.name ?? '—'}
-                  awayTeamName={match.awayTeam?.name ?? '—'}
-                  onPlayerClick={(pid) => navigate(`/players/${pid}`)}
-                />
-              </Card>
-            ),
-          },
-          {
-            key: 'events',
-            label: t('matchDetail.tabEvents', { count: events.length }),
-            children: (
-              <Card size="small">
-                {events.length === 0 ? (
-                  <Text type="secondary">{t('matchDetail.noEvents')}</Text>
-                ) : (
-                  <Timeline
-                    items={[...events]
-                      .sort((a, b) => a.minute - b.minute)
-                      .map((e) => {
-                        const meta = EVENT_TYPE_MAP[e.type] ?? {
-                          label: e.type,
-                          color: 'default',
-                          icon: '•',
-                        };
-                        return {
-                          color: meta.color,
-                          children: (
-                            <Flex justify="space-between" align="flex-start" gap={8}>
-                              <div>
-                                <strong>
-                                  {meta.icon} {e.minute}'
-                                </strong>{' '}
-                                — <Tag color={meta.color}>{meta.label}</Tag>
-                                {e.player && (
-                                  <a onClick={() => navigate(`/players/${e.playerId}`)}>
-                                    {e.player.fullName}
-                                  </a>
-                                )}
-                                {e.relatedPlayer && (
-                                  <span style={{ color: '#888', marginLeft: 4 }}>
-                                    (
-                                    {e.type === 'SUBSTITUTION'
-                                      ? t('matchDetail.relatedSub', {
-                                          name: e.relatedPlayer.fullName,
-                                        })
-                                      : t('matchDetail.relatedAssist', {
-                                          name: e.relatedPlayer.fullName,
-                                        })}
-                                    )
-                                  </span>
-                                )}
-                                {e.team && <span style={{ color: '#888' }}> ({e.team.name})</span>}
-                                {e.goalType && <Tag style={{ marginLeft: 4 }}>{e.goalType}</Tag>}
-                                {e.note && (
-                                  <span style={{ color: '#888', marginLeft: 8 }}>— {e.note}</span>
-                                )}
-                              </div>
-                              {canAssignOfficials && (
-                                <Button
-                                  size="small"
-                                  icon={<EditOutlined />}
-                                  aria-label={`Sửa sự kiện ${e.minute}'`}
-                                  onClick={() => handleOpenEditEvent(e)}
-                                >
-                                  Sửa
-                                </Button>
-                              )}
-                            </Flex>
-                          ),
-                        };
-                      })}
-                  />
-                )}
-              </Card>
-            ),
-          },
-          {
-            key: 'officials',
-            label: t('matchDetail.tabOfficials'),
-            children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} lg={14}>
-                    <Card
-                      title={t('matchDetail.officialAssignmentsTitle')}
-                      size="small"
-                      loading={officialLoading}
-                    >
-                      <Table
-                        dataSource={officialAssignments}
-                        columns={officialAssignmentColumns}
-                        rowKey="id"
-                        pagination={false}
-                        size="small"
-                        locale={{ emptyText: t('matchDetail.officialAssignmentsEmpty') }}
-                      />
-                    </Card>
-                  </Col>
-                  <Col xs={24} lg={10}>
-                    <Card
-                      title={t('matchDetail.assignOfficialsTitle')}
-                      size="small"
-                      loading={officialLoading}
-                    >
-                      {canAssignOfficials ? (
-                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                          <Select
-                            value={selectedOfficialId}
-                            placeholder={t('matchDetail.officialSelectPlaceholder')}
-                            style={{ width: '100%' }}
-                            onChange={setSelectedOfficialId}
-                            options={officials.map((official) => ({
-                              value: official.id,
-                              label: official.fullName,
-                            }))}
-                          />
-                          <Select
-                            value={selectedOfficialRole}
-                            style={{ width: '100%' }}
-                            onChange={(value) =>
-                              setSelectedOfficialRole(value as MatchOfficialRole)
-                            }
-                            options={(Object.keys(officialRoleLabel) as MatchOfficialRole[]).map(
-                              (role) => ({
-                                value: role,
-                                label: officialRoleLabel[role],
-                              }),
-                            )}
-                          />
-                          <Input
-                            value={officialNote}
-                            placeholder={t('matchDetail.officialNotePlaceholder')}
-                            onChange={(event) => setOfficialNote(event.target.value)}
-                          />
-                          <Button
-                            type="primary"
-                            icon={<SendOutlined />}
-                            loading={officialAssigning}
-                            disabled={!selectedOfficialId}
-                            onClick={handleAssignOfficial}
-                          >
-                            {t('matchDetail.publishAssignmentBtn')}
-                          </Button>
-                        </Space>
-                      ) : (
-                        <Text type="secondary">{t('matchDetail.assignOfficialsReadonly')}</Text>
-                      )}
-                    </Card>
-                  </Col>
-                </Row>
-
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} lg={12}>
-                    <RefereeMatchReportPanel
-                      match={match}
-                      matchReport={matchReport}
-                      homeRoster={homeRoster}
-                      awayRoster={awayRoster}
-                      canSubmit={Boolean(canSubmitMatchReport)}
-                      loading={officialLoading}
-                      submitting={reportSubmitting}
-                      onSubmit={handleSubmitMatchReport}
-                    />
-                  </Col>
-
-                  <Col xs={24} lg={12}>
-                    <Card
-                      title={t('matchDetail.supervisorReportTitle')}
-                      size="small"
-                      loading={officialLoading}
-                    >
-                      {disciplineReport && (
-                        <Alert
-                          style={{ marginBottom: 12 }}
-                          type={disciplineReport.sentToDisciplinaryAt ? 'warning' : 'info'}
-                          showIcon
-                          message={t('matchDetail.organizationRatingReported', {
-                            rating: disciplineReport.organizationRating,
-                          })}
-                          description={
-                            <Space direction="vertical" size={2}>
-                              <Text>
-                                {t('matchDetail.supervisorLabel')}{' '}
-                                {disciplineReport.supervisor?.fullName ??
-                                  disciplineReport.supervisorId}
-                              </Text>
-                              {disciplineReport.refereeIssues && (
-                                <Text>
-                                  {t('matchDetail.refereeIssuesLabel')}{' '}
-                                  {disciplineReport.refereeIssues}
-                                </Text>
-                              )}
-                              {disciplineReport.playerIssues && (
-                                <Text>
-                                  {t('matchDetail.playerIssuesLabel')}{' '}
-                                  {disciplineReport.playerIssues}
-                                </Text>
-                              )}
-                              {disciplineReport.organizerIssues && (
-                                <Text>
-                                  {t('matchDetail.organizerIssuesLabel')}{' '}
-                                  {disciplineReport.organizerIssues}
-                                </Text>
-                              )}
-                            </Space>
-                          }
-                        />
-                      )}
-                      {canSubmitDisciplineReport ? (
-                        <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                          <Select
-                            value={disciplineSupervisorId}
-                            placeholder={t('matchDetail.supervisorSelectPlaceholder')}
-                            style={{ width: '100%' }}
-                            onChange={setDisciplineSupervisorId}
-                            options={
-                              supervisorAssignments.length
-                                ? supervisorAssignments.map((assignment) => ({
-                                    value: assignment.officialId,
-                                    label: assignment.official?.fullName ?? assignment.officialId,
-                                  }))
-                                : officials.map((official) => ({
-                                    value: official.id,
-                                    label: official.fullName,
-                                  }))
-                            }
-                          />
-                          <Select
-                            value={disciplineRating}
-                            style={{ width: '100%' }}
-                            onChange={setDisciplineRating}
-                            options={[
-                              { value: 'GOOD', label: t('matchDetail.ratingGood') },
-                              { value: 'ACCEPTABLE', label: t('matchDetail.ratingAcceptable') },
-                              { value: 'ISSUES_FOUND', label: t('matchDetail.ratingIssuesFound') },
-                            ]}
-                          />
-                          <Input.TextArea
-                            rows={2}
-                            value={refereeIssues}
-                            placeholder={t('matchDetail.refereeIssuesPlaceholder')}
-                            onChange={(event) => setRefereeIssues(event.target.value)}
-                          />
-                          <Input.TextArea
-                            rows={2}
-                            value={playerIssues}
-                            placeholder={t('matchDetail.playerIssuesPlaceholder')}
-                            onChange={(event) => setPlayerIssues(event.target.value)}
-                          />
-                          <Input.TextArea
-                            rows={2}
-                            value={organizerIssues}
-                            placeholder={t('matchDetail.organizerIssuesPlaceholder')}
-                            onChange={(event) => setOrganizerIssues(event.target.value)}
-                          />
-                          <Input.TextArea
-                            rows={2}
-                            value={disciplineNotes}
-                            placeholder={t('matchDetail.supervisorNotesPlaceholder')}
-                            onChange={(event) => setDisciplineNotes(event.target.value)}
-                          />
-                          <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
-                            <Space>
-                              <Switch
-                                checked={sendToDisciplinary}
-                                onChange={setSendToDisciplinary}
-                              />
-                              <Text>{t('matchDetail.sendToDiscipline')}</Text>
-                            </Space>
-                            <Button
-                              type="primary"
-                              icon={<SendOutlined />}
-                              loading={disciplineSubmitting}
-                              disabled={!disciplineSupervisorId}
-                              onClick={handleSubmitDisciplineReport}
-                            >
-                              {t('matchDetail.submitSupervisorReportBtn')}
-                            </Button>
-                          </Flex>
-                        </Space>
-                      ) : (
-                        <Text type="secondary">{t('matchDetail.supervisorReportReadonly')}</Text>
-                      )}
-                    </Card>
-                  </Col>
-                </Row>
+                <Card size="small">
+                  <MatchTimeline
+                    events={events}
+                    homeTeamId={match.homeTeamId}
+                    homeTeamName={match.homeTeam?.name ?? '—'}
+                    awayTeamName={match.awayTeam?.name ?? '—'}
+                    onPlayerClick={(pid) => navigate(`/players/${pid}`)}
+                  />
+                </Card>
+                {eventsContent}
               </Space>
             ),
           },
+          ...(canViewRefereeReportTab
+            ? [
+                {
+                  key: 'referee-report',
+                  label: t('matchDetail.refereeReportTitle'),
+                  children: (
+                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                      {officialAssignmentsContent}
+                      {refereeReportContent}
+                    </Space>
+                  ),
+                },
+              ]
+            : []),
+          ...(canViewDisciplineReport
+            ? [
+                {
+                  key: 'supervisor-report',
+                  label: t('matchDetail.supervisorReportTitle'),
+                  children: supervisorReportContent,
+                },
+              ]
+            : []),
           {
             key: 'lineups',
             label: t('matchDetail.tabLineups'),
@@ -1570,6 +1609,7 @@ export default function MatchDetailPage() {
                                     size={8}
                                     style={{ width: '100%', marginTop: 12 }}
                                   >
+                                    <Text strong>Ghi chú xét duyệt</Text>
                                     <Input.TextArea
                                       rows={2}
                                       placeholder="Ghi chú xét duyệt"
@@ -1703,13 +1743,20 @@ export default function MatchDetailPage() {
                       </Button>
                     </Space>
 
-                    <Input.Search
-                      allowClear
-                      value={lineupRosterSearch}
-                      placeholder="Tìm cầu thủ trong roster"
-                      style={{ maxWidth: 360, marginBottom: 12 }}
-                      onChange={(event) => setLineupRosterSearch(event.target.value)}
-                    />
+                    <Space
+                      direction="vertical"
+                      size={4}
+                      style={{ width: '100%', marginBottom: 12 }}
+                    >
+                      <Text strong>Tìm cầu thủ trong roster</Text>
+                      <Input.Search
+                        allowClear
+                        value={lineupRosterSearch}
+                        placeholder="Tìm cầu thủ trong roster"
+                        style={{ maxWidth: 360 }}
+                        onChange={(event) => setLineupRosterSearch(event.target.value)}
+                      />
+                    </Space>
 
                     <Table
                       dataSource={filteredSelectedRoster}
