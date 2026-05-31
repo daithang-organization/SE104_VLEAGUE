@@ -167,6 +167,12 @@ export class CreateManagerPlayerRequestDto {
   @Max(200)
   weightKg?: number;
 
+  @ApiPropertyOptional({ description: 'Tóm tắt tiểu sử chơi bóng' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  careerSummary?: string;
+
   @ApiPropertyOptional({ description: 'Ghi chú Manager gửi Admin' })
   @IsOptional()
   @IsString()

@@ -115,6 +115,7 @@ export class TeamManagerService {
         birthPlace: true,
         heightCm: true,
         weightKg: true,
+        careerSummary: true,
       },
     },
     reviewedBy: {
@@ -1173,6 +1174,8 @@ export class TeamManagerService {
       payload.birthPlace = dto.birthPlace.trim();
     if (dto.heightCm !== undefined) payload.heightCm = dto.heightCm;
     if (dto.weightKg !== undefined) payload.weightKg = dto.weightKg;
+    if (dto.careerSummary !== undefined)
+      payload.careerSummary = dto.careerSummary.trim();
     return payload;
   }
 
@@ -1281,6 +1284,7 @@ export class TeamManagerService {
     const birthPlace = this.getStringPayload(payload, 'birthPlace');
     const heightCm = this.getNumberPayload(payload, 'heightCm');
     const weightKg = this.getNumberPayload(payload, 'weightKg');
+    const careerSummary = this.getStringPayload(payload, 'careerSummary');
 
     if (fullName !== undefined) data.fullName = fullName;
     if (dob !== undefined) data.dob = new Date(dob);
@@ -1290,6 +1294,7 @@ export class TeamManagerService {
     if (birthPlace !== undefined) data.birthPlace = birthPlace || null;
     if (heightCm !== undefined) data.heightCm = heightCm;
     if (weightKg !== undefined) data.weightKg = weightKg;
+    if (careerSummary !== undefined) data.careerSummary = careerSummary;
 
     return data;
   }
@@ -1328,6 +1333,8 @@ export class TeamManagerService {
             (playerData.birthPlace as string | null | undefined) ?? null,
           heightCm: (playerData.heightCm as number | undefined) ?? null,
           weightKg: (playerData.weightKg as number | undefined) ?? null,
+          careerSummary:
+            (playerData.careerSummary as string | null | undefined) ?? null,
         },
       });
 
