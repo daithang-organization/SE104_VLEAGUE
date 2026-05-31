@@ -30,7 +30,7 @@ const vi = {
     headToHead: 'Đối đầu',
     reports: 'Báo cáo',
     regulations: 'Quy định',
-    users: 'Quản lý người dùng',
+    users: 'Quản lý',
     coaches: 'Huấn luyện viên',
   },
 
@@ -785,8 +785,8 @@ const vi = {
   // ─────────────────────────────────────────────
 
   users: {
-    title: 'Quản lý người dùng',
-    searchPlaceholder: 'Tìm kiếm email, tên...',
+    title: 'Quản lý',
+    searchPlaceholder: 'Quản lý tài khoản và xác thực yêu cầu của người dùng',
     createBtn: 'Tạo người dùng',
     loadError: 'Không thể tải danh sách người dùng',
     teamLoadError: 'Không thể tải danh sách CLB',

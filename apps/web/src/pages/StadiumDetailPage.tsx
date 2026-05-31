@@ -192,7 +192,11 @@ export default function StadiumDetailPage() {
       <Space style={{ marginBottom: 16 }}>
         <Button
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/stadiums', { state: { tab: request ? 'review' : 'list' } })}
+          onClick={() =>
+            navigate('/stadiums', {
+              state: { tab: state?.fromTab || (request ? 'review' : 'list') },
+            })
+          }
         >
           {t('stadiumDetail.back')}
         </Button>

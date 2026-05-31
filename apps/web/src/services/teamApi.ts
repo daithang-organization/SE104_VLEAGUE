@@ -10,16 +10,16 @@ export type Team = {
   status: 'ACTIVE' | 'INACTIVE';
   stadiumId?: string | null;
   stadium?: { id: string; name: string; city?: string } | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type TeamDetail = Team & {
   managedUsers?: {
     id: string;
     email: string;
     name?: string | null;
   }[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TeamDetail = Team & {
   roster: {
     id: string;
     jerseyNumber: number | null;

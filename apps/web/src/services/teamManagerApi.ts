@@ -20,11 +20,18 @@ export type TeamManagerApplication = SeasonTeam & {
   season?: Season;
 };
 
-export type TeamManagerRequestType = 'CREATE_TEAM' | 'CLAIM_EXISTING_TEAM';
+export type TeamManagerRequestType =
+  | 'CREATE_TEAM'
+  | 'CLAIM_EXISTING_TEAM'
+  | 'UPDATE_MANAGED_TEAM'
+  | 'DELETE_MANAGED_TEAM';
 export type TeamManagerRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type ManagerRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type ManagerPlayerRequestType = 'ADD_PLAYER' | 'UPDATE_PLAYER' | 'REMOVE_FROM_TEAM';
-export type ManagerStadiumRequestType = 'CREATE_HOME_STADIUM' | 'UPDATE_HOME_STADIUM';
+export type ManagerStadiumRequestType =
+  | 'CREATE_HOME_STADIUM'
+  | 'UPDATE_HOME_STADIUM'
+  | 'REMOVE_HOME_STADIUM';
 
 export type TeamManagerRequest = {
   id: string;
@@ -71,6 +78,20 @@ export type CreateTeamManagerRequestPayload =
       proposedTeamCity?: string;
       proposedTeamLogoUrl?: string;
       proposedStadiumId?: string;
+      requestNote?: string;
+    }
+  | {
+      requestType: 'UPDATE_MANAGED_TEAM';
+      teamId: string;
+      proposedTeamName: string;
+      proposedTeamShortName?: string;
+      proposedTeamCity?: string;
+      proposedTeamLogoUrl?: string;
+      requestNote?: string;
+    }
+  | {
+      requestType: 'DELETE_MANAGED_TEAM';
+      teamId: string;
       requestNote?: string;
     };
 
@@ -197,6 +218,10 @@ export function apiDeleteTeamManagerRequest(id: string) {
   return api
     .delete<{ success: boolean }>(`/team-manager/management-requests/${id}`)
     .then((res) => res.data);
+}
+
+export function apiLeaveTeamManagerManagedTeam() {
+  return api.delete<{ success: boolean }>('/team-manager/managed-team').then((res) => res.data);
 }
 
 export function apiGetTeamManagerRequests(status?: TeamManagerRequestStatus) {

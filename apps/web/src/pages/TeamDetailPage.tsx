@@ -334,7 +334,9 @@ export default function TeamDetailPage() {
           <Button
             icon={<ArrowLeftOutlined />}
             onClick={() =>
-              navigate('/teams', { state: { tab: requestStatus ? 'review' : 'list' } })
+              navigate('/teams', {
+                state: { tab: state?.fromTab || (requestStatus ? 'review' : 'list') },
+              })
             }
           >
             {t('teamDetail.back')}

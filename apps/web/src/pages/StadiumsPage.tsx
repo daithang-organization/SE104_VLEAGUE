@@ -8,6 +8,7 @@ import {
   PlusOutlined,
   SearchOutlined,
   TeamOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -28,6 +29,7 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -59,6 +61,7 @@ export default function StadiumsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const tabFromUrl = new URLSearchParams(location.search).get('tab');
   const isAdmin = useMemo(() => user?.role === 'ADMIN', [user]);
   const isManager = user?.role === 'TEAM_MANAGER';
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
@@ -91,7 +94,7 @@ export default function StadiumsPage() {
       setLoading(false);
       setInitialLoad(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchTeams = useCallback(async () => {
     if (!isAdmin) return;
@@ -116,7 +119,9 @@ export default function StadiumsPage() {
         apiGetMyManagerStadiumRequests(),
       ]);
       setManagedTeam(team);
-      setManagerStadiumRequests(requests);
+      setManagerStadiumRequests(
+        requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      );
     } catch (_err) {
       setManagedTeam(null);
       setManagerStadiumRequests([]);
@@ -127,7 +132,9 @@ export default function StadiumsPage() {
     if (!isAdmin) return;
     try {
       const requests = await apiGetManagerStadiumRequests();
-      setAdminStadiumRequests(requests);
+      setAdminStadiumRequests(
+        requests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      );
     } catch (_err) {
       setAdminStadiumRequests([]);
     }
@@ -146,8 +153,8 @@ export default function StadiumsPage() {
     setModalOpen(true);
   };
 
-  const openManagerHomeStadium = () => {
-    const current = stadiums.find((stadium) => stadium.id === managedTeam?.stadiumId);
+  const openManagerHomeStadium = (stadium?: Stadium) => {
+    const current = stadium ?? stadiums.find((item) => item.id === managedTeam?.stadiumId);
     setEditing(null);
     setEditingStadiumRequest(null);
     form.resetFields();
@@ -178,7 +185,7 @@ export default function StadiumsPage() {
   };
 
   const openEditRequest = (request: ManagerStadiumRequest) => {
-    if (request.status === 'APPROVED') return;
+    if (request.status === 'APPROVED' || request.requestType === 'REMOVE_HOME_STADIUM') return;
 
     const payload = request.payload ?? {};
     setEditing(null);
@@ -268,6 +275,19 @@ export default function StadiumsPage() {
     }
   };
 
+  const handleManagerDeleteHomeStadium = async (stadium: Stadium) => {
+    try {
+      await apiCreateManagerStadiumRequest({
+        requestType: 'REMOVE_HOME_STADIUM',
+        stadiumId: stadium.id,
+      });
+      message.success('Đã gửi yêu cầu xóa sân nhà đến Admin');
+      fetchManagerStadiumState();
+    } catch (_err) {
+      message.error('Không thể gửi yêu cầu xóa sân nhà');
+    }
+  };
+
   const submitReview = async (request: ManagerStadiumRequest, status: 'APPROVED' | 'REJECTED') => {
     setReviewing(true);
     try {
@@ -306,6 +326,12 @@ export default function StadiumsPage() {
   const hasPendingStadiumRequest = managerStadiumRequests.some(
     (request) => request.status === 'PENDING',
   );
+  const handleReload = useCallback(() => {
+    fetchStadiums();
+    if (isManager) fetchManagerStadiumState();
+    if (isAdmin) fetchAdminStadiumRequests();
+  }, [fetchStadiums, fetchManagerStadiumState, fetchAdminStadiumRequests, isManager, isAdmin]);
+
   const hero = (
     <PageCover
       eyebrow={t('menu.stadiums')}
@@ -342,6 +368,9 @@ export default function StadiumsPage() {
           style={{ width: 250 }}
           allowClear
         />
+        <Button icon={<ReloadOutlined />} onClick={handleReload}>
+          Tải lại
+        </Button>
       </Space>
       {isAdmin && (
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
@@ -352,7 +381,7 @@ export default function StadiumsPage() {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={openManagerHomeStadium}
+          onClick={() => openManagerHomeStadium()}
           disabled={!managedTeam || hasPendingStadiumRequest}
         >
           {managedTeam?.stadiumId ? 'Chỉnh sửa sân nhà' : 'Thêm sân nhà'}
@@ -361,7 +390,7 @@ export default function StadiumsPage() {
     </div>
   );
 
-  const columns: ColumnsType<Stadium> = [
+  const getColumns = (fromTab?: string): ColumnsType<Stadium> => [
     {
       title: '#',
       key: 'index',
@@ -373,7 +402,10 @@ export default function StadiumsPage() {
       dataIndex: 'name',
       sorter: (a, b) => a.name.localeCompare(b.name),
       render: (name: string, record: Stadium) => (
-        <a onClick={() => navigate(`/stadiums/${record.id}`)} style={{ fontWeight: 600 }}>
+        <a
+          onClick={() => navigate(`/stadiums/${record.id}`, { state: { fromTab } })}
+          style={{ fontWeight: 600 }}
+        >
           {name}
         </a>
       ),
@@ -448,34 +480,75 @@ export default function StadiumsPage() {
       : []),
   ];
 
-  const renderStadiumTable = (data: Stadium[]) => (
-    <Table
-      columns={columns}
-      dataSource={data}
-      rowKey="id"
-      loading={loading}
-      pagination={{
-        defaultPageSize: 15,
-        pageSizeOptions: [10, 15, 20, 50],
-        showSizeChanger: true,
-        showTotal: (total) => t('stadiums.totalCount', { total }),
-        hideOnSinglePage: false,
-      }}
-      size="middle"
-      onRow={(record) => ({
-        onClick: (e) => {
-          if (
-            (e.target as HTMLElement).closest('button') ||
-            (e.target as HTMLElement).closest('a')
-          ) {
-            return;
-          }
-          navigate(`/stadiums/${record.id}`);
-        },
-        style: { cursor: 'pointer' },
-      })}
-    />
-  );
+  const getManagerHomeColumns = (fromTab?: string): ColumnsType<Stadium> => [
+    ...getColumns(fromTab),
+    {
+      title: t('stadiums.colActions'),
+      key: 'managerActions',
+      width: 120,
+      render: (_: unknown, record: Stadium) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            aria-label={t('stadiums.editAction')}
+            disabled={hasPendingStadiumRequest}
+            onClick={() => openManagerHomeStadium(record)}
+          />
+          <Popconfirm
+            title="Gửi yêu cầu xóa sân nhà?"
+            description={`Yêu cầu xóa "${record.name}" sẽ được gửi Admin để duyệt.`}
+            disabled={hasPendingStadiumRequest}
+            onConfirm={() => handleManagerDeleteHomeStadium(record)}
+            okText="Gửi"
+            cancelText={t('common.cancel')}
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label={t('stadiums.deleteAction')}
+              disabled={hasPendingStadiumRequest}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const renderStadiumTable = (data: Stadium[], options?: { managerActions?: boolean }) => {
+    const fromTab = options?.managerActions ? 'mine' : 'all';
+    return (
+      <Table
+        columns={options?.managerActions ? getManagerHomeColumns(fromTab) : getColumns(fromTab)}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          defaultPageSize: 15,
+          pageSizeOptions: [10, 15, 20, 50],
+          showSizeChanger: true,
+          showTotal: (total) => t('stadiums.totalCount', { total }),
+          hideOnSinglePage: false,
+        }}
+        size="middle"
+        onRow={(record) => ({
+          onClick: (e) => {
+            if (
+              (e.target as HTMLElement).closest('button') ||
+              (e.target as HTMLElement).closest('a')
+            ) {
+              return;
+            }
+            navigate(`/stadiums/${record.id}`, { state: { fromTab } });
+          },
+          style: { cursor: 'pointer' },
+        })}
+      />
+    );
+  };
 
   const renderRequestSummary = (request: ManagerStadiumRequest) => {
     const payload = request.payload || {};
@@ -501,7 +574,11 @@ export default function StadiumsPage() {
       dataIndex: 'requestType',
       width: 150,
       render: (type: ManagerStadiumRequest['requestType']) =>
-        type === 'CREATE_HOME_STADIUM' ? 'Tạo sân nhà' : 'Chỉnh sửa sân nhà',
+        type === 'CREATE_HOME_STADIUM'
+          ? 'Tạo sân nhà'
+          : type === 'UPDATE_HOME_STADIUM'
+            ? 'Chỉnh sửa sân nhà'
+            : 'Xóa sân nhà',
     },
     {
       title: 'Tên sân vận động',
@@ -535,11 +612,24 @@ export default function StadiumsPage() {
       title: 'Trạng thái',
       dataIndex: 'status',
       width: 130,
+      filters: [
+        { text: 'Chờ duyệt', value: 'PENDING' },
+        { text: 'Đã duyệt', value: 'APPROVED' },
+        { text: 'Từ chối', value: 'REJECTED' },
+      ],
+      onFilter: (value, record) => record.status === value,
       render: (status: ManagerStadiumRequest['status']) => (
         <Tag color={status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'gold'}>
           {status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
         </Tag>
       ),
+    },
+    {
+      title: 'Ngày gửi',
+      dataIndex: 'createdAt',
+      width: 130,
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+      sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     ...(isAdmin
       ? [
@@ -551,7 +641,7 @@ export default function StadiumsPage() {
               <Space>
                 <Button
                   type="text"
-                  style={{ color: '#52c41a' }}
+                  style={record.status === 'REJECTED' ? undefined : { color: '#52c41a' }}
                   icon={<CheckOutlined />}
                   loading={reviewing && reviewingRequest?.id === record.id}
                   disabled={record.status !== 'PENDING'}
@@ -560,6 +650,9 @@ export default function StadiumsPage() {
                 <Button
                   danger
                   type="text"
+                  className={
+                    record.status === 'REJECTED' ? 'review-reject-button-active' : undefined
+                  }
                   icon={<CloseOutlined />}
                   disabled={record.status !== 'PENDING'}
                   onClick={() => {
@@ -582,7 +675,9 @@ export default function StadiumsPage() {
                   <Button
                     type="text"
                     icon={<EditOutlined />}
-                    disabled={record.status === 'APPROVED'}
+                    disabled={
+                      record.status === 'APPROVED' || record.requestType === 'REMOVE_HOME_STADIUM'
+                    }
                     onClick={(e) => {
                       e.stopPropagation();
                       openEditRequest(record);
@@ -661,7 +756,7 @@ export default function StadiumsPage() {
         <Card>
           {isAdmin ? (
             <Tabs
-              defaultActiveKey={location.state?.tab || 'list'}
+              defaultActiveKey={location.state?.tab || tabFromUrl || 'list'}
               items={[
                 {
                   key: 'list',
@@ -677,6 +772,7 @@ export default function StadiumsPage() {
             />
           ) : isManager ? (
             <Tabs
+              defaultActiveKey={location.state?.tab || tabFromUrl || 'all'}
               items={[
                 {
                   key: 'all',
@@ -686,7 +782,9 @@ export default function StadiumsPage() {
                 {
                   key: 'mine',
                   label: 'Sân vận động của tôi',
-                  children: renderStadiumTable(homeStadium ? [homeStadium] : []),
+                  children: renderStadiumTable(homeStadium ? [homeStadium] : [], {
+                    managerActions: true,
+                  }),
                 },
                 {
                   key: 'requests',
@@ -696,7 +794,7 @@ export default function StadiumsPage() {
               ]}
             />
           ) : (
-            renderStadiumTable(filtered)
+            renderStadiumTable(filtered, { managerActions: false })
           )}
         </Card>
       </div>

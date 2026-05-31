@@ -192,7 +192,14 @@ export default function PlayerDetailPage() {
   return (
     <div>
       <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/players')}>
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() =>
+            navigate('/players', {
+              state: { tab: state?.fromTab || (request ? 'review' : 'list') },
+            })
+          }
+        >
           {t('playerDetail.back')}
         </Button>
         <Title level={3} style={{ margin: 0 }}>

@@ -56,6 +56,13 @@ a {
   text-decoration: inherit;
 }
 
+.review-reject-button-active.ant-btn,
+.review-reject-button-active.ant-btn[disabled],
+.review-reject-button-active.ant-btn[disabled]:hover {
+  color: var(--danger) !important;
+  opacity: 1;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -2686,7 +2693,7 @@ select {
 
 .club-card-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 8px;
   padding: 0 20px 20px;
 }
@@ -2697,6 +2704,40 @@ select {
 
 .club-card-detail-button {
   justify-content: center;
+}
+
+.table-link-button.ant-btn-link {
+  height: auto;
+  padding: 0;
+  font-weight: 600;
+  white-space: normal;
+  text-align: left;
+}
+
+.club-card-outline-action.ant-btn {
+  color: var(--club-action-color, var(--text));
+  border-color: var(--club-action-color, var(--border));
+  background: rgba(8, 20, 38, 0.64);
+}
+
+.club-card-edit-action.ant-btn {
+  --club-action-color: #1677ff;
+}
+
+.club-card-leave-action.ant-btn {
+  --club-action-color: #faad14;
+}
+
+.club-card-delete-action.ant-btn {
+  --club-action-color: #ff4d4f;
+}
+
+.club-card-outline-action.ant-btn:not(:disabled):hover,
+.club-card-outline-action.ant-btn:not(:disabled):focus-visible {
+  color: var(--club-action-color) !important;
+  border-color: var(--club-action-color) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  opacity: 0.8;
 }
 
 .clubs-empty {

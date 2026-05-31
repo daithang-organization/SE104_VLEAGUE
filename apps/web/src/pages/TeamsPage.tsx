@@ -4,11 +4,12 @@ import {
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
-  EnvironmentOutlined,
+  LogoutOutlined,
   PlusOutlined,
   SearchOutlined,
   TeamOutlined,
   UserOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -48,6 +49,7 @@ import {
   apiGetTeamManagerManagedTeam,
   apiGetTeamManagerManagementRequest,
   apiGetTeamManagerRequests,
+  apiLeaveTeamManagerManagedTeam,
   apiReviewTeamManagerRequest,
   apiUpdateTeamManagerRequest,
   type TeamManagerRequest,
@@ -73,6 +75,7 @@ export default function TeamsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const tabFromUrl = new URLSearchParams(location.search).get('tab');
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +93,9 @@ export default function TeamsPage() {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [requestModalTab, setRequestModalTab] = useState<'create' | 'claim'>('create');
+  const [requestModalPurpose, setRequestModalPurpose] = useState<'management' | 'updateTeam'>(
+    'management',
+  );
   const [editingManagerRequest, setEditingManagerRequest] = useState<TeamManagerRequest | null>(
     null,
   );
@@ -112,7 +118,7 @@ export default function TeamsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchManagerState = useCallback(async () => {
     setLoading(true);
@@ -234,6 +240,7 @@ export default function TeamsPage() {
 
   const openCreateRequestModal = () => {
     setEditingManagerRequest(null);
+    setRequestModalPurpose('management');
     createRequestForm.resetFields();
     claimRequestForm.resetFields();
     setRequestModalTab('create');
@@ -244,7 +251,10 @@ export default function TeamsPage() {
     if (request.status === 'APPROVED') return;
 
     setEditingManagerRequest(request);
-    setRequestModalTab(request.requestType === 'CREATE_TEAM' ? 'create' : 'claim');
+    setRequestModalPurpose(
+      request.requestType === 'UPDATE_MANAGED_TEAM' ? 'updateTeam' : 'management',
+    );
+    setRequestModalTab(request.requestType === 'CLAIM_EXISTING_TEAM' ? 'claim' : 'create');
     createRequestForm.setFieldsValue({
       name: request.proposedTeamName ?? undefined,
       shortName: request.proposedTeamShortName ?? undefined,
@@ -259,9 +269,25 @@ export default function TeamsPage() {
     setRequestModalOpen(true);
   };
 
+  const openUpdateManagedTeamModal = (team: Team, request?: TeamManagerRequest) => {
+    setEditingManagerRequest(request ?? null);
+    setRequestModalPurpose('updateTeam');
+    setRequestModalTab('create');
+    claimRequestForm.resetFields();
+    createRequestForm.setFieldsValue({
+      name: request?.proposedTeamName ?? team.name,
+      shortName: request?.proposedTeamShortName ?? team.shortName ?? undefined,
+      city: request?.proposedTeamCity ?? team.city ?? undefined,
+      logoUrl: request?.proposedTeamLogoUrl ?? team.logoUrl ?? undefined,
+      requestNote: request?.requestNote ?? undefined,
+    });
+    setRequestModalOpen(true);
+  };
+
   const closeRequestModal = () => {
     setRequestModalOpen(false);
     setEditingManagerRequest(null);
+    setRequestModalPurpose('management');
     createRequestForm.resetFields();
     claimRequestForm.resetFields();
   };
@@ -269,12 +295,33 @@ export default function TeamsPage() {
   const handleDeleteManagerRequest = async (request: TeamManagerRequest) => {
     try {
       await apiDeleteTeamManagerRequest(request.id);
-      message.success(
-        request.status === 'APPROVED' ? 'Đã xóa quyền quản lý CLB' : 'Đã xóa yêu cầu quản lý CLB',
-      );
+      message.success('Đã xóa yêu cầu quản lý CLB');
       fetchManagerState();
     } catch (_err) {
       message.error('Không thể xóa yêu cầu quản lý CLB');
+    }
+  };
+
+  const handleLeaveManagedTeam = async () => {
+    try {
+      await apiLeaveTeamManagerManagedTeam();
+      message.success('Đã rời khỏi CLB');
+      fetchManagerState();
+    } catch (_err) {
+      message.error('Không thể rời khỏi CLB');
+    }
+  };
+
+  const handleCreateDeleteTeamRequest = async (team: Team) => {
+    try {
+      await apiCreateTeamManagerRequest({
+        requestType: 'DELETE_MANAGED_TEAM',
+        teamId: team.id,
+      });
+      message.success('Đã gửi yêu cầu xóa CLB đến Admin');
+      fetchManagerState();
+    } catch (_err) {
+      message.error('Không thể gửi yêu cầu xóa CLB');
     }
   };
 
@@ -282,20 +329,42 @@ export default function TeamsPage() {
     try {
       const values = await createRequestForm.validateFields();
       setRequestSubmitting(true);
-      const payload = {
-        requestType: 'CREATE_TEAM',
-        proposedTeamName: values.name,
-        proposedTeamShortName: values.shortName || undefined,
-        proposedTeamCity: values.city || undefined,
-        proposedTeamLogoUrl: values.logoUrl || undefined,
-        requestNote: values.requestNote || undefined,
-      } as const;
+      const isTeamUpdate = requestModalPurpose === 'updateTeam';
+      const teamId = managedTeam?.id ?? editingManagerRequest?.teamId ?? undefined;
+      if (isTeamUpdate && !teamId) {
+        message.error('Không tìm thấy CLB để cập nhật');
+        return;
+      }
+      const payload = isTeamUpdate
+        ? ({
+            requestType: 'UPDATE_MANAGED_TEAM',
+            teamId: teamId!,
+            proposedTeamName: values.name,
+            proposedTeamShortName: values.shortName || undefined,
+            proposedTeamCity: values.city || undefined,
+            proposedTeamLogoUrl: values.logoUrl || undefined,
+            requestNote: values.requestNote || undefined,
+          } as const)
+        : ({
+            requestType: 'CREATE_TEAM',
+            proposedTeamName: values.name,
+            proposedTeamShortName: values.shortName || undefined,
+            proposedTeamCity: values.city || undefined,
+            proposedTeamLogoUrl: values.logoUrl || undefined,
+            requestNote: values.requestNote || undefined,
+          } as const);
       if (editingManagerRequest) {
         await apiUpdateTeamManagerRequest(editingManagerRequest.id, payload);
-        message.success('Đã cập nhật yêu cầu tạo CLB');
+        message.success(
+          isTeamUpdate ? 'Đã cập nhật yêu cầu chỉnh sửa CLB' : 'Đã cập nhật yêu cầu tạo CLB',
+        );
       } else {
         await apiCreateTeamManagerRequest(payload);
-        message.success('Đã gửi yêu cầu tạo CLB mới đến Admin');
+        message.success(
+          isTeamUpdate
+            ? 'Đã gửi yêu cầu chỉnh sửa CLB đến Admin'
+            : 'Đã gửi yêu cầu tạo CLB mới đến Admin',
+        );
       }
       closeRequestModal();
       fetchManagerState();
@@ -382,16 +451,16 @@ export default function TeamsPage() {
   const inactiveTeams = teams.filter((team) => team.status === 'INACTIVE').length;
   const isManager = user?.role === 'TEAM_MANAGER';
   const getRequestTeam = (request: TeamManagerRequest): Team =>
-    request.requestType === 'CREATE_TEAM'
+    request.requestType === 'CREATE_TEAM' || request.requestType === 'UPDATE_MANAGED_TEAM'
       ? {
           id: request.teamId ?? `request-${request.id}`,
-          name: request.proposedTeamName ?? 'CLB đề xuất',
-          shortName: request.proposedTeamShortName ?? null,
-          city: request.proposedTeamCity ?? null,
-          logoUrl: request.proposedTeamLogoUrl ?? null,
-          status: 'ACTIVE',
-          stadiumId: null,
-          stadium: null,
+          name: request.proposedTeamName ?? request.team?.name ?? 'CLB đề xuất',
+          shortName: request.proposedTeamShortName ?? request.team?.shortName ?? null,
+          city: request.proposedTeamCity ?? request.team?.city ?? null,
+          logoUrl: request.proposedTeamLogoUrl ?? request.team?.logoUrl ?? null,
+          status: request.team?.status ?? 'ACTIVE',
+          stadiumId: request.team?.stadiumId ?? null,
+          stadium: request.team?.stadium ?? null,
           createdAt: request.createdAt,
           updatedAt: request.updatedAt,
         }
@@ -448,26 +517,32 @@ export default function TeamsPage() {
     );
   };
 
-  const managerRequestCards: ManagerTeamCardItem[] = managerRequest
+  const activeManagedTeamRequest =
+    managedTeam && managerRequest?.status === 'PENDING' && managerRequest.teamId === managedTeam.id
+      ? managerRequest
+      : null;
+  const managerRequestCards: ManagerTeamCardItem[] = managedTeam
     ? [
         {
-          key: managerRequest.id,
-          team: getRequestTeam(managerRequest),
-          status: managerRequest.status,
-          canOpen: Boolean(managerRequest.teamId && managerRequest.team),
-          request: managerRequest,
-          requestType: managerRequest.requestType,
-          adminNote: managerRequest.adminNote,
+          key: activeManagedTeamRequest?.id ?? managedTeam.id,
+          team: managedTeam,
+          status: activeManagedTeamRequest?.status ?? 'APPROVED',
+          canOpen: true,
+          request: activeManagedTeamRequest ?? undefined,
+          requestType: activeManagedTeamRequest?.requestType,
+          adminNote: activeManagedTeamRequest?.adminNote,
         },
       ]
-    : managedTeam
+    : managerRequest
       ? [
           {
-            key: managedTeam.id,
-            team: managedTeam,
-            status: 'APPROVED',
-            canOpen: true,
-            request: managerRequest ?? undefined,
+            key: managerRequest.id,
+            team: getRequestTeam(managerRequest),
+            status: managerRequest.status,
+            canOpen: Boolean(managerRequest.teamId && managerRequest.team),
+            request: managerRequest,
+            requestType: managerRequest.requestType,
+            adminNote: managerRequest.adminNote,
           },
         ]
       : [];
@@ -478,6 +553,27 @@ export default function TeamsPage() {
       APPROVED: { color: 'green', label: 'Đã được duyệt' },
       REJECTED: { color: 'red', label: 'Bị từ chối' },
     };
+
+  const requestTypeLabel = (requestType: TeamManagerRequest['requestType']) => {
+    if (requestType === 'CREATE_TEAM') return 'Tạo CLB mới';
+    if (requestType === 'CLAIM_EXISTING_TEAM') return 'Nhận quản lý CLB';
+    if (requestType === 'UPDATE_MANAGED_TEAM') return 'Chỉnh sửa CLB';
+    return 'Xóa CLB';
+  };
+
+  const getTeamManagerDisplay = (team: Team, request?: TeamManagerRequest) => {
+    const assignedManager = team.managedUsers?.[0];
+    if (assignedManager?.name || assignedManager?.email) {
+      return assignedManager.name || assignedManager.email;
+    }
+    if (request?.manager?.name || request?.manager?.email) {
+      return request.manager.name || request.manager.email;
+    }
+    if (user?.role === 'TEAM_MANAGER' && managedTeam?.id === team.id) {
+      return user.name || user.email;
+    }
+    return '—';
+  };
 
   const renderTeamCards = (items: Team[], emptyDescription = t('common.noData')) => {
     if (loading && items.length === 0) {
@@ -499,7 +595,7 @@ export default function TeamsPage() {
             <button
               type="button"
               className="club-card-main"
-              onClick={() => navigate(`/teams/${team.id}`)}
+              onClick={() => navigate(`/teams/${team.id}`, { state: { fromTab: 'all' } })}
             >
               <span className="club-card-crest">{renderTeamLogo(team)}</span>
               <span className="club-card-body">
@@ -508,8 +604,8 @@ export default function TeamsPage() {
                   {team.shortName && <span className="club-card-code-pill">{team.shortName}</span>}
                 </span>
                 <span className="club-card-meta">
-                  <EnvironmentOutlined />
-                  {team.stadium?.name ?? team.city ?? 'Chưa có sân nhà'}
+                  <UserOutlined />
+                  {getTeamManagerDisplay(team)}
                 </span>
               </span>
               <ArrowRightOutlined className="club-card-arrow" />
@@ -525,7 +621,7 @@ export default function TeamsPage() {
               <Button
                 className="club-card-detail-button"
                 icon={<ArrowRightOutlined />}
-                onClick={() => navigate(`/teams/${team.id}`)}
+                onClick={() => navigate(`/teams/${team.id}`, { state: { fromTab: 'all' } })}
               >
                 {t('common.detail')}
               </Button>
@@ -589,8 +685,8 @@ export default function TeamsPage() {
                   {team.shortName && <span className="club-card-code-pill">{team.shortName}</span>}
                 </span>
                 <span className="club-card-meta">
-                  <EnvironmentOutlined />
-                  {team.stadium?.name ?? team.city ?? 'Chưa có sân nhà'}
+                  <UserOutlined />
+                  {getTeamManagerDisplay(team, item.request)}
                 </span>
               </span>
               <ArrowRightOutlined className="club-card-arrow" />
@@ -603,7 +699,7 @@ export default function TeamsPage() {
                 <button
                   type="button"
                   className="club-card-main"
-                  onClick={() => navigate(`/teams/${team.id}`)}
+                  onClick={() => navigate(`/teams/${team.id}`, { state: { fromTab: 'mine' } })}
                 >
                   {cardContent}
                 </button>
@@ -613,11 +709,7 @@ export default function TeamsPage() {
 
               <div className="club-card-footer">
                 <Tag color={status.color}>{status.label}</Tag>
-                {item.requestType && (
-                  <Tag>
-                    {item.requestType === 'CREATE_TEAM' ? 'Tạo CLB mới' : 'Nhận quản lý CLB'}
-                  </Tag>
-                )}
+                {item.requestType && <Tag>{requestTypeLabel(item.requestType)}</Tag>}
               </div>
 
               {item.adminNote && <div className="club-card-note">Ghi chú: {item.adminNote}</div>}
@@ -627,38 +719,76 @@ export default function TeamsPage() {
                   className="club-card-detail-button"
                   icon={<ArrowRightOutlined />}
                   disabled={!item.canOpen}
-                  onClick={() => item.canOpen && navigate(`/teams/${team.id}`)}
+                  onClick={() =>
+                    item.canOpen && navigate(`/teams/${team.id}`, { state: { fromTab: 'mine' } })
+                  }
                 >
                   {item.canOpen ? t('common.detail') : 'Chờ duyệt'}
                 </Button>
                 <Button
+                  className="club-card-outline-action club-card-edit-action"
                   aria-label={`Chỉnh sửa ${team.name}`}
                   icon={<EditOutlined />}
-                  disabled={!item.request || item.status === 'APPROVED'}
-                  onClick={() => item.request && openEditManagerRequestModal(item.request)}
+                  disabled={
+                    !(
+                      (item.request && item.status !== 'APPROVED') ||
+                      (item.status === 'APPROVED' && item.canOpen)
+                    )
+                  }
+                  onClick={() => {
+                    if (item.request?.requestType === 'UPDATE_MANAGED_TEAM') {
+                      openUpdateManagedTeamModal(team, item.request);
+                    } else if (item.status === 'APPROVED' && item.canOpen) {
+                      openUpdateManagedTeamModal(team);
+                    } else if (item.request) {
+                      openEditManagerRequestModal(item.request);
+                    }
+                  }}
                 />
                 <Popconfirm
                   title={
-                    item.status === 'APPROVED'
-                      ? 'Xóa quyền quản lý CLB?'
+                    item.status === 'APPROVED' && item.canOpen
+                      ? 'Gửi yêu cầu xóa CLB?'
                       : 'Xóa yêu cầu quản lý CLB?'
                   }
                   description={
-                    item.status === 'APPROVED'
-                      ? 'Manager sẽ không còn quản lý CLB này.'
+                    item.status === 'APPROVED' && item.canOpen
+                      ? 'Admin sẽ cần duyệt trước khi CLB bị xóa khỏi hệ thống.'
                       : 'Yêu cầu này sẽ bị xóa khỏi hệ thống.'
                   }
-                  disabled={!item.request}
-                  onConfirm={() => item.request && handleDeleteManagerRequest(item.request)}
+                  disabled={!(item.request || (item.status === 'APPROVED' && item.canOpen))}
+                  onConfirm={() => {
+                    if (item.status === 'APPROVED' && item.canOpen) {
+                      handleCreateDeleteTeamRequest(team);
+                      return;
+                    }
+                    if (item.request) handleDeleteManagerRequest(item.request);
+                  }}
                   okText="Xóa"
                   cancelText={t('common.cancel')}
                   okButtonProps={{ danger: true }}
                 >
                   <Button
+                    className="club-card-outline-action club-card-delete-action"
                     aria-label={`Xóa ${team.name}`}
-                    danger
                     icon={<DeleteOutlined />}
-                    disabled={!item.request}
+                    disabled={!(item.request || (item.status === 'APPROVED' && item.canOpen))}
+                  />
+                </Popconfirm>
+                <Popconfirm
+                  title="Rời khỏi CLB?"
+                  description="Bạn sẽ không còn quyền quản lý CLB này."
+                  disabled={!(item.status === 'APPROVED' && item.canOpen)}
+                  onConfirm={handleLeaveManagedTeam}
+                  okText="Rời khỏi"
+                  cancelText={t('common.cancel')}
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button
+                    className="club-card-outline-action club-card-leave-action"
+                    aria-label={`Rời khỏi ${team.name}`}
+                    icon={<LogoutOutlined />}
+                    disabled={!(item.status === 'APPROVED' && item.canOpen)}
                   />
                 </Popconfirm>
               </div>
@@ -687,7 +817,22 @@ export default function TeamsPage() {
 
           return (
             <article key={request.id} className="club-card" style={getTeamThemeStyle(team)}>
-              <div className="club-card-main club-card-main-static">
+              <button
+                type="button"
+                className="club-card-main"
+                onClick={() =>
+                  request.teamId &&
+                  navigate(`/teams/${request.teamId}`, {
+                    state: {
+                      fromTab: 'review',
+                      requestNote: request.requestNote,
+                      requestStatus: request.status,
+                      managerName: request.manager?.name,
+                      managerEmail: request.manager?.email,
+                    },
+                  })
+                }
+              >
                 <span className="club-card-crest">{renderTeamLogo(team)}</span>
                 <span className="club-card-body">
                   <span className="club-card-heading">
@@ -702,13 +847,11 @@ export default function TeamsPage() {
                   </span>
                 </span>
                 <ArrowRightOutlined className="club-card-arrow" />
-              </div>
+              </button>
 
               <div className="club-card-footer">
                 <Tag color={status.color}>{status.label}</Tag>
-                <Tag>
-                  {request.requestType === 'CREATE_TEAM' ? 'Tạo CLB mới' : 'Nhận quản lý CLB'}
-                </Tag>
+                <Tag>{requestTypeLabel(request.requestType)}</Tag>
               </div>
 
               {request.adminNote && (
@@ -726,6 +869,7 @@ export default function TeamsPage() {
                     request.teamId &&
                     navigate(`/teams/${request.teamId}`, {
                       state: {
+                        fromTab: 'review',
                         requestNote: request.requestNote,
                         requestStatus: request.status,
                         managerName: request.manager?.name,
@@ -762,6 +906,16 @@ export default function TeamsPage() {
       </div>
     );
   };
+
+  const handleReload = useCallback(() => {
+    if (user?.role === 'TEAM_MANAGER') {
+      fetchManagerState();
+    } else {
+      fetchTeams();
+      fetchUsers();
+      fetchAdminRequests();
+    }
+  }, [fetchManagerState, fetchTeams, fetchUsers, fetchAdminRequests, user?.role]);
 
   return (
     <div className="clubs-page page-stack">
@@ -828,6 +982,9 @@ export default function TeamsPage() {
               { value: 'INACTIVE', label: t('teams.filterInactive') },
             ]}
           />
+          <Button icon={<ReloadOutlined />} onClick={handleReload}>
+            Tải lại
+          </Button>
         </Space>
         <Space>
           {isManager && (
@@ -846,6 +1003,7 @@ export default function TeamsPage() {
       {isManager ? (
         <Tabs
           className="teams-manager-tabs"
+          defaultActiveKey={location.state?.tab || tabFromUrl || 'all'}
           items={[
             {
               key: 'all',
@@ -861,7 +1019,7 @@ export default function TeamsPage() {
         />
       ) : user?.role === 'ADMIN' ? (
         <Tabs
-          defaultActiveKey={location.state?.tab || 'list'}
+          defaultActiveKey={location.state?.tab || tabFromUrl || 'list'}
           items={[
             {
               key: 'list',
@@ -880,7 +1038,13 @@ export default function TeamsPage() {
       )}
 
       <Modal
-        title={editingManagerRequest ? 'Cập nhật yêu cầu quản lý CLB' : 'Yêu cầu quyền quản lý CLB'}
+        title={
+          requestModalPurpose === 'updateTeam'
+            ? 'Yêu cầu chỉnh sửa thông tin CLB'
+            : editingManagerRequest
+              ? 'Cập nhật yêu cầu quản lý CLB'
+              : 'Yêu cầu quyền quản lý CLB'
+        }
         open={requestModalOpen}
         onCancel={closeRequestModal}
         footer={null}
@@ -895,7 +1059,7 @@ export default function TeamsPage() {
           items={[
             {
               key: 'create',
-              label: 'Tạo CLB mới',
+              label: requestModalPurpose === 'updateTeam' ? 'Thông tin CLB' : 'Tạo CLB mới',
               children: (
                 <Form form={createRequestForm} layout="vertical" style={{ marginTop: 8 }}>
                   <Row gutter={16}>
@@ -940,43 +1104,47 @@ export default function TeamsPage() {
                 </Form>
               ),
             },
-            {
-              key: 'claim',
-              label: 'Chọn CLB có sẵn',
-              children: (
-                <Form form={claimRequestForm} layout="vertical" style={{ marginTop: 8 }}>
-                  <Typography.Paragraph type="secondary">
-                    Chỉ hiển thị các CLB đang hoạt động, chưa có Manager chính thức và chưa có yêu
-                    cầu chờ duyệt.
-                  </Typography.Paragraph>
-                  <Form.Item
-                    name="teamId"
-                    label="CLB muốn quản lý"
-                    rules={[{ required: true, message: 'Vui lòng chọn CLB' }]}
-                  >
-                    <Select
-                      showSearch
-                      optionFilterProp="label"
-                      placeholder="Chọn CLB"
-                      options={claimableTeamOptions}
-                    />
-                  </Form.Item>
-                  <Form.Item name="requestNote" label="Ghi chú gửi Admin">
-                    <Input.TextArea rows={2} placeholder="Lý do bạn muốn quản lý CLB này" />
-                  </Form.Item>
-                  <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      loading={requestSubmitting}
-                      onClick={submitClaimTeamRequest}
-                    >
-                      Gửi yêu cầu
-                    </Button>
-                  </Form.Item>
-                </Form>
-              ),
-            },
+            ...(requestModalPurpose === 'management'
+              ? [
+                  {
+                    key: 'claim',
+                    label: 'Chọn CLB có sẵn',
+                    children: (
+                      <Form form={claimRequestForm} layout="vertical" style={{ marginTop: 8 }}>
+                        <Typography.Paragraph type="secondary">
+                          Chỉ hiển thị các CLB đang hoạt động, chưa có Manager chính thức và chưa có
+                          yêu cầu chờ duyệt.
+                        </Typography.Paragraph>
+                        <Form.Item
+                          name="teamId"
+                          label="CLB muốn quản lý"
+                          rules={[{ required: true, message: 'Vui lòng chọn CLB' }]}
+                        >
+                          <Select
+                            showSearch
+                            optionFilterProp="label"
+                            placeholder="Chọn CLB"
+                            options={claimableTeamOptions}
+                          />
+                        </Form.Item>
+                        <Form.Item name="requestNote" label="Ghi chú gửi Admin">
+                          <Input.TextArea rows={2} placeholder="Lý do bạn muốn quản lý CLB này" />
+                        </Form.Item>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                          <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            loading={requestSubmitting}
+                            onClick={submitClaimTeamRequest}
+                          >
+                            Gửi yêu cầu
+                          </Button>
+                        </Form.Item>
+                      </Form>
+                    ),
+                  },
+                ]
+              : []),
           ]}
         />
       </Modal>
@@ -1009,9 +1177,23 @@ export default function TeamsPage() {
             <Typography.Text strong>
               {reviewingRequest.requestType === 'CREATE_TEAM'
                 ? reviewingRequest.proposedTeamName
-                : reviewingRequest.team?.name}
+                : reviewingRequest.requestType === 'UPDATE_MANAGED_TEAM'
+                  ? `${reviewingRequest.team?.name ?? 'CLB'} → ${reviewingRequest.proposedTeamName ?? '—'}`
+                  : reviewingRequest.requestType === 'DELETE_MANAGED_TEAM'
+                    ? `Xóa CLB: ${reviewingRequest.team?.name ?? '—'}`
+                    : reviewingRequest.team?.name}
             </Typography.Text>
             <Typography.Text>Manager: {reviewingRequest.manager?.email ?? '—'}</Typography.Text>
+            {reviewingRequest.requestType === 'UPDATE_MANAGED_TEAM' && (
+              <>
+                <Typography.Text>
+                  Tên viết tắt mới: {reviewingRequest.proposedTeamShortName || '—'}
+                </Typography.Text>
+                <Typography.Text>
+                  Thành phố mới: {reviewingRequest.proposedTeamCity || '—'}
+                </Typography.Text>
+              </>
+            )}
             <Typography.Text>Ghi chú: {reviewingRequest.requestNote || '—'}</Typography.Text>
             <Input.TextArea
               rows={3}

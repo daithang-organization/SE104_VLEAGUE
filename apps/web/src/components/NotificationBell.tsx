@@ -90,7 +90,7 @@ export default function NotificationBell() {
         <Typography.Text strong>{t('Thông báo')}</Typography.Text>
         {unreadCount > 0 && (
           <Button type="link" size="small" onClick={handleMarkAll}>
-            {t('notification.markAllRead')}
+            {t('Đã đọc tất cả')}
           </Button>
         )}
       </div>

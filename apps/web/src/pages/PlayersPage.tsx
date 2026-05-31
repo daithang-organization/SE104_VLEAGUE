@@ -5,6 +5,7 @@ import {
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
+  ReloadOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -32,7 +33,7 @@ import type { SortOrder as AntSortOrder, FilterValue, SorterResult } from 'antd/
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
 import {
@@ -98,6 +99,8 @@ export default function PlayersPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const tabFromUrl = new URLSearchParams(location.search).get('tab');
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +117,11 @@ export default function PlayersPage() {
   const [filterSourcePlayers, setFilterSourcePlayers] = useState<Player[]>([]);
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
   const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
-  const [managerPlayerTab, setManagerPlayerTab] = useState<'all' | 'mine' | 'requests'>('all');
+  const [managerPlayerTab, setManagerPlayerTab] = useState<'all' | 'mine' | 'requests'>(
+    ((location.state as Record<string, unknown>)?.tab as 'all' | 'mine' | 'requests') ||
+      (tabFromUrl as 'all' | 'mine' | 'requests') ||
+      'all',
+  );
   const [managerPlayerRequests, setManagerPlayerRequests] = useState<ManagerPlayerRequest[]>([]);
   const [adminPlayerRequests, setAdminPlayerRequests] = useState<ManagerPlayerRequest[]>([]);
   const [editingPlayerRequest, setEditingPlayerRequest] = useState<ManagerPlayerRequest | null>(
@@ -130,6 +137,7 @@ export default function PlayersPage() {
   const canEdit = useMemo(() => {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
+  const showPlayerActions = Boolean(user?.role === 'ADMIN' || isManagerMineTab);
   const totalPlayers = pagination.total || players.length;
   const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
   const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
@@ -171,7 +179,9 @@ export default function PlayersPage() {
     if (!isTeamManager) return;
     try {
       const data = await apiGetMyManagerPlayerRequests();
-      setManagerPlayerRequests(data);
+      setManagerPlayerRequests(
+        data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      );
     } catch (_err) {
       setManagerPlayerRequests([]);
     }
@@ -181,7 +191,9 @@ export default function PlayersPage() {
     if (user?.role !== 'ADMIN') return;
     try {
       const data = await apiGetManagerPlayerRequests();
-      setAdminPlayerRequests(data);
+      setAdminPlayerRequests(
+        data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      );
     } catch (_err) {
       setAdminPlayerRequests([]);
     }
@@ -243,6 +255,7 @@ export default function PlayersPage() {
   }, [
     fetchPlayers,
     isManagerMineTab,
+    isTeamManager,
     managerTeamId,
     managerTeamLoaded,
     pagination.limit,
@@ -454,7 +467,7 @@ export default function PlayersPage() {
           requestType: 'REMOVE_FROM_TEAM',
           playerId: id,
         });
-        message.success('Đã gửi yêu cầu gỡ cầu thủ khỏi CLB đến Admin');
+        message.success('Đã gửi yêu cầu xóa cầu thủ đến Admin');
         fetchManagerPlayerRequests();
       } else {
         await apiDeletePlayer(id);
@@ -535,7 +548,15 @@ export default function PlayersPage() {
       sorter: true,
       sortOrder: sortState.sortBy === 'fullName' ? toAntSortOrder(sortState.sortOrder) : null,
       render: (name: string, record: Player) => (
-        <a onClick={() => navigate(`/players/${record.id}`)}>{name}</a>
+        <a
+          onClick={() =>
+            navigate(`/players/${record.id}`, {
+              state: { fromTab: user?.role === 'ADMIN' ? 'list' : managerPlayerTab },
+            })
+          }
+        >
+          {name}
+        </a>
       ),
     },
     {
@@ -624,7 +645,7 @@ export default function PlayersPage() {
       sorter: true,
       sortOrder: sortState.sortBy === 'weightKg' ? toAntSortOrder(sortState.sortOrder) : null,
     },
-    ...(canEdit
+    ...(showPlayerActions
       ? [
           {
             title: t('players.colActions'),
@@ -635,23 +656,41 @@ export default function PlayersPage() {
                 <Button
                   type="text"
                   icon={<EyeOutlined />}
-                  onClick={() => navigate(`/players/${record.id}`)}
+                  onClick={() =>
+                    navigate(`/players/${record.id}`, {
+                      state: { fromTab: user?.role === 'ADMIN' ? 'list' : managerPlayerTab },
+                    })
+                  }
                 />
                 <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-                <Popconfirm
-                  title={isTeamManager ? 'Gỡ cầu thủ khỏi CLB?' : t('players.deleteConfirmTitle')}
-                  description={
-                    isTeamManager
-                      ? `Gửi yêu cầu gỡ "${record.fullName}" khỏi CLB đến Admin?`
-                      : t('players.deleteConfirmDesc', { name: record.fullName })
-                  }
-                  onConfirm={() => handleDelete(record.id)}
-                  okText={isTeamManager ? 'Gửi yêu cầu' : t('players.deleteOk')}
-                  cancelText={t('players.deleteCancel')}
-                  okButtonProps={{ danger: true }}
-                >
-                  <Button type="text" danger icon={<DeleteOutlined />} />
-                </Popconfirm>
+                {isTeamManager ? (
+                  <Popconfirm
+                    title="Gửi yêu cầu xóa cầu thủ?"
+                    description={`Yêu cầu xóa "${record.fullName}" sẽ được gửi Admin để duyệt.`}
+                    onConfirm={() => handleDelete(record.id)}
+                    okText="Gửi"
+                    cancelText={t('common.cancel')}
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </Popconfirm>
+                ) : (
+                  <Popconfirm
+                    title={t('players.deleteConfirmTitle')}
+                    description={t('players.deleteConfirmDesc', { name: record.fullName })}
+                    onConfirm={() => handleDelete(record.id)}
+                    okText={t('players.deleteOk')}
+                    cancelText={t('players.deleteCancel')}
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button type="text" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
@@ -713,7 +752,7 @@ export default function PlayersPage() {
           ? 'Thêm cầu thủ'
           : type === 'UPDATE_PLAYER'
             ? 'Chỉnh sửa cầu thủ'
-            : 'Gỡ khỏi CLB',
+            : 'Xóa cầu thủ',
     },
     {
       title: 'Họ và tên',
@@ -725,7 +764,7 @@ export default function PlayersPage() {
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/players/${record.playerId || `request-${record.id}`}`, {
-                state: { request: record },
+                state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
               });
             }}
             style={{ fontWeight: 600 }}
@@ -748,11 +787,24 @@ export default function PlayersPage() {
       title: 'Trạng thái',
       dataIndex: 'status',
       width: 130,
+      filters: [
+        { text: 'Chờ duyệt', value: 'PENDING' },
+        { text: 'Đã duyệt', value: 'APPROVED' },
+        { text: 'Từ chối', value: 'REJECTED' },
+      ],
+      onFilter: (value, record) => record.status === value,
       render: (status: ManagerPlayerRequest['status']) => (
         <Tag color={status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'gold'}>
           {status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
         </Tag>
       ),
+    },
+    {
+      title: 'Ngày gửi',
+      dataIndex: 'createdAt',
+      width: 130,
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+      sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     ...(user?.role === 'ADMIN'
       ? [
@@ -764,7 +816,7 @@ export default function PlayersPage() {
               <Space>
                 <Button
                   type="text"
-                  style={{ color: '#52c41a' }}
+                  style={record.status === 'REJECTED' ? undefined : { color: '#52c41a' }}
                   icon={<CheckOutlined />}
                   loading={reviewing && reviewingRequest?.id === record.id}
                   disabled={record.status !== 'PENDING'}
@@ -776,6 +828,9 @@ export default function PlayersPage() {
                 <Button
                   danger
                   type="text"
+                  className={
+                    record.status === 'REJECTED' ? 'review-reject-button-active' : undefined
+                  }
                   icon={<CloseOutlined />}
                   disabled={record.status !== 'PENDING'}
                   onClick={(e) => {
@@ -852,13 +907,28 @@ export default function PlayersPage() {
             return;
           }
           navigate(`/players/${record.playerId || `request-${record.id}`}`, {
-            state: { request: record },
+            state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
           });
         },
         style: { cursor: 'pointer' },
       })}
     />
   );
+
+  const handleReload = useCallback(() => {
+    fetchPlayers(pagination.page, pagination.limit, search);
+    if (isTeamManager) fetchManagerPlayerRequests();
+    if (user?.role === 'ADMIN') fetchAdminPlayerRequests();
+  }, [
+    fetchPlayers,
+    pagination.page,
+    pagination.limit,
+    search,
+    isTeamManager,
+    fetchManagerPlayerRequests,
+    user?.role,
+    fetchAdminPlayerRequests,
+  ]);
 
   return (
     <>
@@ -896,6 +966,9 @@ export default function PlayersPage() {
               allowClear
               loading={loading}
             />
+            <Button icon={<ReloadOutlined />} onClick={handleReload}>
+              Tải lại
+            </Button>
           </Space>
           {canEdit && (
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -907,6 +980,9 @@ export default function PlayersPage() {
         <Card>
           {user?.role === 'ADMIN' ? (
             <Tabs
+              defaultActiveKey={
+                ((location.state as Record<string, unknown>)?.tab as string) || tabFromUrl || 'list'
+              }
               items={[
                 {
                   key: 'list',

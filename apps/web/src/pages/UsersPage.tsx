@@ -1,21 +1,19 @@
-import {
+﻿import {
   CheckCircleOutlined,
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
-  EyeOutlined,
   PlusOutlined,
   ReloadOutlined,
-  SearchOutlined,
   SafetyCertificateOutlined,
+  SearchOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
   Button,
   Card,
-  Descriptions,
   Form,
   Input,
   message,
@@ -32,13 +30,19 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppMenuIcon } from '../components';
-import { PageCover } from '../components/PageCover';
 import { TableSkeleton } from '../components/LoadingSkeleton';
+import { PageCover } from '../components/PageCover';
 import {
+  apiGetManagerPlayerRequests,
+  apiGetManagerStadiumRequests,
   apiGetTeamManagerRequests,
+  apiReviewManagerPlayerRequest,
+  apiReviewManagerStadiumRequest,
   apiReviewTeamManagerRequest,
+  type ManagerPlayerRequest,
+  type ManagerRequestStatus,
+  type ManagerStadiumRequest,
   type TeamManagerRequest,
-  type TeamManagerRequestStatus,
 } from '../services/teamManagerApi';
 import {
   apiCreateUser,
@@ -58,19 +62,97 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const ROLE_KEYS = ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'] as const;
+type AggregateRequestEntity = 'team' | 'player' | 'stadium';
+type AggregateManagerRequest = {
+  id: string;
+  key: string;
+  managerName: string;
+  requestLabel: string;
+  requestDetail: string;
+  requestTypeLabel: 'Thêm' | 'Chỉnh sửa' | 'Xóa';
+  status: ManagerRequestStatus;
+  createdAt: string;
+  targetTab: string;
+  entity: AggregateRequestEntity;
+};
 
-function requestStatusTag(status: TeamManagerRequestStatus) {
+function requestStatusTag(status: ManagerRequestStatus) {
   if (status === 'APPROVED') return <Tag color="success">Đã duyệt</Tag>;
   if (status === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
-  return <Tag color="processing">Chờ duyệt</Tag>;
+  return <Tag color="gold">Chờ duyệt</Tag>;
 }
 
-function requestTypeLabel(request: TeamManagerRequest) {
-  return request.requestType === 'CREATE_TEAM' ? 'Tạo CLB mới' : 'Nhận quản lý CLB có sẵn';
+function managerDisplayName(manager?: TeamManagerRequest['manager']) {
+  return manager?.name || '—';
 }
 
-function requestTeamName(request: TeamManagerRequest) {
-  return request.team?.name ?? request.proposedTeamName ?? '—';
+function teamRequestTypeLabel(
+  requestType: TeamManagerRequest['requestType'],
+): AggregateManagerRequest['requestTypeLabel'] {
+  if (requestType === 'UPDATE_MANAGED_TEAM') return 'Chỉnh sửa';
+  if (requestType === 'DELETE_MANAGED_TEAM') return 'Xóa';
+  return 'Thêm';
+}
+
+function playerRequestTypeLabel(
+  requestType: ManagerPlayerRequest['requestType'],
+): AggregateManagerRequest['requestTypeLabel'] {
+  if (requestType === 'UPDATE_PLAYER') return 'Chỉnh sửa';
+  if (requestType === 'REMOVE_FROM_TEAM') return 'Xóa';
+  return 'Thêm';
+}
+
+function stadiumRequestTypeLabel(
+  requestType: ManagerStadiumRequest['requestType'],
+): AggregateManagerRequest['requestTypeLabel'] {
+  if (requestType === 'UPDATE_HOME_STADIUM') return 'Chỉnh sửa';
+  if (requestType === 'REMOVE_HOME_STADIUM') return 'Xóa';
+  return 'Thêm';
+}
+
+function toAggregateRequests(
+  teamRequests: TeamManagerRequest[],
+  playerRequests: ManagerPlayerRequest[],
+  stadiumRequests: ManagerStadiumRequest[],
+): AggregateManagerRequest[] {
+  return [
+    ...teamRequests.map((request) => ({
+      id: request.id,
+      key: `team-${request.id}`,
+      managerName: managerDisplayName(request.manager),
+      requestLabel: 'Đội bóng',
+      requestDetail: request.team?.name ?? request.proposedTeamName ?? '—',
+      requestTypeLabel: teamRequestTypeLabel(request.requestType),
+      status: request.status,
+      createdAt: request.createdAt,
+      targetTab: '/teams',
+      entity: 'team' as const,
+    })),
+    ...playerRequests.map((request) => ({
+      id: request.id,
+      key: `player-${request.id}`,
+      managerName: managerDisplayName(request.manager),
+      requestLabel: 'Cầu thủ',
+      requestDetail: request.player?.fullName ?? request.payload?.fullName ?? '—',
+      requestTypeLabel: playerRequestTypeLabel(request.requestType),
+      status: request.status,
+      createdAt: request.createdAt,
+      targetTab: '/players',
+      entity: 'player' as const,
+    })),
+    ...stadiumRequests.map((request) => ({
+      id: request.id,
+      key: `stadium-${request.id}`,
+      managerName: managerDisplayName(request.manager),
+      requestLabel: 'Sân vận động',
+      requestDetail: request.stadium?.name ?? request.payload?.name ?? '—',
+      requestTypeLabel: stadiumRequestTypeLabel(request.requestType),
+      status: request.status,
+      createdAt: request.createdAt,
+      targetTab: '/stadiums',
+      entity: 'stadium' as const,
+    })),
+  ].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf());
 }
 
 export default function UsersPage() {
@@ -83,15 +165,13 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  const [requests, setRequests] = useState<TeamManagerRequest[]>([]);
-  const [requestStatus, setRequestStatus] = useState<TeamManagerRequestStatus | undefined>(
-    'PENDING',
-  );
+  const [requests, setRequests] = useState<AggregateManagerRequest[]>([]);
+  const [activeTab, setActiveTab] = useState('users');
   const [requestsLoading, setRequestsLoading] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<TeamManagerRequest | null>(null);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewing, setReviewing] = useState(false);
-  const [reviewForm] = Form.useForm<{ adminNote?: string }>();
+  const [reviewingRequest, setReviewingRequest] = useState<{
+    key: string;
+    status: Extract<ManagerRequestStatus, 'APPROVED' | 'REJECTED'>;
+  } | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm] = Form.useForm();
@@ -112,19 +192,23 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchRequests = useCallback(async () => {
     setRequestsLoading(true);
     try {
-      const data = await apiGetTeamManagerRequests(requestStatus);
-      setRequests(data);
+      const [teamRequests, playerRequests, stadiumRequests] = await Promise.all([
+        apiGetTeamManagerRequests(),
+        apiGetManagerPlayerRequests(),
+        apiGetManagerStadiumRequests(),
+      ]);
+      setRequests(toAggregateRequests(teamRequests, playerRequests, stadiumRequests));
     } catch (_err) {
-      message.error('Không thể tải yêu cầu quản lý CLB');
+      message.error('Không thể tải yêu cầu từ Manager');
     } finally {
       setRequestsLoading(false);
     }
-  }, [requestStatus]);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -180,37 +264,6 @@ export default function UsersPage() {
       fetchUsers();
     } catch (_err) {
       message.error(t('users.deleteError'));
-    }
-  };
-
-  const openReviewModal = (request: TeamManagerRequest) => {
-    setSelectedRequest(request);
-    reviewForm.setFieldsValue({ adminNote: request.adminNote ?? '' });
-    setReviewOpen(true);
-  };
-
-  const handleReviewRequest = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!selectedRequest) return;
-    const values = reviewForm.getFieldsValue();
-
-    setReviewing(true);
-    try {
-      await apiReviewTeamManagerRequest(selectedRequest.id, {
-        status,
-        adminNote: values.adminNote?.trim() || undefined,
-      });
-      message.success(status === 'APPROVED' ? 'Đã duyệt yêu cầu' : 'Đã từ chối yêu cầu');
-      setReviewOpen(false);
-      setSelectedRequest(null);
-      fetchRequests();
-      fetchUsers();
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Không thể xét duyệt yêu cầu';
-      message.error(msg);
-    } finally {
-      setReviewing(false);
     }
   };
 
@@ -310,42 +363,112 @@ export default function UsersPage() {
     },
   ];
 
-  const requestColumns: ColumnsType<TeamManagerRequest> = [
+  const goToRequestReview = (record: AggregateManagerRequest) => {
+    window.location.href = `${record.targetTab}?tab=review`;
+  };
+
+  const handleReviewRequest = async (
+    record: AggregateManagerRequest,
+    status: Extract<ManagerRequestStatus, 'APPROVED' | 'REJECTED'>,
+  ) => {
+    setReviewingRequest({ key: record.key, status });
+    try {
+      if (record.entity === 'team') {
+        await apiReviewTeamManagerRequest(record.id, { status });
+      } else if (record.entity === 'player') {
+        await apiReviewManagerPlayerRequest(record.id, { status });
+      } else {
+        await apiReviewManagerStadiumRequest(record.id, { status });
+      }
+
+      message.success(status === 'APPROVED' ? 'Đã duyệt yêu cầu' : 'Đã từ chối yêu cầu');
+      setRequests((currentRequests) =>
+        currentRequests.map((item) => (item.key === record.key ? { ...item, status } : item)),
+      );
+      await fetchUsers();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Không thể xét duyệt yêu cầu';
+      message.error(msg);
+    } finally {
+      setReviewingRequest(null);
+    }
+  };
+
+  const requestColumns: ColumnsType<AggregateManagerRequest> = [
     {
-      title: 'Manager',
+      title: 'Quản lý',
       key: 'manager',
-      render: (_, record) => record.manager?.email ?? '—',
+      render: (_, record) => record.managerName,
+    },
+    {
+      title: 'Yêu cầu',
+      key: 'request',
+      render: (_, record) => (
+        <Button type="link" className="table-link-button" onClick={() => goToRequestReview(record)}>
+          {record.requestLabel}
+          {record.requestDetail !== '—' ? `: ${record.requestDetail}` : ''}
+        </Button>
+      ),
     },
     {
       title: 'Loại yêu cầu',
-      key: 'requestType',
-      render: (_, record) => requestTypeLabel(record),
-    },
-    {
-      title: 'CLB',
-      key: 'team',
-      render: (_, record) => requestTeamName(record),
+      dataIndex: 'requestTypeLabel',
+      width: 150,
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       width: 130,
-      render: (status: TeamManagerRequestStatus) => requestStatusTag(status),
+      filters: [
+        { text: 'Chờ duyệt', value: 'PENDING' },
+        { text: 'Đã duyệt', value: 'APPROVED' },
+        { text: 'Từ chối', value: 'REJECTED' },
+      ],
+      onFilter: (value, record) => record.status === value,
+      render: (status: ManagerRequestStatus) => requestStatusTag(status),
     },
     {
       title: 'Ngày gửi',
       dataIndex: 'createdAt',
       width: 130,
       render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+      sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     {
       title: 'Hành động',
       key: 'actions',
       width: 120,
       render: (_, record) => (
-        <Button icon={<EyeOutlined />} onClick={() => openReviewModal(record)}>
-          Chi tiết
-        </Button>
+        <Space>
+          <Button
+            aria-label="Duyệt yêu cầu"
+            type="text"
+            style={record.status === 'REJECTED' ? {} : { color: '#52c41a' }}
+            icon={<CheckOutlined />}
+            disabled={record.status !== 'PENDING'}
+            loading={reviewingRequest?.key === record.key && reviewingRequest.status === 'APPROVED'}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleReviewRequest(record, 'APPROVED');
+            }}
+          />
+          <Button
+            aria-label="Từ chối yêu cầu"
+            danger
+            type="text"
+            className={record.status === 'REJECTED' ? 'review-reject-button-active' : undefined}
+            style={record.status === 'REJECTED' ? { color: '#ff4d4f' } : undefined}
+            icon={<CloseOutlined />}
+            disabled={record.status !== 'PENDING'}
+            loading={reviewingRequest?.key === record.key && reviewingRequest.status === 'REJECTED'}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleReviewRequest(record, 'REJECTED');
+            }}
+          />
+        </Space>
       ),
     },
   ];
@@ -386,6 +509,15 @@ export default function UsersPage() {
             allowClear
             style={{ width: 260 }}
           />
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              if (activeTab === 'users') fetchUsers();
+              else fetchRequests();
+            }}
+          >
+            Tải lại
+          </Button>
         </Space>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
           {t('users.createBtn')}
@@ -394,6 +526,8 @@ export default function UsersPage() {
 
       <Card>
         <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
           items={[
             {
               key: 'users',
@@ -419,39 +553,17 @@ export default function UsersPage() {
             },
             {
               key: 'requests',
-              label: 'Yêu cầu quản lý CLB',
+              label: 'Yêu cầu quản lý',
               children: (
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                  <Space wrap>
-                    <Select
-                      value={requestStatus ?? 'ALL'}
-                      onChange={(value) =>
-                        setRequestStatus(
-                          value === 'ALL' ? undefined : (value as TeamManagerRequestStatus),
-                        )
-                      }
-                      style={{ width: 180 }}
-                      options={[
-                        { value: 'PENDING', label: 'Chờ duyệt' },
-                        { value: 'APPROVED', label: 'Đã duyệt' },
-                        { value: 'REJECTED', label: 'Từ chối' },
-                        { value: 'ALL', label: 'Tất cả' },
-                      ]}
-                    />
-                    <Button icon={<ReloadOutlined />} onClick={fetchRequests}>
-                      Tải lại
-                    </Button>
-                  </Space>
-                  <Table
-                    columns={requestColumns}
-                    dataSource={requests}
-                    rowKey="id"
-                    loading={requestsLoading}
-                    pagination={{ pageSize: 10, showSizeChanger: true }}
-                    size="middle"
-                    locale={{ emptyText: t('common.noData') }}
-                  />
-                </Space>
+                <Table
+                  columns={requestColumns}
+                  dataSource={requests}
+                  rowKey="id"
+                  loading={requestsLoading}
+                  pagination={{ pageSize: 10, showSizeChanger: true }}
+                  size="middle"
+                  locale={{ emptyText: t('common.noData') }}
+                />
               ),
             },
           ]}
@@ -529,72 +641,6 @@ export default function UsersPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
-
-      <Modal
-        title="Chi tiết yêu cầu quản lý CLB"
-        open={reviewOpen}
-        onCancel={() => setReviewOpen(false)}
-        width={720}
-        footer={
-          <Space>
-            <Button onClick={() => setReviewOpen(false)}>{t('common.cancel')}</Button>
-            {selectedRequest?.status === 'PENDING' && (
-              <>
-                <Button
-                  danger
-                  icon={<CloseOutlined />}
-                  loading={reviewing}
-                  onClick={() => handleReviewRequest('REJECTED')}
-                >
-                  Từ chối
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<CheckOutlined />}
-                  loading={reviewing}
-                  onClick={() => handleReviewRequest('APPROVED')}
-                >
-                  Duyệt
-                </Button>
-              </>
-            )}
-          </Space>
-        }
-      >
-        {selectedRequest && (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Descriptions bordered column={1} size="small">
-              <Descriptions.Item label="Manager">
-                {selectedRequest.manager?.email ?? '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Loại yêu cầu">
-                {requestTypeLabel(selectedRequest)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                {requestStatusTag(selectedRequest.status)}
-              </Descriptions.Item>
-              <Descriptions.Item label="CLB">{requestTeamName(selectedRequest)}</Descriptions.Item>
-              <Descriptions.Item label="Tên viết tắt đề xuất">
-                {selectedRequest.proposedTeamShortName ?? selectedRequest.team?.shortName ?? '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Thành phố">
-                {selectedRequest.proposedTeamCity ?? selectedRequest.team?.city ?? '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Ghi chú Manager">
-                {selectedRequest.requestNote || '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Ngày gửi">
-                {dayjs(selectedRequest.createdAt).format('DD/MM/YYYY HH:mm')}
-              </Descriptions.Item>
-            </Descriptions>
-            <Form form={reviewForm} layout="vertical">
-              <Form.Item name="adminNote" label="Ghi chú xét duyệt">
-                <Input.TextArea rows={3} placeholder="Nhập lý do duyệt/từ chối nếu cần" />
-              </Form.Item>
-            </Form>
-          </Space>
-        )}
       </Modal>
     </div>
   );

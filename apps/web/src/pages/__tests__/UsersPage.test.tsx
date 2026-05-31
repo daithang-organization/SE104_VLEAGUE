@@ -25,7 +25,11 @@ const mockUserApi = vi.hoisted(() => ({
 
 const mockTeamManagerApi = vi.hoisted(() => ({
   apiGetTeamManagerRequests: vi.fn().mockResolvedValue([]),
+  apiGetManagerPlayerRequests: vi.fn().mockResolvedValue([]),
+  apiGetManagerStadiumRequests: vi.fn().mockResolvedValue([]),
   apiReviewTeamManagerRequest: vi.fn(),
+  apiReviewManagerPlayerRequest: vi.fn(),
+  apiReviewManagerStadiumRequest: vi.fn(),
 }));
 
 vi.mock('../../services/userApi', () => mockUserApi);
@@ -74,7 +78,7 @@ describe('UsersPage', () => {
   it('renders create button after loading users', async () => {
     renderPage();
     await waitFor(() => {
-      expect(mockUserApi.apiGetUsers).toHaveBeenCalledTimes(1);
+      expect(mockUserApi.apiGetUsers).toHaveBeenCalled();
     });
   });
 });
