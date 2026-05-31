@@ -1,6 +1,8 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
+  MatchOfficialRole,
   MatchStatus,
+  OfficialStatus,
   PlayerPosition,
   PlayerType,
   PrismaClient,
@@ -35,6 +37,21 @@ const demoUsers = [
   { email: 'referee@demo.local', role: UserRole.REFEREE },
   { email: 'supervisor@demo.local', role: UserRole.SUPERVISOR },
   { email: 'public@demo.local', role: UserRole.PUBLIC },
+] as const;
+
+const demoOfficials = [
+  {
+    fullName: 'Referee Demo',
+    email: 'referee@demo.local',
+    role: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Demo main referee assignment',
+  },
+  {
+    fullName: 'Supervisor Demo',
+    email: 'supervisor@demo.local',
+    role: MatchOfficialRole.SUPERVISOR,
+    note: 'Demo supervisor assignment',
+  },
 ] as const;
 
 // Teams demo
@@ -339,6 +356,57 @@ async function main() {
       `   ⏭️  Skipped (${existingMatchesCount} matches already exist)`,
     );
   }
+
+  // 9) Seed demo officials and assign them to the season matches.
+  console.log('🧑‍⚖️ Seeding referee/supervisor demo assignments...');
+  const seasonMatches = await prisma.match.findMany({
+    where: { seasonId: season.id },
+    select: { id: true },
+  });
+  for (const officialData of demoOfficials) {
+    const existingOfficial = await prisma.official.findFirst({
+      where: { email: { equals: officialData.email, mode: 'insensitive' } },
+      orderBy: { createdAt: 'asc' },
+    });
+    const official = existingOfficial
+      ? await prisma.official.update({
+          where: { id: existingOfficial.id },
+          data: {
+            fullName: officialData.fullName,
+            email: officialData.email,
+            status: OfficialStatus.ACTIVE,
+          },
+        })
+      : await prisma.official.create({
+          data: {
+            fullName: officialData.fullName,
+            email: officialData.email,
+            status: OfficialStatus.ACTIVE,
+          },
+        });
+
+    for (const match of seasonMatches) {
+      await prisma.matchOfficialAssignment.upsert({
+        where: {
+          matchId_officialId_role: {
+            matchId: match.id,
+            officialId: official.id,
+            role: officialData.role,
+          },
+        },
+        create: {
+          matchId: match.id,
+          officialId: official.id,
+          role: officialData.role,
+          note: officialData.note,
+        },
+        update: { note: officialData.note },
+      });
+    }
+  }
+  console.log(
+    `   ✓ Demo officials assigned to ${seasonMatches.length} matches`,
+  );
 
   console.log('\n✅ Seed done!');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

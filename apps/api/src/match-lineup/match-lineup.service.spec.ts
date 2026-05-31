@@ -66,6 +66,8 @@ describe('MatchLineupService', () => {
             },
             playerSuspension: {
               findMany: jest.fn(),
+              findFirst: jest.fn(),
+              create: jest.fn(),
               updateMany: jest.fn(),
               upsert: jest.fn(),
             },
@@ -105,6 +107,7 @@ describe('MatchLineupService', () => {
       .spyOn(prisma.teamPlayer, 'findMany')
       .mockResolvedValue(rosterRows() as any);
     jest.spyOn(prisma.playerSuspension, 'findMany').mockResolvedValue([]);
+    jest.spyOn(prisma.playerSuspension, 'findFirst').mockResolvedValue(null);
     jest.spyOn(prisma.matchTeamRegistration, 'upsert').mockResolvedValue({
       id: 'registration-1',
       matchId: 'match-1',
@@ -227,7 +230,7 @@ describe('MatchLineupService', () => {
     ).rejects.toThrow('Cầu thủ đang bị treo giò');
   });
 
-  it('creates a next-match suspension from red card events', async () => {
+  it('creates same-match and next-match suspensions from red card events', async () => {
     jest
       .spyOn(prisma.matchEvent, 'findMany')
       .mockResolvedValue([
@@ -237,21 +240,27 @@ describe('MatchLineupService', () => {
       .spyOn(prisma.match, 'findFirst')
       .mockResolvedValue({ id: 'match-2' } as any);
     jest
-      .spyOn(prisma.playerSuspension, 'upsert')
+      .spyOn(prisma.playerSuspension, 'create')
       .mockResolvedValue({ id: 'suspension-1' } as any);
 
     await service.syncSuspensionsForMatch('match-1');
 
-    expect(prisma.playerSuspension.upsert).toHaveBeenCalledWith(
+    expect(prisma.playerSuspension.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          playerId_sourceMatchId_reason: {
-            playerId: 'player-1',
-            sourceMatchId: 'match-1',
-            reason: 'RED_CARD',
-          },
-        },
-        create: expect.objectContaining({
+        data: expect.objectContaining({
+          playerId: 'player-1',
+          teamId: 'team-1',
+          seasonId: 'season-1',
+          sourceMatchId: 'match-1',
+          effectiveMatchId: 'match-1',
+          reason: 'RED_CARD',
+          status: 'ACTIVE',
+        }),
+      }),
+    );
+    expect(prisma.playerSuspension.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
           playerId: 'player-1',
           teamId: 'team-1',
           seasonId: 'season-1',

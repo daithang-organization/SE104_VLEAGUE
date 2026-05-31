@@ -241,6 +241,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'type']}
+                      label={t('eventFormModal.typeLabel')}
                       rules={[{ required: true, message: t('eventFormModal.typeRequired') }]}
                       style={{ flex: 2, marginBottom: 8 }}
                     >
@@ -255,6 +256,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'minute']}
+                      label={t('eventFormModal.minuteLabel')}
                       rules={[{ required: true, message: t('eventFormModal.minuteRequired') }]}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
@@ -270,6 +272,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'playerId']}
+                      label={t('eventFormModal.playerLabel')}
                       style={{ flex: 2, marginBottom: 8 }}
                     >
                       <Select
@@ -292,6 +295,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'note']}
+                      label={t('eventFormModal.noteLabel')}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
                       <Input placeholder={t('eventFormModal.notePlaceholder')} />
@@ -316,6 +320,7 @@ export default function EventFormModal({
                             <Form.Item
                               {...restField}
                               name={[name, 'goalType']}
+                              label={t('eventFormModal.goalTypeLabel')}
                               style={{ flex: 1, marginBottom: 8 }}
                             >
                               <Select
@@ -340,6 +345,11 @@ export default function EventFormModal({
                             <Form.Item
                               {...restField}
                               name={[name, 'relatedPlayerId']}
+                              label={
+                                evtType === 'GOAL'
+                                  ? t('eventFormModal.assistLabel')
+                                  : t('eventFormModal.subPlayerLabel')
+                              }
                               style={{ flex: 1, marginBottom: 8 }}
                             >
                               <Select

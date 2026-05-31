@@ -218,6 +218,8 @@ export class MatchService {
       }
     }
 
+    await this.assertSingleRedCardPerPlayer(matchId, dto);
+
     // Create the event
     const event = await this.prisma.matchEvent.create({
       data: {
@@ -252,6 +254,10 @@ export class MatchService {
       if (updated) {
         this.matchGateway.emitScoreUpdate(matchId, updated);
       }
+    }
+
+    if (dto.type === 'RED_CARD' || dto.type === 'YELLOW_CARD') {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
     }
 
     // Emit live match event via WebSocket
@@ -304,6 +310,8 @@ export class MatchService {
       }
     }
 
+    await this.assertSingleRedCardPerPlayer(matchId, dto, eventId);
+
     const updatedEvent = await this.prisma.matchEvent.update({
       where: { id: eventId },
       data: {
@@ -335,6 +343,12 @@ export class MatchService {
       if (updatedScore) {
         this.matchGateway.emitScoreUpdate(matchId, updatedScore);
       }
+    }
+
+    const wasCard = ['YELLOW_CARD', 'RED_CARD'].includes(String(event.type));
+    const isCard = ['YELLOW_CARD', 'RED_CARD'].includes(dto.type);
+    if (wasCard || isCard) {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
     }
 
     this.matchGateway.emitMatchEvent(
@@ -390,6 +404,10 @@ export class MatchService {
       }
     }
 
+    if (event.type === 'YELLOW_CARD' || event.type === 'RED_CARD') {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
+    }
+
     return { success: true };
   }
 
@@ -435,6 +453,30 @@ export class MatchService {
       where: { id: matchId },
       data: { homeScore, awayScore },
     });
+  }
+
+  private async assertSingleRedCardPerPlayer(
+    matchId: string,
+    dto: AddMatchEventDto,
+    excludeEventId?: string,
+  ) {
+    if (dto.type !== 'RED_CARD' || !dto.playerId) return;
+
+    const duplicate = await this.prisma.matchEvent.findFirst({
+      where: {
+        matchId,
+        playerId: dto.playerId,
+        type: 'RED_CARD' as never,
+        ...(excludeEventId ? { id: { not: excludeEventId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (duplicate) {
+      throw new BadRequestException(
+        'Cầu thủ này đã nhận thẻ đỏ trong trận đấu này. Mỗi cầu thủ chỉ được nhận tối đa 1 thẻ đỏ trong 1 trận.',
+      );
+    }
   }
 
   /**
