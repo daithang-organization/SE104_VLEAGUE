@@ -67,6 +67,19 @@ const REAL_TEAMS = [
   'SHB Đà Nẵng',
 ];
 
+const REAL_TEAM_COACHES = new Map<string, string>([
+  ['Thể Công-Viettel', 'Velizar Popov'],
+  ['Becamex Bình Dương', 'Hứa Hiền Vinh'],
+  ['Đông Á Thanh Hóa', 'Nguyễn Anh Đức'],
+  ['Thép Xanh Nam Định', 'Vũ Hồng Việt'],
+  ['Sông Lam Nghệ An', 'Văn Sỹ Sơn'],
+  ['Hải Phòng FC', 'Đặng Văn Thành'],
+  ['TP.HCM FC', 'Phùng Thanh Phương'],
+  ['Công An Hà Nội', 'Alexandre Polking'],
+  ['Hà Nội FC', 'Harry Kewell'],
+  ['LPBank Hoàng Anh Gia Lai', 'Lê Quang Trãi'],
+]);
+
 const REQUIRED_APPROVED_TEAMS = 10;
 const DEFAULT_SEASON_NAME = 'V.League 2024-2025';
 const LEGACY_SEASON_NAME = 'V.League 2024-25';
@@ -621,6 +634,18 @@ async function main() {
       (teamOrder.get(a.name) ?? Number.MAX_SAFE_INTEGER) -
       (teamOrder.get(b.name) ?? Number.MAX_SAFE_INTEGER),
   );
+
+  console.log('\n🧢 Seeding team coach names...');
+  for (const team of teams) {
+    const coachName = REAL_TEAM_COACHES.get(team.name);
+    if (!coachName) continue;
+
+    await prisma.team.update({
+      where: { id: team.id },
+      data: { coachName },
+    });
+    console.log(`  ✅ ${team.name}: ${coachName}`);
+  }
 
   // 2.1 Seed manager accounts and assignments for invitation popup demo
   console.log('\n👤 Seeding team manager demo accounts...');
