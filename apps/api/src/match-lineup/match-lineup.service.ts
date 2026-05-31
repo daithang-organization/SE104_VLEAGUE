@@ -438,7 +438,7 @@ export class MatchLineupService {
       id: string;
       seasonId: string | null;
       roundNo: number;
-      status?: MatchStatus | string;
+      status?: MatchStatus;
     },
     playerId: string,
     teamId: string,
