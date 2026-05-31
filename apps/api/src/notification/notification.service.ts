@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreateNotificationDto {
@@ -35,6 +36,25 @@ export class NotificationService {
         entityId: dto.entityId,
       },
     });
+  }
+
+  /**
+   * Create the same notification for every admin account.
+   */
+  async notifyAdmins(dto: Omit<CreateNotificationDto, 'userId'>) {
+    const admins = await this.prisma.user.findMany({
+      where: { role: UserRole.ADMIN },
+      select: { id: true },
+    });
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.createForUser({
+          ...dto,
+          userId: admin.id,
+        }),
+      ),
+    );
   }
 
   /**

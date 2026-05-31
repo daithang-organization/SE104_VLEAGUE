@@ -6,6 +6,7 @@
   PlusOutlined,
   SearchOutlined,
   TeamOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -101,6 +102,7 @@ export default function TeamsPage() {
       city: team.city ?? '',
       stadiumId: team.stadiumId ?? undefined,
       logoUrl: team.logoUrl ?? '',
+      coachName: team.coachName ?? '',
       status: team.status,
     });
     setModalOpen(true);
@@ -118,6 +120,7 @@ export default function TeamsPage() {
         city: values.city || undefined,
         stadiumId: values.stadiumId || undefined,
         logoUrl: values.logoUrl || undefined,
+        coachName: values.coachName || undefined,
         status: values.status,
       };
 
@@ -153,7 +156,7 @@ export default function TeamsPage() {
     const query = search.trim().toLowerCase();
     const matchesSearch =
       !query ||
-      [team.name, team.shortName, team.city, team.stadium?.name]
+      [team.name, team.shortName, team.city, team.stadium?.name, team.coachName]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     const matchesStatus = statusFilter === 'ALL' || team.status === statusFilter;
@@ -257,6 +260,12 @@ export default function TeamsPage() {
                     <EnvironmentOutlined />
                     {team.stadium?.name ?? team.city ?? 'Chưa có sân nhà'}
                   </span>
+                  {team.coachName && (
+                    <span className="club-card-meta">
+                      <UserOutlined />
+                      {team.coachName}
+                    </span>
+                  )}
                 </span>
                 <ArrowRightOutlined className="club-card-arrow" />
               </button>
@@ -354,6 +363,10 @@ export default function TeamsPage() {
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item name="coachName" label={t('teams.formCoachName')}>
+            <Input placeholder={t('teams.formCoachNamePlaceholder')} maxLength={120} />
+          </Form.Item>
 
           <Form.Item name="logoUrl" label={t('teams.formLogo')}>
             <ImageUpload />

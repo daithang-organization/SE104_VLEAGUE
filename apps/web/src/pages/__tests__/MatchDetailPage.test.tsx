@@ -356,6 +356,51 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText(/11 chính thức \/ 5 dự bị/)).toBeInTheDocument();
   });
 
+  it('only shows lineup review actions for submitted lineups', async () => {
+    mockMatchApi.apiGetMatchLineups.mockResolvedValueOnce(submittedLineups);
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    const submittedCard = screen.getByText('Danh sách đã nộp').closest('.ant-card') as HTMLElement;
+    await waitFor(() => {
+      expect(within(submittedCard).getByText('Ha Noi FC')).toBeInTheDocument();
+      expect(within(submittedCard).getByText('Hai Phong FC')).toBeInTheDocument();
+    });
+
+    expect(within(submittedCard).getAllByRole('button', { name: /Duyệt/ })).toHaveLength(1);
+    expect(within(submittedCard).getAllByRole('button', { name: /Từ chối/ })).toHaveLength(1);
+  });
+
+  it('shows rejected lineup reason and resubmission guidance to team managers', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'manager-1', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockMatchApi.apiGetMatchLineups.mockResolvedValueOnce([
+      {
+        ...submittedLineups[0],
+        status: 'REJECTED',
+        reviewNote: 'Thiếu thủ môn dự bị',
+      },
+    ]);
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    expect(await screen.findByText('Danh sách bị từ chối')).toBeInTheDocument();
+    expect(screen.getByText(/Thiếu thủ môn dự bị/)).toBeInTheDocument();
+    expect(screen.getByText(/Vui lòng chỉnh sửa và nộp lại/)).toBeInTheDocument();
+    expect(screen.getByText('Đăng ký thi đấu')).toBeInTheDocument();
+  });
+
   it('hides lineup submission when the match is locked', async () => {
     mockMatchApi.apiGetMatch.mockResolvedValueOnce({
       ...defaultMatch,
@@ -584,7 +629,35 @@ describe('MatchDetailPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('loads match officials and referee report in the match report tab', async () => {
+  it('shows club coaches as separate team fields in the match center', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...defaultMatch,
+      homeTeam: { ...defaultMatch.homeTeam, coachName: 'L. Enrique' },
+      awayTeam: { ...defaultMatch.awayTeam, coachName: 'M. Arteta' },
+    });
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    const matchCenter = document.querySelector('.match-center-card') as HTMLElement;
+    expect(matchCenter).toBeInTheDocument();
+
+    const homeTeam = matchCenter.querySelector('.match-center-team-home') as HTMLElement;
+    const awayTeam = matchCenter.querySelector('.match-center-team-away') as HTMLElement;
+    const coachFields = matchCenter.querySelector('.match-center-coaches') as HTMLElement;
+
+    expect(homeTeam.querySelector('.match-center-team-coach')).not.toBeInTheDocument();
+    expect(awayTeam.querySelector('.match-center-team-coach')).not.toBeInTheDocument();
+    expect(within(coachFields).getAllByText('Huấn Luyện Viên')).toHaveLength(2);
+    expect(coachFields).not.toHaveTextContent('HLV Ha Noi FC');
+    expect(coachFields).toHaveTextContent('L. Enrique');
+    expect(coachFields).not.toHaveTextContent('HLV Hai Phong FC');
+    expect(coachFields).toHaveTextContent('M. Arteta');
+  });
+
+  it('loads match officials and reports in the officials tab', async () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
@@ -603,6 +676,33 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText('Home Player 1')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('tab')[3]);
     expect(screen.getByText('Một cầu thủ phản ứng trọng tài')).toBeInTheDocument();
+  });
+
+  it('lets team managers view match official assignments without requesting restricted official data', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'manager-1', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockMatchApi.apiGetMatchOfficials.mockResolvedValueOnce(defaultMatchOfficials);
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiGetMatchOfficials).toHaveBeenCalledWith('m1');
+    });
+
+    expect(mockMatchApi.apiGetOfficials).not.toHaveBeenCalled();
+    expect(mockMatchApi.apiGetMatchReport).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+
+    expect(screen.getAllByText('Nguyễn Văn Trọng').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Trần Văn Giám').length).toBeGreaterThan(0);
   });
 
   it('lets admin remove an official assignment from the officials tab', async () => {

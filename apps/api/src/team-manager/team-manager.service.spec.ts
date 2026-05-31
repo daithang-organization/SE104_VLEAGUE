@@ -1,11 +1,13 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TeamManagerService } from './team-manager.service';
 
 describe('TeamManagerService application workflow', () => {
   let service: TeamManagerService;
   let prisma: PrismaService;
+  let notificationService: NotificationService;
 
   const assignment = {
     id: 'assignment-1',
@@ -47,11 +49,17 @@ describe('TeamManagerService application workflow', () => {
               upsert: jest.fn(),
             },
             user: { findUnique: jest.fn() },
-            team: { findUnique: jest.fn() },
+            team: { findUnique: jest.fn(), update: jest.fn() },
             seasonTeam: {
               findUnique: jest.fn(),
               update: jest.fn(),
             },
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {
+            notifyAdmins: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -59,6 +67,7 @@ describe('TeamManagerService application workflow', () => {
 
     service = module.get<TeamManagerService>(TeamManagerService);
     prisma = module.get<PrismaService>(PrismaService);
+    notificationService = module.get<NotificationService>(NotificationService);
 
     jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(managerUser as any);
     jest
@@ -113,6 +122,27 @@ describe('TeamManagerService application workflow', () => {
     expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
   });
 
+  it('updates the fixed managed club coach name', async () => {
+    jest.spyOn(prisma.team, 'update').mockResolvedValue({
+      id: 'team-1',
+      name: 'Hà Nội FC',
+      coachName: 'HLV Mới',
+    } as any);
+
+    const result = await service.updateManagedTeam('manager-1', {
+      coachName: '  HLV Mới  ',
+    });
+
+    expect(result.coachName).toBe('HLV Mới');
+    expect(prisma.team.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'team-1' },
+        data: { coachName: 'HLV Mới' },
+      }),
+    );
+    expect(prisma.teamManagerAssignment.upsert).not.toHaveBeenCalled();
+  });
+
   it('submits application information for the assigned team', async () => {
     jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
       id: 'season-team-1',
@@ -122,6 +152,8 @@ describe('TeamManagerService application workflow', () => {
     jest.spyOn(prisma.seasonTeam, 'update').mockResolvedValue({
       id: 'season-team-1',
       ...applicationPayload,
+      team: { name: 'Hà Nội FC' },
+      season: { name: 'V.League 2026' },
       applicationSubmittedAt: new Date(),
     } as any);
 
@@ -143,6 +175,15 @@ describe('TeamManagerService application workflow', () => {
           applicationSubmittedAt: expect.any(Date),
           applicationReviewNote: null,
         }),
+      }),
+    );
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'CLB nộp hồ sơ mùa giải',
+        message: expect.stringContaining('Hà Nội FC'),
+        type: 'SYSTEM',
+        entityType: 'season_team',
+        entityId: 'season-team-1',
       }),
     );
   });

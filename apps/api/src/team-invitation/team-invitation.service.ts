@@ -698,6 +698,19 @@ export class TeamInvitationService {
       });
     }
 
+    await this.notificationService.notifyAdmins({
+      title: 'CLB phản hồi lời mời',
+      message: this.buildInvitationResponseNotificationMessage(
+        updatedInvitation.team.name,
+        updatedInvitation.season.name,
+        responseStatus,
+        updatedInvitation.responseReason,
+      ),
+      type: 'TEAM_INVITATION',
+      entityType: 'team_invitation',
+      entityId: updatedInvitation.id,
+    });
+
     return updatedInvitation;
   }
 
@@ -1092,6 +1105,23 @@ export class TeamInvitationService {
       `Lệ phí tham dự: ${this.formatVnd(regulations['PARTICIPATION_FEE_VND'])}.`,
       `Quy định chính: ${regulations['MIN_ROSTER']}-${regulations['MAX_ROSTER']} cầu thủ, tối đa ${regulations['MAX_FOREIGN_PLAYERS']} ngoại binh đăng ký, tối đa ${regulations['MAX_FOREIGN_PLAYERS_ON_FIELD']} ngoại binh trên sân, sân tối thiểu ${Number(regulations['MIN_STADIUM_CAPACITY']).toLocaleString('vi-VN')} chỗ và đạt ít nhất ${regulations['MIN_STADIUM_FIFA_STARS']} sao FIFA.`,
     ].join(' ');
+  }
+
+  private buildInvitationResponseNotificationMessage(
+    teamName: string,
+    seasonName: string,
+    responseStatus: TeamInvitationStatus,
+    responseReason?: string | null,
+  ) {
+    const statusLabel =
+      responseStatus === TeamInvitationStatus.ACCEPTED
+        ? 'chấp nhận'
+        : 'từ chối';
+    const reason = responseReason?.trim()
+      ? ` Lý do: ${responseReason.trim()}.`
+      : '';
+
+    return `${teamName} đã ${statusLabel} lời mời tham dự ${seasonName}.${reason}`;
   }
 
   private formatVnd(value?: string) {

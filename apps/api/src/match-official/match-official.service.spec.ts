@@ -69,6 +69,7 @@ describe('MatchOfficialService', () => {
         {
           provide: NotificationService,
           useValue: {
+            notifyAdmins: jest.fn().mockResolvedValue(undefined),
             notifyDisciplinaryReferralToAdmins: jest
               .fn()
               .mockResolvedValue(undefined),
@@ -332,6 +333,15 @@ describe('MatchOfficialService', () => {
         }),
       }),
     );
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Trọng tài nộp biên bản',
+        message: expect.stringContaining('2 - 1'),
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
+      }),
+    );
     expect(matchLineupService.syncSuspensionsForMatch).toHaveBeenCalledWith(
       'match-1',
     );
@@ -488,6 +498,15 @@ describe('MatchOfficialService', () => {
           playerIssues: 'Một cầu thủ phản ứng trọng tài',
           sentToDisciplinaryAt: expect.any(Date),
         }),
+      }),
+    );
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Giám sát viên nộp báo cáo kỷ luật',
+        message: expect.stringContaining('GOOD'),
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
       }),
     );
     expect(

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -12,6 +20,7 @@ import type { CurrentUserPayload } from '../auth/decorators/current-user.decorat
 import {
   CreateTeamManagerAssignmentDto,
   SubmitTeamApplicationDto,
+  UpdateManagedTeamDto,
 } from './dto/team-manager-assignment.dto';
 import { TeamManagerService } from './team-manager.service';
 
@@ -30,6 +39,16 @@ export class TeamManagerController {
   })
   getManagedTeam(@CurrentUser() user: CurrentUserPayload) {
     return this.teamManagerService.getManagedTeam(user.id);
+  }
+
+  @Patch('managed-team')
+  @ApiOperation({ summary: 'Cập nhật thông tin CLB của team manager' })
+  @ApiOkResponse({ description: 'CLB đã được cập nhật' })
+  updateManagedTeam(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateManagedTeamDto,
+  ) {
+    return this.teamManagerService.updateManagedTeam(user.id, dto);
   }
 
   @Get('assignment')

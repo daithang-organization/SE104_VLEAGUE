@@ -104,7 +104,7 @@ export default function EventModal({
               🏠 {homeTeamName}
             </Radio.Button>
             <Radio.Button value="away" style={{ width: '50%', textAlign: 'center' }}>
-              ✈️ {awayTeamName}
+              {awayTeamName}
             </Radio.Button>
           </Radio.Group>
         </Form.Item>

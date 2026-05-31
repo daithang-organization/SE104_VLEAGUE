@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { TeamManagerScopeService } from '../team-manager/team-manager-scope.service';
@@ -49,6 +50,7 @@ describe('MatchLineupService', () => {
   let prisma: PrismaService;
   let regulationHelper: RegulationHelper;
   let teamManagerScope: TeamManagerScopeService;
+  let notificationService: NotificationService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -94,6 +96,15 @@ describe('MatchLineupService', () => {
             assertCanManageTeam: jest.fn().mockResolvedValue(undefined),
           },
         },
+        {
+          provide: NotificationService,
+          useValue: {
+            createForUser: jest
+              .fn()
+              .mockResolvedValue({ id: 'notification-1' }),
+            notifyAdmins: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -101,6 +112,7 @@ describe('MatchLineupService', () => {
     prisma = module.get(PrismaService);
     regulationHelper = module.get(RegulationHelper);
     teamManagerScope = module.get(TeamManagerScopeService);
+    notificationService = module.get(NotificationService);
 
     jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
     jest
@@ -153,6 +165,30 @@ describe('MatchLineupService', () => {
     );
   });
 
+  it('notifies admins when a club submits a match lineup', async () => {
+    jest.spyOn(prisma.matchTeamRegistration, 'upsert').mockResolvedValue({
+      id: 'registration-1',
+      matchId: 'match-1',
+      teamId: 'team-1',
+      team: { name: 'Hà Nội FC' },
+    } as any);
+
+    await service.submitLineup('match-1', lineupPayload(), {
+      id: 'manager-1',
+      role: 'TEAM_MANAGER',
+    });
+
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'CLB nộp đội hình',
+        message: expect.stringContaining('Hà Nội FC'),
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
+      }),
+    );
+  });
+
   it('rejects lineup submission after the match is locked', async () => {
     jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
       ...match,
@@ -177,6 +213,66 @@ describe('MatchLineupService', () => {
     ).rejects.toThrow('Không thể xét duyệt đội hình khi trận đã kết thúc');
 
     expect(prisma.matchTeamRegistration.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects reviewing a lineup that is no longer submitted', async () => {
+    jest.spyOn(prisma.matchTeamRegistration, 'findUnique').mockResolvedValue({
+      id: 'registration-1',
+      status: 'APPROVED',
+    } as any);
+
+    await expect(
+      service.reviewLineup('match-1', 'team-1', {
+        status: 'REJECTED',
+        reviewNote: 'Sai danh sách',
+      }),
+    ).rejects.toThrow('Chỉ được xét duyệt danh sách đang chờ duyệt');
+
+    expect(prisma.matchTeamRegistration.update).not.toHaveBeenCalled();
+  });
+
+  it('requires a rejection reason and notifies managed users when rejecting a submitted lineup', async () => {
+    jest
+      .spyOn(prisma.matchTeamRegistration, 'findUnique')
+      .mockResolvedValueOnce({
+        id: 'registration-1',
+        status: 'SUBMITTED',
+      } as any)
+      .mockResolvedValueOnce({
+        id: 'registration-1',
+        status: 'SUBMITTED',
+        team: {
+          name: 'Ha Noi FC',
+          managedUsers: [{ id: 'manager-1' }],
+        },
+      } as any);
+
+    await expect(
+      service.reviewLineup('match-1', 'team-1', { status: 'REJECTED' } as any),
+    ).rejects.toThrow('Vui lòng nhập lý do từ chối');
+
+    jest.spyOn(prisma.matchTeamRegistration, 'update').mockResolvedValue({
+      id: 'registration-1',
+      teamId: 'team-1',
+      status: 'REJECTED',
+      reviewNote: 'Thiếu thủ môn dự bị',
+    } as any);
+
+    await service.reviewLineup('match-1', 'team-1', {
+      status: 'REJECTED',
+      reviewNote: 'Thiếu thủ môn dự bị',
+    });
+
+    expect(notificationService.createForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'manager-1',
+        title: 'Đội hình bị từ chối',
+        message: expect.stringContaining('Thiếu thủ môn dự bị'),
+        type: 'SYSTEM',
+        entityType: 'match_lineup',
+        entityId: 'registration-1',
+      }),
+    );
   });
 
   it('rejects team managers submitting a lineup for another club', async () => {

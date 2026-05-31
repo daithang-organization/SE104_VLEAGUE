@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import type { CurrentUserPayload } from '../auth';
+import { PrismaService } from '../prisma/prisma.service';
 import { MatchLineupService } from '../match-lineup/match-lineup.service';
 import { NotificationService } from '../notification/notification.service';
 import {
@@ -213,7 +213,7 @@ export class MatchOfficialService {
       submittedAt,
     };
 
-    return this.prisma.matchReport.upsert({
+    const report = await this.prisma.matchReport.upsert({
       where: { matchId },
       create: {
         matchId,
@@ -224,6 +224,18 @@ export class MatchOfficialService {
         bestPlayer: { select: { id: true, fullName: true } },
       },
     });
+
+    if (submittedByUser?.role === 'REFEREE') {
+      await this.notificationService.notifyAdmins({
+        title: 'Trọng tài nộp biên bản',
+        message: `Trọng tài đã nộp biên bản trận đấu với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
+
+    return report;
   }
 
   async getDisciplineReport(matchId: string) {
@@ -278,6 +290,16 @@ export class MatchOfficialService {
       update: reportData,
       include: { supervisor: true },
     });
+
+    if (submittedByUser?.role === 'SUPERVISOR') {
+      await this.notificationService.notifyAdmins({
+        title: 'Giám sát viên nộp báo cáo kỷ luật',
+        message: `Giám sát viên đã nộp báo cáo kỷ luật trận đấu với mức đánh giá ${report.organizationRating}. Vui lòng kiểm tra.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
 
     if (
       submittedByUser?.role === 'SUPERVISOR' &&

@@ -54,6 +54,35 @@ describe('MatchFixtureCard', () => {
     expect(onMatchClick).toHaveBeenCalledWith('m1');
   });
 
+  it('renders coach names under both fixture teams', () => {
+    render(
+      <MatchFixtureCard
+        id="m-coaches"
+        roundLabel="Vong 3"
+        statusLabel="Sap dau"
+        homeTeamId="home-team"
+        awayTeamId="away-team"
+        homeTeam={{
+          id: 'home-team',
+          name: 'Hanoi FC',
+          shortName: 'HN',
+          coachName: 'L. Enrique',
+        }}
+        awayTeam={{
+          id: 'away-team',
+          name: 'Arsenal',
+          shortName: 'ARS',
+          coachName: 'M. Arteta',
+        }}
+        stadiumFallback="Chua co san"
+        kickoffFallback="Chua xep gio"
+      />,
+    );
+
+    expect(screen.getByText('L. Enrique')).toHaveClass('schedule-fixture-coach');
+    expect(screen.getByText('M. Arteta')).toHaveClass('schedule-fixture-coach');
+  });
+
   it('uses schedule time or result placeholder when a match has no score', () => {
     const { rerender } = render(
       <MatchFixtureCard

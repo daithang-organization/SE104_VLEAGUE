@@ -16,6 +16,14 @@ export class CreateTeamManagerAssignmentDto {
   teamId!: string;
 }
 
+export class UpdateManagedTeamDto {
+  @ApiPropertyOptional({ description: 'Tên huấn luyện viên trưởng' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  coachName?: string;
+}
+
 export class SubmitTeamApplicationDto {
   @ApiProperty({ description: 'ID mùa giải' })
   @IsUUID()
