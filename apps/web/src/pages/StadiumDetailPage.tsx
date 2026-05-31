@@ -27,6 +27,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { apiGetStadium, type StadiumDetail, type StadiumMatch } from '../services/stadiumApi';
 
 import { STATUS_MAP } from '../utils/constants';
@@ -36,6 +37,7 @@ const { Title } = Typography;
 
 export default function StadiumDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { state } = useLocation();
   const request = state?.request;
@@ -99,6 +101,8 @@ export default function StadiumDetailPage() {
 
   const finishedMatches = stadium.matches.filter((m) => m.status === 'FINISHED');
   const upcomingMatches = stadium.matches.filter((m) => m.status !== 'FINISHED');
+  const visibleManagerRequestNote = user?.role === 'ADMIN' ? request?.requestNote : null;
+  const visibleAdminDecisionNote = user?.role === 'TEAM_MANAGER' ? request?.adminNote : null;
 
   const renderTeamLogo = (team: { name: string }) => {
     const logoUrl = getTeamLogoUrl(team);
@@ -278,9 +282,6 @@ export default function StadiumDetailPage() {
                         : request.manager.email}
                     </Descriptions.Item>
                   )}
-                  {request?.requestNote && (
-                    <Descriptions.Item label="Nội dung">{request.requestNote}</Descriptions.Item>
-                  )}
                   {request && (
                     <Descriptions.Item label="Trạng thái">
                       <Tag
@@ -301,6 +302,23 @@ export default function StadiumDetailPage() {
                     </Descriptions.Item>
                   )}
                 </Descriptions>
+
+                {(visibleManagerRequestNote || visibleAdminDecisionNote) && (
+                  <div className="team-detail-note-grid">
+                    {visibleManagerRequestNote && (
+                      <div className="team-detail-note-card">
+                        <span className="team-detail-note-label">Ghi chú</span>
+                        <p>{visibleManagerRequestNote}</p>
+                      </div>
+                    )}
+                    {visibleAdminDecisionNote && (
+                      <div className="team-detail-note-card team-detail-note-card-admin">
+                        <span className="team-detail-note-label">Phản hồi</span>
+                        <p>{visibleAdminDecisionNote}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {!request && stadium.teams.length > 0 && (
                   <Card

@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useAuth } from '../auth/AuthContext';
 import { ProfileSkeleton } from '../components';
 import { api } from '../lib/api';
 import { apiGetPlayerStats, type PlayerStats } from '../services/searchApi';
@@ -82,6 +83,7 @@ export default function PlayerDetailPage() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const request = state?.request as ManagerPlayerRequest | undefined;
   const isRequestDetail = Boolean(id?.startsWith('request-') && request);
   const [player, setPlayer] = useState<PlayerDetail | null>(null);
@@ -114,6 +116,7 @@ export default function PlayerDetailPage() {
         birthPlace: payload.birthPlace ?? sourcePlayer?.birthPlace ?? null,
         heightCm: payload.heightCm ?? sourcePlayer?.heightCm ?? null,
         weightKg: payload.weightKg ?? sourcePlayer?.weightKg ?? null,
+        careerSummary: payload.careerSummary ?? sourcePlayer?.careerSummary ?? null,
         roster: request.team
           ? [
               {
@@ -152,7 +155,7 @@ export default function PlayerDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, request]);
+  }, [id, request, t]);
 
   // Fetch advanced player stats
   useEffect(() => {
@@ -189,6 +192,8 @@ export default function PlayerDetailPage() {
   const redCards = (player.matchEvents || []).filter((e) => e.type === 'RED_CARD').length;
 
   const age = new Date().getFullYear() - new Date(player.dob).getFullYear();
+  const visibleManagerRequestNote = user?.role === 'ADMIN' ? request?.requestNote : null;
+  const visibleAdminDecisionNote = user?.role === 'TEAM_MANAGER' ? request?.adminNote : null;
 
   return (
     <div>
@@ -320,15 +325,23 @@ export default function PlayerDetailPage() {
                     : request.manager.email}
                 </Descriptions.Item>
               )}
-              {request?.requestNote && (
-                <Descriptions.Item label="Ghi chú gửi Admin">
-                  {request.requestNote}
-                </Descriptions.Item>
-              )}
-              {request?.adminNote && (
-                <Descriptions.Item label="Ghi chú Admin">{request.adminNote}</Descriptions.Item>
-              )}
             </Descriptions>
+            {(visibleManagerRequestNote || visibleAdminDecisionNote) && (
+              <div className="team-detail-note-grid">
+                {visibleManagerRequestNote && (
+                  <div className="team-detail-note-card">
+                    <span className="team-detail-note-label">Ghi chú của Manager</span>
+                    <p>{visibleManagerRequestNote}</p>
+                  </div>
+                )}
+                {visibleAdminDecisionNote && (
+                  <div className="team-detail-note-card team-detail-note-card-admin">
+                    <span className="team-detail-note-label">Phản hồi</span>
+                    <p>{visibleAdminDecisionNote}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </Col>
 

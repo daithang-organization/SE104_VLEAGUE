@@ -30,7 +30,7 @@ export default function OAuthCallbackPage() {
       message.error(t('oauth.error'));
       nav('/login', { replace: true });
     }
-  }, [searchParams, applyOAuthTokens, nav]);
+  }, [searchParams, applyOAuthTokens, nav, t]);
 
   return (
     <div style={{ display: 'grid', placeItems: 'center', height: '100vh' }}>

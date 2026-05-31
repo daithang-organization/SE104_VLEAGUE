@@ -130,6 +130,7 @@ export type CreateManagerPlayerRequestPayload = {
   birthPlace?: string;
   heightCm?: number;
   weightKg?: number;
+  careerSummary?: string;
   requestNote?: string;
 };
 

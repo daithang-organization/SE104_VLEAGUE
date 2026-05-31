@@ -22,11 +22,12 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import type { ColumnsType } from 'antd/es/table';
+import { useAuth } from '../auth/AuthContext';
 import { MatchFixtureCard, ProfileSkeleton } from '../components';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
@@ -41,8 +42,10 @@ export default function TeamDetailPage() {
   const { state } = useLocation();
   const requestNote = state?.requestNote;
   const requestStatus = state?.requestStatus;
+  const adminNote = state?.adminNote;
   const stateManagerName = state?.managerName;
   const stateManagerEmail = state?.managerEmail;
+  const { user } = useAuth();
   const { t } = useTranslation();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +69,7 @@ export default function TeamDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   // Merge home + away matches, sort by kickoff date for the monthly team fixture view.
   const allMatches = useMemo(
@@ -334,6 +337,13 @@ export default function TeamDetailPage() {
     );
   };
 
+  const managerRequestNote =
+    typeof requestNote === 'string' && requestNote.trim() ? requestNote.trim() : null;
+  const adminDecisionNote =
+    typeof adminNote === 'string' && adminNote.trim() ? adminNote.trim() : null;
+  const visibleManagerRequestNote = user?.role === 'ADMIN' ? managerRequestNote : null;
+  const visibleAdminDecisionNote = user?.role === 'TEAM_MANAGER' ? adminDecisionNote : null;
+
   return (
     <div className="club-detail-page">
       <section className="club-detail-hero" style={getTeamThemeStyle(team)}>
@@ -415,13 +425,31 @@ export default function TeamDetailPage() {
                   <Descriptions.Item label={t('teamDetail.descManager')}>
                     {managerDisplay}
                   </Descriptions.Item>
-                  {requestNote && (
-                    <Descriptions.Item label="Nội dung">{requestNote}</Descriptions.Item>
-                  )}
                   <Descriptions.Item label={t('teamDetail.descStatus')}>
                     {renderStatusTag(false)}
                   </Descriptions.Item>
                 </Descriptions>
+
+                {(visibleManagerRequestNote || visibleAdminDecisionNote) && (
+                  <div className="team-detail-note-grid">
+                    {visibleManagerRequestNote && (
+                      <div className="team-detail-note-card">
+                        <span className="team-detail-note-label">
+                          {t('teamDetail.managerRequestNoteTitle')}
+                        </span>
+                        <p>{visibleManagerRequestNote}</p>
+                      </div>
+                    )}
+                    {visibleAdminDecisionNote && (
+                      <div className="team-detail-note-card team-detail-note-card-admin">
+                        <span className="team-detail-note-label">
+                          {t('teamDetail.adminDecisionNoteTitle')}
+                        </span>
+                        <p>{visibleAdminDecisionNote}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {currentStanding && (
                   <Card

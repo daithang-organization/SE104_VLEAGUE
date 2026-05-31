@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowRightOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -6,10 +6,10 @@ import {
   EditOutlined,
   LogoutOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SearchOutlined,
   TeamOutlined,
   UserOutlined,
-  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -20,6 +20,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Popover,
   Row,
   Select,
   Space,
@@ -27,7 +28,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -431,10 +432,53 @@ export default function TeamsPage() {
     }
   };
 
-  const handleReviewTeamRequest = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!reviewingRequest) return;
-    await submitReviewTeamRequest(reviewingRequest, status, reviewNote);
+  const getReviewActionTitle = (request: TeamManagerRequest, status: 'APPROVED' | 'REJECTED') => {
+    const action = status === 'APPROVED' ? 'Duyệt' : 'Từ chối';
+    const requestLabel = requestTypeLabel(request.requestType);
+    return `${action} ${requestLabel.charAt(0).toLowerCase()}${requestLabel.slice(1)}`;
   };
+
+  const renderReviewConfirmContent = (request: TeamManagerRequest) => (
+    <div className="team-review-popconfirm-content">
+      <Input.TextArea
+        rows={3}
+        placeholder="Nhập phản hồi gửi Manager"
+        value={reviewingRequest?.id === request.id ? reviewNote : ''}
+        onChange={(event) => setReviewNote(event.target.value)}
+      />
+    </div>
+  );
+
+  const renderReviewPopconfirm = (
+    request: TeamManagerRequest,
+    status: 'APPROVED' | 'REJECTED',
+    button: ReactElement,
+  ) => (
+    <Popconfirm
+      title={getReviewActionTitle(request, status)}
+      description={renderReviewConfirmContent(request)}
+      icon={null}
+      okText="Gửi"
+      cancelText={t('common.cancel')}
+      okButtonProps={{ danger: status === 'REJECTED', loading: reviewing }}
+      onOpenChange={(open) => {
+        if (open) {
+          setReviewingRequest(request);
+          setReviewNote(request.adminNote ?? '');
+          return;
+        }
+        if (!reviewing) {
+          setReviewingRequest(null);
+          setReviewNote('');
+        }
+      }}
+      onConfirm={() => submitReviewTeamRequest(request, status, reviewNote)}
+      disabled={request.status !== 'PENDING'}
+      overlayClassName="team-review-popconfirm"
+    >
+      {button}
+    </Popconfirm>
+  );
 
   const filteredTeams = (teams || []).filter((team) => {
     const query = search.trim().toLowerCase();
@@ -561,6 +605,47 @@ export default function TeamsPage() {
     return 'Xóa CLB';
   };
 
+  const renderRequestTypeTag = (
+    request: Pick<TeamManagerRequest, 'requestType' | 'requestNote'>,
+    options?: {
+      noteText?: string | null;
+      noteTitle?: string;
+      noteTone?: 'info' | 'danger';
+      showEmptyNote?: boolean;
+    },
+  ) => {
+    const hasCustomNoteText = Object.prototype.hasOwnProperty.call(options ?? {}, 'noteText');
+    const noteText = hasCustomNoteText ? options?.noteText : request.requestNote;
+    const noteTitle = options?.noteTitle ?? 'Ghi chú';
+    const noteTone = options?.noteTone ?? 'info';
+    const shouldShowPopover = Boolean(noteText) || options?.showEmptyNote;
+    const tag = (
+      <Tag className={shouldShowPopover ? 'club-card-request-type-tag' : undefined}>
+        {requestTypeLabel(request.requestType)}
+      </Tag>
+    );
+
+    if (!shouldShowPopover) return tag;
+
+    return (
+      <Popover
+        trigger={['hover', 'click']}
+        placement="topLeft"
+        overlayClassName="manager-request-note-popover"
+        title={
+          <span className={`manager-request-note-title manager-request-note-title-${noteTone}`}>
+            {noteTitle}
+          </span>
+        }
+        content={<div className="manager-request-note-content">{noteText || '—'}</div>}
+      >
+        <span className="club-card-request-type-popover" tabIndex={0}>
+          {tag}
+        </span>
+      </Popover>
+    );
+  };
+
   const getTeamManagerDisplay = (team: Team, request?: TeamManagerRequest) => {
     const assignedManager = team.managedUsers?.[0];
     if (assignedManager?.name || assignedManager?.email) {
@@ -655,10 +740,7 @@ export default function TeamsPage() {
     );
   };
 
-  const renderManagerTeamCards = (
-    items: ManagerTeamCardItem[],
-    emptyDescription = 'Bạn chưa có CLB được Admin duyệt.',
-  ) => {
+  const renderManagerTeamCards = (items: ManagerTeamCardItem[], emptyDescription = '—') => {
     if (loading && items.length === 0) {
       return <TableSkeleton rows={4} />;
     }
@@ -699,7 +781,16 @@ export default function TeamsPage() {
                 <button
                   type="button"
                   className="club-card-main"
-                  onClick={() => navigate(`/teams/${team.id}`, { state: { fromTab: 'mine' } })}
+                  onClick={() =>
+                    navigate(`/teams/${team.id}`, {
+                      state: {
+                        fromTab: 'mine',
+                        requestNote: item.request?.requestNote,
+                        adminNote: item.request?.adminNote,
+                        requestStatus: item.status,
+                      },
+                    })
+                  }
                 >
                   {cardContent}
                 </button>
@@ -709,10 +800,14 @@ export default function TeamsPage() {
 
               <div className="club-card-footer">
                 <Tag color={status.color}>{status.label}</Tag>
-                {item.requestType && <Tag>{requestTypeLabel(item.requestType)}</Tag>}
+                {item.request &&
+                  renderRequestTypeTag(item.request, {
+                    noteText: item.request.adminNote,
+                    noteTitle: 'Phản hồi',
+                    noteTone: 'danger',
+                    showEmptyNote: true,
+                  })}
               </div>
-
-              {item.adminNote && <div className="club-card-note">Ghi chú: {item.adminNote}</div>}
 
               <div className="club-card-actions">
                 <Button
@@ -720,7 +815,15 @@ export default function TeamsPage() {
                   icon={<ArrowRightOutlined />}
                   disabled={!item.canOpen}
                   onClick={() =>
-                    item.canOpen && navigate(`/teams/${team.id}`, { state: { fromTab: 'mine' } })
+                    item.canOpen &&
+                    navigate(`/teams/${team.id}`, {
+                      state: {
+                        fromTab: 'mine',
+                        requestNote: item.request?.requestNote,
+                        adminNote: item.request?.adminNote,
+                        requestStatus: item.status,
+                      },
+                    })
                   }
                 >
                   {item.canOpen ? t('common.detail') : 'Chờ duyệt'}
@@ -826,6 +929,7 @@ export default function TeamsPage() {
                     state: {
                       fromTab: 'review',
                       requestNote: request.requestNote,
+                      adminNote: request.adminNote,
                       requestStatus: request.status,
                       managerName: request.manager?.name,
                       managerEmail: request.manager?.email,
@@ -851,14 +955,8 @@ export default function TeamsPage() {
 
               <div className="club-card-footer">
                 <Tag color={status.color}>{status.label}</Tag>
-                <Tag>{requestTypeLabel(request.requestType)}</Tag>
+                {renderRequestTypeTag(request, { showEmptyNote: true })}
               </div>
-
-              {request.adminNote && (
-                <div className="club-card-note">
-                  <div>Ghi chú Admin: {request.adminNote}</div>
-                </div>
-              )}
 
               <div className="club-card-actions">
                 <Button
@@ -871,6 +969,7 @@ export default function TeamsPage() {
                       state: {
                         fromTab: 'review',
                         requestNote: request.requestNote,
+                        adminNote: request.adminNote,
                         requestStatus: request.status,
                         managerName: request.manager?.name,
                         managerEmail: request.manager?.email,
@@ -880,25 +979,25 @@ export default function TeamsPage() {
                 >
                   {t('common.detail')}
                 </Button>
-                <Button
-                  type="primary"
-                  icon={<CheckOutlined />}
-                  disabled={!canReview}
-                  loading={reviewing && reviewingRequest?.id === request.id}
-                  onClick={() => {
-                    setReviewingRequest(request);
-                    submitReviewTeamRequest(request, 'APPROVED');
-                  }}
-                />
-                <Button
-                  danger
-                  icon={<CloseOutlined />}
-                  disabled={!canReview}
-                  onClick={() => {
-                    setReviewingRequest(request);
-                    setReviewNote(request.adminNote ?? '');
-                  }}
-                />
+                {renderReviewPopconfirm(
+                  request,
+                  'APPROVED',
+                  <Button
+                    type="primary"
+                    icon={<CheckOutlined />}
+                    disabled={!canReview}
+                    loading={
+                      reviewing &&
+                      reviewingRequest?.id === request.id &&
+                      request.status === 'PENDING'
+                    }
+                  />,
+                )}
+                {renderReviewPopconfirm(
+                  request,
+                  'REJECTED',
+                  <Button danger icon={<CloseOutlined />} disabled={!canReview} />,
+                )}
               </div>
             </article>
           );
@@ -988,8 +1087,23 @@ export default function TeamsPage() {
         </Space>
         <Space>
           {isManager && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateRequestModal}>
-              Thêm đội bóng
+            <Button
+              type="primary"
+              icon={managedTeam ? <EditOutlined /> : <PlusOutlined />}
+              onClick={() => {
+                if (managedTeam) {
+                  openUpdateManagedTeamModal(
+                    managedTeam,
+                    activeManagedTeamRequest?.requestType === 'UPDATE_MANAGED_TEAM'
+                      ? activeManagedTeamRequest
+                      : undefined,
+                  );
+                  return;
+                }
+                openCreateRequestModal();
+              }}
+            >
+              {managedTeam ? 'Chỉnh sửa đội bóng' : 'Thêm đội bóng'}
             </Button>
           )}
           {canEdit && (
@@ -1092,14 +1206,18 @@ export default function TeamsPage() {
                     <Input.TextArea rows={2} placeholder="Thông tin bổ sung để Admin xét duyệt" />
                   </Form.Item>
                   <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      loading={requestSubmitting}
-                      onClick={submitCreateTeamRequest}
-                    >
-                      Gửi yêu cầu
-                    </Button>
+                    <Space>
+                      <Button onClick={closeRequestModal} disabled={requestSubmitting}>
+                        {t('common.cancel')}
+                      </Button>
+                      <Button
+                        type="primary"
+                        loading={requestSubmitting}
+                        onClick={submitCreateTeamRequest}
+                      >
+                        Gửi yêu cầu
+                      </Button>
+                    </Space>
                   </Form.Item>
                 </Form>
               ),
@@ -1131,14 +1249,18 @@ export default function TeamsPage() {
                           <Input.TextArea rows={2} placeholder="Lý do bạn muốn quản lý CLB này" />
                         </Form.Item>
                         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                          <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            loading={requestSubmitting}
-                            onClick={submitClaimTeamRequest}
-                          >
-                            Gửi yêu cầu
-                          </Button>
+                          <Space>
+                            <Button onClick={closeRequestModal} disabled={requestSubmitting}>
+                              {t('common.cancel')}
+                            </Button>
+                            <Button
+                              type="primary"
+                              loading={requestSubmitting}
+                              onClick={submitClaimTeamRequest}
+                            >
+                              Gửi yêu cầu
+                            </Button>
+                          </Space>
                         </Form.Item>
                       </Form>
                     ),
@@ -1147,62 +1269,6 @@ export default function TeamsPage() {
               : []),
           ]}
         />
-      </Modal>
-
-      <Modal
-        title="Chi tiết yêu cầu CLB"
-        open={!!reviewingRequest}
-        onCancel={() => setReviewingRequest(null)}
-        footer={[
-          <Button
-            key="reject"
-            danger
-            loading={reviewing}
-            onClick={() => handleReviewTeamRequest('REJECTED')}
-          >
-            Từ chối
-          </Button>,
-          <Button
-            key="approve"
-            type="primary"
-            loading={reviewing}
-            onClick={() => handleReviewTeamRequest('APPROVED')}
-          >
-            Duyệt
-          </Button>,
-        ]}
-      >
-        {reviewingRequest && (
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            <Typography.Text strong>
-              {reviewingRequest.requestType === 'CREATE_TEAM'
-                ? reviewingRequest.proposedTeamName
-                : reviewingRequest.requestType === 'UPDATE_MANAGED_TEAM'
-                  ? `${reviewingRequest.team?.name ?? 'CLB'} → ${reviewingRequest.proposedTeamName ?? '—'}`
-                  : reviewingRequest.requestType === 'DELETE_MANAGED_TEAM'
-                    ? `Xóa CLB: ${reviewingRequest.team?.name ?? '—'}`
-                    : reviewingRequest.team?.name}
-            </Typography.Text>
-            <Typography.Text>Manager: {reviewingRequest.manager?.email ?? '—'}</Typography.Text>
-            {reviewingRequest.requestType === 'UPDATE_MANAGED_TEAM' && (
-              <>
-                <Typography.Text>
-                  Tên viết tắt mới: {reviewingRequest.proposedTeamShortName || '—'}
-                </Typography.Text>
-                <Typography.Text>
-                  Thành phố mới: {reviewingRequest.proposedTeamCity || '—'}
-                </Typography.Text>
-              </>
-            )}
-            <Typography.Text>Ghi chú: {reviewingRequest.requestNote || '—'}</Typography.Text>
-            <Input.TextArea
-              rows={3}
-              placeholder="Ghi chú xét duyệt"
-              value={reviewNote}
-              onChange={(event) => setReviewNote(event.target.value)}
-            />
-          </Space>
-        )}
       </Modal>
 
       <Modal

@@ -2684,6 +2684,110 @@ select {
   padding: 0 20px 14px;
 }
 
+.club-card-request-type-popover {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.club-card-request-type-popover:focus-visible {
+  outline: 2px solid rgba(255, 77, 79, 0.75);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.club-card-request-type-tag {
+  cursor: pointer;
+}
+
+.manager-request-note-popover .ant-popover-inner {
+  max-width: 320px;
+  padding: 14px 16px;
+  color: var(--text-main);
+  background: var(--surface);
+  border: 1px solid rgba(22, 119, 255, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);
+}
+
+.manager-request-note-popover .ant-popover-title {
+  min-width: 0;
+  margin-bottom: 6px;
+  color: var(--text-main);
+  border-bottom: 0;
+}
+
+.manager-request-note-popover .ant-popover-inner-content {
+  color: var(--text-main);
+}
+
+.manager-request-note-popover .ant-popover-arrow::before {
+  background: var(--surface);
+}
+
+.manager-request-note-title {
+  font-weight: 800;
+}
+
+.manager-request-note-title-info {
+  color: var(--info);
+}
+
+.manager-request-note-title-danger {
+  color: var(--danger);
+}
+
+.manager-request-note-content {
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.team-review-popconfirm {
+  width: 260px;
+  max-width: calc(100vw - 32px);
+}
+
+.team-review-popconfirm .ant-popover-inner {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid rgba(22, 119, 255, 0.35);
+  border-radius: 8px;
+}
+
+.team-review-popconfirm .ant-popover-title {
+  margin-bottom: 8px;
+  color: var(--text-main);
+  font-weight: 800;
+  border-bottom: 0;
+}
+
+.team-review-popconfirm .ant-popover-inner-content,
+.team-review-popconfirm .ant-popconfirm-description {
+  width: 100%;
+  color: var(--text-main);
+}
+
+.team-review-popconfirm .ant-popconfirm-message,
+.team-review-popconfirm .ant-popconfirm-message-text {
+  width: 100%;
+}
+
+.team-review-popconfirm .ant-popover-arrow::before {
+  background: var(--surface);
+}
+
+.team-review-popconfirm-content {
+  width: 100%;
+}
+
+.team-review-popconfirm-content .ant-input,
+.team-review-popconfirm-content textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .club-card-note {
   padding: 0 20px 14px;
   color: var(--text-muted);
@@ -2881,6 +2985,48 @@ select {
 
 .club-detail-tabs {
   margin-top: 4px;
+}
+
+.team-detail-note-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.team-detail-note-card {
+  border: 1px solid rgba(22, 119, 255, 0.48);
+  border-left: 5px solid var(--info);
+  border-radius: 8px;
+  width: 100%;
+  padding: 18px 26px;
+  background: var(--surface);
+}
+
+.team-detail-note-card-admin {
+  border-color: rgba(255, 77, 79, 0.6);
+  border-left-color: var(--danger);
+}
+
+.team-detail-note-card-admin .team-detail-note-label,
+.team-detail-note-card-admin p {
+  color: var(--danger);
+}
+
+.team-detail-note-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--info);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.team-detail-note-card p {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: pre-wrap;
 }
 
 .team-fixtures-card .ant-card-body {

@@ -26,11 +26,10 @@ import {
   Table,
   Tabs,
   Tag,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -288,12 +287,16 @@ export default function StadiumsPage() {
     }
   };
 
-  const submitReview = async (request: ManagerStadiumRequest, status: 'APPROVED' | 'REJECTED') => {
+  const submitReview = async (
+    request: ManagerStadiumRequest,
+    status: 'APPROVED' | 'REJECTED',
+    adminNote?: string,
+  ) => {
     setReviewing(true);
     try {
       await apiReviewManagerStadiumRequest(request.id, {
         status,
-        adminNote: reviewNote || undefined,
+        adminNote: adminNote || undefined,
       });
       message.success(
         status === 'APPROVED' ? 'Đã duyệt yêu cầu sân nhà' : 'Đã từ chối yêu cầu sân nhà',
@@ -307,11 +310,6 @@ export default function StadiumsPage() {
     } finally {
       setReviewing(false);
     }
-  };
-
-  const handleReviewStadiumRequest = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!reviewingRequest) return;
-    await submitReview(reviewingRequest, status);
   };
 
   const filtered = stadiums.filter(
@@ -559,17 +557,63 @@ export default function StadiumsPage() {
     );
   };
 
-  const renderRequestSummary = (request: ManagerStadiumRequest) => {
-    const payload = request.payload || {};
-    return (
-      <Space direction="vertical" size={2}>
-        <Typography.Text strong>{payload.name || request.stadium?.name || '—'}</Typography.Text>
-        <Typography.Text type="secondary">
-          {request.team?.name ?? '—'} · {request.requestNote || 'Không có ghi chú'}
-        </Typography.Text>
-      </Space>
-    );
+  const stadiumRequestTypeText = (type: ManagerStadiumRequest['requestType']) =>
+    type === 'CREATE_HOME_STADIUM'
+      ? 'Tạo sân nhà'
+      : type === 'UPDATE_HOME_STADIUM'
+        ? 'Chỉnh sửa sân nhà'
+        : 'Xóa sân nhà';
+
+  const getReviewActionTitle = (
+    request: ManagerStadiumRequest,
+    status: 'APPROVED' | 'REJECTED',
+  ) => {
+    const action = status === 'APPROVED' ? 'Duyệt' : 'Từ chối';
+    const requestLabel = stadiumRequestTypeText(request.requestType).toLowerCase();
+    return `${action} ${requestLabel}`;
   };
+
+  const renderReviewConfirmContent = (request: ManagerStadiumRequest) => (
+    <div className="team-review-popconfirm-content">
+      <Input.TextArea
+        rows={3}
+        placeholder="Nhập phản hồi gửi Manager"
+        value={reviewingRequest?.id === request.id ? reviewNote : ''}
+        onChange={(event) => setReviewNote(event.target.value)}
+      />
+    </div>
+  );
+
+  const renderReviewPopconfirm = (
+    request: ManagerStadiumRequest,
+    status: 'APPROVED' | 'REJECTED',
+    button: ReactElement,
+  ) => (
+    <Popconfirm
+      title={getReviewActionTitle(request, status)}
+      description={renderReviewConfirmContent(request)}
+      icon={null}
+      okText="Gửi"
+      cancelText={t('common.cancel')}
+      okButtonProps={{ danger: status === 'REJECTED', loading: reviewing }}
+      onOpenChange={(open) => {
+        if (open) {
+          setReviewingRequest(request);
+          setReviewNote(request.adminNote ?? '');
+          return;
+        }
+        if (!reviewing) {
+          setReviewingRequest(null);
+          setReviewNote('');
+        }
+      }}
+      onConfirm={() => submitReview(request, status, reviewNote)}
+      disabled={request.status !== 'PENDING'}
+      overlayClassName="team-review-popconfirm"
+    >
+      {button}
+    </Popconfirm>
+  );
 
   const requestColumns: ColumnsType<ManagerStadiumRequest> = [
     {
@@ -582,12 +626,7 @@ export default function StadiumsPage() {
       title: 'Loại yêu cầu',
       dataIndex: 'requestType',
       width: 150,
-      render: (type: ManagerStadiumRequest['requestType']) =>
-        type === 'CREATE_HOME_STADIUM'
-          ? 'Tạo sân nhà'
-          : type === 'UPDATE_HOME_STADIUM'
-            ? 'Chỉnh sửa sân nhà'
-            : 'Xóa sân nhà',
+      render: (type: ManagerStadiumRequest['requestType']) => stadiumRequestTypeText(type),
     },
     {
       title: 'Tên sân vận động',
@@ -648,27 +687,34 @@ export default function StadiumsPage() {
             width: 100,
             render: (_: unknown, record: ManagerStadiumRequest) => (
               <Space>
-                <Button
-                  type="text"
-                  style={record.status === 'REJECTED' ? undefined : { color: '#52c41a' }}
-                  icon={<CheckOutlined />}
-                  loading={reviewing && reviewingRequest?.id === record.id}
-                  disabled={record.status !== 'PENDING'}
-                  onClick={() => submitReview(record, 'APPROVED')}
-                />
-                <Button
-                  danger
-                  type="text"
-                  className={
-                    record.status === 'REJECTED' ? 'review-reject-button-active' : undefined
-                  }
-                  icon={<CloseOutlined />}
-                  disabled={record.status !== 'PENDING'}
-                  onClick={() => {
-                    setReviewingRequest(record);
-                    setReviewNote(record.adminNote ?? '');
-                  }}
-                />
+                {renderReviewPopconfirm(
+                  record,
+                  'APPROVED',
+                  <Button
+                    type="text"
+                    style={record.status === 'REJECTED' ? undefined : { color: '#52c41a' }}
+                    icon={<CheckOutlined />}
+                    loading={
+                      reviewing && reviewingRequest?.id === record.id && record.status === 'PENDING'
+                    }
+                    disabled={record.status !== 'PENDING'}
+                    onClick={(e) => e.stopPropagation()}
+                  />,
+                )}
+                {renderReviewPopconfirm(
+                  record,
+                  'REJECTED',
+                  <Button
+                    danger
+                    type="text"
+                    className={
+                      record.status === 'REJECTED' ? 'review-reject-button-active' : undefined
+                    }
+                    icon={<CloseOutlined />}
+                    disabled={record.status !== 'PENDING'}
+                    onClick={(e) => e.stopPropagation()}
+                  />,
+                )}
               </Space>
             ),
           },
@@ -907,45 +953,6 @@ export default function StadiumsPage() {
             </Form.Item>
           )}
         </Form>
-      </Modal>
-
-      <Modal
-        title="Chi tiết yêu cầu sân nhà"
-        open={!!reviewingRequest}
-        onCancel={() => setReviewingRequest(null)}
-        footer={[
-          <Button
-            key="reject"
-            danger
-            loading={reviewing}
-            onClick={() => handleReviewStadiumRequest('REJECTED')}
-          >
-            Từ chối
-          </Button>,
-          <Button
-            key="approve"
-            type="primary"
-            loading={reviewing}
-            onClick={() => handleReviewStadiumRequest('APPROVED')}
-          >
-            Duyệt
-          </Button>,
-        ]}
-      >
-        {reviewingRequest && (
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {renderRequestSummary(reviewingRequest)}
-            <pre className="request-payload-preview">
-              {JSON.stringify(reviewingRequest.payload, null, 2)}
-            </pre>
-            <Input.TextArea
-              rows={3}
-              placeholder="Ghi chú xét duyệt"
-              value={reviewNote}
-              onChange={(event) => setReviewNote(event.target.value)}
-            />
-          </Space>
-        )}
       </Modal>
     </>
   );

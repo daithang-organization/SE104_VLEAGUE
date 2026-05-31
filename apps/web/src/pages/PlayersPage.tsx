@@ -26,12 +26,11 @@ import {
   Table,
   Tabs,
   Tag,
-  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { SortOrder as AntSortOrder, FilterValue, SorterResult } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -345,7 +344,11 @@ export default function PlayersPage() {
     setEditingPlayer(null);
     setEditingPlayerRequest(null);
     form.resetFields();
-    form.setFieldsValue({ playerType: 'DOMESTIC', teamId: managerTeamId ?? undefined });
+    form.setFieldsValue({
+      playerType: 'DOMESTIC',
+      teamId: managerTeamId ?? undefined,
+      requestNote: undefined,
+    });
     setModalOpen(true);
   };
 
@@ -363,6 +366,7 @@ export default function PlayersPage() {
       weightKg: player.weightKg ?? undefined,
       careerSummary: player.careerSummary ?? '',
       teamId: managerTeamId ?? (player.roster || [])[0]?.team?.id ?? undefined,
+      requestNote: undefined,
     });
     setModalOpen(true);
   };
@@ -383,6 +387,7 @@ export default function PlayersPage() {
       birthPlace: payload.birthPlace ?? sourcePlayer?.birthPlace ?? '',
       heightCm: payload.heightCm ?? sourcePlayer?.heightCm ?? undefined,
       weightKg: payload.weightKg ?? sourcePlayer?.weightKg ?? undefined,
+      careerSummary: payload.careerSummary ?? sourcePlayer?.careerSummary ?? '',
       teamId: request.teamId,
       requestNote: request.requestNote ?? undefined,
     });
@@ -495,13 +500,17 @@ export default function PlayersPage() {
     }
   };
 
-  const submitReview = async (request: ManagerPlayerRequest, status: 'APPROVED' | 'REJECTED') => {
+  const submitReview = async (
+    request: ManagerPlayerRequest,
+    status: 'APPROVED' | 'REJECTED',
+    adminNote?: string,
+  ) => {
     setReviewing(true);
     setReviewingRequest(request);
     try {
       await apiReviewManagerPlayerRequest(request.id, {
         status,
-        adminNote: status === 'REJECTED' ? reviewNote || undefined : undefined,
+        adminNote: adminNote || undefined,
       });
       message.success(
         status === 'APPROVED' ? 'Đã duyệt yêu cầu cầu thủ' : 'Đã từ chối yêu cầu cầu thủ',
@@ -516,11 +525,6 @@ export default function PlayersPage() {
       setReviewing(false);
       setReviewingRequest(null);
     }
-  };
-
-  const handleReviewPlayerRequest = async (status: 'APPROVED' | 'REJECTED') => {
-    if (!reviewingRequest) return;
-    await submitReview(reviewingRequest, status);
   };
 
   const renderClubCell = (team: NonNullable<Player['roster']>[number]['team']) => {
@@ -729,18 +733,60 @@ export default function PlayersPage() {
       />
     );
 
-  const renderRequestSummary = (request: ManagerPlayerRequest) => {
-    const payload = request.payload || {};
-    const name = payload.fullName || request.player?.fullName || '—';
-    return (
-      <Space direction="vertical" size={2}>
-        <Typography.Text strong>{String(name)}</Typography.Text>
-        <Typography.Text type="secondary">
-          {request.team?.name ?? '—'} · {request.requestNote || 'Không có ghi chú'}
-        </Typography.Text>
-      </Space>
-    );
+  const playerRequestTypeText = (type: ManagerPlayerRequest['requestType']) =>
+    type === 'ADD_PLAYER'
+      ? 'Thêm cầu thủ'
+      : type === 'UPDATE_PLAYER'
+        ? 'Chỉnh sửa cầu thủ'
+        : 'Xóa cầu thủ';
+
+  const getReviewActionTitle = (request: ManagerPlayerRequest, status: 'APPROVED' | 'REJECTED') => {
+    const action = status === 'APPROVED' ? 'Duyệt' : 'Từ chối';
+    const requestLabel = playerRequestTypeText(request.requestType).toLowerCase();
+    return `${action} ${requestLabel}`;
   };
+
+  const renderReviewConfirmContent = (request: ManagerPlayerRequest) => (
+    <div className="team-review-popconfirm-content">
+      <Input.TextArea
+        rows={3}
+        placeholder="Nhập phản hồi gửi Manager"
+        value={reviewingRequest?.id === request.id ? reviewNote : ''}
+        onChange={(event) => setReviewNote(event.target.value)}
+      />
+    </div>
+  );
+
+  const renderReviewPopconfirm = (
+    request: ManagerPlayerRequest,
+    status: 'APPROVED' | 'REJECTED',
+    button: ReactElement,
+  ) => (
+    <Popconfirm
+      title={getReviewActionTitle(request, status)}
+      description={renderReviewConfirmContent(request)}
+      icon={null}
+      okText="Gửi"
+      cancelText={t('common.cancel')}
+      okButtonProps={{ danger: status === 'REJECTED', loading: reviewing }}
+      onOpenChange={(open) => {
+        if (open) {
+          setReviewingRequest(request);
+          setReviewNote(request.adminNote ?? '');
+          return;
+        }
+        if (!reviewing) {
+          setReviewingRequest(null);
+          setReviewNote('');
+        }
+      }}
+      onConfirm={() => submitReview(request, status, reviewNote)}
+      disabled={request.status !== 'PENDING'}
+      overlayClassName="team-review-popconfirm"
+    >
+      {button}
+    </Popconfirm>
+  );
 
   const playerRequestColumns: ColumnsType<ManagerPlayerRequest> = [
     {
@@ -753,12 +799,7 @@ export default function PlayersPage() {
       title: 'Loại yêu cầu',
       dataIndex: 'requestType',
       width: 150,
-      render: (type: ManagerPlayerRequest['requestType']) =>
-        type === 'ADD_PLAYER'
-          ? 'Thêm cầu thủ'
-          : type === 'UPDATE_PLAYER'
-            ? 'Chỉnh sửa cầu thủ'
-            : 'Xóa cầu thủ',
+      render: (type: ManagerPlayerRequest['requestType']) => playerRequestTypeText(type),
     },
     {
       title: 'Họ và tên',
@@ -820,31 +861,34 @@ export default function PlayersPage() {
             width: 120,
             render: (_: unknown, record: ManagerPlayerRequest) => (
               <Space>
-                <Button
-                  type="text"
-                  style={record.status === 'REJECTED' ? undefined : { color: '#52c41a' }}
-                  icon={<CheckOutlined />}
-                  loading={reviewing && reviewingRequest?.id === record.id}
-                  disabled={record.status !== 'PENDING'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    submitReview(record, 'APPROVED');
-                  }}
-                />
-                <Button
-                  danger
-                  type="text"
-                  className={
-                    record.status === 'REJECTED' ? 'review-reject-button-active' : undefined
-                  }
-                  icon={<CloseOutlined />}
-                  disabled={record.status !== 'PENDING'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setReviewingRequest(record);
-                    setReviewNote(record.adminNote ?? '');
-                  }}
-                />
+                {renderReviewPopconfirm(
+                  record,
+                  'APPROVED',
+                  <Button
+                    type="text"
+                    style={record.status === 'REJECTED' ? undefined : { color: '#52c41a' }}
+                    icon={<CheckOutlined />}
+                    loading={
+                      reviewing && reviewingRequest?.id === record.id && record.status === 'PENDING'
+                    }
+                    disabled={record.status !== 'PENDING'}
+                    onClick={(e) => e.stopPropagation()}
+                  />,
+                )}
+                {renderReviewPopconfirm(
+                  record,
+                  'REJECTED',
+                  <Button
+                    danger
+                    type="text"
+                    className={
+                      record.status === 'REJECTED' ? 'review-reject-button-active' : undefined
+                    }
+                    icon={<CloseOutlined />}
+                    disabled={record.status !== 'PENDING'}
+                    onClick={(e) => e.stopPropagation()}
+                  />,
+                )}
               </Space>
             ),
           },
@@ -1168,58 +1212,35 @@ export default function PlayersPage() {
             </Col>
           </Row>
 
-          <Form.Item
-            name="careerSummary"
-            label={t('players.formCareerSummary')}
-            rules={[{ required: true, message: t('players.formCareerSummaryRequired') }]}
-          >
-            <Input.TextArea
-              rows={3}
-              maxLength={2000}
-              showCount
-              placeholder={t('players.formCareerSummaryPlaceholder')}
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} md={isTeamManager ? 12 : 24}>
+              <Form.Item
+                name="careerSummary"
+                label={t('players.formCareerSummary')}
+                rules={[{ required: true, message: t('players.formCareerSummaryRequired') }]}
+              >
+                <Input.TextArea
+                  rows={3}
+                  maxLength={2000}
+                  showCount
+                  placeholder={t('players.formCareerSummaryPlaceholder')}
+                />
+              </Form.Item>
+            </Col>
+            {isTeamManager && (
+              <Col xs={24} md={12}>
+                <Form.Item name="requestNote" label="Ghi chú gửi Admin">
+                  <Input.TextArea
+                    rows={3}
+                    maxLength={1000}
+                    showCount
+                    placeholder="Thông tin bổ sung để Admin xét duyệt"
+                  />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
         </Form>
-      </Modal>
-
-      <Modal
-        title="Chi tiết yêu cầu cầu thủ"
-        open={!!reviewingRequest}
-        onCancel={() => setReviewingRequest(null)}
-        footer={[
-          <Button
-            key="reject"
-            danger
-            loading={reviewing}
-            onClick={() => handleReviewPlayerRequest('REJECTED')}
-          >
-            Từ chối
-          </Button>,
-          <Button
-            key="approve"
-            type="primary"
-            loading={reviewing}
-            onClick={() => handleReviewPlayerRequest('APPROVED')}
-          >
-            Duyệt
-          </Button>,
-        ]}
-      >
-        {reviewingRequest && (
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {renderRequestSummary(reviewingRequest)}
-            <pre className="request-payload-preview">
-              {JSON.stringify(reviewingRequest.payload, null, 2)}
-            </pre>
-            <Input.TextArea
-              rows={3}
-              placeholder="Ghi chú xét duyệt"
-              value={reviewNote}
-              onChange={(event) => setReviewNote(event.target.value)}
-            />
-          </Space>
-        )}
       </Modal>
     </>
   );
