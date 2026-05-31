@@ -1,4 +1,5 @@
 import {
+  AimOutlined,
   ArrowLeftOutlined,
   CalendarOutlined,
   CheckOutlined,
@@ -10,7 +11,6 @@ import {
   PlusOutlined,
   SendOutlined,
   SwapOutlined,
-  TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
 import {
@@ -772,7 +772,7 @@ export default function MatchDetailPage() {
       <div className="match-detail-event-stack">
         {groupByPlayer(goals).map(([pid, { name, minutes }]) => (
           <div key={pid} className="match-detail-event-line" style={{ textAlign: align }}>
-            <TrophyOutlined /> <span className="match-detail-event-player">{name}</span>{' '}
+            <AimOutlined /> <span className="match-detail-event-player">{name}</span>{' '}
             <span className="match-detail-event-minute">
               {minutes
                 .sort((a, b) => a.minute - b.minute)
@@ -1858,7 +1858,7 @@ export default function MatchDetailPage() {
             <Statistic
               title={t('matchDetail.statTotalGoals')}
               value={homeGoals.length + awayGoals.length}
-              prefix={<TrophyOutlined />}
+              prefix={<AimOutlined />}
             />
           </Card>
         </Col>

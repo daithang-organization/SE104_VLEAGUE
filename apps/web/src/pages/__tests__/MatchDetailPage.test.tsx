@@ -629,7 +629,7 @@ describe('MatchDetailPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows club coaches inside the match center lineup header', async () => {
+  it('shows club coaches as separate team fields in the match center', async () => {
     mockMatchApi.apiGetMatch.mockResolvedValueOnce({
       ...defaultMatch,
       homeTeam: { ...defaultMatch.homeTeam, coachName: 'L. Enrique' },
@@ -646,9 +646,14 @@ describe('MatchDetailPage', () => {
 
     const homeTeam = matchCenter.querySelector('.match-center-team-home') as HTMLElement;
     const awayTeam = matchCenter.querySelector('.match-center-team-away') as HTMLElement;
+    const coachFields = matchCenter.querySelector('.match-center-coaches') as HTMLElement;
 
-    expect(homeTeam.querySelector('.match-center-team-coach')).toHaveTextContent('L. Enrique');
-    expect(awayTeam.querySelector('.match-center-team-coach')).toHaveTextContent('M. Arteta');
+    expect(homeTeam.querySelector('.match-center-team-coach')).not.toBeInTheDocument();
+    expect(awayTeam.querySelector('.match-center-team-coach')).not.toBeInTheDocument();
+    expect(coachFields).toHaveTextContent('HLV Ha Noi FC');
+    expect(coachFields).toHaveTextContent('L. Enrique');
+    expect(coachFields).toHaveTextContent('HLV Hai Phong FC');
+    expect(coachFields).toHaveTextContent('M. Arteta');
   });
 
   it('loads match officials and reports in the officials tab', async () => {

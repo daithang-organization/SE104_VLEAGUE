@@ -1128,7 +1128,6 @@ select {
   min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
 }
 
 .match-center-team-away .match-center-team-copy {
@@ -1166,20 +1165,54 @@ select {
   white-space: nowrap;
 }
 
-.match-center-team-coach {
-  max-width: 100%;
+.match-center-team-away strong {
+  text-align: right;
+}
+
+.match-center-coaches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.match-center-coach-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+:root[data-theme='dark'] .match-center-coach-field {
+  background: rgba(15, 23, 42, 0.26);
+}
+
+.match-center-coach-field-away {
+  text-align: right;
+}
+
+.match-center-coach-field span {
+  min-width: 0;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 800;
   line-height: 1.2;
   text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.match-center-team-away strong,
-.match-center-team-away .match-center-team-coach {
-  text-align: right;
+.match-center-coach-field strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .match-center-scoreboard {
@@ -1942,8 +1975,13 @@ select {
   }
 
   .match-center-team-away strong,
-  .match-center-team-away .match-center-team-coach {
+  .match-center-coach-field-away {
     text-align: center;
+  }
+
+  .match-center-coaches {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
   }
 
   .lineup-pitch-field {

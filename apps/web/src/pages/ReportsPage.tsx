@@ -8,6 +8,7 @@
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
+import { AimOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, message, Space, Tabs } from 'antd';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -216,7 +217,7 @@ export default function ReportsPage() {
           {
             label: cleanDecorativeLabel(t('reports.tabScorers')),
             value: topScorerGoals.toLocaleString('vi-VN'),
-            icon: <TrophyOutlined />,
+            icon: <AimOutlined />,
           },
           {
             label: cleanDecorativeLabel(t('reports.tabAssists')),
@@ -247,7 +248,7 @@ export default function ReportsPage() {
             items={[
               {
                 key: 'scorers',
-                label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
+                label: reportTabLabel(<AimOutlined />, t('reports.tabScorers')),
                 children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
               },
               {

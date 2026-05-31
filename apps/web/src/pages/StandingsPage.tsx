@@ -1,4 +1,5 @@
 ﻿import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
+import { AimOutlined } from '@ant-design/icons';
 import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
@@ -325,7 +326,7 @@ export default function StandingsPage() {
           {
             label: t('standings.totalGoals'),
             value: totalGoals.toLocaleString('vi-VN'),
-            icon: <TrophyOutlined />,
+            icon: <AimOutlined />,
           },
           {
             label: t('standings.yellowCards'),
@@ -438,7 +439,7 @@ export default function StandingsPage() {
         <Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
           <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 0 }}>
             <Space size={8}>
-              <TrophyOutlined />
+              <AimOutlined />
               <span>{cleanDecorativeLabel(t('standings.topScorersTitle'))}</span>
             </Space>
           </Typography.Title>

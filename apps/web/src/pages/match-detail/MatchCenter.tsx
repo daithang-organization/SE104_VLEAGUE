@@ -88,8 +88,6 @@ function MatchCenterTeam({
   teamName: string;
   side: TeamSide;
 }) {
-  const coachName = team?.coachName?.trim();
-
   return (
     <span className={`match-center-team match-center-team-${side}`}>
       <TeamLogoMark
@@ -100,9 +98,26 @@ function MatchCenterTeam({
       />
       <span className="match-center-team-copy">
         <strong>{teamName}</strong>
-        {coachName && <span className="match-center-team-coach">{coachName}</span>}
       </span>
     </span>
+  );
+}
+
+function MatchCenterCoachFields({ match }: { match: Match }) {
+  const homeCoachName = match.homeTeam?.coachName?.trim() || 'Chưa cập nhật';
+  const awayCoachName = match.awayTeam?.coachName?.trim() || 'Chưa cập nhật';
+
+  return (
+    <div className="match-center-coaches" aria-label="Huấn luyện viên hai đội">
+      <div className="match-center-coach-field match-center-coach-field-home">
+        <span>Huấn Luyện Viên</span>
+        <strong>{homeCoachName}</strong>
+      </div>
+      <div className="match-center-coach-field match-center-coach-field-away">
+        <span>Huấn Luyện Viên</span>
+        <strong>{awayCoachName}</strong>
+      </div>
+    </div>
   );
 }
 
@@ -187,6 +202,7 @@ export default function MatchCenter({ match, lineups, loading = false }: MatchCe
           <MatchCenterScoreboard match={match} />
           <MatchCenterTeam team={match.awayTeam} teamName={awayTeamName} side="away" />
         </div>
+        <MatchCenterCoachFields match={match} />
       </div>
 
       <Spin spinning={loading}>

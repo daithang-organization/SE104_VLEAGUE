@@ -58,6 +58,13 @@ const POSITION_TRANSLATION_KEYS: Record<string, string> = {
   FW: 'players.formPositionFW',
 };
 
+const POSITION_LABELS: Record<string, string> = {
+  GK: 'Thủ môn',
+  DF: 'Hậu vệ',
+  MF: 'Tiền vệ',
+  FW: 'Tiền đạo',
+};
+
 const POSITION_ICONS: Record<string, ReactNode> = {
   GK: <UserOutlined />,
   DF: <SafetyOutlined />,
@@ -468,11 +475,11 @@ export default function PlayersPage() {
       width: 100,
       render: (pos: string) => (
         <Tag icon={POSITION_ICONS[pos]} color={POSITION_COLORS[pos]}>
-          {getPositionLabel(pos)}
+          {POSITION_LABELS[pos] ?? getPositionLabel(pos)}
         </Tag>
       ),
-      filters: Object.keys(POSITION_TRANSLATION_KEYS).map((value) => ({
-        text: iconLabel(POSITION_ICONS[value], getPositionLabel(value)),
+      filters: Object.entries(POSITION_LABELS).map(([value, label]) => ({
+        text: iconLabel(POSITION_ICONS[value], label),
         value,
       })),
       filteredValue: columnFilters.position ? [columnFilters.position] : null,
