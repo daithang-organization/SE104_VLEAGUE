@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -180,8 +180,11 @@ describe('StadiumsPage', () => {
       expect(screen.getByText('Sân Mỹ Đình')).toBeInTheDocument();
     });
 
-    const editButton = screen.getAllByRole('button', { name: 'stadiums.editAction' })[0];
-    await userEvent.click(editButton);
+    const editButton = screen
+      .getAllByRole('button', { name: 'stadiums.editAction' })
+      .find((button) => !button.hasAttribute('disabled'));
+    if (!editButton) throw new Error('Expected an enabled stadium edit button');
+    fireEvent.click(editButton);
 
     const countryInput = await screen.findByLabelText('stadiums.formCountry');
     const fifaStarsInput = screen.getByLabelText('stadiums.formFifaStars');
