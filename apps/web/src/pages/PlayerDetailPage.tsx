@@ -330,7 +330,7 @@ export default function PlayerDetailPage() {
               <div className="team-detail-note-grid">
                 {visibleManagerRequestNote && (
                   <div className="team-detail-note-card">
-                    <span className="team-detail-note-label">Ghi chú của Manager</span>
+                    <span className="team-detail-note-label">Ghi chú</span>
                     <p>{visibleManagerRequestNote}</p>
                   </div>
                 )}

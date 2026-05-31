@@ -20,6 +20,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Popover,
   Row,
   Select,
   Space,
@@ -564,6 +565,40 @@ export default function StadiumsPage() {
         ? 'Chỉnh sửa sân nhà'
         : 'Xóa sân nhà';
 
+  const renderStadiumRequestName = (record: ManagerStadiumRequest) => {
+    const name = record.payload?.name || record.stadium?.name || '—';
+    const isAdminReview = user?.role === 'ADMIN';
+    const noteTitle = isAdminReview ? 'Ghi chú của Manager' : 'Phản hồi';
+    const noteTone = isAdminReview ? 'info' : 'danger';
+    const noteText = isAdminReview ? record.requestNote : record.adminNote;
+
+    return (
+      <Popover
+        trigger="hover"
+        placement="topLeft"
+        overlayClassName="manager-request-note-popover"
+        title={
+          <span className={`manager-request-note-title manager-request-note-title-${noteTone}`}>
+            {noteTitle}
+          </span>
+        }
+        content={<div className="manager-request-note-content">{noteText || '—'}</div>}
+      >
+        <a
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/stadiums/${record.stadiumId || `request-${record.id}`}`, {
+              state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
+            });
+          }}
+          style={{ fontWeight: 600 }}
+        >
+          {name}
+        </a>
+      </Popover>
+    );
+  };
+
   const getReviewActionTitle = (
     request: ManagerStadiumRequest,
     status: 'APPROVED' | 'REJECTED',
@@ -631,21 +666,7 @@ export default function StadiumsPage() {
     {
       title: 'Tên sân vận động',
       key: 'name',
-      render: (_, record) => {
-        const name = record.payload?.name || record.stadium?.name || '—';
-        return (
-          <a
-            onClick={() =>
-              navigate(`/stadiums/${record.stadiumId || `request-${record.id}`}`, {
-                state: { request: record },
-              })
-            }
-            style={{ fontWeight: 600 }}
-          >
-            {name}
-          </a>
-        );
-      },
+      render: (_, record) => renderStadiumRequestName(record),
     },
     {
       title: 'Người yêu cầu',

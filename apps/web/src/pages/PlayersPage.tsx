@@ -25,6 +25,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Popover,
   Row,
   Select,
   Space,
@@ -795,6 +796,40 @@ export default function PlayersPage() {
         ? 'Chỉnh sửa cầu thủ'
         : 'Xóa cầu thủ';
 
+  const renderPlayerRequestName = (record: ManagerPlayerRequest) => {
+    const name = record.payload?.fullName || record.player?.fullName || '—';
+    const isAdminReview = user?.role === 'ADMIN';
+    const noteTitle = isAdminReview ? 'Ghi chú của Manager' : 'Phản hồi';
+    const noteTone = isAdminReview ? 'info' : 'danger';
+    const noteText = isAdminReview ? record.requestNote : record.adminNote;
+
+    return (
+      <Popover
+        trigger="hover"
+        placement="topLeft"
+        overlayClassName="manager-request-note-popover"
+        title={
+          <span className={`manager-request-note-title manager-request-note-title-${noteTone}`}>
+            {noteTitle}
+          </span>
+        }
+        content={<div className="manager-request-note-content">{noteText || '—'}</div>}
+      >
+        <a
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/players/${record.playerId || `request-${record.id}`}`, {
+              state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
+            });
+          }}
+          style={{ fontWeight: 600 }}
+        >
+          {name}
+        </a>
+      </Popover>
+    );
+  };
+
   const getReviewActionTitle = (request: ManagerPlayerRequest, status: 'APPROVED' | 'REJECTED') => {
     const action = status === 'APPROVED' ? 'Duyệt' : 'Từ chối';
     const requestLabel = playerRequestTypeText(request.requestType).toLowerCase();
@@ -859,22 +894,7 @@ export default function PlayersPage() {
     {
       title: 'Họ và tên',
       key: 'name',
-      render: (_, record) => {
-        const name = record.payload?.fullName || record.player?.fullName || '—';
-        return (
-          <a
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/players/${record.playerId || `request-${record.id}`}`, {
-                state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
-              });
-            }}
-            style={{ fontWeight: 600 }}
-          >
-            {name}
-          </a>
-        );
-      },
+      render: (_, record) => renderPlayerRequestName(record),
     },
     {
       title: 'Người yêu cầu',
