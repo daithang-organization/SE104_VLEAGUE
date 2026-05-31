@@ -8,11 +8,13 @@
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, message, Space, Tabs } from 'antd';
+import { AimOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, message, Select, Space, Tabs } from 'antd';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppMenuIcon, TableSkeleton } from '../components';
 import { PageCover } from '../components/PageCover';
+import { useSeasonSelection } from '../hooks/useSeasonSelection';
 import {
   apiGetCardStats,
   apiGetPlayerOfMatchStats,
@@ -38,14 +40,13 @@ import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
 import { exportPdf } from '../utils/pdfExport';
-
-const cleanTabLabel = (label: string) => label.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+import { cleanDecorativeLabel } from '../utils/textLabels';
 
 function reportTabLabel(icon: ReactNode, label: string) {
   return (
     <Space size={6}>
       {icon}
-      <span>{cleanTabLabel(label)}</span>
+      <span>{cleanDecorativeLabel(label)}</span>
     </Space>
   );
 }
@@ -63,24 +64,47 @@ export default function ReportsPage() {
   const [seasonAwards, setSeasonAwards] = useState<SeasonAwards | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const {
+    loading: seasonsLoading,
+    seasons,
+    selectedSeason,
+    selectedSeasonId,
+    setSelectedSeasonId,
+  } = useSeasonSelection();
 
   const reloadSeasonAwards = useCallback(async () => {
-    const awards = await apiGetSeasonAwards();
+    if (!selectedSeasonId) {
+      setSeasonAwards(null);
+      return;
+    }
+
+    const awards = await apiGetSeasonAwards(selectedSeasonId);
     setSeasonAwards(awards);
-  }, []);
+  }, [selectedSeasonId]);
 
   useEffect(() => {
+    if (!selectedSeasonId) {
+      if (!seasonsLoading) setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(undefined);
+
     Promise.allSettled([
-      apiGetTopScorers(undefined, 50),
-      apiGetTopAssists(undefined, 50),
-      apiGetCardStats(undefined, 30),
-      apiGetTeamStats(),
-      apiGetPlayerOfMatchStats(undefined, 30),
-      apiGetSuspensionStats(),
-      apiGetSeasonAwards(),
+      apiGetTopScorers(selectedSeasonId, 50),
+      apiGetTopAssists(selectedSeasonId, 50),
+      apiGetCardStats(selectedSeasonId, 30),
+      apiGetTeamStats(selectedSeasonId),
+      apiGetPlayerOfMatchStats(selectedSeasonId, 30),
+      apiGetSuspensionStats(selectedSeasonId),
+      apiGetSeasonAwards(selectedSeasonId),
     ])
       .then(
         ([scorerRes, assistRes, cardRes, teamRes, playerOfMatchRes, suspensionRes, awardRes]) => {
+          if (cancelled) return;
+
           if (scorerRes.status === 'fulfilled') setScorers(scorerRes.value);
           if (assistRes.status === 'fulfilled') setAssists(assistRes.value);
           if (cardRes.status === 'fulfilled') setCardStats(cardRes.value);
@@ -101,8 +125,14 @@ export default function ReportsPage() {
           if (failed.length === 7) setError(t('reports.loadError'));
         },
       )
-      .finally(() => setLoading(false));
-  }, [t]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonsLoading, selectedSeasonId, t]);
 
   const handleExportScorersPdf = async () => {
     try {
@@ -215,24 +245,46 @@ export default function ReportsPage() {
         icon={<AppMenuIcon menuKey="reports" />}
         metrics={[
           {
-            label: cleanTabLabel(t('reports.tabScorers')),
-            value: topScorerGoals.toLocaleString('vi-VN'),
-            icon: <TrophyOutlined />,
+            label: t('reports.currentSeason'),
+            value: selectedSeason?.name ?? '-',
+            icon: <CalendarOutlined />,
           },
           {
-            label: cleanTabLabel(t('reports.tabAssists')),
+            label: cleanDecorativeLabel(t('reports.tabScorers')),
+            value: topScorerGoals.toLocaleString('vi-VN'),
+            icon: <AimOutlined />,
+          },
+          {
+            label: cleanDecorativeLabel(t('reports.tabAssists')),
             value: topAssistCount.toLocaleString('vi-VN'),
             icon: <RiseOutlined />,
           },
           {
-            label: cleanTabLabel(t('reports.tabPlayerOfMatch')),
+            label: cleanDecorativeLabel(t('reports.tabPlayerOfMatch')),
             value: playerOfMatchStats.length.toLocaleString('vi-VN'),
             icon: <StarOutlined />,
           },
         ]}
       />
 
-      <div className="page-toolbar page-toolbar-end">{exportActions}</div>
+      <div className="page-toolbar">
+        <Space wrap>
+          <Select
+            placeholder={t('reports.seasonPlaceholder')}
+            value={selectedSeasonId}
+            onChange={setSelectedSeasonId}
+            style={{ width: 220 }}
+            disabled={seasons.length === 0}
+          >
+            {seasons.map((season) => (
+              <Select.Option key={season.id} value={season.id}>
+                {season.name}
+              </Select.Option>
+            ))}
+          </Select>
+        </Space>
+        {exportActions}
+      </div>
 
       <Card>
         {loading ? (
@@ -243,7 +295,7 @@ export default function ReportsPage() {
             items={[
               {
                 key: 'scorers',
-                label: reportTabLabel(<TrophyOutlined />, t('reports.tabScorers')),
+                label: reportTabLabel(<AimOutlined />, t('reports.tabScorers')),
                 children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
               },
               {

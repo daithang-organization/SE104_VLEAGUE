@@ -1174,6 +1174,17 @@ select {
   order: 2;
 }
 
+.match-center-team-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.match-center-team-away .match-center-team-copy {
+  align-items: flex-end;
+}
+
 .match-center-team-logo {
   box-sizing: border-box;
   flex: 0 0 auto;
@@ -1196,6 +1207,7 @@ select {
 
 .match-center-team strong {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: var(--text-main);
   font-size: 16px;
@@ -1206,6 +1218,52 @@ select {
 
 .match-center-team-away strong {
   text-align: right;
+}
+
+.match-center-coaches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.match-center-coach-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+:root[data-theme='dark'] .match-center-coach-field {
+  background: rgba(15, 23, 42, 0.26);
+}
+
+.match-center-coach-field-away {
+  text-align: right;
+}
+
+.match-center-coach-field span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.match-center-coach-field strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .match-center-scoreboard {
@@ -1962,8 +2020,19 @@ select {
     order: 0;
   }
 
-  .match-center-team-away strong {
+  .match-center-team-copy,
+  .match-center-team-away .match-center-team-copy {
+    align-items: center;
+  }
+
+  .match-center-team-away strong,
+  .match-center-coach-field-away {
     text-align: center;
+  }
+
+  .match-center-coaches {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
   }
 
   .lineup-pitch-field {
@@ -3343,6 +3412,23 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.schedule-fixture-team-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  line-height: 1.1;
+}
+
+.schedule-fixture-team-name {
+  font-weight: 800;
+}
+
+.schedule-fixture-coach {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .schedule-fixture-team-left {

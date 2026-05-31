@@ -1,11 +1,13 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TeamManagerService } from './team-manager.service';
 
 describe('TeamManagerService application workflow', () => {
   let service: TeamManagerService;
   let prisma: PrismaService;
+  let notificationService: NotificationService;
 
   const assignment = {
     id: 'assignment-1',
@@ -51,11 +53,17 @@ describe('TeamManagerService application workflow', () => {
               create: jest.fn(),
             },
             user: { findUnique: jest.fn() },
-            team: { findUnique: jest.fn() },
+            team: { findUnique: jest.fn(), update: jest.fn() },
             seasonTeam: {
               findUnique: jest.fn(),
               update: jest.fn(),
             },
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {
+            notifyAdmins: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -63,6 +71,7 @@ describe('TeamManagerService application workflow', () => {
 
     service = module.get<TeamManagerService>(TeamManagerService);
     prisma = module.get<PrismaService>(PrismaService);
+    notificationService = module.get<NotificationService>(NotificationService);
 
     jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(managerUser as any);
     jest
@@ -126,6 +135,8 @@ describe('TeamManagerService application workflow', () => {
     jest.spyOn(prisma.seasonTeam, 'update').mockResolvedValue({
       id: 'season-team-1',
       ...applicationPayload,
+      team: { name: 'Hà Nội FC' },
+      season: { name: 'V.League 2026' },
       applicationSubmittedAt: new Date(),
     } as any);
 
@@ -147,6 +158,15 @@ describe('TeamManagerService application workflow', () => {
           applicationSubmittedAt: expect.any(Date),
           applicationReviewNote: null,
         }),
+      }),
+    );
+    expect((notificationService as any).notifyAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'CLB nộp hồ sơ mùa giải',
+        message: expect.stringContaining('Hà Nội FC'),
+        type: 'SYSTEM',
+        entityType: 'season_team',
+        entityId: 'season-team-1',
       }),
     );
   });

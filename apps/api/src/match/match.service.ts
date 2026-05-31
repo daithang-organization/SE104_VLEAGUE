@@ -15,6 +15,14 @@ import { MatchGateway } from './match.gateway';
 /** Fallback for max goal minute when no regulation is available */
 const DEFAULT_MAX_GOAL_TIME = 96;
 
+const MATCH_TEAM_SELECT = {
+  id: true,
+  name: true,
+  shortName: true,
+  logoUrl: true,
+  coachName: true,
+};
+
 // Valid match status transitions
 const MATCH_STATUS_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['PUBLISHED', 'POSTPONED'],
@@ -40,8 +48,8 @@ export class MatchService {
     const match = await this.prisma.match.findUnique({
       where: { id },
       include: {
-        homeTeam: { select: { id: true, name: true, logoUrl: true } },
-        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        homeTeam: { select: MATCH_TEAM_SELECT },
+        awayTeam: { select: MATCH_TEAM_SELECT },
         stadium: { select: { id: true, name: true } },
         season: { select: { id: true, name: true } },
         events: {
@@ -104,8 +112,8 @@ export class MatchService {
       this.prisma.match.findMany({
         where,
         include: {
-          homeTeam: { select: { id: true, name: true, logoUrl: true } },
-          awayTeam: { select: { id: true, name: true, logoUrl: true } },
+          homeTeam: { select: MATCH_TEAM_SELECT },
+          awayTeam: { select: MATCH_TEAM_SELECT },
           stadium: { select: { id: true, name: true } },
         },
         orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
@@ -163,8 +171,8 @@ export class MatchService {
       where: { id: matchId },
       data: updateData,
       include: {
-        homeTeam: { select: { id: true, name: true, logoUrl: true } },
-        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        homeTeam: { select: MATCH_TEAM_SELECT },
+        awayTeam: { select: MATCH_TEAM_SELECT },
         stadium: { select: { id: true, name: true } },
       },
     });
@@ -218,6 +226,8 @@ export class MatchService {
       }
     }
 
+    await this.assertSingleRedCardPerPlayer(matchId, dto);
+
     // Create the event
     const event = await this.prisma.matchEvent.create({
       data: {
@@ -252,6 +262,10 @@ export class MatchService {
       if (updated) {
         this.matchGateway.emitScoreUpdate(matchId, updated);
       }
+    }
+
+    if (dto.type === 'RED_CARD' || dto.type === 'YELLOW_CARD') {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
     }
 
     // Emit live match event via WebSocket
@@ -304,6 +318,8 @@ export class MatchService {
       }
     }
 
+    await this.assertSingleRedCardPerPlayer(matchId, dto, eventId);
+
     const updatedEvent = await this.prisma.matchEvent.update({
       where: { id: eventId },
       data: {
@@ -335,6 +351,12 @@ export class MatchService {
       if (updatedScore) {
         this.matchGateway.emitScoreUpdate(matchId, updatedScore);
       }
+    }
+
+    const wasCard = ['YELLOW_CARD', 'RED_CARD'].includes(String(event.type));
+    const isCard = ['YELLOW_CARD', 'RED_CARD'].includes(dto.type);
+    if (wasCard || isCard) {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
     }
 
     this.matchGateway.emitMatchEvent(
@@ -390,6 +412,10 @@ export class MatchService {
       }
     }
 
+    if (event.type === 'YELLOW_CARD' || event.type === 'RED_CARD') {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
+    }
+
     return { success: true };
   }
 
@@ -437,6 +463,30 @@ export class MatchService {
     });
   }
 
+  private async assertSingleRedCardPerPlayer(
+    matchId: string,
+    dto: AddMatchEventDto,
+    excludeEventId?: string,
+  ) {
+    if (dto.type !== 'RED_CARD' || !dto.playerId) return;
+
+    const duplicate = await this.prisma.matchEvent.findFirst({
+      where: {
+        matchId,
+        playerId: dto.playerId,
+        type: 'RED_CARD' as never,
+        ...(excludeEventId ? { id: { not: excludeEventId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (duplicate) {
+      throw new BadRequestException(
+        'Cầu thủ này đã nhận thẻ đỏ trong trận đấu này. Mỗi cầu thủ chỉ được nhận tối đa 1 thẻ đỏ trong 1 trận.',
+      );
+    }
+  }
+
   /**
    * Update match status with state machine enforcement
    */
@@ -472,8 +522,8 @@ export class MatchService {
       where: { id: matchId },
       data: { status: newStatus as never },
       include: {
-        homeTeam: { select: { id: true, name: true, logoUrl: true } },
-        awayTeam: { select: { id: true, name: true, logoUrl: true } },
+        homeTeam: { select: MATCH_TEAM_SELECT },
+        awayTeam: { select: MATCH_TEAM_SELECT },
       },
     });
 

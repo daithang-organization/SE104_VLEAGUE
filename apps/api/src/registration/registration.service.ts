@@ -45,6 +45,7 @@ export class RegistrationService {
         { name: { contains: pagination.search, mode: 'insensitive' } },
         { shortName: { contains: pagination.search, mode: 'insensitive' } },
         { city: { contains: pagination.search, mode: 'insensitive' } },
+        { coachName: { contains: pagination.search, mode: 'insensitive' } },
       ];
     }
     if (pagination?.status) {
@@ -107,7 +108,13 @@ export class RegistrationService {
         homeMatches: {
           include: {
             awayTeam: {
-              select: { id: true, name: true, shortName: true, logoUrl: true },
+              select: {
+                id: true,
+                name: true,
+                shortName: true,
+                logoUrl: true,
+                coachName: true,
+              },
             },
             stadium: { select: { name: true } },
           },
@@ -116,7 +123,13 @@ export class RegistrationService {
         awayMatches: {
           include: {
             homeTeam: {
-              select: { id: true, name: true, shortName: true, logoUrl: true },
+              select: {
+                id: true,
+                name: true,
+                shortName: true,
+                logoUrl: true,
+                coachName: true,
+              },
             },
             stadium: { select: { name: true } },
           },
@@ -144,6 +157,7 @@ export class RegistrationService {
       city: dto.city,
       stadiumId: dto.stadiumId,
       logoUrl: dto.logoUrl,
+      coachName: dto.coachName,
       status: (dto.status ?? 'ACTIVE') as never,
     };
 

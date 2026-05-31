@@ -440,6 +440,33 @@ function TeamManagerDashboard() {
       </div>
 
       <Card
+        title={<DashboardCardTitle icon={<UserOutlined />}>Thông tin CLB</DashboardCardTitle>}
+        className="dashboard-panel-card"
+        size="small"
+        loading={loading && !team}
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Row gutter={[16, 12]}>
+            <Col xs={24} md={12}>
+              <Typography.Text type="secondary">Tên HLV trưởng</Typography.Text>
+              <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
+                {team?.coachName || '—'}
+              </Typography.Title>
+            </Col>
+            <Col xs={24} md={12}>
+              <Typography.Text type="secondary">CLB quản lý</Typography.Text>
+              <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
+                {team?.name || '—'}
+              </Typography.Title>
+            </Col>
+          </Row>
+          <Button type="primary" icon={<TeamOutlined />} onClick={() => navigate('/teams')}>
+            Chỉnh sửa đội bóng
+          </Button>
+        </Space>
+      </Card>
+
+      <Card
         title={
           <DashboardCardTitle icon={<FileDoneOutlined />}>
             Hồ sơ tham dự mùa giải

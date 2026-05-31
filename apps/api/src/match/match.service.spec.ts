@@ -13,6 +13,7 @@ describe('MatchService', () => {
   let prisma: PrismaService;
   let standingsService: StandingsService;
   let regulationHelper: RegulationHelper;
+  let matchLineupService: MatchLineupService;
 
   const mockMatch = {
     id: 'match-1',
@@ -100,6 +101,7 @@ describe('MatchService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     standingsService = module.get<StandingsService>(StandingsService);
     regulationHelper = module.get<RegulationHelper>(RegulationHelper);
+    matchLineupService = module.get<MatchLineupService>(MatchLineupService);
   });
 
   it('should be defined', () => {
@@ -140,6 +142,26 @@ describe('MatchService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
+    });
+
+    it('includes club coach names for fixture display', async () => {
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.match, 'count').mockResolvedValue(0);
+
+      await service.findAll();
+
+      expect(prisma.match.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            homeTeam: {
+              select: expect.objectContaining({ coachName: true }),
+            },
+            awayTeam: {
+              select: expect.objectContaining({ coachName: true }),
+            },
+          }),
+        }),
+      );
     });
 
     it('should filter by seasonId if provided', async () => {
@@ -239,6 +261,52 @@ describe('MatchService', () => {
           teamId: 'team-1',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a second red card for the same player in one match', async () => {
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
+      jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue({
+        id: 'event-red-1',
+      } as any);
+
+      await expect(
+        service.addEvent('match-1', {
+          minute: 80,
+          type: 'RED_CARD' as any,
+          teamId: 'team-1',
+          playerId: 'player-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.matchEvent.create).not.toHaveBeenCalled();
+    });
+
+    it('syncs suspensions when a red card event is added', async () => {
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
+      jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue(null);
+      jest.spyOn(prisma.matchEvent, 'create').mockResolvedValue({
+        id: 'event-red-1',
+        matchId: 'match-1',
+        minute: 80,
+        type: 'RED_CARD',
+        teamId: 'team-1',
+        playerId: 'player-1',
+      } as any);
+
+      await service.addEvent('match-1', {
+        minute: 80,
+        type: 'RED_CARD' as any,
+        teamId: 'team-1',
+        playerId: 'player-1',
+      });
+
+      expect(matchLineupService.syncSuspensionsForMatch).toHaveBeenCalledWith(
+        'match-1',
+      );
     });
   });
 

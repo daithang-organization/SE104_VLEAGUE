@@ -6,6 +6,7 @@ import {
   RightOutlined,
   TeamOutlined,
   TrophyOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -173,6 +174,7 @@ export default function TeamDetailPage() {
         name: team.name,
         shortName: team.shortName,
         logoUrl: getTeamLogoUrl(team),
+        coachName: team.coachName,
       };
     }
 
@@ -182,6 +184,7 @@ export default function TeamDetailPage() {
       name: opponent?.name || '—',
       shortName: opponent?.shortName,
       logoUrl: getTeamLogoUrl(opponent),
+      coachName: opponent?.coachName,
     };
   };
 
@@ -377,6 +380,12 @@ export default function TeamDetailPage() {
               {team.shortName && <span className="club-detail-code-pill">{team.shortName}</span>}
               <span>{team.city ?? 'Chưa cập nhật thành phố'}</span>
               <span>{team.stadium?.name ?? t('teamDetail.stadiumEmpty')}</span>
+              {team.coachName && (
+                <span>
+                  <UserOutlined />
+                  {team.coachName}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -424,6 +433,9 @@ export default function TeamDetailPage() {
                   </Descriptions.Item>
                   <Descriptions.Item label={t('teamDetail.descManager')}>
                     {managerDisplay}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={t('teamDetail.descCoachName')}>
+                    {team.coachName ?? '—'}
                   </Descriptions.Item>
                   <Descriptions.Item label={t('teamDetail.descStatus')}>
                     {renderStatusTag(false)}

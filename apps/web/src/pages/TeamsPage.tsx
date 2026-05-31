@@ -190,6 +190,7 @@ export default function TeamsPage() {
       city: team.city ?? '',
       logoUrl: team.logoUrl ?? '',
       managerId: currentManager?.id ?? NO_MANAGER_VALUE,
+      coachName: team.coachName ?? '',
       status: team.status,
     });
     setModalOpen(true);
@@ -206,6 +207,7 @@ export default function TeamsPage() {
         shortName: values.shortName || undefined,
         city: values.city || undefined,
         logoUrl: values.logoUrl || undefined,
+        coachName: values.coachName || undefined,
         status: values.status,
         managerId: values.managerId === NO_MANAGER_VALUE ? null : values.managerId || null,
       };
@@ -484,7 +486,7 @@ export default function TeamsPage() {
     const query = search.trim().toLowerCase();
     const matchesSearch =
       !query ||
-      [team.name, team.shortName, team.city, team.stadium?.name]
+      [team.name, team.shortName, team.city, team.stadium?.name, team.coachName]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     const matchesStatus = statusFilter === 'ALL' || team.status === statusFilter;
@@ -1149,6 +1151,78 @@ export default function TeamsPage() {
         />
       ) : (
         renderTeamCards(filteredTeams)
+        /*
+          {filteredTeams.map((team) => (
+            <article key={team.id} className="club-card" style={getTeamThemeStyle(team)}>
+              <button
+                type="button"
+                className="club-card-main"
+                onClick={() => navigate(`/teams/${team.id}`)}
+              >
+                <span className="club-card-crest">{renderTeamLogo(team)}</span>
+                <span className="club-card-body">
+                  <span className="club-card-heading">
+                    <span className="club-card-name">{team.name}</span>
+                    {team.shortName && (
+                      <span className="club-card-code-pill">{team.shortName}</span>
+                    )}
+                  </span>
+                  <span className="club-card-meta">
+                    <EnvironmentOutlined />
+                    {team.stadium?.name ?? team.city ?? 'Chưa có sân nhà'}
+                  </span>
+                  {team.coachName && (
+                    <span className="club-card-meta">
+                      <UserOutlined />
+                      {team.coachName}
+                    </span>
+                  )}
+                </span>
+                <ArrowRightOutlined className="club-card-arrow" />
+              </button>
+
+              <div className="club-card-footer">
+                <Tag color={team.status === 'ACTIVE' ? 'green' : 'default'}>
+                  {team.status === 'ACTIVE' ? t('teams.filterActive') : t('teams.filterInactive')}
+                </Tag>
+              </div>
+
+              <div className="club-card-actions">
+                <Button
+                  className="club-card-detail-button"
+                  icon={<ArrowRightOutlined />}
+                  onClick={() => navigate(`/teams/${team.id}`)}
+                >
+                  {t('common.detail')}
+                </Button>
+                {canEdit && (
+                  <>
+                    <Button
+                      aria-label={`${t('common.edit')} ${team.name}`}
+                      icon={<EditOutlined />}
+                      onClick={() => openEditModal(team)}
+                    />
+                    <Popconfirm
+                      title={t('teams.deleteConfirmTitle')}
+                      description={t('teams.deleteConfirmDesc', { name: team.name })}
+                      onConfirm={() => handleDelete(team.id)}
+                      okText={t('teams.deleteOk')}
+                      cancelText={t('teams.deleteCancel')}
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Button
+                        aria-label={`${t('common.delete')} ${team.name}`}
+                        danger
+                        icon={<DeleteOutlined />}
+                      />
+                    </Popconfirm>
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+        */
       )}
 
       <Modal
@@ -1319,6 +1393,10 @@ export default function TeamsPage() {
                 ...availableManagerOptions,
               ]}
             />
+          </Form.Item>
+
+          <Form.Item name="coachName" label={t('teams.formCoachName')}>
+            <Input placeholder={t('teams.formCoachNamePlaceholder')} maxLength={120} />
           </Form.Item>
 
           <Form.Item name="logoUrl" label={t('teams.formLogo')}>

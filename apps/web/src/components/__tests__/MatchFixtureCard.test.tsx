@@ -54,6 +54,36 @@ describe('MatchFixtureCard', () => {
     expect(onMatchClick).toHaveBeenCalledWith('m1');
   });
 
+  it('does not render coach names on fixture cards', () => {
+    const { container } = render(
+      <MatchFixtureCard
+        id="m-coaches"
+        roundLabel="Vong 3"
+        statusLabel="Sap dau"
+        homeTeamId="home-team"
+        awayTeamId="away-team"
+        homeTeam={{
+          id: 'home-team',
+          name: 'Hanoi FC',
+          shortName: 'HN',
+          coachName: 'L. Enrique',
+        }}
+        awayTeam={{
+          id: 'away-team',
+          name: 'Arsenal',
+          shortName: 'ARS',
+          coachName: 'M. Arteta',
+        }}
+        stadiumFallback="Chua co san"
+        kickoffFallback="Chua xep gio"
+      />,
+    );
+
+    expect(screen.queryByText('L. Enrique')).not.toBeInTheDocument();
+    expect(screen.queryByText('M. Arteta')).not.toBeInTheDocument();
+    expect(container.querySelector('.schedule-fixture-coach')).not.toBeInTheDocument();
+  });
+
   it('uses schedule time or result placeholder when a match has no score', () => {
     const { rerender } = render(
       <MatchFixtureCard

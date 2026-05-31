@@ -51,6 +51,7 @@ const mockTeamManagerApi = vi.hoisted(() => ({
   apiCreateTeamManagerAssignment: vi.fn(),
   apiGetTeamManagerAssignment: vi.fn().mockResolvedValue(null),
   apiGetTeamManagerApplication: vi.fn().mockResolvedValue(null),
+  apiGetTeamManagerManagementRequest: vi.fn().mockResolvedValue(null),
   apiSubmitTeamManagerApplication: vi.fn(),
 }));
 
@@ -183,5 +184,56 @@ describe('DashboardPage', () => {
     expect(await screen.findByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
     expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
+  });
+
+  it('shows team information and edit CTA for assigned team managers', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamApi.apiGetTeam.mockResolvedValue({
+      id: 'team-1',
+      name: 'CLB Bình Định',
+      coachName: 'HLV Trưởng',
+      roster: [],
+      homeMatches: [],
+      awayMatches: [],
+      standings: [],
+    });
+    mockTeamManagerApi.apiGetTeamManagerAssignment.mockResolvedValue({
+      id: 'assignment-1',
+      userId: 'u-manager',
+      seasonId: 's1',
+      teamId: 'team-1',
+      season: { id: 's1', name: 'V.League 2025', status: 'IN_PROGRESS' },
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    });
+    mockTeamManagerApi.apiGetTeamManagerApplication.mockResolvedValue({
+      id: 'season-team-1',
+      seasonId: 's1',
+      teamId: 'team-1',
+      status: 'REGISTERED',
+      applicationSubmittedAt: null,
+      ownerName: null,
+      ownerCountry: null,
+      teamIntroduction: null,
+      primaryKit: null,
+      backupKit: null,
+      participationFeePaid: false,
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+    });
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockTeamApi.apiGetTeam).toHaveBeenCalledWith('team-1');
+    });
+    expect(await screen.findByText('Thông tin CLB')).toBeInTheDocument();
+    expect(screen.getByText('HLV Trưởng')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Chỉnh sửa đội bóng/i })).toBeInTheDocument();
   });
 });

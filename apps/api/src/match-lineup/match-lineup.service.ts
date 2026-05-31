@@ -11,6 +11,7 @@ import {
   PlayerSuspensionStatus,
   Prisma,
 } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
@@ -33,6 +34,7 @@ export class MatchLineupService {
     private readonly prisma: PrismaService,
     private readonly regulationHelper: RegulationHelper,
     private readonly teamManagerScope: TeamManagerScopeService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async listLineups(matchId: string) {
@@ -141,7 +143,7 @@ export class MatchLineupService {
       shirtNumber: player.shirtNumber,
     }));
 
-    return this.prisma.matchTeamRegistration.upsert({
+    const registration = await this.prisma.matchTeamRegistration.upsert({
       where: { matchId_teamId: { matchId, teamId: dto.teamId } },
       create: {
         matchId,
@@ -166,6 +168,18 @@ export class MatchLineupService {
       },
       include: this.registrationInclude,
     });
+
+    if (actor?.role === 'TEAM_MANAGER') {
+      await this.notificationService.notifyAdmins({
+        title: 'CLB nộp đội hình',
+        message: `${registration.team?.name ?? 'CLB'} đã nộp danh sách đăng ký thi đấu cho trận này. Vui lòng kiểm tra và xét duyệt.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
+
+    return registration;
   }
 
   async reviewLineup(
@@ -178,10 +192,31 @@ export class MatchLineupService {
 
     const existing = await this.prisma.matchTeamRegistration.findUnique({
       where: { matchId_teamId: { matchId, teamId } },
+      include: {
+        team: {
+          select: {
+            name: true,
+            managedUsers: { select: { id: true } },
+          },
+        },
+      },
     });
 
     if (!existing) {
       throw new NotFoundException('Không tìm thấy danh sách đăng ký thi đấu.');
+    }
+
+    if (existing.status !== MatchLineupStatus.SUBMITTED) {
+      throw new BadRequestException(
+        'Chỉ được xét duyệt danh sách đang chờ duyệt.',
+      );
+    }
+
+    const reviewNote = dto.reviewNote?.trim();
+    if (dto.status === MatchLineupStatus.REJECTED && !reviewNote) {
+      throw new BadRequestException(
+        'Vui lòng nhập lý do từ chối để CLB có thể nộp lại.',
+      );
     }
 
     const registration = await this.prisma.matchTeamRegistration.update({
@@ -189,10 +224,18 @@ export class MatchLineupService {
       data: {
         status: dto.status as MatchLineupStatus,
         reviewedAt: new Date(),
-        reviewNote: dto.reviewNote?.trim() || null,
+        reviewNote: reviewNote || null,
       },
       include: this.registrationInclude,
     });
+
+    if (dto.status === MatchLineupStatus.REJECTED && reviewNote) {
+      await this.notifyLineupRejected(
+        registration.id,
+        existing.team,
+        reviewNote,
+      );
+    }
 
     return registration;
   }
@@ -244,16 +287,23 @@ export class MatchLineupService {
         teamId: true,
       },
     });
+    const redCardKeys = new Set(
+      cardEvents
+        .filter(
+          (event) =>
+            event.type === EventType.RED_CARD && event.playerId && event.teamId,
+        )
+        .map((event) => `${event.playerId}:${event.teamId}`),
+    );
 
     for (const event of cardEvents) {
       if (!event.playerId || !event.teamId) continue;
 
       if (event.type === EventType.RED_CARD) {
-        await this.createSuspension(
+        await this.createSuspensionsForRedCard(
           match,
           event.playerId,
           event.teamId,
-          'RED_CARD',
         );
         continue;
       }
@@ -272,6 +322,32 @@ export class MatchLineupService {
         );
       }
     }
+
+    const activeRedSuspensions = await this.prisma.playerSuspension.findMany({
+      where: {
+        sourceMatchId: match.id,
+        reason: 'RED_CARD',
+        status: PlayerSuspensionStatus.ACTIVE,
+      },
+      select: { id: true, playerId: true, teamId: true },
+    });
+
+    await Promise.all(
+      activeRedSuspensions
+        .filter(
+          (suspension) =>
+            !redCardKeys.has(`${suspension.playerId}:${suspension.teamId}`),
+        )
+        .map((suspension) =>
+          this.prisma.playerSuspension.updateMany({
+            where: { id: suspension.id },
+            data: {
+              status: PlayerSuspensionStatus.CANCELLED,
+              servedAt: null,
+            },
+          }),
+        ),
+    );
   }
 
   private get registrationInclude() {
@@ -385,6 +461,25 @@ export class MatchLineupService {
     return normalized !== 'viet nam' && normalized !== 'vietnam';
   }
 
+  private async notifyLineupRejected(
+    registrationId: string,
+    team: { name: string; managedUsers: Array<{ id: string }> },
+    reviewNote: string,
+  ) {
+    await Promise.all(
+      team.managedUsers.map((manager) =>
+        this.notificationService.createForUser({
+          userId: manager.id,
+          title: 'Đội hình bị từ chối',
+          message: `Danh sách đăng ký thi đấu của ${team.name} bị từ chối: ${reviewNote}. Vui lòng chỉnh sửa và nộp lại.`,
+          type: 'SYSTEM',
+          entityType: 'match_lineup',
+          entityId: registrationId,
+        }),
+      ),
+    );
+  }
+
   private async countSeasonYellowCards(
     seasonId: string,
     playerId: string,
@@ -400,15 +495,47 @@ export class MatchLineupService {
     });
   }
 
-  private async createSuspension(
-    match: { id: string; seasonId: string | null; roundNo: number },
+  private async createSuspensionsForRedCard(
+    match: {
+      id: string;
+      seasonId: string | null;
+      roundNo: number;
+      status?: MatchStatus;
+    },
     playerId: string,
     teamId: string,
-    reason: string,
   ) {
     if (!match.seasonId) return;
 
-    const nextMatch = await this.prisma.match.findFirst({
+    if (match.status !== MatchStatus.FINISHED) {
+      await this.upsertSuspension(
+        match,
+        playerId,
+        teamId,
+        match.id,
+        'RED_CARD',
+      );
+    }
+
+    const nextMatch = await this.findNextTeamMatch(match, teamId);
+    if (nextMatch) {
+      await this.upsertSuspension(
+        match,
+        playerId,
+        teamId,
+        nextMatch.id,
+        'RED_CARD',
+      );
+    }
+  }
+
+  private async findNextTeamMatch(
+    match: { id: string; seasonId: string | null; roundNo: number },
+    teamId: string,
+  ) {
+    if (!match.seasonId) return null;
+
+    return this.prisma.match.findFirst({
       where: {
         seasonId: match.seasonId,
         roundNo: { gt: match.roundNo },
@@ -417,30 +544,58 @@ export class MatchLineupService {
       orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
       select: { id: true },
     });
+  }
 
+  private async createSuspension(
+    match: { id: string; seasonId: string | null; roundNo: number },
+    playerId: string,
+    teamId: string,
+    reason: string,
+  ) {
+    const nextMatch = await this.findNextTeamMatch(match, teamId);
     if (!nextMatch) return;
 
-    await this.prisma.playerSuspension.upsert({
+    await this.upsertSuspension(match, playerId, teamId, nextMatch.id, reason);
+  }
+
+  private async upsertSuspension(
+    match: { id: string; seasonId: string | null },
+    playerId: string,
+    teamId: string,
+    effectiveMatchId: string,
+    reason: string,
+  ) {
+    if (!match.seasonId) return;
+    const existing = await this.prisma.playerSuspension.findFirst({
       where: {
-        playerId_sourceMatchId_reason: {
-          playerId,
-          sourceMatchId: match.id,
-          reason,
-        },
+        playerId,
+        sourceMatchId: match.id,
+        effectiveMatchId,
+        reason,
       },
-      create: {
+      select: { id: true },
+    });
+
+    if (existing) {
+      await this.prisma.playerSuspension.updateMany({
+        where: { id: existing.id },
+        data: {
+          status: PlayerSuspensionStatus.ACTIVE,
+          servedAt: null,
+        },
+      });
+      return;
+    }
+
+    await this.prisma.playerSuspension.create({
+      data: {
         playerId,
         teamId,
         seasonId: match.seasonId,
         sourceMatchId: match.id,
-        effectiveMatchId: nextMatch.id,
+        effectiveMatchId,
         reason,
         status: PlayerSuspensionStatus.ACTIVE,
-      },
-      update: {
-        effectiveMatchId: nextMatch.id,
-        status: PlayerSuspensionStatus.ACTIVE,
-        servedAt: null,
       },
     });
   }

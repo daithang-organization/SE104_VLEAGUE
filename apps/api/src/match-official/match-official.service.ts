@@ -5,8 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import type { CurrentUserPayload } from '../auth';
+import { PrismaService } from '../prisma/prisma.service';
+import { MatchLineupService } from '../match-lineup/match-lineup.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   AssignOfficialDto,
   CreateOfficialDto,
@@ -16,7 +18,11 @@ import {
 
 @Injectable()
 export class MatchOfficialService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+    private readonly matchLineupService: MatchLineupService,
+  ) {}
 
   listOfficials() {
     return this.prisma.official.findMany({
@@ -155,6 +161,11 @@ export class MatchOfficialService {
     }
 
     if (dto.events !== undefined) {
+      await this.assertSingleRedCardPerPlayerForSubmittedEvents(
+        matchId,
+        submittedEvents,
+      );
+
       await this.prisma.matchEvent.deleteMany({
         where: { matchId, source: 'MATCH_REPORT' },
       });
@@ -174,6 +185,10 @@ export class MatchOfficialService {
           source: 'MATCH_REPORT',
         })),
       });
+    }
+
+    if (dto.events !== undefined) {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
     }
 
     if (!adminScoreLocked) {
@@ -198,7 +213,7 @@ export class MatchOfficialService {
       submittedAt,
     };
 
-    return this.prisma.matchReport.upsert({
+    const report = await this.prisma.matchReport.upsert({
       where: { matchId },
       create: {
         matchId,
@@ -209,6 +224,18 @@ export class MatchOfficialService {
         bestPlayer: { select: { id: true, fullName: true } },
       },
     });
+
+    if (submittedByUser?.role === 'REFEREE') {
+      await this.notificationService.notifyAdmins({
+        title: 'Trọng tài nộp biên bản',
+        message: `Trọng tài đã nộp biên bản trận đấu với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
+
+    return report;
   }
 
   async getDisciplineReport(matchId: string) {
@@ -254,7 +281,7 @@ export class MatchOfficialService {
       submittedAt: new Date(),
     };
 
-    return this.prisma.disciplineReport.upsert({
+    const report = await this.prisma.disciplineReport.upsert({
       where: { matchId },
       create: {
         matchId,
@@ -262,6 +289,87 @@ export class MatchOfficialService {
       },
       update: reportData,
       include: { supervisor: true },
+    });
+
+    if (submittedByUser?.role === 'SUPERVISOR') {
+      await this.notificationService.notifyAdmins({
+        title: 'Giám sát viên nộp báo cáo kỷ luật',
+        message: `Giám sát viên đã nộp báo cáo kỷ luật trận đấu với mức đánh giá ${report.organizationRating}. Vui lòng kiểm tra.`,
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: matchId,
+      });
+    }
+
+    if (
+      submittedByUser?.role === 'SUPERVISOR' &&
+      dto.organizationRating === 'ISSUES_FOUND' &&
+      dto.sendToDisciplinary
+    ) {
+      await this.notifyAdminsAboutDisciplinaryReferral(
+        matchId,
+        supervisor.fullName,
+      );
+    }
+
+    return report;
+  }
+
+  private async assertSingleRedCardPerPlayerForSubmittedEvents(
+    matchId: string,
+    events: Array<{ type: string; playerId?: string | null }>,
+  ) {
+    const redCardPlayerIds = events
+      .filter((event) => event.type === 'RED_CARD' && event.playerId)
+      .map((event) => event.playerId as string);
+    if (redCardPlayerIds.length === 0) return;
+
+    const uniqueRedCardPlayerIds = new Set(redCardPlayerIds);
+    if (uniqueRedCardPlayerIds.size !== redCardPlayerIds.length) {
+      throw new BadRequestException(
+        'Mỗi cầu thủ chỉ được nhận tối đa 1 thẻ đỏ trong 1 trận.',
+      );
+    }
+
+    const existingRedCard = await this.prisma.matchEvent.findFirst({
+      where: {
+        matchId,
+        type: 'RED_CARD' as never,
+        playerId: { in: [...uniqueRedCardPlayerIds] },
+        source: { not: 'MATCH_REPORT' },
+      },
+      select: { id: true },
+    });
+
+    if (existingRedCard) {
+      throw new BadRequestException(
+        'Cầu thủ này đã nhận thẻ đỏ trong trận đấu này. Mỗi cầu thủ chỉ được nhận tối đa 1 thẻ đỏ trong 1 trận.',
+      );
+    }
+  }
+
+  private async notifyAdminsAboutDisciplinaryReferral(
+    matchId: string,
+    supervisorName: string,
+  ) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        kickoffAt: true,
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+      },
+    });
+
+    if (!match) return;
+
+    await this.notificationService.notifyDisciplinaryReferralToAdmins({
+      matchId: match.id,
+      homeTeam: match.homeTeam?.name ?? 'Đội nhà',
+      awayTeam: match.awayTeam?.name ?? 'Đội khách',
+      kickoffAt: match.kickoffAt,
+      supervisorName,
     });
   }
 

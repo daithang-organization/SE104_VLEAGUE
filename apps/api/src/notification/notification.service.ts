@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreateNotificationDto {
@@ -35,6 +36,25 @@ export class NotificationService {
         entityId: dto.entityId,
       },
     });
+  }
+
+  /**
+   * Create the same notification for every admin account.
+   */
+  async notifyAdmins(dto: Omit<CreateNotificationDto, 'userId'>) {
+    const admins = await this.prisma.user.findMany({
+      where: { role: UserRole.ADMIN },
+      select: { id: true },
+    });
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.createForUser({
+          ...dto,
+          userId: admin.id,
+        }),
+      ),
+    );
   }
 
   /**
@@ -168,6 +188,42 @@ export class NotificationService {
 
     this.logger.log(
       `Match result notification: ${homeTeam} ${homeScore}-${awayScore} ${awayTeam}`,
+    );
+  }
+
+  async notifyDisciplinaryReferralToAdmins(params: {
+    matchId: string;
+    homeTeam: string;
+    awayTeam: string;
+    kickoffAt?: Date | null;
+    supervisorName: string;
+  }) {
+    const admins = await this.prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+
+    if (admins.length === 0) return;
+
+    const kickoffText = params.kickoffAt
+      ? params.kickoffAt.toLocaleString('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour12: false,
+        })
+      : 'chưa có thời gian';
+    const matchName = `${params.homeTeam} vs ${params.awayTeam}`;
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.createForUser({
+          userId: admin.id,
+          title: 'Trận đấu cần xử lý kỷ luật',
+          message: `${params.supervisorName} đã chuyển trận ${matchName} (${kickoffText}) đến BTC kỷ luật.`,
+          type: 'SYSTEM',
+          entityType: 'match',
+          entityId: params.matchId,
+        }),
+      ),
     );
   }
 }

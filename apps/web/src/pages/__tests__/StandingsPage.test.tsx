@@ -4,8 +4,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* ---------- hoisted mocks ---------- */
 const mockSeasonApi = vi.hoisted(() => ({
-  apiGetSeasons: vi.fn().mockResolvedValue([{ id: 's1', name: 'V.League 2025' }]),
-  apiGetCurrentSeason: vi.fn().mockResolvedValue({ id: 's1', name: 'V.League 2025' }),
+  apiGetSeasons: vi.fn().mockResolvedValue([
+    {
+      id: 's2025',
+      name: 'V.League 2025',
+      year: 2025,
+      status: 'COMPLETED',
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    },
+    {
+      id: 's2026',
+      name: 'V.League 2026',
+      year: 2026,
+      status: 'IN_PROGRESS',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ]),
+  apiGetCurrentSeason: vi.fn().mockResolvedValue({
+    id: 's2025',
+    name: 'V.League 2025',
+    year: 2025,
+    status: 'COMPLETED',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+  }),
 }));
 const mockStandingsApi = vi.hoisted(() => ({
   apiGetStandings: vi.fn().mockResolvedValue([
@@ -90,9 +114,9 @@ vi.mock('../../components/ExportButton', () => ({
 
 import StandingsPage from '../StandingsPage';
 
-function renderPage() {
+function renderPage(initialEntry = '/standings') {
   return render(
-    <MemoryRouter initialEntries={['/standings']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/standings" element={<StandingsPage />} />
         <Route path="/teams/:id" element={<div>Team Detail Route</div>} />
@@ -102,7 +126,10 @@ function renderPage() {
 }
 
 describe('StandingsPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+  });
 
   it('renders standings title', () => {
     const { container } = renderPage();
@@ -122,13 +149,24 @@ describe('StandingsPage', () => {
     });
   });
 
-  it('fetches standings and top scorers on mount', async () => {
+  it('fetches standings and top scorers for the default latest season on mount', async () => {
     renderPage();
     await waitFor(() => {
-      expect(mockStandingsApi.apiGetStandings).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalled();
-      expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalledWith(undefined);
+      expect(mockStandingsApi.apiGetStandings).toHaveBeenCalledWith('s2026', 'in_progress');
+      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalledWith('s2026', 10);
+      expect(mockStandingsApi.apiGetTeamStats).toHaveBeenCalledWith('s2026');
     });
+  });
+
+  it('uses the season from the URL and shows the champion for a completed season', async () => {
+    renderPage('/standings?seasonId=s2025');
+
+    await waitFor(() => {
+      expect(mockStandingsApi.apiGetStandings).toHaveBeenCalledWith('s2025', 'final');
+    });
+
+    expect(await screen.findByText('Vô địch')).toBeInTheDocument();
+    expect(screen.getAllByText('Hà Nội FC').length).toBeGreaterThan(1);
   });
 
   it('displays team standings data', async () => {

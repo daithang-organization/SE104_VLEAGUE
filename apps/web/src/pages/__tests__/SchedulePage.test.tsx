@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 /* ---------- hoisted mocks ---------- */
 const mockUseAuth = vi.hoisted(() =>
@@ -85,8 +85,8 @@ vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/scheduleApi', () => mockScheduleApi);
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/teamApi', () => mockTeamApi);
-vi.mock('../../services/matchApi', () => mockMatchApi);
 vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
+vi.mock('../../services/matchApi', () => mockMatchApi);
 
 import SchedulePage from '../SchedulePage';
 
@@ -186,5 +186,31 @@ describe('SchedulePage', () => {
     ).toHaveTextContent('2 - 0');
     expect(screen.getByText('HP')).toBeInTheDocument();
     expect(screen.getByText('Hang Day')).toBeInTheDocument();
+  });
+
+  it('lets team managers filter the schedule to their assigned club fixtures', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager.hanoi@demo.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('HN')).toBeInTheDocument();
+    expect(screen.getAllByText('DN').length).toBeGreaterThan(0);
+
+    await waitFor(() => {
+      expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByText(/Lịch thi đấu của tôi/));
+
+    await waitFor(() => {
+      expect(screen.getByText('HN')).toBeInTheDocument();
+      expect(screen.queryAllByText('DN')).toHaveLength(0);
+    });
   });
 });

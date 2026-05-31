@@ -136,6 +136,7 @@ describe('SearchService', () => {
           awayTeam: { name: 'HAGL' },
           homeScore: 2,
           awayScore: 1,
+          scoreSource: 'ADMIN',
           status: 'FINISHED',
         } as any,
       ]);
@@ -146,6 +147,30 @@ describe('SearchService', () => {
       expect(result[0].type).toBe('match');
       expect(result[0].title).toBe('Hà Nội FC vs HAGL');
       expect(result[0].subtitle).toBe('V1 · 2-1');
+    });
+
+    it('should not show legacy match scores without a score source', async () => {
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.player, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.stadium, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.season, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([
+        {
+          id: 'm1',
+          roundNo: 17,
+          homeTeam: { name: 'HÃ  Ná»™i FC' },
+          awayTeam: { name: 'Háº£i PhÃ²ng FC' },
+          homeScore: 3,
+          awayScore: 0,
+          scoreSource: null,
+          status: 'FINISHED',
+        } as any,
+      ]);
+
+      const result = await service.globalSearch('HÃ  Ná»™i', 10);
+
+      expect(result[0].subtitle).toContain('FINISHED');
+      expect(result[0].subtitle).not.toContain('3-0');
     });
 
     it('should show status when match has no score', async () => {

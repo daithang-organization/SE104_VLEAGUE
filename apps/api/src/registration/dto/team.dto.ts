@@ -63,6 +63,14 @@ export class CreateTeamDto {
   managerId?: string | null;
 
   @ApiPropertyOptional({
+    description: 'Tên huấn luyện viên trưởng',
+    example: 'L. Enrique',
+  })
+  @IsOptional()
+  @IsString()
+  coachName?: string;
+
+  @ApiPropertyOptional({
     description: 'Trạng thái đội bóng',
     enum: TeamStatus,
     default: TeamStatus.ACTIVE,
@@ -124,6 +132,14 @@ export class UpdateTeamDto {
   managerId?: string | null;
 
   @ApiPropertyOptional({
+    description: 'Tên huấn luyện viên trưởng',
+    example: 'L. Enrique',
+  })
+  @IsOptional()
+  @IsString()
+  coachName?: string;
+
+  @ApiPropertyOptional({
     description: 'Trạng thái đội bóng',
     enum: TeamStatus,
     example: 'ACTIVE',
@@ -145,6 +161,12 @@ export class TeamResponseDto {
 
   @ApiPropertyOptional({ description: 'Thành phố', example: 'Hồ Chí Minh' })
   city?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tên huấn luyện viên trưởng',
+    example: 'L. Enrique',
+  })
+  coachName?: string;
 
   @ApiProperty({ description: 'Trạng thái', enum: TeamStatus })
   status!: TeamStatus;

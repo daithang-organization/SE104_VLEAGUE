@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, HomeOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import {
   Button,
   Flex,
@@ -9,6 +9,7 @@ import {
   Modal,
   Radio,
   Select,
+  Space,
   Typography,
 } from 'antd';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ import {
   type MatchEvent,
   type RosterPlayer,
 } from '../../services/matchApi';
+import { cleanDecorativeLabel } from '../../utils/textLabels';
 import { EVENT_TYPE_MAP } from './constants';
 
 const { Text } = Typography;
@@ -55,6 +57,16 @@ export default function EventFormModal({
   const currentRoster =
     selectedTeamSide === 'home' ? homeRoster : selectedTeamSide === 'away' ? awayRoster : [];
   const isEditing = Boolean(editingEvent);
+  const homeTeamButtonLabel = cleanDecorativeLabel(
+    t('eventFormModal.homeBtn', {
+      team: match.homeTeam?.name ?? t('eventFormModal.homeDefault'),
+    }),
+  );
+  const awayTeamButtonLabel = cleanDecorativeLabel(
+    t('eventFormModal.awayBtn', {
+      team: match.awayTeam?.name ?? t('eventFormModal.awayDefault'),
+    }),
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -194,14 +206,16 @@ export default function EventFormModal({
             style={{ width: '100%' }}
           >
             <Radio.Button value="home" style={{ width: '50%', textAlign: 'center' }}>
-              {t('eventFormModal.homeBtn', {
-                team: match.homeTeam?.name ?? t('eventFormModal.homeDefault'),
-              })}
+              <Space size={6}>
+                <HomeOutlined />
+                <span>{homeTeamButtonLabel}</span>
+              </Space>
             </Radio.Button>
             <Radio.Button value="away" style={{ width: '50%', textAlign: 'center' }}>
-              {t('eventFormModal.awayBtn', {
-                team: match.awayTeam?.name ?? t('eventFormModal.awayDefault'),
-              })}
+              <Space size={6}>
+                <SendOutlined />
+                <span>{awayTeamButtonLabel}</span>
+              </Space>
             </Radio.Button>
           </Radio.Group>
         </Form.Item>
@@ -241,6 +255,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'type']}
+                      label={t('eventFormModal.typeLabel')}
                       rules={[{ required: true, message: t('eventFormModal.typeRequired') }]}
                       style={{ flex: 2, marginBottom: 8 }}
                     >
@@ -255,6 +270,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'minute']}
+                      label={t('eventFormModal.minuteLabel')}
                       rules={[{ required: true, message: t('eventFormModal.minuteRequired') }]}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
@@ -270,6 +286,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'playerId']}
+                      label={t('eventFormModal.playerLabel')}
                       style={{ flex: 2, marginBottom: 8 }}
                     >
                       <Select
@@ -292,6 +309,7 @@ export default function EventFormModal({
                     <Form.Item
                       {...restField}
                       name={[name, 'note']}
+                      label={t('eventFormModal.noteLabel')}
                       style={{ flex: 1, marginBottom: 8 }}
                     >
                       <Input placeholder={t('eventFormModal.notePlaceholder')} />
@@ -316,6 +334,7 @@ export default function EventFormModal({
                             <Form.Item
                               {...restField}
                               name={[name, 'goalType']}
+                              label={t('eventFormModal.goalTypeLabel')}
                               style={{ flex: 1, marginBottom: 8 }}
                             >
                               <Select
@@ -340,6 +359,11 @@ export default function EventFormModal({
                             <Form.Item
                               {...restField}
                               name={[name, 'relatedPlayerId']}
+                              label={
+                                evtType === 'GOAL'
+                                  ? t('eventFormModal.assistLabel')
+                                  : t('eventFormModal.subPlayerLabel')
+                              }
                               style={{ flex: 1, marginBottom: 8 }}
                             >
                               <Select

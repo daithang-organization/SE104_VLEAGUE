@@ -28,6 +28,17 @@ const mockTeamApi = vi.hoisted(() => ({
   }),
 }));
 
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
+    user: { id: 'u-admin', email: 'admin@demo.local', role: 'ADMIN' },
+    loading: false,
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+  })),
+);
+
+vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/teamApi', () => mockTeamApi);
 
 import TeamDetailPage from '../TeamDetailPage';
