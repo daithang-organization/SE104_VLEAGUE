@@ -486,7 +486,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    await userEvent.click(screen.getByRole('tab', { name: /Sự kiện/ }));
+    await userEvent.click(screen.getAllByRole('tab')[1]);
     await userEvent.click(screen.getByRole('button', { name: /Sửa sự kiện 23/ }));
 
     const minuteInput = screen.getByPlaceholderText('Phút');
@@ -660,7 +660,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getAllByRole('tab')[2]);
 
     await waitFor(() => {
       expect(mockMatchApi.apiGetOfficials).toHaveBeenCalled();
@@ -673,6 +673,7 @@ describe('MatchDetailPage', () => {
     expect(screen.getAllByText('Trọng tài chính').length).toBeGreaterThan(0);
     expect(screen.getByText('Cầu thủ xuất sắc')).toBeInTheDocument();
     expect(screen.getByText('Home Player 1')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('tab')[3]);
     expect(screen.getByText('Một cầu thủ phản ứng trọng tài')).toBeInTheDocument();
   });
 
@@ -707,7 +708,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getAllByRole('tab')[2]);
 
     const removeButtons = await screen.findAllByRole('button', { name: /Xóa phân công/ });
     await userEvent.click(removeButtons[0]);
@@ -733,16 +734,62 @@ describe('MatchDetailPage', () => {
 
     renderPage();
     await screen.findByRole('heading', { name: /V.ng 1/ });
-    await userEvent.click(screen.getAllByRole('tab')[3]);
+    await userEvent.click(screen.getAllByRole('tab')[2]);
     expect(await screen.findByText(/Tỷ số đã báo cáo: 3 - 0/)).toBeInTheDocument();
+  });
+
+  it('does not warn admin about missing report goal events when a submitted report exists', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...defaultMatch,
+      homeScore: 3,
+      awayScore: 0,
+      events: [],
+    });
+    mockMatchApi.apiGetMatchReport.mockResolvedValueOnce({
+      ...defaultMatchReport,
+      homeScore: 3,
+      awayScore: 0,
+    });
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: /V.ng 1/ });
+    await userEvent.click(screen.getAllByRole('tab')[2]);
+
+    expect((await screen.findAllByText(/3 - 0/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/3 - 0.*0 - 0/)).not.toBeInTheDocument();
+  });
+
+  it('uses the requested colors for supervisor report ratings', async () => {
+    const cases = [
+      { organizationRating: 'GOOD', className: 'ant-alert-success' },
+      { organizationRating: 'ACCEPTABLE', className: 'ant-alert-warning' },
+      { organizationRating: 'ISSUES_FOUND', className: 'ant-alert-error' },
+    ];
+
+    for (const testCase of cases) {
+      resetMatchApiMocks();
+      mockMatchApi.apiGetMatchReport.mockResolvedValueOnce(null);
+      mockMatchApi.apiGetDisciplineReport.mockResolvedValueOnce({
+        ...defaultDisciplineReport,
+        organizationRating: testCase.organizationRating,
+      });
+      const { unmount } = renderPage();
+
+      await screen.findByRole('heading', { name: /V.ng 1/ });
+      await userEvent.click(screen.getAllByRole('tab')[3]);
+
+      expect(document.querySelector(`.${testCase.className}`)).toBeInTheDocument();
+      unmount();
+    }
   });
 
   it('submits a zero-zero referee match record from the consolidated report panel', async () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
-    await screen.findByText('Biên bản trận đấu');
+    await userEvent.click(screen.getAllByRole('tab')[2]);
+    expect((await screen.findAllByText('Biên bản trận đấu')).length).toBeGreaterThan(0);
 
     await userEvent.click(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ }));
 
@@ -762,7 +809,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getAllByRole('tab')[2]);
     const reportPanel = screen.getByTestId('referee-match-report-panel');
     fireEvent.click(within(reportPanel).getByRole('button', { name: /Thêm sự kiện/ }));
     fireEvent.change(within(reportPanel).getByLabelText('Phút sự kiện 1'), {
@@ -805,7 +852,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getAllByRole('tab')[2]);
     const reportPanel = screen.getByTestId('referee-match-report-panel');
     fireEvent.click(within(reportPanel).getByRole('button', { name: /Thêm sự kiện/ }));
     fireEvent.change(within(reportPanel).getByLabelText('Phút sự kiện 1'), {
@@ -867,7 +914,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByRole('heading', { name: /V.ng 1/ });
-    fireEvent.click(screen.getAllByRole('tab')[3]);
+    fireEvent.click(screen.getAllByRole('tab')[2]);
     const reportPanel = screen.getByTestId('referee-match-report-panel');
 
     fireEvent.click(within(reportPanel).getAllByRole('button').at(-1) as HTMLElement);
@@ -924,7 +971,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByRole('heading', { name: /V.ng 1/ });
-    fireEvent.click(screen.getAllByRole('tab')[3]);
+    fireEvent.click(screen.getAllByRole('tab')[2]);
 
     expect(await screen.findByText(/6 - 7.*1 - 1/)).toBeInTheDocument();
     const submitButton = screen
@@ -938,7 +985,7 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByText(/Chi tiết trận đấu/);
-    fireEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    fireEvent.click(screen.getAllByRole('tab')[2]);
     const reportPanel = screen.getByTestId('referee-match-report-panel');
     fireEvent.click(within(reportPanel).getByRole('button', { name: /Thêm sự kiện/ }));
     fireEvent.change(within(reportPanel).getByLabelText('Phút sự kiện 1'), {
@@ -996,9 +1043,10 @@ describe('MatchDetailPage', () => {
     expect(screen.queryByRole('button', { name: /Cập nhật tỉ số/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Thêm sự kiện/ })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('tab', { name: /Trọng tài/ }));
+    await userEvent.click(screen.getAllByRole('tab')[2]);
     expect(screen.getByRole('button', { name: /Thêm sự kiện/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp biên bản trận đấu/ })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Báo cáo giám sát/ })).not.toBeInTheDocument();
     expect(mockMatchApi.apiGetDisciplineReport).not.toHaveBeenCalled();
   });
 
@@ -1014,9 +1062,10 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByRole('heading', { name: /V.ng 1/ });
-    await userEvent.click(screen.getAllByRole('tab')[3]);
+    await userEvent.click(screen.getAllByRole('tab')[2]);
 
     expect(screen.queryByRole('button', { name: /Nộp biên bản trận đấu/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Báo cáo giám sát/ })).not.toBeInTheDocument();
     expect(mockMatchApi.apiGetDisciplineReport).not.toHaveBeenCalled();
   });
 
@@ -1032,7 +1081,8 @@ describe('MatchDetailPage', () => {
     renderPage();
 
     await screen.findByRole('heading', { name: /V.ng 1/ });
-    await userEvent.click(screen.getAllByRole('tab')[3]);
+    expect(screen.queryByRole('tab', { name: /Biên bản trận đấu/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('tab')[2]);
 
     expect(screen.queryByRole('button', { name: /Nộp báo cáo giám sát/ })).not.toBeInTheDocument();
     expect(screen.getByText(/Chỉ BTC hoặc giám sát viên/)).toBeInTheDocument();

@@ -70,6 +70,7 @@ export class SearchService {
           awayTeam: { select: { name: true } },
           homeScore: true,
           awayScore: true,
+          scoreSource: true,
           status: true,
         },
         take: perEntity,
@@ -120,8 +121,11 @@ export class SearchService {
     }
 
     for (const m of matches) {
-      const score =
-        m.homeScore !== null ? `${m.homeScore}-${m.awayScore}` : m.status;
+      const hasTrustedScore =
+        m.scoreSource !== null && m.homeScore !== null && m.awayScore !== null;
+      const score = hasTrustedScore
+        ? `${m.homeScore}-${m.awayScore}`
+        : m.status;
       results.push({
         type: 'match',
         id: m.id,

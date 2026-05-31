@@ -6,8 +6,9 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth';
-import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchLineupService } from '../match-lineup/match-lineup.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   AssignOfficialDto,
   CreateOfficialDto,
@@ -20,6 +21,7 @@ export class MatchOfficialService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly matchLineupService: MatchLineupService,
   ) {}
 
   listOfficials() {
@@ -159,6 +161,11 @@ export class MatchOfficialService {
     }
 
     if (dto.events !== undefined) {
+      await this.assertSingleRedCardPerPlayerForSubmittedEvents(
+        matchId,
+        submittedEvents,
+      );
+
       await this.prisma.matchEvent.deleteMany({
         where: { matchId, source: 'MATCH_REPORT' },
       });
@@ -178,6 +185,10 @@ export class MatchOfficialService {
           source: 'MATCH_REPORT',
         })),
       });
+    }
+
+    if (dto.events !== undefined) {
+      await this.matchLineupService.syncSuspensionsForMatch(matchId);
     }
 
     if (!adminScoreLocked) {
@@ -291,6 +302,76 @@ export class MatchOfficialService {
     }
 
     return report;
+    if (
+      submittedByUser?.role === 'SUPERVISOR' &&
+      dto.organizationRating === 'ISSUES_FOUND' &&
+      dto.sendToDisciplinary
+    ) {
+      await this.notifyAdminsAboutDisciplinaryReferral(
+        matchId,
+        supervisor.fullName,
+      );
+    }
+
+    return report;
+  }
+
+  private async assertSingleRedCardPerPlayerForSubmittedEvents(
+    matchId: string,
+    events: Array<{ type: string; playerId?: string | null }>,
+  ) {
+    const redCardPlayerIds = events
+      .filter((event) => event.type === 'RED_CARD' && event.playerId)
+      .map((event) => event.playerId as string);
+    if (redCardPlayerIds.length === 0) return;
+
+    const uniqueRedCardPlayerIds = new Set(redCardPlayerIds);
+    if (uniqueRedCardPlayerIds.size !== redCardPlayerIds.length) {
+      throw new BadRequestException(
+        'Mỗi cầu thủ chỉ được nhận tối đa 1 thẻ đỏ trong 1 trận.',
+      );
+    }
+
+    const existingRedCard = await this.prisma.matchEvent.findFirst({
+      where: {
+        matchId,
+        type: 'RED_CARD' as never,
+        playerId: { in: [...uniqueRedCardPlayerIds] },
+        source: { not: 'MATCH_REPORT' },
+      },
+      select: { id: true },
+    });
+
+    if (existingRedCard) {
+      throw new BadRequestException(
+        'Cầu thủ này đã nhận thẻ đỏ trong trận đấu này. Mỗi cầu thủ chỉ được nhận tối đa 1 thẻ đỏ trong 1 trận.',
+      );
+    }
+  }
+
+  private async notifyAdminsAboutDisciplinaryReferral(
+    matchId: string,
+    supervisorName: string,
+  ) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        kickoffAt: true,
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+      },
+    });
+
+    if (!match) return;
+
+    await this.notificationService.notifyDisciplinaryReferralToAdmins({
+      matchId: match.id,
+      homeTeam: match.homeTeam?.name ?? 'Đội nhà',
+      awayTeam: match.awayTeam?.name ?? 'Đội khách',
+      kickoffAt: match.kickoffAt,
+      supervisorName,
+    });
   }
 
   private async ensureMatch(matchId: string) {

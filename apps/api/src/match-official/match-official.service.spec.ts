@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { MatchLineupService } from '../match-lineup/match-lineup.service';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchOfficialService } from './match-official.service';
@@ -8,6 +9,7 @@ describe('MatchOfficialService', () => {
   let service: MatchOfficialService;
   let prisma: PrismaService;
   let notificationService: NotificationService;
+  let matchLineupService: MatchLineupService;
 
   const match = {
     id: 'match-1',
@@ -60,6 +62,7 @@ describe('MatchOfficialService', () => {
             matchEvent: {
               createMany: jest.fn(),
               deleteMany: jest.fn(),
+              findFirst: jest.fn(),
             },
           },
         },
@@ -67,6 +70,15 @@ describe('MatchOfficialService', () => {
           provide: NotificationService,
           useValue: {
             notifyAdmins: jest.fn().mockResolvedValue(undefined),
+            notifyDisciplinaryReferralToAdmins: jest
+              .fn()
+              .mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: MatchLineupService,
+          useValue: {
+            syncSuspensionsForMatch: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -75,6 +87,7 @@ describe('MatchOfficialService', () => {
     service = module.get<MatchOfficialService>(MatchOfficialService);
     prisma = module.get<PrismaService>(PrismaService);
     notificationService = module.get<NotificationService>(NotificationService);
+    matchLineupService = module.get<MatchLineupService>(MatchLineupService);
 
     jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
     jest
@@ -88,6 +101,7 @@ describe('MatchOfficialService', () => {
     } as any);
     jest.spyOn(prisma.matchReport, 'findUnique').mockResolvedValue(null);
     jest.spyOn(prisma.disciplineReport, 'findUnique').mockResolvedValue(null);
+    jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -328,6 +342,38 @@ describe('MatchOfficialService', () => {
         entityId: 'match-1',
       }),
     );
+    expect(matchLineupService.syncSuspensionsForMatch).toHaveBeenCalledWith(
+      'match-1',
+    );
+  });
+
+  it('rejects a referee report with two red cards for the same player', async () => {
+    await expect(
+      service.submitMatchReport(
+        'match-1',
+        { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+        {
+          homeScore: 0,
+          awayScore: 0,
+          events: [
+            {
+              minute: 50,
+              type: 'RED_CARD',
+              teamId: 'team-home',
+              playerId: 'player-1',
+            },
+            {
+              minute: 80,
+              type: 'RED_CARD',
+              teamId: 'team-home',
+              playerId: 'player-1',
+            },
+          ],
+        },
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.matchEvent.createMany).not.toHaveBeenCalled();
   });
 
   it('keeps the official admin score when a referee report submits a different calculated score', async () => {
@@ -463,6 +509,51 @@ describe('MatchOfficialService', () => {
         entityId: 'match-1',
       }),
     );
+    expect(
+      notificationService.notifyDisciplinaryReferralToAdmins,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('notifies admins when supervisor sends an issues-found report to discipline board', async () => {
+    jest.spyOn(prisma.disciplineReport, 'upsert').mockResolvedValue({
+      id: 'discipline-1',
+      matchId: 'match-1',
+      supervisorId: 'official-1',
+      organizationRating: 'ISSUES_FOUND',
+    } as any);
+    jest
+      .spyOn(prisma.match, 'findUnique')
+      .mockResolvedValueOnce(match as any)
+      .mockResolvedValueOnce({
+        id: 'match-1',
+        kickoffAt: new Date('2026-05-31T10:00:00.000Z'),
+        homeTeam: { name: 'Home FC' },
+        awayTeam: { name: 'Away FC' },
+      } as any);
+
+    await service.submitDisciplineReport(
+      'match-1',
+      {
+        id: 'user-supervisor',
+        email: 'referee@demo.local',
+        role: 'SUPERVISOR',
+      },
+      {
+        supervisorId: 'official-1',
+        organizationRating: 'ISSUES_FOUND',
+        sendToDisciplinary: true,
+      },
+    );
+
+    expect(
+      notificationService.notifyDisciplinaryReferralToAdmins,
+    ).toHaveBeenCalledWith({
+      matchId: 'match-1',
+      homeTeam: 'Home FC',
+      awayTeam: 'Away FC',
+      kickoffAt: new Date('2026-05-31T10:00:00.000Z'),
+      supervisorName: official.fullName,
+    });
   });
 
   it('rejects a second supervisor discipline report submission', async () => {

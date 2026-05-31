@@ -4,7 +4,9 @@ import {
   MatchKitType,
   MatchLineupRole,
   MatchLineupStatus,
+  MatchOfficialRole,
   MatchStatus,
+  OfficialStatus,
   PlayerPosition,
   PlayerSuspensionStatus,
   PrismaClient,
@@ -25,6 +27,29 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 const DEMO_PASSWORD = 'Demo@12345';
+const CORE_DEMO_USERS = [
+  { email: 'admin@demo.local', role: UserRole.ADMIN, name: 'Admin Demo' },
+  { email: 'referee@demo.local', role: UserRole.REFEREE, name: 'Referee Demo' },
+  {
+    email: 'supervisor@demo.local',
+    role: UserRole.SUPERVISOR,
+    name: 'Supervisor Demo',
+  },
+] as const;
+const DEMO_OFFICIALS = [
+  {
+    fullName: 'Referee Demo',
+    email: 'referee@demo.local',
+    role: MatchOfficialRole.MAIN_REFEREE,
+    note: 'Demo main referee assignment',
+  },
+  {
+    fullName: 'Supervisor Demo',
+    email: 'supervisor@demo.local',
+    role: MatchOfficialRole.SUPERVISOR,
+    note: 'Demo supervisor assignment',
+  },
+] as const;
 const REAL_TEAMS = [
   'Thép Xanh Nam Định',
   'Hà Nội FC',
@@ -88,6 +113,92 @@ function slugTeamName(name: string) {
 
 function getManagerEmail(teamName: string) {
   return `manager.${slugTeamName(teamName)}@demo.local`;
+}
+
+async function seedCoreDemoUsersAndOfficialAssignments(
+  seasonId: string,
+  passwordHash: string,
+) {
+  console.log('\n🧑‍⚖️ Seeding admin/referee/supervisor demo accounts...');
+
+  for (const user of CORE_DEMO_USERS) {
+    const role = await prisma.role.upsert({
+      where: { name: user.role },
+      update: {},
+      create: { name: user.role },
+    });
+
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        role: user.role,
+        roleId: role.id,
+        passwordHash,
+        emailVerified: true,
+        name: user.name,
+      },
+      create: {
+        email: user.email,
+        role: user.role,
+        roleId: role.id,
+        passwordHash,
+        emailVerified: true,
+        name: user.name,
+      },
+    });
+  }
+  console.log(`  ✅ ${CORE_DEMO_USERS.length} core demo accounts upserted.`);
+
+  const seasonMatches = await prisma.match.findMany({
+    where: { seasonId },
+    select: { id: true },
+  });
+
+  for (const officialData of DEMO_OFFICIALS) {
+    const existingOfficial = await prisma.official.findFirst({
+      where: { email: { equals: officialData.email, mode: 'insensitive' } },
+      orderBy: { createdAt: 'asc' },
+    });
+    const official = existingOfficial
+      ? await prisma.official.update({
+          where: { id: existingOfficial.id },
+          data: {
+            fullName: officialData.fullName,
+            email: officialData.email,
+            status: OfficialStatus.ACTIVE,
+          },
+        })
+      : await prisma.official.create({
+          data: {
+            fullName: officialData.fullName,
+            email: officialData.email,
+            status: OfficialStatus.ACTIVE,
+          },
+        });
+
+    for (const match of seasonMatches) {
+      await prisma.matchOfficialAssignment.upsert({
+        where: {
+          matchId_officialId_role: {
+            matchId: match.id,
+            officialId: official.id,
+            role: officialData.role,
+          },
+        },
+        create: {
+          matchId: match.id,
+          officialId: official.id,
+          role: officialData.role,
+          note: officialData.note,
+        },
+        update: { note: officialData.note },
+      });
+    }
+  }
+
+  console.log(
+    `  ✅ Demo referee/supervisor assigned to ${seasonMatches.length} matches.`,
+  );
 }
 
 function getInvitationSource(index: number) {
@@ -333,29 +444,37 @@ async function seedDemoLineupsAndSuspensions(
     },
   });
 
-  await prisma.playerSuspension.upsert({
+  const existingDemoSuspension = await prisma.playerSuspension.findFirst({
     where: {
-      playerId_sourceMatchId_reason: {
-        playerId: suspendedPlayer.playerId,
-        sourceMatchId: sourceMatch.id,
-        reason: 'RED_CARD',
-      },
-    },
-    create: {
       playerId: suspendedPlayer.playerId,
-      teamId: suspendedTeamId,
-      seasonId,
       sourceMatchId: sourceMatch.id,
       effectiveMatchId: nextMatch.id,
       reason: 'RED_CARD',
-      status: PlayerSuspensionStatus.ACTIVE,
     },
-    update: {
-      effectiveMatchId: nextMatch.id,
-      status: PlayerSuspensionStatus.ACTIVE,
-      servedAt: null,
-    },
+    select: { id: true },
   });
+
+  if (existingDemoSuspension) {
+    await prisma.playerSuspension.update({
+      where: { id: existingDemoSuspension.id },
+      data: {
+        status: PlayerSuspensionStatus.ACTIVE,
+        servedAt: null,
+      },
+    });
+  } else {
+    await prisma.playerSuspension.create({
+      data: {
+        playerId: suspendedPlayer.playerId,
+        teamId: suspendedTeamId,
+        seasonId,
+        sourceMatchId: sourceMatch.id,
+        effectiveMatchId: nextMatch.id,
+        reason: 'RED_CARD',
+        status: PlayerSuspensionStatus.ACTIVE,
+      },
+    });
+  }
 
   for (const teamId of [nextMatch.homeTeamId, nextMatch.awayTeamId]) {
     const rosterRows = await prisma.teamPlayer.findMany({
@@ -852,6 +971,7 @@ async function main() {
     (match) => match.roundNo === 1,
   );
   await seedDemoLineupsAndSuspensions(season.id, round1Matches);
+  await seedCoreDemoUsersAndOfficialAssignments(season.id, passwordHash);
 
   console.log(`\n🚀 ${DEFAULT_SEASON_NAME} Setup Complete!`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

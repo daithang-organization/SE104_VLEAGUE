@@ -14,7 +14,7 @@ import {
   Typography,
   message,
 } from 'antd';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   AddMatchEventPayload,
@@ -27,18 +27,6 @@ import type {
 import { calculateReportScore, isScoringEventType } from './refereeMatchReportScore';
 
 const { Text } = Typography;
-
-const visuallyHiddenStyle: CSSProperties = {
-  border: 0,
-  clip: 'rect(0 0 0 0)',
-  height: 1,
-  margin: -1,
-  overflow: 'hidden',
-  padding: 0,
-  position: 'absolute',
-  whiteSpace: 'nowrap',
-  width: 1,
-};
 
 const REPORT_EVENT_TYPES: AddMatchEventPayload['type'][] = [
   'GOAL',
@@ -183,8 +171,12 @@ export default function RefereeMatchReportPanel({
     home: match.homeScore ?? reportScore.home,
     away: match.awayScore ?? reportScore.away,
   };
+  const shouldValidateReportScore =
+    !matchReport || draftEvents.length > 0 || savedScoringEvents.length > 0;
   const hasScoreMismatch =
-    currentScore.home !== reportScore.home || currentScore.away !== reportScore.away;
+    shouldValidateReportScore &&
+    (currentScore.home !== reportScore.home || currentScore.away !== reportScore.away);
+  const displayedReportScore = shouldValidateReportScore ? reportScore : currentScore;
 
   const savedReportEventPayloads = useMemo(
     () =>
@@ -358,8 +350,8 @@ export default function RefereeMatchReportPanel({
               <Text strong>{t('matchDetail.reportEventsSection')}</Text>
               <Tag color="blue">
                 {t('matchDetail.reportCalculatedScore', {
-                  home: reportScore.home,
-                  away: reportScore.away,
+                  home: displayedReportScore.home,
+                  away: displayedReportScore.away,
                 })}
               </Tag>
             </Flex>
@@ -435,8 +427,10 @@ export default function RefereeMatchReportPanel({
                   >
                     <Row gutter={[8, 8]} align="middle">
                       <Col xs={12} sm={6} md={4}>
-                        <label htmlFor={minuteId} style={visuallyHiddenStyle}>
-                          {t('matchDetail.reportMinuteLabel', { index: eventIndex })}
+                        <label htmlFor={minuteId}>
+                          <Text strong>
+                            {t('matchDetail.reportMinuteLabel', { index: eventIndex })}
+                          </Text>
                         </label>
                         <InputNumber
                           id={minuteId}
@@ -444,21 +438,23 @@ export default function RefereeMatchReportPanel({
                           max={150}
                           value={event.minute}
                           aria-label={t('matchDetail.reportMinuteLabel', { index: eventIndex })}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', marginTop: 4 }}
                           onChange={(value) =>
                             updateDraftEvent(event.key, { minute: Number(value ?? 0) })
                           }
                         />
                       </Col>
                       <Col xs={12} sm={9} md={6}>
-                        <label htmlFor={typeId} style={visuallyHiddenStyle}>
-                          {t('matchDetail.reportTypeLabel', { index: eventIndex })}
+                        <label htmlFor={typeId}>
+                          <Text strong>
+                            {t('matchDetail.reportTypeLabel', { index: eventIndex })}
+                          </Text>
                         </label>
                         <Select
                           id={typeId}
                           value={event.type}
                           aria-label={t('matchDetail.reportTypeLabel', { index: eventIndex })}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', marginTop: 4 }}
                           onChange={(type) =>
                             updateDraftEvent(event.key, {
                               type: type as AddMatchEventPayload['type'],
@@ -471,22 +467,24 @@ export default function RefereeMatchReportPanel({
                         />
                       </Col>
                       <Col xs={24} sm={9} md={6}>
-                        <label htmlFor={teamId} style={visuallyHiddenStyle}>
-                          {t('matchDetail.reportTeamLabel', { index: eventIndex })}
+                        <label htmlFor={teamId}>
+                          <Text strong>
+                            {t('matchDetail.reportTeamLabel', { index: eventIndex })}
+                          </Text>
                         </label>
                         <Select
                           id={teamId}
                           value={event.teamId}
                           placeholder={t('eventFormModal.teamLabel')}
                           aria-label={t('matchDetail.reportTeamLabel', { index: eventIndex })}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', marginTop: 4 }}
                           onChange={(teamId) => updateDraftEvent(event.key, { teamId })}
                           options={teamOptions}
                         />
                       </Col>
                       <Col xs={24} sm={12} md={8}>
-                        <label htmlFor={playerId} style={visuallyHiddenStyle}>
-                          {playerLabel}
+                        <label htmlFor={playerId}>
+                          <Text strong>{playerLabel}</Text>
                         </label>
                         <Select
                           id={playerId}
@@ -497,15 +495,17 @@ export default function RefereeMatchReportPanel({
                           placeholder={t('eventFormModal.playerPlaceholder')}
                           optionFilterProp="label"
                           disabled={!event.teamId}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', marginTop: 4 }}
                           onChange={(playerId) => updateDraftEvent(event.key, { playerId })}
                           options={selectedRosterOptions}
                         />
                       </Col>
                       {showGoalType && (
                         <Col xs={24} sm={12} md={6}>
-                          <label htmlFor={goalTypeId} style={visuallyHiddenStyle}>
-                            {t('matchDetail.reportGoalTypeLabel', { index: eventIndex })}
+                          <label htmlFor={goalTypeId}>
+                            <Text strong>
+                              {t('matchDetail.reportGoalTypeLabel', { index: eventIndex })}
+                            </Text>
                           </label>
                           <Select
                             id={goalTypeId}
@@ -515,7 +515,7 @@ export default function RefereeMatchReportPanel({
                               index: eventIndex,
                             })}
                             placeholder={t('eventFormModal.goalTypePlaceholder')}
-                            style={{ width: '100%' }}
+                            style={{ width: '100%', marginTop: 4 }}
                             onChange={(goalType) => updateDraftEvent(event.key, { goalType })}
                             options={GOAL_TYPES.map((goalType) => ({
                               value: goalType,
@@ -526,8 +526,8 @@ export default function RefereeMatchReportPanel({
                       )}
                       {showRelatedPlayer && (
                         <Col xs={24} sm={12} md={6}>
-                          <label htmlFor={relatedPlayerId} style={visuallyHiddenStyle}>
-                            {relatedPlayerLabel}
+                          <label htmlFor={relatedPlayerId}>
+                            <Text strong>{relatedPlayerLabel}</Text>
                           </label>
                           <Select
                             id={relatedPlayerId}
@@ -542,7 +542,7 @@ export default function RefereeMatchReportPanel({
                             }
                             optionFilterProp="label"
                             disabled={!event.teamId}
-                            style={{ width: '100%' }}
+                            style={{ width: '100%', marginTop: 4 }}
                             onChange={(relatedPlayerId) =>
                               updateDraftEvent(event.key, { relatedPlayerId })
                             }
@@ -551,14 +551,17 @@ export default function RefereeMatchReportPanel({
                         </Col>
                       )}
                       <Col xs={20} sm={showGoalType || showRelatedPlayer ? 10 : 12} md={5}>
-                        <label htmlFor={noteId} style={visuallyHiddenStyle}>
-                          {t('matchDetail.reportNoteLabel', { index: eventIndex })}
+                        <label htmlFor={noteId}>
+                          <Text strong>
+                            {t('matchDetail.reportNoteLabel', { index: eventIndex })}
+                          </Text>
                         </label>
                         <Input
                           id={noteId}
                           value={event.note}
                           aria-label={t('matchDetail.reportNoteLabel', { index: eventIndex })}
                           placeholder={t('eventFormModal.notePlaceholder')}
+                          style={{ marginTop: 4 }}
                           onChange={(inputEvent) =>
                             updateDraftEvent(event.key, { note: inputEvent.target.value })
                           }
@@ -582,28 +585,37 @@ export default function RefereeMatchReportPanel({
           <section>
             <Text strong>{t('matchDetail.reportDetailsSection')}</Text>
             <Space orientation="vertical" size={10} style={{ width: '100%', marginTop: 10 }}>
-              <Select
-                allowClear
-                showSearch
-                value={bestPlayerId}
-                placeholder={t('matchDetail.bestPlayerPlaceholder')}
-                optionFilterProp="label"
-                style={{ width: '100%' }}
-                onChange={setBestPlayerId}
-                options={playerOptions}
-              />
-              <Input.TextArea
-                rows={3}
-                value={technicalStatsText}
-                placeholder={t('matchDetail.technicalStatsPlaceholder')}
-                onChange={(event) => setTechnicalStatsText(event.target.value)}
-              />
-              <Input.TextArea
-                rows={2}
-                value={reportNote}
-                placeholder={t('matchDetail.refereeReportNotePlaceholder')}
-                onChange={(event) => setReportNote(event.target.value)}
-              />
+              <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+                <Text strong>{t('matchDetail.bestPlayerPlaceholder')}</Text>
+                <Select
+                  allowClear
+                  showSearch
+                  value={bestPlayerId}
+                  placeholder={t('matchDetail.bestPlayerPlaceholder')}
+                  optionFilterProp="label"
+                  style={{ width: '100%' }}
+                  onChange={setBestPlayerId}
+                  options={playerOptions}
+                />
+              </Space>
+              <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+                <Text strong>{t('matchDetail.technicalStatsLabel')}</Text>
+                <Input.TextArea
+                  rows={3}
+                  value={technicalStatsText}
+                  placeholder={t('matchDetail.technicalStatsPlaceholder')}
+                  onChange={(event) => setTechnicalStatsText(event.target.value)}
+                />
+              </Space>
+              <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+                <Text strong>{t('matchDetail.refereeReportNoteLabel')}</Text>
+                <Input.TextArea
+                  rows={2}
+                  value={reportNote}
+                  placeholder={t('matchDetail.refereeReportNotePlaceholder')}
+                  onChange={(event) => setReportNote(event.target.value)}
+                />
+              </Space>
             </Space>
           </section>
 

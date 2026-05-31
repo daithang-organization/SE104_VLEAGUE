@@ -190,4 +190,40 @@ export class NotificationService {
       `Match result notification: ${homeTeam} ${homeScore}-${awayScore} ${awayTeam}`,
     );
   }
+
+  async notifyDisciplinaryReferralToAdmins(params: {
+    matchId: string;
+    homeTeam: string;
+    awayTeam: string;
+    kickoffAt?: Date | null;
+    supervisorName: string;
+  }) {
+    const admins = await this.prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+
+    if (admins.length === 0) return;
+
+    const kickoffText = params.kickoffAt
+      ? params.kickoffAt.toLocaleString('vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour12: false,
+        })
+      : 'chưa có thời gian';
+    const matchName = `${params.homeTeam} vs ${params.awayTeam}`;
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.createForUser({
+          userId: admin.id,
+          title: 'Trận đấu cần xử lý kỷ luật',
+          message: `${params.supervisorName} đã chuyển trận ${matchName} (${kickoffText}) đến BTC kỷ luật.`,
+          type: 'SYSTEM',
+          entityType: 'match',
+          entityId: params.matchId,
+        }),
+      ),
+    );
+  }
 }
