@@ -21,8 +21,7 @@ describe('SeasonService', () => {
   };
 
   beforeEach(async () => {
-    let prismaMock: any;
-    prismaMock = {
+    const prismaMock: any = {
       $transaction: jest.fn((callback) => callback(prismaMock)),
       season: {
         findMany: jest.fn(),
