@@ -157,6 +157,7 @@ export default function PlayersPage() {
   });
   const [filterSourcePlayers, setFilterSourcePlayers] = useState<Player[]>([]);
   const [managerTeamId, setManagerTeamId] = useState<string | null>(null);
+  const [managerTeamStatus, setManagerTeamStatus] = useState<Team['status'] | null>(null);
   const [managerTeamLoaded, setManagerTeamLoaded] = useState(false);
   const [managerPlayerTab, setManagerPlayerTab] = useState<'all' | 'mine' | 'requests'>(
     ((location.state as Record<string, unknown>)?.tab as 'all' | 'mine' | 'requests') ||
@@ -175,6 +176,7 @@ export default function PlayersPage() {
 
   const isTeamManager = user?.role === 'TEAM_MANAGER';
   const isManagerMineTab = isTeamManager && managerPlayerTab === 'mine';
+  const isManagerTeamInactive = isTeamManager && managerTeamStatus === 'INACTIVE';
   const canEdit = useMemo(() => {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
@@ -197,6 +199,7 @@ export default function PlayersPage() {
   useEffect(() => {
     if (!isTeamManager) {
       setManagerTeamId(null);
+      setManagerTeamStatus(null);
       setManagerTeamLoaded(true);
       return;
     }
@@ -208,11 +211,13 @@ export default function PlayersPage() {
         const managedTeam = await apiGetTeamManagerManagedTeam();
         if (!cancelled) {
           setManagerTeamId(managedTeam?.id ?? null);
+          setManagerTeamStatus(managedTeam?.status ?? null);
           setTeams(managedTeam ? [managedTeam] : []);
         }
       } catch (_err) {
         if (!cancelled) {
           setManagerTeamId(null);
+          setManagerTeamStatus(null);
           message.error('Không tải được CLB quản lý của tài khoản này');
         }
       } finally {
@@ -389,6 +394,11 @@ export default function PlayersPage() {
   };
 
   const openCreateModal = () => {
+    if (isManagerTeamInactive) {
+      message.warning('CLB đang không hoạt động, không thể thêm cầu thủ.');
+      return;
+    }
+
     setEditingPlayer(null);
     setEditingPlayerRequest(null);
     form.resetFields();
@@ -401,6 +411,11 @@ export default function PlayersPage() {
   };
 
   const openEditModal = (player: Player) => {
+    if (isManagerTeamInactive) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa cầu thủ.');
+      return;
+    }
+
     setEditingPlayer(player);
     setEditingPlayerRequest(null);
     form.setFieldsValue({
@@ -421,6 +436,10 @@ export default function PlayersPage() {
 
   const openEditRequestModal = (request: ManagerPlayerRequest) => {
     if (request.status === 'APPROVED' || request.requestType === 'REMOVE_FROM_TEAM') return;
+    if (isManagerTeamInactive) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa yêu cầu cầu thủ.');
+      return;
+    }
 
     const payload = request.payload ?? {};
     const sourcePlayer = request.player;
@@ -445,6 +464,19 @@ export default function PlayersPage() {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
+      if (isManagerTeamInactive) {
+        message.warning('CLB đang không hoạt động, không thể lưu thay đổi cầu thủ.');
+        return;
+      }
+
+      if (!isTeamManager && values.teamId) {
+        const selectedTeam = teams.find((team) => team.id === values.teamId);
+        if (selectedTeam?.status === 'INACTIVE') {
+          message.warning('CLB đang không hoạt động, không thể thêm hoặc chỉnh sửa cầu thủ.');
+          return;
+        }
+      }
+
       setSaving(true);
 
       const payload: CreatePlayerPayload = {
@@ -522,6 +554,11 @@ export default function PlayersPage() {
   const handleDelete = async (id: string) => {
     try {
       if (isTeamManager) {
+        if (isManagerTeamInactive) {
+          message.warning('CLB đang không hoạt động, không thể xóa cầu thủ.');
+          return;
+        }
+
         await apiCreateManagerPlayerRequest({
           requestType: 'REMOVE_FROM_TEAM',
           playerId: id,
@@ -730,7 +767,12 @@ export default function PlayersPage() {
                     })
                   }
                 />
-                <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  disabled={isManagerTeamInactive}
+                  onClick={() => openEditModal(record)}
+                />
                 {isTeamManager ? (
                   <Popconfirm
                     title="Gửi yêu cầu xóa cầu thủ?"
@@ -744,6 +786,7 @@ export default function PlayersPage() {
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
+                      disabled={isManagerTeamInactive}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popconfirm>
@@ -1101,7 +1144,12 @@ export default function PlayersPage() {
             </Button>
           </Space>
           {canEdit && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              disabled={isManagerTeamInactive}
+              onClick={openCreateModal}
+            >
               {t('players.addBtn')}
             </Button>
           )}

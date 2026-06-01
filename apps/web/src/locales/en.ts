@@ -1293,6 +1293,7 @@ const en = {
     descManager: 'Manager',
     descCoachName: 'Head Coach',
     descStatus: 'Status',
+    descActivity: 'Activity',
     managerRequestNoteTitle: 'Manager Note',
     adminDecisionNoteTitle: 'Admin Response',
     adminApprovedNote: 'Admin approved your request.',

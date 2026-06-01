@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -21,6 +22,7 @@ const MATCH_TEAM_SELECT = {
   shortName: true,
   logoUrl: true,
   coachName: true,
+  status: true,
 };
 
 // Valid match status transitions
@@ -143,6 +145,10 @@ export class MatchService {
   ) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
+      include: {
+        homeTeam: { select: { status: true } },
+        awayTeam: { select: { status: true } },
+      },
     });
 
     if (!match) {
@@ -153,6 +159,15 @@ export class MatchService {
     if (match.status === 'FINISHED' || match.status === 'LOCKED') {
       throw new BadRequestException(
         `Không thể chỉnh sửa trận đấu ở trạng thái ${match.status}`,
+      );
+    }
+
+    if (
+      match.homeTeam.status === 'INACTIVE' ||
+      match.awayTeam.status === 'INACTIVE'
+    ) {
+      throw new ForbiddenException(
+        'CLB đang không hoạt động, không thể chỉnh sửa lịch thi đấu.',
       );
     }
 
