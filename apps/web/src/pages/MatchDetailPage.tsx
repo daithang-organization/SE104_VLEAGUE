@@ -43,15 +43,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useMatchSocket } from '../hooks/useMatchSocket';
 import {
-  apiGetMatch,
-  apiGetDisciplineReport,
-  apiGetMatchOfficials,
-  apiGetMatchLineups,
-  apiGetMatchReport,
-  apiGetOfficials,
-  apiGetMatchSuspensions,
-  apiGetTeamRoster,
   apiAssignMatchOfficial,
+  apiGetDisciplineReport,
+  apiGetMatch,
+  apiGetMatchLineups,
+  apiGetMatchOfficials,
+  apiGetMatchReport,
+  apiGetMatchSuspensions,
+  apiGetOfficials,
+  apiGetTeamRoster,
   apiRemoveMatchOfficial,
   apiReviewMatchLineup,
   apiSubmitDisciplineReport,
@@ -61,11 +61,11 @@ import {
   type DisciplineReport,
   type Match,
   type MatchEvent,
-  type MatchOfficialAssignment,
-  type MatchOfficialRole,
   type MatchKitType,
   type MatchLineupRole,
   type MatchLineupStatus,
+  type MatchOfficialAssignment,
+  type MatchOfficialRole,
   type MatchReport,
   type MatchSuspension,
   type MatchTeamLineup,
@@ -74,14 +74,15 @@ import {
   type RosterPlayer,
   type SubmitMatchReportPayload,
 } from '../services/matchApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
+import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
 import { EVENT_TYPE_MAP, POSITION_MAP, STATUS_MAP } from './match-detail/constants';
 import EventFormModal from './match-detail/EventFormModal';
 import MatchCenter from './match-detail/MatchCenter';
-import RefereeMatchReportPanel from './match-detail/RefereeMatchReportPanel';
 import MatchStatsPanel from './match-detail/MatchStatsPanel';
 import MatchTimeline from './match-detail/MatchTimeline';
+import RefereeMatchReportPanel from './match-detail/RefereeMatchReportPanel';
 import ScoreModal from './match-detail/ScoreModal';
-import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
 
 const { Title, Text } = Typography;
 
@@ -164,6 +165,7 @@ export default function MatchDetailPage() {
   const [lineupSubmitting, setLineupSubmitting] = useState(false);
   const [lineupReviewNotes, setLineupReviewNotes] = useState<Record<string, string>>({});
   const [lineupReviewingKey, setLineupReviewingKey] = useState<string | null>(null);
+  const [managedTeamId, setManagedTeamId] = useState<string | null>(null);
 
   // Officials and post-match reports
   const [officials, setOfficials] = useState<Official[]>([]);
@@ -336,6 +338,29 @@ export default function MatchDetailPage() {
   }, [fetchMatch]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (user?.role !== 'TEAM_MANAGER') {
+      setManagedTeamId(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    apiGetTeamManagerManagedTeam()
+      .then((team) => {
+        if (!cancelled) setManagedTeamId(team?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setManagedTeamId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role]);
+
+  useEffect(() => {
     if (match && !selectedLineupTeamId) {
       setSelectedLineupTeamId(match.homeTeamId);
     }
@@ -394,8 +419,13 @@ export default function MatchDetailPage() {
     return transitions[m.status] ?? [];
   };
 
-  const canSubmitLineup = user?.role === 'ADMIN' || user?.role === 'TEAM_MANAGER';
+  const canOpenLineupSubmission = user?.role === 'ADMIN' || user?.role === 'TEAM_MANAGER';
   const canSubmitLineupForMatch = match?.status === 'PUBLISHED';
+  const canEditSelectedLineup =
+    user?.role === 'ADMIN' ||
+    (user?.role === 'TEAM_MANAGER' &&
+      Boolean(selectedLineupTeamId) &&
+      selectedLineupTeamId === managedTeamId);
   const canReviewLineup = user?.role === 'ADMIN' || user?.role === 'REFEREE';
   const canAssignOfficials = user?.role === 'ADMIN';
   const canSubmitMatchReport = user?.role === 'ADMIN' || (user?.role === 'REFEREE' && !matchReport);
@@ -474,6 +504,7 @@ export default function MatchDetailPage() {
   };
 
   const handleLineupRoleChange = (playerId: string, role: MatchLineupRole | 'NONE') => {
+    if (!canEditSelectedLineup) return;
     setLineupRoles((prev) => ({
       ...prev,
       [playerId]: role === 'NONE' ? undefined : role,
@@ -481,6 +512,7 @@ export default function MatchDetailPage() {
   };
 
   const handleAutoFillLineup = () => {
+    if (!canEditSelectedLineup) return;
     const availablePlayers = selectedRoster.filter(
       (player) => !suspendedPlayerIdsForSelectedTeam.has(player.playerId),
     );
@@ -512,6 +544,10 @@ export default function MatchDetailPage() {
 
   const handleSubmitLineup = async () => {
     if (!match || !selectedLineupTeamId) return;
+    if (!canEditSelectedLineup) {
+      message.warning('Huấn luyện viên chỉ có thể điều chỉnh đội hình của CLB mình quản lý.');
+      return;
+    }
 
     if (!isLineupReady) {
       message.warning(
@@ -906,7 +942,7 @@ export default function MatchDetailPage() {
         return (
           <Select
             value={lineupRoles[player.playerId] ?? 'NONE'}
-            disabled={isSuspended}
+            disabled={isSuspended || !canEditSelectedLineup}
             style={{ width: '100%' }}
             onChange={(value) =>
               handleLineupRoleChange(player.playerId, value as MatchLineupRole | 'NONE')
@@ -1528,7 +1564,7 @@ export default function MatchDetailPage() {
           },
           {
             key: 'timeline',
-            label: `⏱ ${t('matchDetail.tabTimeline')}`,
+            label: t('matchDetail.tabTimeline'),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 <Card size="small">
@@ -1719,7 +1755,7 @@ export default function MatchDetailPage() {
                   </Col>
                 </Row>
 
-                {canSubmitLineup && !canSubmitLineupForMatch && (
+                {canOpenLineupSubmission && !canSubmitLineupForMatch && (
                   <Alert
                     showIcon
                     type="info"
@@ -1727,7 +1763,7 @@ export default function MatchDetailPage() {
                   />
                 )}
 
-                {canSubmitLineup && canSubmitLineupForMatch && (
+                {canOpenLineupSubmission && canSubmitLineupForMatch && (
                   <Card
                     title="Đăng ký thi đấu"
                     size="small"
@@ -1737,6 +1773,7 @@ export default function MatchDetailPage() {
                       <Col xs={24} md={8}>
                         <Text strong>Đội đăng ký</Text>
                         <Select
+                          aria-label="Đội đăng ký"
                           value={selectedLineupTeamId}
                           style={{ width: '100%', marginTop: 6 }}
                           onChange={handleLineupTeamChange}
@@ -1755,7 +1792,9 @@ export default function MatchDetailPage() {
                       <Col xs={24} md={8}>
                         <Text strong>Trang phục</Text>
                         <Select
+                          aria-label="Trang phục"
                           value={lineupKitType}
+                          disabled={!canEditSelectedLineup}
                           style={{ width: '100%', marginTop: 6 }}
                           onChange={setLineupKitType}
                           options={[
@@ -1767,7 +1806,9 @@ export default function MatchDetailPage() {
                       <Col xs={24} md={8}>
                         <Text strong>Sơ đồ thi đấu</Text>
                         <Select
+                          aria-label="Sơ đồ thi đấu"
                           value={lineupFormation}
+                          disabled={!canEditSelectedLineup}
                           style={{ width: '100%', marginTop: 6 }}
                           onChange={setLineupFormation}
                           options={FORMATION_OPTIONS.map((formation) => ({
@@ -1780,20 +1821,30 @@ export default function MatchDetailPage() {
 
                     <Alert
                       showIcon
-                      type={isLineupReady ? 'success' : 'warning'}
-                      message="11 chính thức / 5 dự bị"
-                      description={`Đã chọn ${lineupCounts.starters.length}/11 chính thức, ${lineupCounts.substitutes.length}/5 dự bị, ${lineupCounts.foreignStarters}/3 ngoại binh đá chính, ${lineupCounts.suspendedSelected.length} cầu thủ treo giò.`}
+                      type={!canEditSelectedLineup ? 'info' : isLineupReady ? 'success' : 'warning'}
+                      message={
+                        canEditSelectedLineup ? '11 chính thức / 5 dự bị' : 'Chỉ xem đội hình'
+                      }
+                      description={
+                        canEditSelectedLineup
+                          ? `Đã chọn ${lineupCounts.starters.length}/11 chính thức, ${lineupCounts.substitutes.length}/5 dự bị, ${lineupCounts.foreignStarters}/3 ngoại binh đá chính, ${lineupCounts.suspendedSelected.length} cầu thủ treo giò.`
+                          : 'Huấn luyện viên chỉ có thể điều chỉnh đội hình của CLB mình quản lý.'
+                      }
                       style={{ marginBottom: 12 }}
                     />
 
                     <Space wrap style={{ marginBottom: 12 }}>
-                      <Button onClick={handleAutoFillLineup}>Chọn nhanh 16</Button>
-                      <Button onClick={() => setLineupRoles({})}>Xóa chọn</Button>
+                      <Button disabled={!canEditSelectedLineup} onClick={handleAutoFillLineup}>
+                        Chọn nhanh 16
+                      </Button>
+                      <Button disabled={!canEditSelectedLineup} onClick={() => setLineupRoles({})}>
+                        Xóa chọn
+                      </Button>
                       <Button
                         type="primary"
                         icon={<SendOutlined />}
                         loading={lineupSubmitting}
-                        disabled={!isLineupReady}
+                        disabled={!canEditSelectedLineup || !isLineupReady}
                         onClick={handleSubmitLineup}
                       >
                         Nộp danh sách

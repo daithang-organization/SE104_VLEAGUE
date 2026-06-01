@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, MatchFixtureCard, PageCover } from '../components';
+import { compareSeasonsByLatest, getLatestSeason } from '../hooks/useSeasonSelection';
 import { apiUpdateMatch } from '../services/matchApi';
 import {
   apiGenerateSchedule,
@@ -37,7 +38,7 @@ import {
   apiPublishSchedule,
   type ScheduleMatch,
 } from '../services/scheduleApi';
-import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { STATUS_MAP } from '../utils/constants';
@@ -92,12 +93,11 @@ export default function SchedulePage() {
 
   // Fetch seasons + stadiums on mount
   useEffect(() => {
-    Promise.all([apiGetSeasons(), apiGetCurrentSeason().catch(() => null)])
-      .then(([list, current]) => {
-        setSeasons(list);
-        const active = current ?? list.find((s) => s.status === 'IN_PROGRESS');
-        if (active) setSelectedSeasonId(active.id);
-        else if (list.length > 0) setSelectedSeasonId(list[0].id);
+    apiGetSeasons()
+      .then((list) => {
+        const sortedSeasons = [...list].sort(compareSeasonsByLatest);
+        setSeasons(sortedSeasons);
+        setSelectedSeasonId(getLatestSeason(sortedSeasons)?.id);
       })
       .catch(() => {});
     apiGetStadiums()

@@ -36,6 +36,7 @@ import {
   PageCover,
   ScoreEditModal,
 } from '../components';
+import { compareSeasonsByLatest, getLatestSeason } from '../hooks/useSeasonSelection';
 import {
   apiAddMatchEvent,
   apiGetAssignedMatches,
@@ -49,7 +50,7 @@ import {
   type MatchEvent,
   type RosterPlayer,
 } from '../services/matchApi';
-import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
@@ -193,12 +194,13 @@ export default function MatchesPage() {
 
   // Initial fetch seasons
   useEffect(() => {
-    Promise.all([apiGetSeasons(), apiGetCurrentSeason().catch(() => null)])
-      .then(([data, current]) => {
-        setSeasons(data);
-        if (data.length > 0) {
-          const active = current ?? data.find((s) => s.status === 'IN_PROGRESS');
-          const initialSeasonId = active ? active.id : data[0].id;
+    apiGetSeasons()
+      .then((data) => {
+        const sortedSeasons = [...data].sort(compareSeasonsByLatest);
+        setSeasons(sortedSeasons);
+        const latestSeason = getLatestSeason(sortedSeasons);
+        if (latestSeason) {
+          const initialSeasonId = latestSeason.id;
           setSelectedSeasonId(initialSeasonId);
           loadMatches(
             initialSeasonId,

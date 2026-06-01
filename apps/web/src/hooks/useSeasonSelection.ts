@@ -4,14 +4,6 @@ import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/sea
 
 export const SELECTED_SEASON_STORAGE_KEY = 'vleague-selected-season-id';
 
-function readStoredSeasonId(storageKey: string) {
-  try {
-    return window.sessionStorage.getItem(storageKey) ?? undefined;
-  } catch (_err) {
-    return undefined;
-  }
-}
-
 function writeStoredSeasonId(storageKey: string, seasonId: string) {
   try {
     window.sessionStorage.setItem(storageKey, seasonId);
@@ -26,25 +18,26 @@ function parseTime(value?: string | null) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-export function getLatestSeason(seasons: Season[]) {
-  return [...seasons].sort((a, b) => {
-    const yearDiff = b.year - a.year;
-    if (yearDiff !== 0) return yearDiff;
-    const createdDiff = parseTime(b.createdAt) - parseTime(a.createdAt);
-    if (createdDiff !== 0) return createdDiff;
-    return b.name.localeCompare(a.name);
-  })[0];
+export function compareSeasonsByLatest(a: Season, b: Season) {
+  const yearDiff = b.year - a.year;
+  if (yearDiff !== 0) return yearDiff;
+  const createdDiff = parseTime(b.createdAt) - parseTime(a.createdAt);
+  if (createdDiff !== 0) return createdDiff;
+  return b.name.localeCompare(a.name);
 }
 
-function resolveSeasonId(seasons: Season[], urlSeasonId?: string, storedSeasonId?: string) {
+export function getLatestSeason(seasons: Season[]) {
+  return [...seasons].sort(compareSeasonsByLatest)[0];
+}
+
+function resolveSeasonId(seasons: Season[], urlSeasonId?: string) {
   if (seasons.length === 0) return undefined;
 
   const validSeasonIds = new Set(seasons.map((season) => season.id));
-  const preferred = [urlSeasonId, storedSeasonId].find((seasonId): seasonId is string =>
-    Boolean(seasonId && validSeasonIds.has(seasonId)),
-  );
 
-  return preferred ?? getLatestSeason(seasons)?.id;
+  if (urlSeasonId && validSeasonIds.has(urlSeasonId)) return urlSeasonId;
+
+  return getLatestSeason(seasons)?.id;
 }
 
 export function useSeasonSelection(
@@ -73,7 +66,7 @@ export function useSeasonSelection(
             ? [current, ...seasonList]
             : seasonList;
 
-        setSeasons(normalizedSeasons);
+        setSeasons([...normalizedSeasons].sort(compareSeasonsByLatest));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -86,8 +79,8 @@ export function useSeasonSelection(
 
   const resolvedSeasonId = useMemo(() => {
     if (loading) return undefined;
-    return resolveSeasonId(seasons, urlSeasonId, readStoredSeasonId(storageKey));
-  }, [loading, seasons, storageKey, urlSeasonId]);
+    return resolveSeasonId(seasons, urlSeasonId);
+  }, [loading, seasons, urlSeasonId]);
 
   useEffect(() => {
     if (loading) return;

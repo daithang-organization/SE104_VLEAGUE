@@ -126,41 +126,51 @@ export default function MatchFixtureCard({
   } as CSSProperties;
 
   return (
-    <div className={rootClassName} style={themeStyle}>
+    <div
+      className={rootClassName}
+      style={{ ...themeStyle, cursor: onMatchClick ? 'pointer' : undefined }}
+      onClick={() => onMatchClick?.(id)}
+    >
       <div className="schedule-fixture-meta">
         <span className="schedule-fixture-round">{roundLabel}</span>
         <Tag color={statusColor}>{statusLabel}</Tag>
       </div>
 
-      <button
-        type="button"
-        className="schedule-fixture-team schedule-fixture-team-left match-fixture-team-home"
-        onClick={() => onTeamClick?.(home.id)}
-      >
+      <div className="schedule-fixture-team schedule-fixture-team-left match-fixture-team-home">
         <span className="schedule-fixture-team-copy">
-          <span className="schedule-fixture-team-name">{home.name}</span>
+          <span
+            className="schedule-fixture-team-name"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTeamClick?.(home.id);
+            }}
+            style={{ cursor: onTeamClick ? 'pointer' : undefined }}
+          >
+            {home.name}
+          </span>
         </span>
         {renderTeamLogo(home)}
-      </button>
+      </div>
 
-      <button
-        type="button"
-        className={`schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}`}
-        onClick={() => onMatchClick?.(id)}
-      >
+      <div className={`schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}`}>
         {scoreText}
-      </button>
+      </div>
 
-      <button
-        type="button"
-        className="schedule-fixture-team schedule-fixture-team-right match-fixture-team-away"
-        onClick={() => onTeamClick?.(away.id)}
-      >
+      <div className="schedule-fixture-team schedule-fixture-team-right match-fixture-team-away">
         {renderTeamLogo(away)}
         <span className="schedule-fixture-team-copy">
-          <span className="schedule-fixture-team-name">{away.name}</span>
+          <span
+            className="schedule-fixture-team-name"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTeamClick?.(away.id);
+            }}
+            style={{ cursor: onTeamClick ? 'pointer' : undefined }}
+          >
+            {away.name}
+          </span>
         </span>
-      </button>
+      </div>
 
       <div className="schedule-fixture-detail">
         <span>{stadiumName ?? stadiumFallback}</span>
@@ -170,7 +180,9 @@ export default function MatchFixtureCard({
         </span>
       </div>
 
-      <div className={actionRootClassName}>{actions}</div>
+      <div className={actionRootClassName} onClick={(e) => e.stopPropagation()}>
+        {actions}
+      </div>
     </div>
   );
 }

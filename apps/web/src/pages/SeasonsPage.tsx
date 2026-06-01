@@ -1,4 +1,4 @@
-﻿import {
+import {
   CalendarOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -61,12 +61,12 @@ import {
 } from '../services/seasonTeamApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
 import {
+  apiDeletePromotionCandidate,
   apiGetInvitationCandidates,
   apiGetPromotionCandidates,
   apiGetReplacementCandidates,
   apiGetSeasonInvitations,
   apiImportPromotionCandidates,
-  apiDeletePromotionCandidate,
   apiSendTeamInvitation,
   apiUpsertPromotionCandidate,
   type ImportPromotionCandidateRow,
@@ -1524,6 +1524,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
         onCancel={() => setReplacementModalOpen(false)}
         footer={null}
         width={680}
+        centered
       >
         {replacementData && replacementData.candidates.length > 0 ? (
           <Table
@@ -1531,6 +1532,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             rowKey="id"
             pagination={false}
             size="small"
+            scroll={{ y: '60vh' }}
             columns={[
               {
                 title: 'CLB',
@@ -1538,17 +1540,21 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
                 render: (_, r) => {
                   const logoUrl = getTeamLogoUrl(r);
                   return (
-                    <Space size={6}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {logoUrl && (
                         <img
                           src={logoUrl}
                           alt=""
-                          style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }}
                         />
                       )}
-                      <strong>{r.name}</strong>
-                      {r.shortName && <span style={{ color: '#888' }}>({r.shortName})</span>}
-                    </Space>
+                      <div style={{ wordBreak: 'break-word' }}>
+                        <strong>{r.name}</strong>
+                        {r.shortName && (
+                          <span style={{ color: '#888', marginLeft: 4 }}>({r.shortName})</span>
+                        )}
+                      </div>
+                    </div>
                   );
                 },
               },
@@ -1575,7 +1581,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
                   ),
               },
               {
-                title: '',
+                title: 'Hành động',
                 key: 'action',
                 width: 140,
                 align: 'right' as const,

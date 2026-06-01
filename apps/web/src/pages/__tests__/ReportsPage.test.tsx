@@ -240,15 +240,15 @@ describe('ReportsPage', () => {
     expect((await screen.findAllByText('V.League 2026')).length).toBeGreaterThan(0);
   });
 
-  it('keeps a previously selected season when navigating back to reports', async () => {
+  it('defaults to the latest season even when a previous session season exists', async () => {
     sessionStorage.setItem('vleague-selected-season-id', 's2025');
 
     renderPage();
 
     await waitFor(() => {
-      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalledWith('s2025', 50);
+      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalledWith('s2026', 50);
     });
-    expect((await screen.findAllByText('V.League 2025')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('V.League 2026')).length).toBeGreaterThan(0);
   });
 
   it('renders tab labels', async () => {

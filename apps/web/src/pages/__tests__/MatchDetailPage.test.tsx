@@ -247,9 +247,14 @@ const mockMatchApi = vi.hoisted(() => ({
   apiSubmitDisciplineReport: vi.fn(),
 }));
 
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerManagedTeam: vi.fn(),
+}));
+
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../hooks/useMatchSocket', () => ({ useMatchSocket: () => ({ isConnected: false }) }));
 vi.mock('../../services/matchApi', () => mockMatchApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import MatchDetailPage from '../MatchDetailPage';
 
@@ -314,6 +319,12 @@ function resetMatchApiMocks() {
   mockMatchApi.apiGetDisciplineReport.mockResolvedValue(defaultDisciplineReport);
   mockMatchApi.apiSubmitDisciplineReport.mockReset();
   mockMatchApi.apiSubmitDisciplineReport.mockResolvedValue({});
+  mockTeamManagerApi.apiGetTeamManagerManagedTeam.mockReset();
+  mockTeamManagerApi.apiGetTeamManagerManagedTeam.mockResolvedValue({
+    id: 'home-team',
+    name: 'Ha Noi FC',
+    shortName: 'HN',
+  });
 }
 
 describe('MatchDetailPage', () => {
@@ -439,6 +450,50 @@ describe('MatchDetailPage', () => {
       expect(within(registrationCard).getByText('Home Player 8')).toBeInTheDocument();
       expect(within(registrationCard).queryByText('Home Player 1')).not.toBeInTheDocument();
     });
+  });
+
+  it('prevents team managers from editing another team lineup after switching teams', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'manager-1', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamManagerApi.apiGetTeamManagerManagedTeam.mockResolvedValueOnce({
+      id: 'home-team',
+      name: 'Ha Noi FC',
+      shortName: 'HN',
+    });
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    await userEvent.click(screen.getByRole('tab', { name: /Đội hình/ }));
+
+    const registrationCard = screen
+      .getByText('Đăng ký thi đấu')
+      .closest('.ant-card') as HTMLElement;
+
+    await waitFor(() => {
+      expect(mockTeamManagerApi.apiGetTeamManagerManagedTeam).toHaveBeenCalled();
+    });
+
+    await selectReportOption(
+      within(registrationCard).getByLabelText('Đội đăng ký'),
+      'Hai Phong FC',
+    );
+
+    expect(within(registrationCard).getByText('Chỉ xem đội hình')).toBeInTheDocument();
+    expect(
+      within(registrationCard).getByText(
+        'Huấn luyện viên chỉ có thể điều chỉnh đội hình của CLB mình quản lý.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(registrationCard).getByRole('button', { name: 'Chọn nhanh 16' })).toBeDisabled();
+    expect(within(registrationCard).getByRole('button', { name: 'Xóa chọn' })).toBeDisabled();
+    expect(within(registrationCard).getByRole('button', { name: /Nộp danh sách/ })).toBeDisabled();
+    expect(registrationCard.querySelector('.ant-select-disabled')).toBeInTheDocument();
   });
 
   it('renders the timeline area as a hero with grid cards', async () => {

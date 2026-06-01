@@ -3412,11 +3412,11 @@ select {
   font-weight: 700;
 }
 
-.match-fixture-card .schedule-fixture-team:hover span {
+.match-fixture-card .schedule-fixture-team-name:hover {
   color: var(--match-home-accent, var(--primary));
 }
 
-.match-fixture-card .match-fixture-team-away:hover span {
+.match-fixture-card .match-fixture-team-away .schedule-fixture-team-name:hover {
   color: var(--match-away-accent, var(--info));
 }
 
@@ -3489,6 +3489,9 @@ select {
 }
 
 .schedule-fixture-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 92px;
   height: 48px;
   padding: 0 16px;
