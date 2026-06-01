@@ -2,6 +2,7 @@ import {
   ArrowLeftOutlined,
   CalendarOutlined,
   EnvironmentOutlined,
+  ExclamationCircleOutlined,
   FileTextOutlined,
   HomeOutlined,
   TeamOutlined,
@@ -307,13 +308,19 @@ export default function StadiumDetailPage() {
                   <div className="team-detail-note-grid">
                     {visibleManagerRequestNote && (
                       <div className="team-detail-note-card">
-                        <span className="team-detail-note-label">Ghi chú</span>
+                        <span className="team-detail-note-heading">
+                          <ExclamationCircleOutlined className="team-detail-note-icon" />
+                          <span className="team-detail-note-label">Ghi chú</span>
+                        </span>
                         <p>{visibleManagerRequestNote}</p>
                       </div>
                     )}
                     {visibleAdminDecisionNote && (
                       <div className="team-detail-note-card team-detail-note-card-admin">
-                        <span className="team-detail-note-label">Phản hồi</span>
+                        <span className="team-detail-note-heading">
+                          <ExclamationCircleOutlined className="team-detail-note-icon" />
+                          <span className="team-detail-note-label">Phản hồi</span>
+                        </span>
                         <p>{visibleAdminDecisionNote}</p>
                       </div>
                     )}

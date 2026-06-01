@@ -33,7 +33,7 @@ import {
   Tabs,
   Tag,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, ColumnType } from 'antd/es/table';
 import type { SortOrder as AntSortOrder, FilterValue, SorterResult } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 import {
@@ -69,8 +69,8 @@ import {
   apiUpdateManagerPlayerRequest,
   type ManagerPlayerRequest,
 } from '../services/teamManagerApi';
-import { cleanDecorativeLabel } from '../utils/textLabels';
 import { getTeamLogoUrl } from '../utils/teamLogos';
+import { cleanDecorativeLabel } from '../utils/textLabels';
 
 const POSITION_TRANSLATION_KEYS: Record<string, string> = {
   GK: 'players.formPositionGK',
@@ -597,6 +597,7 @@ export default function PlayersPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => (pagination.page - 1) * pagination.limit + i + 1,
     },
@@ -712,10 +713,11 @@ export default function PlayersPage() {
       sortOrder: sortState.sortBy === 'weightKg' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     ...(showPlayerActions
-      ? [
+      ? ([
           {
             title: t('players.colActions'),
             key: 'actions',
+            align: 'center',
             width: 120,
             render: (_: unknown, record: Player) => (
               <Space>
@@ -760,7 +762,7 @@ export default function PlayersPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<Player>[])
       : []),
   ];
 
@@ -882,6 +884,7 @@ export default function PlayersPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => i + 1,
     },
@@ -911,13 +914,13 @@ export default function PlayersPage() {
       width: 130,
       filters: [
         { text: 'Chờ duyệt', value: 'PENDING' },
-        { text: 'Đã duyệt', value: 'APPROVED' },
+        { text: 'Được duyệt', value: 'APPROVED' },
         { text: 'Từ chối', value: 'REJECTED' },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status: ManagerPlayerRequest['status']) => (
         <Tag color={status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'gold'}>
-          {status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+          {status === 'APPROVED' ? 'Được duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
         </Tag>
       ),
     },
@@ -929,10 +932,11 @@ export default function PlayersPage() {
       sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     ...(user?.role === 'ADMIN'
-      ? [
+      ? ([
           {
             title: t('players.colActions'),
             key: 'actions',
+            align: 'center',
             width: 120,
             render: (_: unknown, record: ManagerPlayerRequest) => (
               <Space>
@@ -967,12 +971,13 @@ export default function PlayersPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<ManagerPlayerRequest>[])
       : isTeamManager
-        ? [
+        ? ([
             {
               title: t('players.colActions'),
               key: 'actions',
+              align: 'center',
               width: 120,
               render: (_: unknown, record: ManagerPlayerRequest) => (
                 <Space>
@@ -1005,7 +1010,7 @@ export default function PlayersPage() {
                 </Space>
               ),
             },
-          ]
+          ] as ColumnType<ManagerPlayerRequest>[])
         : []),
   ];
 

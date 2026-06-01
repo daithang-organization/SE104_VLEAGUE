@@ -68,11 +68,6 @@ const NO_MANAGER_VALUE = '__NO_MANAGER__';
 type ManagerTeamCardItem = {
   key: string;
   team: Team;
-  status: TeamManagerRequest['status'];
-  canOpen: boolean;
-  request?: TeamManagerRequest;
-  requestType?: TeamManagerRequest['requestType'];
-  adminNote?: string | null;
 };
 
 export default function TeamsPage() {
@@ -576,36 +571,14 @@ export default function TeamsPage() {
       ? managerRequest
       : null;
   const managerRequestCards: ManagerTeamCardItem[] = managedTeam
-    ? [
-        {
-          key: activeManagedTeamRequest?.id ?? managedTeam.id,
-          team: managedTeam,
-          status: activeManagedTeamRequest?.status ?? 'APPROVED',
-          canOpen: true,
-          request: activeManagedTeamRequest ?? undefined,
-          requestType: activeManagedTeamRequest?.requestType,
-          adminNote: activeManagedTeamRequest?.adminNote,
-        },
-      ]
-    : managerRequest
-      ? [
-          {
-            key: managerRequest.id,
-            team: getRequestTeam(managerRequest),
-            status: managerRequest.status,
-            canOpen: Boolean(managerRequest.teamId && managerRequest.team),
-            request: managerRequest,
-            requestType: managerRequest.requestType,
-            adminNote: managerRequest.adminNote,
-          },
-        ]
-      : [];
+    ? [{ key: managedTeam.id, team: managedTeam }]
+    : [];
 
   const requestStatusMeta: Record<TeamManagerRequest['status'], { color: string; label: string }> =
     {
-      PENDING: { color: 'processing', label: 'Đang chờ duyệt' },
-      APPROVED: { color: 'green', label: 'Đã được duyệt' },
-      REJECTED: { color: 'red', label: 'Bị từ chối' },
+      PENDING: { color: 'gold', label: 'Chờ duyệt' },
+      APPROVED: { color: 'green', label: 'Được duyệt' },
+      REJECTED: { color: 'red', label: 'Từ chối' },
     };
 
   const requestTypeLabel = (requestType: TeamManagerRequest['requestType']) => {
@@ -685,6 +658,53 @@ export default function TeamsPage() {
     return '—';
   };
 
+  const renderTeamRequestName = (request: TeamManagerRequest) => {
+    const teamName = getTeamRequestName(request);
+    const isAdminReview = user?.role === 'ADMIN';
+    const noteTitle = isAdminReview ? 'Ghi chú của Manager' : 'Phản hồi';
+    const noteTone = isAdminReview ? 'info' : 'danger';
+    const noteText = isAdminReview ? request.requestNote : request.adminNote;
+
+    const nameNode = request.teamId ? (
+      <Button
+        type="link"
+        className="table-link-button"
+        onClick={() =>
+          navigate(`/teams/${request.teamId}`, {
+            state: {
+              fromTab: user?.role === 'TEAM_MANAGER' ? 'requests' : 'review',
+              requestNote: request.requestNote,
+              adminNote: request.adminNote,
+              requestStatus: request.status,
+              managerName: request.manager?.name,
+              managerEmail: request.manager?.email,
+            },
+          })
+        }
+      >
+        {teamName}
+      </Button>
+    ) : (
+      <span className="table-link-button">{teamName}</span>
+    );
+
+    return (
+      <Popover
+        trigger="hover"
+        placement="topLeft"
+        overlayClassName="manager-request-note-popover"
+        title={
+          <span className={`manager-request-note-title manager-request-note-title-${noteTone}`}>
+            {noteTitle}
+          </span>
+        }
+        content={<div className="manager-request-note-content">{noteText || '—'}</div>}
+      >
+        {nameNode}
+      </Popover>
+    );
+  };
+
   const canEditTeamRequest = (request: TeamManagerRequest) =>
     request.status !== 'APPROVED' && request.requestType !== 'DELETE_MANAGED_TEAM';
 
@@ -694,6 +714,7 @@ export default function TeamsPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, index) => index + 1,
     },
@@ -706,31 +727,7 @@ export default function TeamsPage() {
     {
       title: 'Tên đội bóng',
       key: 'teamName',
-      render: (_, request) => {
-        const teamName = getTeamRequestName(request);
-        if (!request.teamId) return <span>{teamName}</span>;
-
-        return (
-          <Button
-            type="link"
-            className="table-link-button"
-            onClick={() =>
-              navigate(`/teams/${request.teamId}`, {
-                state: {
-                  fromTab: user?.role === 'TEAM_MANAGER' ? 'requests' : 'review',
-                  requestNote: request.requestNote,
-                  adminNote: request.adminNote,
-                  requestStatus: request.status,
-                  managerName: request.manager?.name,
-                  managerEmail: request.manager?.email,
-                },
-              })
-            }
-          >
-            {teamName}
-          </Button>
-        );
-      },
+      render: (_, request) => renderTeamRequestName(request),
     },
     {
       title: 'Người yêu cầu',
@@ -761,6 +758,7 @@ export default function TeamsPage() {
     {
       title: 'Hành động',
       key: 'actions',
+      align: 'center',
       width: 120,
       render: (_, request) => (
         <Space>
@@ -906,7 +904,7 @@ export default function TeamsPage() {
       <div className="club-card-grid club-card-grid-fixed" aria-label="Đội bóng của tôi">
         {items.map((item) => {
           const { team } = item;
-          const status = requestStatusMeta[item.status];
+          const isActive = team.status === 'ACTIVE';
           const cardContent = (
             <>
               <span className="club-card-crest">{renderTeamLogo(team)}</span>
@@ -917,7 +915,7 @@ export default function TeamsPage() {
                 </span>
                 <span className="club-card-meta">
                   <UserOutlined />
-                  {getTeamManagerDisplay(team, item.request)}
+                  {getTeamManagerDisplay(team)}
                 </span>
               </span>
               <ArrowRightOutlined className="club-card-arrow" />
@@ -926,96 +924,42 @@ export default function TeamsPage() {
 
           return (
             <article key={item.key} className="club-card" style={getTeamThemeStyle(team)}>
-              {item.canOpen ? (
-                <button
-                  type="button"
-                  className="club-card-main"
-                  onClick={() =>
-                    navigate(`/teams/${team.id}`, {
-                      state: {
-                        fromTab: 'mine',
-                        requestNote: item.request?.requestNote,
-                        adminNote: item.request?.adminNote,
-                        requestStatus: item.status,
-                      },
-                    })
-                  }
-                >
-                  {cardContent}
-                </button>
-              ) : (
-                <div className="club-card-main club-card-main-static">{cardContent}</div>
-              )}
+              <button
+                type="button"
+                className="club-card-main"
+                onClick={() => navigate(`/teams/${team.id}`, { state: { fromTab: 'mine' } })}
+              >
+                {cardContent}
+              </button>
 
               <div className="club-card-footer">
-                <Tag color={status.color}>{status.label}</Tag>
-                {item.request &&
-                  renderRequestTypeTag(item.request, {
-                    noteText: item.request.adminNote,
-                    noteTitle: 'Phản hồi',
-                    noteTone: 'danger',
-                    showEmptyNote: true,
-                  })}
+                <Tag color={isActive ? 'green' : 'default'}>
+                  {isActive ? t('teams.filterActive') : 'Không hoạt động'}
+                </Tag>
               </div>
 
               <div className="club-card-actions">
                 <Button
                   className="club-card-detail-button"
                   icon={<ArrowRightOutlined />}
-                  disabled={!item.canOpen}
                   onClick={() =>
-                    item.canOpen &&
                     navigate(`/teams/${team.id}`, {
-                      state: {
-                        fromTab: 'mine',
-                        requestNote: item.request?.requestNote,
-                        adminNote: item.request?.adminNote,
-                        requestStatus: item.status,
-                      },
+                      state: { fromTab: 'mine' },
                     })
                   }
                 >
-                  {item.canOpen ? t('common.detail') : 'Chờ duyệt'}
+                  {t('common.detail')}
                 </Button>
                 <Button
                   className="club-card-outline-action club-card-edit-action"
                   aria-label={`Chỉnh sửa ${team.name}`}
                   icon={<EditOutlined />}
-                  disabled={
-                    !(
-                      (item.request && item.status !== 'APPROVED') ||
-                      (item.status === 'APPROVED' && item.canOpen)
-                    )
-                  }
-                  onClick={() => {
-                    if (item.request?.requestType === 'UPDATE_MANAGED_TEAM') {
-                      openUpdateManagedTeamModal(team, item.request);
-                    } else if (item.status === 'APPROVED' && item.canOpen) {
-                      openUpdateManagedTeamModal(team);
-                    } else if (item.request) {
-                      openEditManagerRequestModal(item.request);
-                    }
-                  }}
+                  onClick={() => openUpdateManagedTeamModal(team)}
                 />
                 <Popconfirm
-                  title={
-                    item.status === 'APPROVED' && item.canOpen
-                      ? 'Gửi yêu cầu xóa CLB?'
-                      : 'Xóa yêu cầu quản lý CLB?'
-                  }
-                  description={
-                    item.status === 'APPROVED' && item.canOpen
-                      ? 'Admin sẽ cần duyệt trước khi CLB bị xóa khỏi hệ thống.'
-                      : 'Yêu cầu này sẽ bị xóa khỏi hệ thống.'
-                  }
-                  disabled={!(item.request || (item.status === 'APPROVED' && item.canOpen))}
-                  onConfirm={() => {
-                    if (item.status === 'APPROVED' && item.canOpen) {
-                      handleCreateDeleteTeamRequest(team);
-                      return;
-                    }
-                    if (item.request) handleDeleteManagerRequest(item.request);
-                  }}
+                  title="Gửi yêu cầu xóa CLB?"
+                  description="Admin sẽ cần duyệt trước khi CLB bị xóa khỏi hệ thống."
+                  onConfirm={() => handleCreateDeleteTeamRequest(team)}
                   okText="Xóa"
                   cancelText={t('common.cancel')}
                   okButtonProps={{ danger: true }}
@@ -1024,13 +968,11 @@ export default function TeamsPage() {
                     className="club-card-outline-action club-card-delete-action"
                     aria-label={`Xóa ${team.name}`}
                     icon={<DeleteOutlined />}
-                    disabled={!(item.request || (item.status === 'APPROVED' && item.canOpen))}
                   />
                 </Popconfirm>
                 <Popconfirm
                   title="Rời khỏi CLB?"
                   description="Bạn sẽ không còn quyền quản lý CLB này."
-                  disabled={!(item.status === 'APPROVED' && item.canOpen)}
                   onConfirm={handleLeaveManagedTeam}
                   okText="Rời khỏi"
                   cancelText={t('common.cancel')}
@@ -1040,7 +982,6 @@ export default function TeamsPage() {
                     className="club-card-outline-action club-card-leave-action"
                     aria-label={`Rời khỏi ${team.name}`}
                     icon={<LogoutOutlined />}
-                    disabled={!(item.status === 'APPROVED' && item.canOpen)}
                   />
                 </Popconfirm>
               </div>

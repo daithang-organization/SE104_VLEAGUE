@@ -1,6 +1,7 @@
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
+  ExclamationCircleOutlined,
   EyeOutlined,
   LeftOutlined,
   RightOutlined,
@@ -325,9 +326,9 @@ export default function TeamDetailPage() {
     : getFallbackManagerDisplay();
 
   const renderStatusTag = (isHero = false) => {
-    if (requestStatus === 'PENDING') return <Tag color="red-inverse">Đang chờ duyệt</Tag>;
-    if (requestStatus === 'APPROVED') return <Tag color="green-inverse">Đã phê duyệt</Tag>;
-    if (requestStatus === 'REJECTED') return <Tag color="default">Đã từ chối</Tag>;
+    if (requestStatus === 'PENDING') return <Tag color="gold-inverse">Chờ duyệt</Tag>;
+    if (requestStatus === 'APPROVED') return <Tag color="green-inverse">Được duyệt</Tag>;
+    if (requestStatus === 'REJECTED') return <Tag color="red-inverse">Từ chối</Tag>;
 
     return (
       <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
@@ -443,16 +444,22 @@ export default function TeamDetailPage() {
                   <div className="team-detail-note-grid">
                     {visibleManagerRequestNote && (
                       <div className="team-detail-note-card">
-                        <span className="team-detail-note-label">
-                          {t('teamDetail.managerRequestNoteTitle')}
+                        <span className="team-detail-note-heading">
+                          <ExclamationCircleOutlined className="team-detail-note-icon" />
+                          <span className="team-detail-note-label">
+                            {t('teamDetail.managerRequestNoteTitle')}
+                          </span>
                         </span>
                         <p>{visibleManagerRequestNote}</p>
                       </div>
                     )}
                     {visibleAdminDecisionNote && (
                       <div className="team-detail-note-card team-detail-note-card-admin">
-                        <span className="team-detail-note-label">
-                          {t('teamDetail.adminDecisionNoteTitle')}
+                        <span className="team-detail-note-heading">
+                          <ExclamationCircleOutlined className="team-detail-note-icon" />
+                          <span className="team-detail-note-label">
+                            {t('teamDetail.adminDecisionNoteTitle')}
+                          </span>
                         </span>
                         <p>{visibleAdminDecisionNote}</p>
                       </div>

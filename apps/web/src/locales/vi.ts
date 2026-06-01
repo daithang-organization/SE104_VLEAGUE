@@ -148,8 +148,8 @@ const vi = {
   // ─── Team Status ───
   teamStatus: {
     ACTIVE: 'Hoạt động',
-    INACTIVE: 'Ngưng',
-    INACTIVE_FULL: 'Ngưng hoạt động',
+    INACTIVE: 'Không',
+    INACTIVE_FULL: 'Không hoạt động',
   },
 
   // ─── Season Team Registration Status ───
@@ -545,7 +545,7 @@ const vi = {
     formManagerNone: 'Không có',
     formStatus: 'Trạng thái',
     formStatusActive: 'Hoạt động',
-    formStatusInactive: 'Ngưng hoạt động',
+    formStatusInactive: 'Không hoạt động',
   },
 
   // ─────────────────────────────────────────────
@@ -750,6 +750,8 @@ const vi = {
     colGoalDiff: 'HS',
     colPoints: 'Điểm',
     totalGoals: 'Tổng số bàn thắng',
+    maxGoals: 'Bàn thắng nhiều nhất',
+    maxPoints: 'Số điểm cao nhất',
     yellowCards: 'Thẻ vàng',
     redCards: 'Thẻ đỏ',
     champion: 'Vô địch',

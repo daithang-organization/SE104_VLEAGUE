@@ -1,14 +1,13 @@
-import {
+﻿import {
   BankOutlined,
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
-  EnvironmentOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SearchOutlined,
   TeamOutlined,
-  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -28,7 +27,7 @@ import {
   Tabs,
   Tag,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, ColumnType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -324,7 +323,6 @@ export default function StadiumsPage() {
     .filter((capacity): capacity is number => typeof capacity === 'number' && capacity > 0);
   const maxCapacity = capacities.length > 0 ? Math.max(...capacities) : null;
   const minCapacity = capacities.length > 0 ? Math.min(...capacities) : null;
-  const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
   const homeStadium = stadiums.find((stadium) => stadium.id === managedTeam?.stadiumId);
   const hasPendingStadiumRequest = managerStadiumRequests.some(
     (request) => request.status === 'PENDING',
@@ -356,11 +354,6 @@ export default function StadiumsPage() {
           label: t('stadiums.minCapacity'),
           value: minCapacity != null ? minCapacity.toLocaleString('vi-VN') : '—',
           icon: <TeamOutlined />,
-        },
-        {
-          label: t('stadiums.colCity'),
-          value: cityCount.toLocaleString('vi-VN'),
-          icon: <EnvironmentOutlined />,
         },
       ]}
     />
@@ -402,6 +395,7 @@ export default function StadiumsPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => i + 1,
     },
@@ -440,7 +434,6 @@ export default function StadiumsPage() {
       title: t('stadiums.colCapacity'),
       dataIndex: 'capacity',
       width: 120,
-      align: 'right',
       sorter: (a, b) => (a.capacity ?? 0) - (b.capacity ?? 0),
       render: (v: number | null) => (v ? v.toLocaleString('vi-VN') : '—'),
     },
@@ -453,10 +446,11 @@ export default function StadiumsPage() {
       render: (v: number | null) => (v != null ? `${v}/5` : '—'),
     },
     ...(isAdmin
-      ? [
+      ? ([
           {
             title: t('stadiums.colActions'),
             key: 'actions',
+            align: 'center',
             width: 120,
             render: (_: unknown, record: Stadium) => (
               <Space>
@@ -484,7 +478,7 @@ export default function StadiumsPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<Stadium>[])
       : []),
   ];
 
@@ -654,6 +648,7 @@ export default function StadiumsPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => i + 1,
     },
@@ -701,10 +696,11 @@ export default function StadiumsPage() {
       sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     ...(isAdmin
-      ? [
+      ? ([
           {
             title: t('stadiums.colActions'),
             key: 'actions',
+            align: 'center',
             width: 100,
             render: (_: unknown, record: ManagerStadiumRequest) => (
               <Space>
@@ -739,12 +735,13 @@ export default function StadiumsPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<ManagerStadiumRequest>[])
       : isManager
-        ? [
+        ? ([
             {
               title: t('stadiums.colActions'),
               key: 'actions',
+              align: 'center',
               width: 120,
               render: (_: unknown, record: ManagerStadiumRequest) => (
                 <Space>
@@ -777,7 +774,7 @@ export default function StadiumsPage() {
                 </Space>
               ),
             },
-          ]
+          ] as ColumnType<ManagerStadiumRequest>[])
         : []),
   ];
 
