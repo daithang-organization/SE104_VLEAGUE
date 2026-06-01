@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 
 export interface TeamStanding {
   position: number;
@@ -36,13 +37,20 @@ type DrawLotResultLike = {
   resolvedRank: number;
 };
 
+const DEFAULT_WIN_POINTS = 3;
+const DEFAULT_DRAW_POINTS = 1;
+const DEFAULT_LOSS_POINTS = 0;
+
 @Injectable()
 export class StandingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private regulationHelper: RegulationHelper,
+  ) {}
 
   /**
    * Calculate standings for a specific season
-   * Win = 3 points, Draw = 1 point, Loss = 0 points
+   * Points are resolved from the target season's regulations.
    */
   async getStandings(
     seasonId?: string,
@@ -51,6 +59,7 @@ export class StandingsService {
   ): Promise<TeamStanding[]> {
     // Get the season (current if not specified)
     const targetSeasonId = await this.resolveSeasonId(seasonId);
+    const pointRules = await this.getPointRules(targetSeasonId);
 
     // Get only teams registered (APPROVED) for this season via SeasonTeam
     let teams: { id: string; name: string }[];
@@ -137,19 +146,21 @@ export class StandingsService {
       if (homeScore > awayScore) {
         // Home win
         homeTeam.won++;
-        homeTeam.points += 3;
+        homeTeam.points += pointRules.winPoints;
         awayTeam.lost++;
+        awayTeam.points += pointRules.lossPoints;
       } else if (homeScore < awayScore) {
         // Away win
         awayTeam.won++;
-        awayTeam.points += 3;
+        awayTeam.points += pointRules.winPoints;
         homeTeam.lost++;
+        homeTeam.points += pointRules.lossPoints;
       } else {
         // Draw
         homeTeam.drawn++;
         awayTeam.drawn++;
-        homeTeam.points += 1;
-        awayTeam.points += 1;
+        homeTeam.points += pointRules.drawPoints;
+        awayTeam.points += pointRules.drawPoints;
       }
     }
 
@@ -742,6 +753,28 @@ export class StandingsService {
     return currentSeason?.id;
   }
 
+  private async getPointRules(seasonId?: string | null) {
+    const [winPoints, drawPoints, lossPoints] = await Promise.all([
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'WIN_POINTS',
+        DEFAULT_WIN_POINTS,
+      ),
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'DRAW_POINTS',
+        DEFAULT_DRAW_POINTS,
+      ),
+      this.regulationHelper.getNumericValue(
+        seasonId,
+        'LOSS_POINTS',
+        DEFAULT_LOSS_POINTS,
+      ),
+    ]);
+
+    return { winPoints, drawPoints, lossPoints };
+  }
+
   private compareByPrimaryStandingRules(a: TeamStanding, b: TeamStanding) {
     if (b.points !== a.points) return b.points - a.points;
     if (b.goalDifference !== a.goalDifference) {
@@ -1150,6 +1183,8 @@ export class StandingsService {
   private async getRawFinalStandings(
     seasonId: string,
   ): Promise<TeamStanding[]> {
+    const pointRules = await this.getPointRules(seasonId);
+
     const seasonTeams = await this.prisma.seasonTeam.findMany({
       where: { seasonId, status: 'APPROVED' },
       include: { team: { select: { id: true, name: true } } },
@@ -1208,17 +1243,19 @@ export class StandingsService {
 
       if (homeScore > awayScore) {
         homeTeam.won++;
-        homeTeam.points += 3;
+        homeTeam.points += pointRules.winPoints;
         awayTeam.lost++;
+        awayTeam.points += pointRules.lossPoints;
       } else if (homeScore < awayScore) {
         awayTeam.won++;
-        awayTeam.points += 3;
+        awayTeam.points += pointRules.winPoints;
         homeTeam.lost++;
+        homeTeam.points += pointRules.lossPoints;
       } else {
         homeTeam.drawn++;
         awayTeam.drawn++;
-        homeTeam.points += 1;
-        awayTeam.points += 1;
+        homeTeam.points += pointRules.drawPoints;
+        awayTeam.points += pointRules.drawPoints;
       }
     }
 

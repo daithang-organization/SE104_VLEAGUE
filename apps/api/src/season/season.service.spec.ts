@@ -21,35 +21,42 @@ describe('SeasonService', () => {
   };
 
   beforeEach(async () => {
+    let prismaMock: any;
+    prismaMock = {
+      $transaction: jest.fn((callback) => callback(prismaMock)),
+      season: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      seasonTeam: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      team: {
+        findUnique: jest.fn(),
+      },
+      teamPlayer: {
+        count: jest.fn(),
+        findMany: jest.fn(),
+      },
+      regulation: {
+        findMany: jest.fn(),
+        createMany: jest.fn(),
+      },
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SeasonService,
         {
           provide: PrismaService,
-          useValue: {
-            season: {
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              findFirst: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-            seasonTeam: {
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-            team: {
-              findUnique: jest.fn(),
-            },
-            teamPlayer: {
-              count: jest.fn(),
-              findMany: jest.fn(),
-            },
-          },
+          useValue: prismaMock,
         },
         {
           provide: RegulationHelper,
@@ -141,6 +148,55 @@ describe('SeasonService', () => {
       const result = await service.create(createDto);
 
       expect(result.name).toBe('VLeague 2025');
+      expect(prisma.regulation.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              seasonId: 'new-id',
+              key: 'WIN_POINTS',
+              value: '3',
+            }),
+          ]),
+          skipDuplicates: true,
+        }),
+      );
+    });
+
+    it('copies regulations from the active season when creating a new season', async () => {
+      const createDto = { name: 'VLeague 2025', year: 2025 };
+      jest.spyOn(prisma.season, 'create').mockResolvedValue({
+        ...mockSeason,
+        ...createDto,
+        id: 'new-id',
+      });
+      jest.spyOn(prisma.season, 'findFirst').mockResolvedValue({
+        ...mockSeason,
+        id: 'source-season',
+      } as any);
+      jest.spyOn(prisma.regulation, 'findMany').mockResolvedValue([
+        { key: 'WIN_POINTS', value: '4', valueType: 'number' },
+        { key: 'DRAW_POINTS', value: '2', valueType: 'number' },
+      ] as any);
+
+      await service.create(createDto);
+
+      expect(prisma.regulation.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            seasonId: 'new-id',
+            key: 'WIN_POINTS',
+            value: '4',
+            valueType: 'number',
+          },
+          {
+            seasonId: 'new-id',
+            key: 'DRAW_POINTS',
+            value: '2',
+            valueType: 'number',
+          },
+        ],
+        skipDuplicates: true,
+      });
     });
 
     it('should throw ConflictException if season name exists', async () => {
