@@ -50,6 +50,7 @@ type TeamSeedRow = {
   name: string;
   shortName: string;
   city: string;
+  coachName: string;
   stadium: {
     name: string;
     city: string;
@@ -63,6 +64,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Thép Xanh Nam Định',
     shortName: 'TXND',
     city: 'Nam Định',
+    coachName: 'Vũ Hồng Việt',
     stadium: {
       name: 'Sân vận động Thiên Trường',
       city: 'Ninh Bình',
@@ -74,6 +76,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Hà Nội FC',
     shortName: 'HN',
     city: 'Hà Nội',
+    coachName: 'Harry Kewell',
     stadium: {
       name: 'Sân vận động Hàng Đẫy',
       city: 'Hà Nội',
@@ -85,6 +88,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Công An Hà Nội',
     shortName: 'CAHN',
     city: 'Hà Nội',
+    coachName: 'Alexandre Polking',
     stadium: {
       name: 'Sân vận động Hàng Đẫy',
       city: 'Hà Nội',
@@ -96,6 +100,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Thể Công-Viettel',
     shortName: 'TCVT',
     city: 'Hà Nội',
+    coachName: 'Velizar Popov',
     stadium: {
       name: 'Sân vận động Mỹ Đình',
       city: 'Hà Nội',
@@ -107,6 +112,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Đông Á Thanh Hóa',
     shortName: 'DATH',
     city: 'Thanh Hóa',
+    coachName: 'Nguyễn Anh Đức',
     stadium: {
       name: 'Sân vận động Thanh Hóa',
       city: 'Thanh Hóa',
@@ -118,6 +124,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'LPBank Hoàng Anh Gia Lai',
     shortName: 'HAGL',
     city: 'Pleiku',
+    coachName: 'Lê Quang Trãi',
     stadium: {
       name: 'Sân vận động Pleiku',
       city: 'Gia Lai',
@@ -129,6 +136,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Hải Phòng FC',
     shortName: 'HP',
     city: 'Hải Phòng',
+    coachName: 'Đặng Văn Thành',
     stadium: {
       name: 'Sân vận động Lạch Tray',
       city: 'Hải Phòng',
@@ -140,6 +148,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Becamex Bình Dương',
     shortName: 'BBD',
     city: 'Thủ Dầu Một',
+    coachName: 'Hứa Hiền Vinh',
     stadium: {
       name: 'Sân vận động Gò Đậu',
       city: 'TP. Hồ Chí Minh',
@@ -151,6 +160,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'TP.HCM FC',
     shortName: 'HCM',
     city: 'TP. Hồ Chí Minh',
+    coachName: 'Phùng Thanh Phương',
     stadium: {
       name: 'Sân vận động Thống Nhất',
       city: 'TP. Hồ Chí Minh',
@@ -162,6 +172,7 @@ const VLEAGUE_2025_FINAL_ORDER: TeamSeedRow[] = [
     name: 'Sông Lam Nghệ An',
     shortName: 'SLNA',
     city: 'Vinh',
+    coachName: 'Văn Sỹ Sơn',
     stadium: {
       name: 'Sân vận động Vinh',
       city: 'Nghệ An',
@@ -184,6 +195,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Bắc Ninh FC',
     shortName: 'BN',
     city: 'Bắc Ninh',
+    coachName: 'Paulo Foiani',
     logoUrl: '/promo_candidates/Bắc Ninh FC.svg',
     stadium: {
       name: 'Sân vận động Việt Yên',
@@ -199,6 +211,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Long An FC',
     shortName: 'LA',
     city: 'Tây Ninh',
+    coachName: 'Trịnh Văn Hậu',
     logoUrl: '/promo_candidates/Long An FC.png',
     stadium: {
       name: 'Sân vận động Long An',
@@ -214,6 +227,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Quy Nhơn United',
     shortName: 'QNU',
     city: 'Gia Lai',
+    coachName: 'Trịnh Duy Quang',
     logoUrl: '/promo_candidates/Quy Nhơn United.png',
     stadium: {
       name: 'Sân vận động Quy Nhơn',
@@ -229,6 +243,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Quảng Ninh FC',
     shortName: 'QNINH',
     city: 'Quảng Ninh',
+    coachName: 'Nguyễn Văn Đàn',
     logoUrl: '/promo_candidates/Quảng Ninh FC.png',
     stadium: {
       name: 'Sân vận động Cẩm Phả',
@@ -244,6 +259,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Sanna Khánh Hòa FC',
     shortName: 'SKH',
     city: 'Khánh Hòa',
+    coachName: 'Trần Trọng Bình',
     logoUrl: '/promo_candidates/Sanna Khánh Hòa FC.png',
     stadium: {
       name: 'Sân vận động 19 Tháng 8',
@@ -259,6 +275,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Thanh Niên TP Hồ Chí Minh FC',
     shortName: 'TNHCM',
     city: 'TP. Hồ Chí Minh',
+    coachName: 'Lương Trung Tuấn',
     logoUrl: '/promo_candidates/Thanh Niên TP Hồ Chí Minh FC.png',
     stadium: {
       name: 'Sân vận động Pleiku',
@@ -274,6 +291,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Trường Tươi Đồng Nai',
     shortName: 'TTDN',
     city: 'Đồng Nai',
+    coachName: 'Nguyễn Việt Thắng',
     logoUrl: '/promo_candidates/Trường Tươi Đồng Nai.png',
     stadium: {
       name: 'Sân vận động Bình Phước',
@@ -289,6 +307,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Trẻ PVF CAND',
     shortName: 'PVF',
     city: 'Hưng Yên',
+    coachName: 'Nguyễn Duy Đông',
     logoUrl: '/promo_candidates/Trẻ PVF CAND.png',
     stadium: {
       name: 'Sân vận động PVF',
@@ -304,6 +323,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Xuân Thiện Phú Thọ FC',
     shortName: 'PT',
     city: 'Phú Thọ',
+    coachName: 'Lê Quốc Vượng',
     logoUrl: '/promo_candidates/Xuân Thiện Phú Thọ FC.png',
     stadium: {
       name: 'Sân vận động Việt Trì',
@@ -319,6 +339,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Đại học Văn Hiến FC',
     shortName: 'VHU',
     city: 'TP. Hồ Chí Minh',
+    coachName: 'Nguyễn Đình Hưng',
     logoUrl: '/promo_candidates/Đại học Văn Hiến FC.png',
     stadium: {
       name: 'Sân vận động Bà Rịa',
@@ -334,6 +355,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
     name: 'Đồng Tháp FC',
     shortName: 'DT',
     city: 'Đồng Tháp',
+    coachName: 'Ngô Quang Sang',
     logoUrl: '/promo_candidates/Đồng Tháp FC.png',
     stadium: {
       name: 'Sân vận động Cao Lãnh',
@@ -404,6 +426,7 @@ async function upsertTeam(row: TeamSeedRow, logoUrl?: string) {
       shortName: row.shortName,
       city: row.city,
       logoUrl,
+      coachName: row.coachName,
       status: TeamStatus.ACTIVE,
       stadiumId: stadium.id,
     },
@@ -412,6 +435,7 @@ async function upsertTeam(row: TeamSeedRow, logoUrl?: string) {
       shortName: row.shortName,
       city: row.city,
       logoUrl,
+      coachName: row.coachName,
       status: TeamStatus.ACTIVE,
       stadiumId: stadium.id,
     },
