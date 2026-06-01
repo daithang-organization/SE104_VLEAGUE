@@ -312,6 +312,7 @@ export default function TeamDetailPage() {
   const teamLogoUrl = getTeamLogoUrl(team);
   const teamInitials = (team.shortName || team.name).slice(0, 2).toUpperCase();
   const manager = team.managedUsers?.[0] ?? null;
+  const coachName = team.coachName?.trim();
   const getFallbackManagerDisplay = () => {
     if (stateManagerName && stateManagerEmail) {
       return `${stateManagerName} (${stateManagerEmail})`;
@@ -319,11 +320,15 @@ export default function TeamDetailPage() {
     return stateManagerName || stateManagerEmail || '—';
   };
 
-  const managerDisplay = manager
-    ? manager.name
-      ? `${manager.name} (${manager.email})`
-      : manager.email
-    : getFallbackManagerDisplay();
+  const managerDisplay = coachName
+    ? manager?.email
+      ? `${coachName} (${manager.email})`
+      : coachName
+    : manager
+      ? manager.name
+        ? `${manager.name} (${manager.email})`
+        : manager.email
+      : getFallbackManagerDisplay();
 
   const renderStatusTag = (isHero = false) => {
     if (requestStatus === 'PENDING') return <Tag color="gold-inverse">Chờ duyệt</Tag>;
@@ -390,10 +395,10 @@ export default function TeamDetailPage() {
               {team.shortName && <span className="club-detail-code-pill">{team.shortName}</span>}
               <span>{team.city ?? 'Chưa cập nhật thành phố'}</span>
               <span>{team.stadium?.name ?? t('teamDetail.stadiumEmpty')}</span>
-              {team.coachName && (
+              {coachName && (
                 <span>
                   <UserOutlined />
-                  {team.coachName}
+                  {coachName}
                 </span>
               )}
             </div>
