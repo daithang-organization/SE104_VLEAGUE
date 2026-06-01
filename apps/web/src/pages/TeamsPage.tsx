@@ -24,10 +24,13 @@ import {
   Row,
   Select,
   Space,
+  Table,
   Tabs,
   Tag,
   Typography,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -46,6 +49,7 @@ import {
 import {
   apiCreateTeamManagerRequest,
   apiDeleteTeamManagerRequest,
+  apiGetMyTeamManagerRequests,
   apiGetTeamManagerClaimableTeams,
   apiGetTeamManagerManagedTeam,
   apiGetTeamManagerManagementRequest,
@@ -90,6 +94,7 @@ export default function TeamsPage() {
   const [claimRequestForm] = Form.useForm();
   const [managedTeam, setManagedTeam] = useState<Team | null>(null);
   const [managerRequest, setManagerRequest] = useState<TeamManagerRequest | null>(null);
+  const [managerRequests, setManagerRequests] = useState<TeamManagerRequest[]>([]);
   const [claimableTeams, setClaimableTeams] = useState<Team[]>([]);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -124,16 +129,19 @@ export default function TeamsPage() {
   const fetchManagerState = useCallback(async () => {
     setLoading(true);
     try {
-      const [teamsData, managedTeamData, requestData, claimableTeamsData] = await Promise.all([
-        apiGetTeams(),
-        apiGetTeamManagerManagedTeam(),
-        apiGetTeamManagerManagementRequest(),
-        apiGetTeamManagerClaimableTeams(),
-      ]);
+      const [teamsData, managedTeamData, requestData, requestsData, claimableTeamsData] =
+        await Promise.all([
+          apiGetTeams(),
+          apiGetTeamManagerManagedTeam(),
+          apiGetTeamManagerManagementRequest(),
+          apiGetMyTeamManagerRequests(),
+          apiGetTeamManagerClaimableTeams(),
+        ]);
 
       setTeams(teamsData?.data || []);
       setManagedTeam(managedTeamData);
       setManagerRequest(requestData);
+      setManagerRequests(requestsData);
       setClaimableTeams(claimableTeamsData);
     } catch (_err) {
       message.error('Không thể tải trạng thái quản lý CLB');
@@ -662,6 +670,145 @@ export default function TeamsPage() {
     return '—';
   };
 
+  const getTeamRequestName = (request: TeamManagerRequest) =>
+    request.team?.name ?? request.proposedTeamName ?? '—';
+
+  const getTeamRequestManager = (request: TeamManagerRequest) => {
+    if (request.manager?.name || request.manager?.email) {
+      return request.manager.name
+        ? `${request.manager.name} (${request.manager.email})`
+        : request.manager.email;
+    }
+    if (user?.role === 'TEAM_MANAGER') {
+      return user.name ? `${user.name} (${user.email})` : user.email;
+    }
+    return '—';
+  };
+
+  const canEditTeamRequest = (request: TeamManagerRequest) =>
+    request.status !== 'APPROVED' && request.requestType !== 'DELETE_MANAGED_TEAM';
+
+  const canDeleteTeamRequest = (request: TeamManagerRequest) => request.status !== 'APPROVED';
+
+  const teamRequestColumns: ColumnsType<TeamManagerRequest> = [
+    {
+      title: '#',
+      key: 'index',
+      width: 60,
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: 'Loại yêu cầu',
+      dataIndex: 'requestType',
+      width: 170,
+      render: (requestType: TeamManagerRequest['requestType']) => requestTypeLabel(requestType),
+    },
+    {
+      title: 'Tên đội bóng',
+      key: 'teamName',
+      render: (_, request) => {
+        const teamName = getTeamRequestName(request);
+        if (!request.teamId) return <span>{teamName}</span>;
+
+        return (
+          <Button
+            type="link"
+            className="table-link-button"
+            onClick={() =>
+              navigate(`/teams/${request.teamId}`, {
+                state: {
+                  fromTab: user?.role === 'TEAM_MANAGER' ? 'requests' : 'review',
+                  requestNote: request.requestNote,
+                  adminNote: request.adminNote,
+                  requestStatus: request.status,
+                  managerName: request.manager?.name,
+                  managerEmail: request.manager?.email,
+                },
+              })
+            }
+          >
+            {teamName}
+          </Button>
+        );
+      },
+    },
+    {
+      title: 'Người yêu cầu',
+      key: 'manager',
+      render: (_, request) => getTeamRequestManager(request),
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      width: 130,
+      filters: [
+        { text: requestStatusMeta.PENDING.label, value: 'PENDING' },
+        { text: requestStatusMeta.APPROVED.label, value: 'APPROVED' },
+        { text: requestStatusMeta.REJECTED.label, value: 'REJECTED' },
+      ],
+      onFilter: (value, request) => request.status === value,
+      render: (status: TeamManagerRequest['status']) => (
+        <Tag color={requestStatusMeta[status].color}>{requestStatusMeta[status].label}</Tag>
+      ),
+    },
+    {
+      title: 'Ngày gửi',
+      dataIndex: 'createdAt',
+      width: 130,
+      sorter: (a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf(),
+      render: (value: string) => dayjs(value).format('DD/MM/YYYY'),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      width: 120,
+      render: (_, request) => (
+        <Space>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            disabled={!canEditTeamRequest(request)}
+            onClick={() => openEditManagerRequestModal(request)}
+          />
+          <Popconfirm
+            title="Xóa yêu cầu đội bóng?"
+            description="Yêu cầu này sẽ bị xóa khỏi danh sách của bạn."
+            disabled={!canDeleteTeamRequest(request)}
+            onConfirm={() => handleDeleteManagerRequest(request)}
+            okText="Xóa"
+            cancelText={t('common.cancel')}
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              disabled={!canDeleteTeamRequest(request)}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const renderManagerTeamRequestsTable = () => (
+    <Table
+      columns={teamRequestColumns}
+      dataSource={managerRequests}
+      rowKey="id"
+      loading={loading}
+      pagination={{
+        defaultPageSize: 15,
+        pageSizeOptions: [10, 15, 20, 50],
+        showSizeChanger: true,
+        showTotal: (total) => `Tổng ${total} yêu cầu`,
+        hideOnSinglePage: false,
+      }}
+      size="middle"
+      locale={{ emptyText: t('common.noData') }}
+    />
+  );
+
   const renderTeamCards = (items: Team[], emptyDescription = t('common.noData')) => {
     if (loading && items.length === 0) {
       return <TableSkeleton rows={8} />;
@@ -1029,12 +1176,12 @@ export default function TeamsPage() {
           isManager
             ? [
                 {
-                  label: 'Tổng CLB',
+                  label: 'Tổng số CLB',
                   value: teams.length.toLocaleString('vi-VN'),
                   icon: <TeamOutlined />,
                 },
                 {
-                  label: 'Chưa có Manager',
+                  label: 'Chưa có HLV',
                   value: claimableTeams.length.toLocaleString('vi-VN'),
                   icon: <TeamOutlined />,
                 },
@@ -1131,6 +1278,11 @@ export default function TeamsPage() {
               label: 'Đội bóng của tôi',
               children: renderManagerTeamCards(managerRequestCards),
             },
+            {
+              key: 'requests',
+              label: 'Yêu cầu đội bóng',
+              children: renderManagerTeamRequestsTable(),
+            },
           ]}
         />
       ) : user?.role === 'ADMIN' ? (
@@ -1151,78 +1303,6 @@ export default function TeamsPage() {
         />
       ) : (
         renderTeamCards(filteredTeams)
-        /*
-          {filteredTeams.map((team) => (
-            <article key={team.id} className="club-card" style={getTeamThemeStyle(team)}>
-              <button
-                type="button"
-                className="club-card-main"
-                onClick={() => navigate(`/teams/${team.id}`)}
-              >
-                <span className="club-card-crest">{renderTeamLogo(team)}</span>
-                <span className="club-card-body">
-                  <span className="club-card-heading">
-                    <span className="club-card-name">{team.name}</span>
-                    {team.shortName && (
-                      <span className="club-card-code-pill">{team.shortName}</span>
-                    )}
-                  </span>
-                  <span className="club-card-meta">
-                    <EnvironmentOutlined />
-                    {team.stadium?.name ?? team.city ?? 'Chưa có sân nhà'}
-                  </span>
-                  {team.coachName && (
-                    <span className="club-card-meta">
-                      <UserOutlined />
-                      {team.coachName}
-                    </span>
-                  )}
-                </span>
-                <ArrowRightOutlined className="club-card-arrow" />
-              </button>
-
-              <div className="club-card-footer">
-                <Tag color={team.status === 'ACTIVE' ? 'green' : 'default'}>
-                  {team.status === 'ACTIVE' ? t('teams.filterActive') : t('teams.filterInactive')}
-                </Tag>
-              </div>
-
-              <div className="club-card-actions">
-                <Button
-                  className="club-card-detail-button"
-                  icon={<ArrowRightOutlined />}
-                  onClick={() => navigate(`/teams/${team.id}`)}
-                >
-                  {t('common.detail')}
-                </Button>
-                {canEdit && (
-                  <>
-                    <Button
-                      aria-label={`${t('common.edit')} ${team.name}`}
-                      icon={<EditOutlined />}
-                      onClick={() => openEditModal(team)}
-                    />
-                    <Popconfirm
-                      title={t('teams.deleteConfirmTitle')}
-                      description={t('teams.deleteConfirmDesc', { name: team.name })}
-                      onConfirm={() => handleDelete(team.id)}
-                      okText={t('teams.deleteOk')}
-                      cancelText={t('teams.deleteCancel')}
-                      okButtonProps={{ danger: true }}
-                    >
-                      <Button
-                        aria-label={`${t('common.delete')} ${team.name}`}
-                        danger
-                        icon={<DeleteOutlined />}
-                      />
-                    </Popconfirm>
-                  </>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-        */
       )}
 
       <Modal

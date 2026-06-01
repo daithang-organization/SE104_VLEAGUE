@@ -186,7 +186,7 @@ const vi = {
 
   dashboard: {
     title: 'Trang chủ',
-    welcome: 'Chào mừng đến với VLeague Admin! Tổng quan hệ thống:',
+    welcome: 'Chào mừng đến với Giải bóng đá quốc gia VLeague',
     refereeWelcome: 'Trang vận hành trận đấu chính thức dành cho trọng tài',
     supervisorWelcome: 'Trang giám sát trận đấu và báo cáo kỷ luật',
     errorLoad: 'Không thể tải dữ liệu dashboard',
@@ -503,7 +503,7 @@ const vi = {
   // ─────────────────────────────────────────────
 
   teams: {
-    subtitle: 'Danh sách câu lạc bộ, sân nhà và trạng thái đăng ký trong hệ thống.',
+    subtitle: 'Danh sách câu lạc bộ và trạng thái đăng ký trong mùa giải.',
     title: 'Quản lý đội bóng',
     searchPlaceholder: 'Tìm kiếm đội bóng...',
     addBtn: 'Thêm đội bóng',
@@ -554,7 +554,7 @@ const vi = {
 
   players: {
     title: 'Quản lý cầu thủ',
-    searchPlaceholder: 'Danh sách các cầu thủ đang hoạt động trong mùa giải',
+    searchPlaceholder: 'Danh sách và trạng thái các cầu thủ đang hoạt động trong mùa giải',
     addBtn: 'Thêm cầu thủ',
     loadError: 'Không thể tải danh sách cầu thủ',
     createSuccess: 'Tạo cầu thủ thành công!',
@@ -776,7 +776,7 @@ const vi = {
 
   stadiums: {
     title: 'Quản lý sân vận động',
-    searchPlaceholder: 'Tìm kiếm sân...',
+    searchPlaceholder: 'Danh sách và trạng thái sân vận động được sử dụng trong mùa giải',
     addBtn: 'Thêm sân',
     loadError: 'Không thể tải danh sách sân vận động',
     createSuccess: 'Tạo sân vận động thành công!',
@@ -1111,7 +1111,7 @@ const vi = {
 
   headToHead: {
     subtitle: 'So sánh lịch sử đối đầu, số trận thắng, bàn thắng và kết quả giữa hai đội.',
-    title: 'Đối đầu (Head-to-Head)',
+    title: 'Đối đầu',
     team1Placeholder: 'Chọn đội 1',
     team2Placeholder: 'Chọn đội 2',
     seasonPlaceholder: 'Mùa giải (tất cả)',
@@ -1325,7 +1325,7 @@ const vi = {
     descShortName: 'Tên viết tắt',
     descCity: 'Thành phố',
     descStadium: 'Sân nhà',
-    descManager: 'Quản lý',
+    descManager: 'Huấn luyện viên',
     descCoachName: 'Huấn luyện viên',
     descStatus: 'Trạng thái',
     managerRequestNoteTitle: 'Ghi chú',

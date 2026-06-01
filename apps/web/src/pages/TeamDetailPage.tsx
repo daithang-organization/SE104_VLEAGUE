@@ -434,9 +434,6 @@ export default function TeamDetailPage() {
                   <Descriptions.Item label={t('teamDetail.descManager')}>
                     {managerDisplay}
                   </Descriptions.Item>
-                  <Descriptions.Item label={t('teamDetail.descCoachName')}>
-                    {team.coachName ?? '—'}
-                  </Descriptions.Item>
                   <Descriptions.Item label={t('teamDetail.descStatus')}>
                     {renderStatusTag(false)}
                   </Descriptions.Item>

@@ -24,7 +24,7 @@ export default function PlayerOfMatchTab({ data, loading }: Props) {
     {
       title: t('playerOfMatchTab.colAwards'),
       dataIndex: 'awards',
-      width: 140,
+      width: 180,
       align: 'center',
       sorter: (a, b) => a.awards - b.awards,
       render: (awards: number) => <strong>{awards}</strong>,
@@ -49,7 +49,12 @@ export default function PlayerOfMatchTab({ data, loading }: Props) {
         columns={columns}
         dataSource={data}
         loading={loading}
-        pagination={false}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 15, 20, 50],
+          showTotal: (total) => t('players.totalCount', { total }),
+        }}
         size="middle"
         locale={{ emptyText: t('playerOfMatchTab.empty') }}
       />
