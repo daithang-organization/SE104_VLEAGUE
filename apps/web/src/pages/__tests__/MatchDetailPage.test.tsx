@@ -189,8 +189,8 @@ const defaultSuspensions = [
 ];
 
 const defaultOfficials = [
-  { id: 'official-1', fullName: 'Nguyễn Văn Trọng', status: 'ACTIVE' },
-  { id: 'official-2', fullName: 'Trần Văn Giám', status: 'ACTIVE' },
+  { id: 'official-1', fullName: 'Nguyễn Văn Trọng', status: 'ACTIVE', accountRole: 'REFEREE' },
+  { id: 'official-2', fullName: 'Trần Văn Giám', status: 'ACTIVE', accountRole: 'SUPERVISOR' },
 ];
 
 const defaultMatchOfficials = [
@@ -199,14 +199,24 @@ const defaultMatchOfficials = [
     matchId: 'm1',
     officialId: 'official-1',
     role: 'MAIN_REFEREE',
-    official: { id: 'official-1', fullName: 'Nguyễn Văn Trọng', status: 'ACTIVE' },
+    official: {
+      id: 'official-1',
+      fullName: 'Nguyễn Văn Trọng',
+      status: 'ACTIVE',
+      accountRole: 'REFEREE',
+    },
   },
   {
     id: 'assignment-2',
     matchId: 'm1',
     officialId: 'official-2',
     role: 'SUPERVISOR',
-    official: { id: 'official-2', fullName: 'Trần Văn Giám', status: 'ACTIVE' },
+    official: {
+      id: 'official-2',
+      fullName: 'Trần Văn Giám',
+      status: 'ACTIVE',
+      accountRole: 'SUPERVISOR',
+    },
   },
 ];
 
@@ -676,6 +686,21 @@ describe('MatchDetailPage', () => {
     expect(screen.getByText('Home Player 1')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('tab')[3]);
     expect(screen.getByText('Một cầu thủ phản ứng trọng tài')).toBeInTheDocument();
+  });
+
+  it('shows account roles for officials when assigning match officials', async () => {
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    fireEvent.click(screen.getAllByRole('tab')[2]);
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiGetOfficials).toHaveBeenCalled();
+      expect(mockMatchApi.apiGetMatchOfficials).toHaveBeenCalledWith('m1');
+    });
+
+    expect(screen.getAllByText('Tài khoản: Trọng tài').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Tài khoản: Giám sát viên').length).toBeGreaterThan(0);
   });
 
   it('lets team managers view match official assignments without requesting restricted official data', async () => {

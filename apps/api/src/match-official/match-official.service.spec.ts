@@ -40,6 +40,9 @@ describe('MatchOfficialService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
             },
+            user: {
+              findMany: jest.fn(),
+            },
             match: {
               findUnique: jest.fn(),
               update: jest.fn(),
@@ -126,6 +129,52 @@ describe('MatchOfficialService', () => {
         status: 'ACTIVE',
       },
     });
+  });
+
+  it('adds matching user account roles to the officials directory', async () => {
+    jest.spyOn(prisma.official, 'findMany').mockResolvedValue([
+      official,
+      {
+        id: 'official-2',
+        fullName: 'Đỗ Quốc Hưng',
+        email: 'supervisor@demo.local',
+        status: 'ACTIVE',
+      },
+    ] as any);
+    jest.spyOn(prisma.user, 'findMany').mockResolvedValue([
+      { email: 'referee@demo.local', role: 'REFEREE' },
+      { email: 'supervisor@demo.local', role: 'SUPERVISOR' },
+    ] as any);
+
+    const result = await service.listOfficials();
+
+    expect(result).toEqual([
+      expect.objectContaining({ id: 'official-1', accountRole: 'REFEREE' }),
+      expect.objectContaining({ id: 'official-2', accountRole: 'SUPERVISOR' }),
+    ]);
+  });
+
+  it('adds matching user account roles to listed match assignments', async () => {
+    jest.spyOn(prisma.matchOfficialAssignment, 'findMany').mockResolvedValue([
+      {
+        id: 'assignment-1',
+        matchId: 'match-1',
+        officialId: 'official-1',
+        role: 'MAIN_REFEREE',
+        official,
+      },
+    ] as any);
+    jest
+      .spyOn(prisma.user, 'findMany')
+      .mockResolvedValue([
+        { email: 'referee@demo.local', role: 'REFEREE' },
+      ] as any);
+
+    const result = await service.listAssignments('match-1');
+
+    expect(result[0].official).toEqual(
+      expect.objectContaining({ accountRole: 'REFEREE' }),
+    );
   });
 
   it('assigns a referee to a match and stores publish metadata', async () => {

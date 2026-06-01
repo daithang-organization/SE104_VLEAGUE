@@ -85,6 +85,13 @@ describe('TeamsController', () => {
       expect(result).toEqual(mockTeam);
       expect(service.findOneTeam).toHaveBeenCalledWith('team-1');
     });
+
+    it('should pass seasonId to team lookup when provided', async () => {
+      const result = await controller.getTeam('team-1', 'season-2026');
+
+      expect(result).toEqual(mockTeam);
+      expect(service.findOneTeam).toHaveBeenCalledWith('team-1', 'season-2026');
+    });
   });
 
   describe('createTeam', () => {

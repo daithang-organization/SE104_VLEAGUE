@@ -169,6 +169,7 @@ export type MatchSuspension = {
 };
 
 export type OfficialStatus = 'ACTIVE' | 'INACTIVE';
+export type AccountRole = 'ADMIN' | 'TEAM_MANAGER' | 'REFEREE' | 'SUPERVISOR' | 'PUBLIC';
 export type MatchOfficialRole =
   | 'MAIN_REFEREE'
   | 'ASSISTANT_REFEREE'
@@ -181,6 +182,7 @@ export type Official = {
   email?: string | null;
   phone?: string | null;
   status: OfficialStatus;
+  accountRole?: AccountRole | null;
   createdAt?: string;
   updatedAt?: string;
 };

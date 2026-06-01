@@ -340,6 +340,7 @@ const en = {
     officialAssignmentsEmpty: 'No officials assigned yet.',
     assignOfficialsTitle: 'Pre-match assignment',
     officialSelectLabel: 'Official or supervisor',
+    officialAccountRoleLabel: 'Account: {{role}}',
     officialRoleLabel: 'Role',
     officialNoteLabel: 'Assignment note',
     officialSelectPlaceholder: 'Select official or supervisor',

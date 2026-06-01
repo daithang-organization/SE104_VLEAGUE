@@ -413,6 +413,23 @@ describe('SeasonsPage', () => {
     expect(screen.getByText('Tạo mùa giải')).toBeInTheDocument();
   });
 
+  it('shows the backend validation reason when season creation fails', async () => {
+    const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+    mockSeasonApi.apiCreateSeason.mockRejectedValueOnce({
+      response: { data: { message: 'Mùa giải 2025-2026 đã tồn tại' } },
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /tạo mùa giải/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Tạo$/i }));
+
+    await waitFor(() => {
+      expect(mockSeasonApi.apiCreateSeason).toHaveBeenCalled();
+    });
+    expect(messageErrorSpy).toHaveBeenCalledWith('Mùa giải 2025-2026 đã tồn tại');
+  });
+
   it('hides create button for non-admin users', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u2', email: 'user@vl.local', role: 'PUBLIC' },

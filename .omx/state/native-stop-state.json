@@ -199,6 +199,26 @@
         "last_turn_id": "019e824c-0874-76e3-808a-bd4a2ada4850",
         "last_thread_id": null
       }
+    },
+    "019e83f8-3802-7e61-85ae-b69c5c6db2ff": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã fix. tôi đổi luồng chi tiết clb sang season-aware: - backend `get /teams/:id?seasonid=...` giờ truyền `seasonid` xuống service và lọc `homematches`/`awaymatches`: [teams.controller.ts](c:/se104_vleague/apps/api/src/registration/teams.controller.ts:56), [registration.service.ts](c:/se104_vleague/apps/api/src/registration/registration.service.ts:91). - frontend `teamdetailpage` lấy mùa hiện tại rồi gọi `apigetteam(id, seasonid)`, nên không còn trộn các trận `draft` có `seasonid = null`: [teamdetailpage.tsx](c:/se104_vleague/apps/web/src/pages/teamdetailpage.tsx:31), [teamapi.ts](c:/se104_vleague/apps/web/src/services/teamapi.ts:123). - thêm regression tests cho backend service/controller và frontend api/page. verification: - backend: `.\\node_modules\\.bin\\jest.cmd registration.service.spec.ts teams.controller.spec.ts --runinband` -> 2 suites, 44 tests passed. - frontend: `pnpm --filter web test -- src/services/__tests__/teamapi.test.ts src/pages/__tests__/teamdetailpage.test.tsx` -> 2 files, 13 tests passed. vitest vẫn in warning css parse từ môi trường test, nhưng test pass.",
+        "first_seen_at": "2026-06-01T16:46:36.627Z",
+        "last_seen_at": "2026-06-01T16:46:36.627Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e840a-da20-71f3-9b50-b97abdd85c82",
+        "last_thread_id": null
+      }
+    },
+    "019e83f4-b7a1-7172-889a-5218b94b9ca9": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã fix ràng buộc tạo/cập nhật mùa giải. thay đổi chính: - api chặn trùng mùa giải theo `name` không phân biệt hoa thường, trùng `year`, và khoảng ngày giao nhau ở [season.service.ts](c:/se104_vleague/apps/api/src/season/season.service.ts:164). - thêm regression tests cho trùng năm, trùng khoảng ngày khi tạo/cập nhật ở [season.service.spec.ts](c:/se104_vleague/apps/api/src/season/season.service.spec.ts:146). - ui giờ hiển thị đúng lỗi backend thay vì chỉ báo “lỗi khi lưu mùa giải” ở [seasonspage.tsx](c:/se104_vleague/apps/web/src/pages/seasonspage.tsx:1713). - thêm test ui cho thông báo lỗi validation ở [seasonspage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/seasonspage.test.tsx:416). đã kiểm chứng: - `pnpm --dir apps/api test -- season.service.spec.ts` → 30/30 pass - `pnpm --dir apps/web test -- src/pages/__tests__/seasonspage.test.tsx` → 16/16 pass - `pnpm --dir apps/api build` → pass - `pnpm --dir apps/web build` → pass - eslint targeted api/web files → pass",
+        "first_seen_at": "2026-06-01T16:27:05.534Z",
+        "last_seen_at": "2026-06-01T16:27:05.534Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e83f5-735d-7482-8204-8485fd7ef781",
+        "last_thread_id": null
+      }
     }
   }
 }

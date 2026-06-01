@@ -32,14 +32,32 @@ function assertValidSeasonDateRange(
 ) {
   if (!startDate || !endDate) return;
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = toValidSeasonDate(startDate);
+  const end = toValidSeasonDate(endDate);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+  if (!start || !end) return;
 
   if (start.getTime() > end.getTime()) {
     throw new BadRequestException('Ngày bắt đầu không được sau ngày kết thúc');
   }
+}
+
+function toValidSeasonDate(value?: Date | string | null) {
+  if (!value) return null;
+
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isPrismaUniqueConstraintError(error: unknown) {
+  return (
+    (error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002') ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'P2002')
+  );
 }
 
 @Injectable()
@@ -79,11 +97,19 @@ export class SeasonService {
 
   async create(dto: CreateSeasonDto): Promise<Season> {
     assertValidSeasonDateRange(dto.startDate, dto.endDate);
+    const name = dto.name.trim();
+
+    await this.assertSeasonDoesNotConflict({
+      name,
+      year: dto.year,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+    });
 
     try {
       return await this.prisma.season.create({
         data: {
-          name: dto.name,
+          name,
           year: dto.year,
           status: (dto.status ?? 'UPCOMING') as never,
           startDate: dto.startDate,
@@ -91,12 +117,8 @@ export class SeasonService {
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(
-            `Season with name "${dto.name}" already exists`,
-          );
-        }
+      if (isPrismaUniqueConstraintError(error)) {
+        throw new ConflictException(`Mùa giải "${name}" đã tồn tại`);
       }
       throw error;
     }
@@ -109,21 +131,94 @@ export class SeasonService {
       dto.startDate ?? existing.startDate ?? undefined,
       dto.endDate ?? existing.endDate ?? undefined,
     );
+    const nextName = dto.name?.trim();
+
+    await this.assertSeasonDoesNotConflict(
+      {
+        name: nextName,
+        year: dto.year,
+        startDate: dto.startDate ?? existing.startDate,
+        endDate: dto.endDate ?? existing.endDate,
+      },
+      id,
+    );
 
     try {
       return await this.prisma.season.update({
         where: { id },
-        data: dto as never,
+        data: {
+          ...dto,
+          ...(nextName !== undefined ? { name: nextName } : {}),
+        } as never,
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(
-            `Season with name "${dto.name}" already exists`,
-          );
-        }
+      if (isPrismaUniqueConstraintError(error)) {
+        throw new ConflictException(
+          `Mùa giải "${nextName ?? existing.name}" đã tồn tại`,
+        );
       }
       throw error;
+    }
+  }
+
+  private async assertSeasonDoesNotConflict(
+    input: {
+      name?: string;
+      year?: number;
+      startDate?: Date | string | null;
+      endDate?: Date | string | null;
+    },
+    excludedSeasonId?: string,
+  ) {
+    const excludeCurrentSeason = excludedSeasonId
+      ? { id: { not: excludedSeasonId } }
+      : {};
+
+    if (input.name) {
+      const duplicatedName = await this.prisma.season.findFirst({
+        where: {
+          ...excludeCurrentSeason,
+          name: { equals: input.name, mode: 'insensitive' },
+        },
+      });
+
+      if (duplicatedName) {
+        throw new ConflictException(`Mùa giải "${input.name}" đã tồn tại`);
+      }
+    }
+
+    if (input.year !== undefined) {
+      const duplicatedYear = await this.prisma.season.findFirst({
+        where: {
+          ...excludeCurrentSeason,
+          year: input.year,
+        },
+      });
+
+      if (duplicatedYear) {
+        throw new ConflictException(
+          `Mùa giải ${input.year}-${input.year + 1} đã tồn tại`,
+        );
+      }
+    }
+
+    const start = toValidSeasonDate(input.startDate);
+    const end = toValidSeasonDate(input.endDate);
+
+    if (!start || !end) return;
+
+    const overlappingSeason = await this.prisma.season.findFirst({
+      where: {
+        ...excludeCurrentSeason,
+        startDate: { lte: end },
+        endDate: { gte: start },
+      },
+    });
+
+    if (overlappingSeason) {
+      throw new ConflictException(
+        `Khoảng thời gian mùa giải bị trùng với "${overlappingSeason.name}"`,
+      );
     }
   }
 

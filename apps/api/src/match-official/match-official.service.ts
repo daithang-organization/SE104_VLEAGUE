@@ -24,10 +24,12 @@ export class MatchOfficialService {
     private readonly matchLineupService: MatchLineupService,
   ) {}
 
-  listOfficials() {
-    return this.prisma.official.findMany({
+  async listOfficials() {
+    const officials = await this.prisma.official.findMany({
       orderBy: [{ status: 'asc' }, { fullName: 'asc' }],
     });
+
+    return this.addAccountRolesToOfficials(officials);
   }
 
   async createOfficial(dto: CreateOfficialDto) {
@@ -49,11 +51,26 @@ export class MatchOfficialService {
   async listAssignments(matchId: string) {
     await this.ensureMatch(matchId);
 
-    return this.prisma.matchOfficialAssignment.findMany({
+    const assignments = await this.prisma.matchOfficialAssignment.findMany({
       where: { matchId },
       include: { official: true },
       orderBy: [{ role: 'asc' }, { publishedAt: 'asc' }],
     });
+
+    const roleByEmail = await this.getAccountRoleByOfficialEmail(
+      assignments.map((assignment) => assignment.official),
+    );
+
+    return assignments.map((assignment) => ({
+      ...assignment,
+      official: {
+        ...assignment.official,
+        accountRole: this.resolveOfficialAccountRole(
+          assignment.official,
+          roleByEmail,
+        ),
+      },
+    }));
   }
 
   async assignOfficial(matchId: string, dto: AssignOfficialDto) {
@@ -463,6 +480,62 @@ export class MatchOfficialService {
   private cleanOptional(value?: string) {
     const trimmed = value?.trim();
     return trimmed ? trimmed : undefined;
+  }
+
+  private async addAccountRolesToOfficials<
+    TOfficial extends { email?: string | null },
+  >(officials: TOfficial[]) {
+    const roleByEmail = await this.getAccountRoleByOfficialEmail(officials);
+
+    return officials.map((official) => ({
+      ...official,
+      accountRole: this.resolveOfficialAccountRole(official, roleByEmail),
+    }));
+  }
+
+  private async getAccountRoleByOfficialEmail(
+    officials: Array<{ email?: string | null }>,
+  ) {
+    const emails = Array.from(
+      new Set(
+        officials
+          .map((official) => this.normalizeEmail(official.email))
+          .filter((email): email is string => Boolean(email)),
+      ),
+    );
+
+    if (emails.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        OR: emails.map((email) => ({
+          email: { equals: email, mode: 'insensitive' },
+        })),
+      },
+      select: { email: true, role: true },
+    });
+
+    return new Map(
+      users.map((user) => [
+        this.normalizeEmail(user.email) as string,
+        user.role,
+      ]),
+    );
+  }
+
+  private resolveOfficialAccountRole(
+    official: { email?: string | null },
+    roleByEmail: Map<string, string>,
+  ) {
+    const email = this.normalizeEmail(official.email);
+    return email ? (roleByEmail.get(email) ?? null) : null;
+  }
+
+  private normalizeEmail(email?: string | null) {
+    const trimmed = email?.trim();
+    return trimmed ? trimmed.toLowerCase() : null;
   }
 
   private async getExistingReportEvents(matchId: string) {

@@ -363,6 +363,7 @@ const vi = {
     officialAssignmentsEmpty: 'Chưa phân công trọng tài/giám sát viên.',
     assignOfficialsTitle: 'Phân công trước trận',
     officialSelectLabel: 'Trọng tài/giám sát viên',
+    officialAccountRoleLabel: 'Tài khoản: {{role}}',
     officialRoleLabel: 'Vai trò',
     officialNoteLabel: 'Ghi chú phân công',
     officialSelectPlaceholder: 'Chọn trọng tài/giám sát viên',

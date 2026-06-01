@@ -56,8 +56,11 @@ export class TeamsController {
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   @ApiOkResponse({ description: 'Thông tin đội bóng' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy đội bóng' })
-  async getTeam(@Param('id') id: string) {
-    return await this.reg.findOneTeam(id);
+  async getTeam(@Param('id') id: string, @Query('seasonId') seasonId?: string) {
+    if (!seasonId) {
+      return await this.reg.findOneTeam(id);
+    }
+    return await this.reg.findOneTeam(id, seasonId);
   }
 
   @Post()

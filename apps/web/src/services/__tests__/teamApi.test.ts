@@ -46,6 +46,18 @@ describe('teamApi', () => {
     expect(result).toEqual(team);
   });
 
+  it('apiGetTeam passes seasonId when provided', async () => {
+    const team = { id: 't1', name: 'Hà Nội FC' };
+    mockApi.get.mockResolvedValue({ data: team });
+
+    const result = await apiGetTeam('t1', 'season-2026');
+
+    expect(mockApi.get).toHaveBeenCalledWith('/teams/t1', {
+      params: { seasonId: 'season-2026' },
+    });
+    expect(result).toEqual(team);
+  });
+
   it('apiCreateTeam calls POST /teams', async () => {
     const team = { id: 't1', name: 'New Team' };
     mockApi.post.mockResolvedValue({ data: team });
