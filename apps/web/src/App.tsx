@@ -106,7 +106,7 @@ export default function App() {
             <Route
               path="/seasons"
               element={
-                <RequireRole allow={['ADMIN']}>
+                <RequireRole allow={['ADMIN', 'TEAM_MANAGER']}>
                   <SeasonsPage />
                 </RequireRole>
               }
