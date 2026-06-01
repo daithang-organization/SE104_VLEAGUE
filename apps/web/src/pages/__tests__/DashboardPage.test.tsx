@@ -284,7 +284,7 @@ describe('DashboardPage', () => {
     });
     expect(screen.getAllByText('CLB quản lý')).toHaveLength(1);
     expect(screen.queryByText('Thông tin CLB')).not.toBeInTheDocument();
-    expect(screen.getByText('HLV Trưởng')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Chỉnh sửa đội bóng/i })).toBeInTheDocument();
+    expect(await screen.findByText('HLV Trưởng')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Chỉnh sửa đội bóng/i })).toBeInTheDocument();
   });
 });
