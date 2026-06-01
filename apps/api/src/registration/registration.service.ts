@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, UserRole, type Player, type Team } from '@prisma/client';
+import { isForeignPlayer } from '../common/utils/foreign-player.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
@@ -18,6 +19,8 @@ import type { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 /** Fallback age limits when no season regulation is available */
 const DEFAULT_MIN_AGE = 16;
 const DEFAULT_MAX_AGE = 40;
+const DEFAULT_MAX_ROSTER = 22;
+const DEFAULT_MAX_FOREIGN = 5;
 
 @Injectable()
 export class RegistrationService {
@@ -473,6 +476,17 @@ export class RegistrationService {
       );
     }
 
+    if (writableTeamId) {
+      await this.validateTeamRosterLimitsForPlayer(
+        writableTeamId,
+        {
+          playerType: dto.playerType ?? 'DOMESTIC',
+          nationality: dto.nationality,
+        },
+        dto.seasonId,
+      );
+    }
+
     const player = await this.prisma.player.create({
       data: {
         fullName: dto.fullName,
@@ -516,7 +530,7 @@ export class RegistrationService {
   ): Promise<Player> {
     this.assertProvidedPlayerProfile(dto);
 
-    await this.findOnePlayer(id);
+    const currentPlayer = await this.findOnePlayer(id);
     if (actor) {
       await this.assertCanManagePlayer(actor, id);
     }
@@ -537,6 +551,35 @@ export class RegistrationService {
     if (dto.weightKg !== undefined) data.weightKg = dto.weightKg;
     if (dto.careerSummary !== undefined) {
       data.careerSummary = dto.careerSummary.trim();
+    }
+
+    const currentActiveRoster = Array.isArray((currentPlayer as any).roster)
+      ? (currentPlayer as any).roster.find(
+          (row: { leftAt?: Date | null }) => row.leftAt === null,
+        )
+      : null;
+    const nextTeamId =
+      dto.teamId !== undefined ? writableTeamId : currentActiveRoster?.teamId;
+    const shouldValidateRosterLimits =
+      dto.teamId !== undefined ||
+      dto.playerType !== undefined ||
+      dto.nationality !== undefined;
+
+    if (shouldValidateRosterLimits && nextTeamId) {
+      await this.validateTeamRosterLimitsForPlayer(
+        nextTeamId,
+        {
+          playerType: (dto.playerType ?? currentPlayer.playerType) as string,
+          nationality: dto.nationality ?? currentPlayer.nationality,
+        },
+        undefined,
+        {
+          excludePlayerId: id,
+          checkRosterSize:
+            dto.teamId !== undefined &&
+            nextTeamId !== currentActiveRoster?.teamId,
+        },
+      );
     }
 
     const player = await this.prisma.player.update({
@@ -597,6 +640,74 @@ export class RegistrationService {
       throw new ForbiddenException(
         'Tài khoản này chỉ được thao tác với cầu thủ thuộc CLB đã được admin gắn.',
       );
+    }
+  }
+
+  private async validateTeamRosterLimitsForPlayer(
+    teamId: string,
+    player: { playerType?: string | null; nationality?: string | null },
+    seasonId?: string,
+    options?: { excludePlayerId?: string; checkRosterSize?: boolean },
+  ) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (!team) {
+      throw new NotFoundException(`Không tìm thấy đội bóng với ID ${teamId}`);
+    }
+
+    const activeRosterWhere: Prisma.TeamPlayerWhereInput = {
+      teamId,
+      leftAt: null,
+    };
+    if (options?.excludePlayerId) {
+      activeRosterWhere.playerId = { not: options.excludePlayerId };
+    }
+
+    if (isForeignPlayer(player)) {
+      const maxForeign = await this.regulationHelper.getNumericValue(
+        seasonId,
+        'MAX_FOREIGN_PLAYERS',
+        DEFAULT_MAX_FOREIGN,
+      );
+      const activeRosterPlayers = await this.prisma.teamPlayer.findMany({
+        where: activeRosterWhere,
+        select: {
+          player: {
+            select: {
+              playerType: true,
+              nationality: true,
+            },
+          },
+        },
+      });
+      const foreignCount = activeRosterPlayers.filter((row) =>
+        isForeignPlayer(row.player),
+      ).length;
+
+      if (foreignCount >= maxForeign) {
+        throw new BadRequestException(
+          `Đội đã đạt tới số lượng ngoại binh tối đa (${maxForeign})`,
+        );
+      }
+    }
+
+    if (options?.checkRosterSize !== false) {
+      const maxRoster = await this.regulationHelper.getNumericValue(
+        seasonId,
+        'MAX_ROSTER',
+        DEFAULT_MAX_ROSTER,
+      );
+      const activeCount = await this.prisma.teamPlayer.count({
+        where: activeRosterWhere,
+      });
+
+      if (activeCount >= maxRoster) {
+        throw new BadRequestException(
+          `Đội đã đạt giới hạn ${maxRoster} cầu thủ trong đội hình`,
+        );
+      }
     }
   }
 

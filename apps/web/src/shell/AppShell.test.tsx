@@ -47,6 +47,7 @@ describe('AppShell', () => {
 
     expect(container.querySelector('.app-sidebar')).toBeInTheDocument();
     expect(container.querySelector('.sidebar-brand')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'VLeague Dashboard' })).toHaveAttribute('href', '/');
     expect(screen.getByAltText('VLeague Logo')).toHaveClass('sidebar-brand-logo');
     expect(container.querySelector('.sidebar-menu')).toBeInTheDocument();
     expect(container.querySelectorAll('.sidebar-menu-icon').length).toBeGreaterThan(0);

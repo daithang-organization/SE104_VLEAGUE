@@ -21,7 +21,7 @@ import {
 } from 'antd';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon } from '../components';
 import NotificationBell from '../components/NotificationBell';
@@ -157,11 +157,13 @@ export default function AppShell() {
         }}
       >
         <div className="sidebar-brand">
-          <img
-            className="sidebar-brand-logo"
-            src="/V.League_1_2025-26_logo.svg.png"
-            alt="VLeague Logo"
-          />
+          <Link className="sidebar-brand-link" to="/" aria-label="VLeague Dashboard">
+            <img
+              className="sidebar-brand-logo"
+              src="/V.League_1_2025-26_logo.svg.png"
+              alt="VLeague Logo"
+            />
+          </Link>
         </div>
         <Menu
           className="sidebar-menu"
