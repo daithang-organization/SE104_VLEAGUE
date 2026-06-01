@@ -182,8 +182,19 @@ export class MatchService {
       throw new NotFoundException(`Không tìm thấy trận đấu với ID ${matchId}`);
     }
 
+    const isScoreUpdate =
+      data.homeScore !== undefined || data.awayScore !== undefined;
+
     // Block edits on FINISHED or LOCKED matches
     if (match.status === 'FINISHED' || match.status === 'LOCKED') {
+      if (isScoreUpdate) {
+        const reason =
+          match.status === 'FINISHED'
+            ? 'Trận đấu đã kết thúc nên không thể cập nhật tỉ số. Hãy mở lại trạng thái trận đấu trước khi chỉnh sửa tỉ số.'
+            : 'Trận đấu đang khóa nên không thể cập nhật tỉ số. Hãy chuyển trạng thái trận đấu trước khi chỉnh sửa tỉ số.';
+        throw new BadRequestException(reason);
+      }
+
       throw new BadRequestException(
         `Không thể chỉnh sửa trận đấu ở trạng thái ${match.status}`,
       );
@@ -195,7 +206,7 @@ export class MatchService {
       updateData.kickoffAt = data.kickoffAt ? new Date(data.kickoffAt) : null;
     if (data.homeScore !== undefined) updateData.homeScore = data.homeScore;
     if (data.awayScore !== undefined) updateData.awayScore = data.awayScore;
-    if (data.homeScore !== undefined || data.awayScore !== undefined) {
+    if (isScoreUpdate) {
       updateData.scoreSource =
         data.homeScore === null && data.awayScore === null ? null : 'ADMIN';
     }
@@ -213,7 +224,7 @@ export class MatchService {
     if (
       updatedMatch.homeScore !== null &&
       updatedMatch.awayScore !== null &&
-      (data.homeScore !== undefined || data.awayScore !== undefined)
+      isScoreUpdate
     ) {
       await this.prisma.matchReport.updateMany({
         where: { matchId },

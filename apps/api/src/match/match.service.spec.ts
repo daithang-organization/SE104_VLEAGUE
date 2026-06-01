@@ -246,6 +246,38 @@ describe('MatchService', () => {
   });
 
   describe('updateMatch', () => {
+    it('rejects score updates on finished matches with a specific reason', async () => {
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+        ...mockMatch,
+        status: 'FINISHED',
+      } as any);
+
+      await expect(
+        service.updateMatch('match-1', {
+          homeScore: 3,
+          awayScore: 0,
+        }),
+      ).rejects.toThrow(
+        'Trận đấu đã kết thúc nên không thể cập nhật tỉ số. Hãy mở lại trạng thái trận đấu trước khi chỉnh sửa tỉ số.',
+      );
+    });
+
+    it('rejects score updates on locked matches with a specific reason', async () => {
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+        ...mockMatch,
+        status: 'LOCKED',
+      } as any);
+
+      await expect(
+        service.updateMatch('match-1', {
+          homeScore: 1,
+          awayScore: 1,
+        }),
+      ).rejects.toThrow(
+        'Trận đấu đang khóa nên không thể cập nhật tỉ số. Hãy chuyển trạng thái trận đấu trước khi chỉnh sửa tỉ số.',
+      );
+    });
+
     it('syncs an existing match report score when the admin score is updated', async () => {
       jest
         .spyOn(prisma.match, 'findUnique')

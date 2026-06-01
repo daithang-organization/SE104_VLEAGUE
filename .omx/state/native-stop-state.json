@@ -182,11 +182,11 @@
     },
     "019e8215-42a4-72b1-926a-97c889041caa": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã fix lỗi test ở [dashboardpage.test.tsx](/c:/se104_vleague/apps/web/src/pages/__tests__/dashboardpage.test.tsx:287). nguyên nhân là test đang dùng `getbytext('hlv trưởng')` ngay sau khi chỉ mới đợi `apigetteam` được gọi. khi chạy full suite, react/antd có thể chưa render xong state sau async load, nên assertion bị race. mình đổi sang: ```ts await screen.findbytext('hlv trưởng') await screen.findbyrole('button', { name: /chỉnh sửa đội bóng/i }) ``` đã kiểm tra: - `pnpm --filter web test -- src/pages/__tests__/dashboardpage.test.tsx`: 10/10 pass - `pnpm --filter web test`: 41/41 test files pass, 285 passed, 1 skipped.",
-        "first_seen_at": "2026-06-01T08:55:57.791Z",
-        "last_seen_at": "2026-06-01T08:55:57.791Z",
+        "fingerprint": "ordinary|đã chỉnh popup lỗi cập nhật tỉ số rõ lý do hơn. thay đổi chính: - backend trả message cụ thể khi cập nhật tỉ số ở trận `finished` hoặc `locked` trong [match.service.ts](c:/se104_vleague/apps/api/src/match/match.service.ts:184). - `scoremodal` và `matchespage` giờ hiển thị message từ api thay vì luôn fallback `không thể cập nhật tỉ số`. - thêm helper `getapierrormessage` và test ui cho `scoremodal`. thông báo hiện sẽ là: - `trận đấu đã kết thúc nên không thể cập nhật tỉ số. hãy mở lại trạng thái trận đấu trước khi chỉnh sửa tỉ số.` - `trận đấu đang khóa nên không thể cập nhật tỉ số. hãy chuyển trạng thái trận đấu trước khi chỉnh sửa tỉ số.` đã verify: - `pnpm --filter api test -- match.service.spec.ts` pass: 31/31 - `pnpm --filter web test -- src/pages/match-detail/scoremodal.test.tsx src/lib/apierror.test.ts` pass: 3/3 - `pnpm --filter web test -- src/pages/__tests__/matchespage.test.tsx` pass: 9/9 - `pnpm --filter web test -- src/services/__tests__/matchapi.test.ts` pass: 23/23 - `pnpm --filter api build` pass - `pnpm --filter web build` pass",
+        "first_seen_at": "2026-06-01T09:51:14.407Z",
+        "last_seen_at": "2026-06-01T09:51:14.407Z",
         "repeat_count": 1,
-        "last_turn_id": "019e8257-9278-7e40-bd31-dcae863db520",
+        "last_turn_id": "019e8282-3aa5-7e73-8138-c0779b4d311c",
         "last_thread_id": null
       }
     },
