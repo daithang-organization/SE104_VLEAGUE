@@ -4,12 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 const mockLogout = vi.hoisted(() => vi.fn());
 const mockToggleTheme = vi.hoisted(() => vi.fn());
-
-vi.mock('../auth/AuthContext', () => ({
-  useAuth: () => ({
+const mockUseAuth = vi.hoisted(() =>
+  vi.fn(() => ({
     user: { id: 'admin-1', email: 'admin@example.com', role: 'ADMIN' },
     logout: mockLogout,
-  }),
+  })),
+);
+
+vi.mock('../auth/AuthContext', () => ({
+  useAuth: mockUseAuth,
 }));
 
 vi.mock('./ThemeContext', () => ({
@@ -42,6 +45,17 @@ function renderShell(path = '/') {
 }
 
 describe('AppShell', () => {
+  it('shows the season menu item to team managers', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'manager-1', email: 'manager@example.com', role: 'TEAM_MANAGER' },
+      logout: mockLogout,
+    });
+
+    renderShell('/seasons');
+
+    expect(screen.getByText('Mùa giải')).toBeInTheDocument();
+  });
+
   it('renders sidebar with stable styling hooks for the brand and menu rail', () => {
     const { container } = renderShell('/teams');
 

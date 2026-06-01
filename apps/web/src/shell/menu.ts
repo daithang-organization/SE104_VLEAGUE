@@ -17,7 +17,7 @@ export const MENU: MenuItem[] = [
     key: 'seasons',
     labelKey: 'menu.seasons',
     path: '/seasons',
-    roles: ['ADMIN'],
+    roles: ['ADMIN', 'TEAM_MANAGER'],
   },
   {
     key: 'teams',

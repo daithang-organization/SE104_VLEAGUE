@@ -58,6 +58,10 @@ function compareMatchesByKickoff(a: ScheduleMatch, b: ScheduleMatch) {
   return timeDiff || a.id.localeCompare(b.id);
 }
 
+function isMatchLockedByInactiveTeam(match: ScheduleMatch) {
+  return match.homeTeam?.status === 'INACTIVE' || match.awayTeam?.status === 'INACTIVE';
+}
+
 export default function SchedulePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -183,6 +187,11 @@ export default function SchedulePage() {
 
   // Edit match
   const openEditModal = (match: ScheduleMatch) => {
+    if (isMatchLockedByInactiveTeam(match)) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa lịch thi đấu.');
+      return;
+    }
+
     setEditingMatch(match);
     form.setFieldsValue({
       stadiumId: match.stadiumId || undefined,
@@ -193,6 +202,11 @@ export default function SchedulePage() {
 
   const handleSaveMatch = async () => {
     if (!editingMatch) return;
+    if (isMatchLockedByInactiveTeam(editingMatch)) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa lịch thi đấu.');
+      return;
+    }
+
     setSaving(true);
     try {
       const values = form.getFieldsValue();
@@ -311,6 +325,7 @@ export default function SchedulePage() {
 
   const renderScheduleFixture = (match: ScheduleMatch) => {
     const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
+    const inactiveTeamLocked = isMatchLockedByInactiveTeam(match);
 
     return (
       <MatchFixtureCard
@@ -333,11 +348,18 @@ export default function SchedulePage() {
         onMatchClick={(matchId) => navigate(`/matches/${matchId}`)}
         actions={
           isAdmin ? (
-            <Tooltip title={t('schedule.editTooltip')}>
+            <Tooltip
+              title={
+                inactiveTeamLocked
+                  ? 'CLB đang không hoạt động, không thể chỉnh sửa lịch thi đấu.'
+                  : t('schedule.editTooltip')
+              }
+            >
               <Button
                 type="text"
                 size="small"
                 icon={<EditOutlined />}
+                disabled={inactiveTeamLocked}
                 onClick={() => openEditModal(match)}
               />
             </Tooltip>
