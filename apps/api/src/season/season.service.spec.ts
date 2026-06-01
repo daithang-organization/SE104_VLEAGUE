@@ -168,10 +168,17 @@ describe('SeasonService', () => {
         ...createDto,
         id: 'new-id',
       });
-      jest.spyOn(prisma.season, 'findFirst').mockResolvedValue({
-        ...mockSeason,
-        id: 'source-season',
-      } as any);
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
+        if (args?.where?.regulations) {
+          return Promise.resolve({
+            ...mockSeason,
+            id: 'source-season',
+          });
+        }
+        return Promise.resolve(null);
+      }) as any);
       jest.spyOn(prisma.regulation, 'findMany').mockResolvedValue([
         { key: 'WIN_POINTS', value: '4', valueType: 'number' },
         { key: 'DRAW_POINTS', value: '2', valueType: 'number' },
