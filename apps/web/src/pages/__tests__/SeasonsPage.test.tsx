@@ -160,12 +160,55 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
   apiDeletePromotionCandidate: vi.fn().mockResolvedValue({ count: 1 }),
   apiSendTeamInvitation: vi.fn().mockResolvedValue({}),
 }));
+const mockTeamManagerApi = vi.hoisted(() => ({
+  apiGetTeamManagerAssignment: vi.fn().mockResolvedValue({
+    id: 'assignment-1',
+    userId: 'u-manager',
+    seasonId: 's1',
+    teamId: 'team-1',
+    season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+    team: { id: 'team-1', name: 'CLB Bình Định' },
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  }),
+  apiGetTeamManagerApplication: vi.fn().mockResolvedValue({
+    id: 'season-team-1',
+    seasonId: 's1',
+    teamId: 'team-1',
+    status: 'REGISTERED',
+    registeredAt: '2025-01-01T00:00:00Z',
+    approvedAt: null,
+    applicationSubmittedAt: null,
+    applicationReviewNote: null,
+    ownerName: null,
+    ownerCountry: null,
+    ownerAddress: null,
+    teamIntroduction: null,
+    primaryKit: null,
+    backupKit: null,
+    participationFeePaid: false,
+    feePaidAt: null,
+    feeReceiptCode: null,
+    feeReceiptUrl: null,
+    externalCompetitionSchedule: null,
+    team: {
+      id: 'team-1',
+      name: 'CLB Bình Định',
+      shortName: 'BĐ',
+      logoUrl: null,
+      city: 'Quy Nhơn',
+      status: 'ACTIVE',
+    },
+  }),
+  apiSubmitTeamManagerApplication: vi.fn().mockResolvedValue({}),
+}));
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/seasonTeamApi', () => mockSeasonTeamApi);
 vi.mock('../../services/teamApi', () => mockTeamApi);
 vi.mock('../../services/teamInvitationApi', () => mockTeamInvitationApi);
+vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import SeasonsPage from '../SeasonsPage';
 
@@ -284,6 +327,50 @@ function resetMockImplementations() {
 
   mockTeamInvitationApi.apiSendTeamInvitation.mockReset();
   mockTeamInvitationApi.apiSendTeamInvitation.mockResolvedValue({});
+
+  mockTeamManagerApi.apiGetTeamManagerAssignment.mockReset();
+  mockTeamManagerApi.apiGetTeamManagerAssignment.mockResolvedValue({
+    id: 'assignment-1',
+    userId: 'u-manager',
+    seasonId: 's1',
+    teamId: 'team-1',
+    season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+    team: { id: 'team-1', name: 'CLB Bình Định' },
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  });
+  mockTeamManagerApi.apiGetTeamManagerApplication.mockReset();
+  mockTeamManagerApi.apiGetTeamManagerApplication.mockResolvedValue({
+    id: 'season-team-1',
+    seasonId: 's1',
+    teamId: 'team-1',
+    status: 'REGISTERED',
+    registeredAt: '2025-01-01T00:00:00Z',
+    approvedAt: null,
+    applicationSubmittedAt: null,
+    applicationReviewNote: null,
+    ownerName: null,
+    ownerCountry: null,
+    ownerAddress: null,
+    teamIntroduction: null,
+    primaryKit: null,
+    backupKit: null,
+    participationFeePaid: false,
+    feePaidAt: null,
+    feeReceiptCode: null,
+    feeReceiptUrl: null,
+    externalCompetitionSchedule: null,
+    team: {
+      id: 'team-1',
+      name: 'CLB Bình Định',
+      shortName: 'BĐ',
+      logoUrl: null,
+      city: 'Quy Nhơn',
+      status: 'ACTIVE',
+    },
+  });
+  mockTeamManagerApi.apiSubmitTeamManagerApplication.mockReset();
+  mockTeamManagerApi.apiSubmitTeamManagerApplication.mockResolvedValue({});
 }
 
 describe('SeasonsPage', () => {
@@ -336,6 +423,35 @@ describe('SeasonsPage', () => {
     });
     renderPage();
     expect(screen.queryByText('Tạo mùa giải')).not.toBeInTheDocument();
+  });
+
+  it('lets team managers expand any season to view their club application form', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+      expect(screen.getByText('VLeague 2024-2025')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Tạo mùa giải')).not.toBeInTheDocument();
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    await waitFor(() => {
+      expect(mockTeamManagerApi.apiGetTeamManagerAssignment).toHaveBeenCalledWith('s1');
+      expect(mockTeamManagerApi.apiGetTeamManagerApplication).toHaveBeenCalledWith('s1');
+    });
+    expect(await screen.findByText('Hồ sơ tham dự mùa giải')).toBeInTheDocument();
+    expect(screen.getByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
+    expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
   });
 
   it('renders season years', async () => {

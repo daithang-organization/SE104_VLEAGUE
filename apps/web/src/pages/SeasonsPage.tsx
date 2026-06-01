@@ -5,7 +5,9 @@
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  FileDoneOutlined,
   PlusOutlined,
+  SaveOutlined,
   SendOutlined,
   SwapOutlined,
   TeamOutlined,
@@ -17,6 +19,7 @@ import {
   Button,
   Card,
   Checkbox,
+  Col,
   DatePicker,
   Descriptions,
   Flex,
@@ -26,6 +29,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Row,
   Select,
   Space,
   Table,
@@ -74,6 +78,14 @@ import {
   type TeamInvitation,
   type TeamInvitationSourceType,
 } from '../services/teamInvitationApi';
+import {
+  apiGetTeamManagerApplication,
+  apiGetTeamManagerAssignment,
+  apiSubmitTeamManagerApplication,
+  type SubmitTeamManagerApplicationPayload,
+  type TeamManagerApplication,
+  type TeamManagerAssignment,
+} from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
 const STATUS_OPTIONS = [
@@ -341,6 +353,230 @@ function parsePromotionImportText(text: string) {
   });
 
   return { rows, errors };
+}
+
+function getManagerApplicationStatus(application: TeamManagerApplication | null) {
+  if (!application) return { label: 'Chưa có hồ sơ', color: 'default' };
+  if (application.status === 'APPROVED') return { label: 'Đã được BTC duyệt', color: 'success' };
+  if (application.status === 'REJECTED') return { label: 'Bị từ chối', color: 'error' };
+  if (application.applicationSubmittedAt) return { label: 'Đã nộp hồ sơ', color: 'processing' };
+  return { label: 'Chờ nộp hồ sơ', color: 'warning' };
+}
+
+function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
+  const [form] = Form.useForm<SubmitTeamManagerApplicationPayload>();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [assignment, setAssignment] = useState<TeamManagerAssignment | null>(null);
+  const [application, setApplication] = useState<TeamManagerApplication | null>(null);
+
+  const loadApplication = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [assignmentData, applicationData] = await Promise.all([
+        apiGetTeamManagerAssignment(season.id),
+        apiGetTeamManagerApplication(season.id),
+      ]);
+      setAssignment(assignmentData);
+      setApplication(applicationData);
+    } catch (_err) {
+      message.error('Không tải được hồ sơ mùa giải của CLB');
+    } finally {
+      setLoading(false);
+    }
+  }, [season.id]);
+
+  useEffect(() => {
+    loadApplication();
+  }, [loadApplication]);
+
+  useEffect(() => {
+    form.setFieldsValue({
+      seasonId: season.id,
+      ownerName: application?.ownerName ?? '',
+      ownerCountry: application?.ownerCountry ?? 'Việt Nam',
+      ownerAddress: application?.ownerAddress ?? '',
+      teamIntroduction: application?.teamIntroduction ?? '',
+      primaryKit: application?.primaryKit ?? '',
+      backupKit: application?.backupKit ?? '',
+      participationFeePaid: application?.participationFeePaid ?? false,
+      feeReceiptCode: application?.feeReceiptCode ?? '',
+      feeReceiptUrl: application?.feeReceiptUrl ?? '',
+      externalCompetitionSchedule: application?.externalCompetitionSchedule ?? '',
+    });
+  }, [application, form, season.id]);
+
+  const handleSubmitApplication = async (values: SubmitTeamManagerApplicationPayload) => {
+    setSaving(true);
+    try {
+      const updatedApplication = await apiSubmitTeamManagerApplication({
+        seasonId: season.id,
+        ownerName: values.ownerName.trim(),
+        ownerCountry: values.ownerCountry.trim(),
+        ownerAddress: values.ownerAddress?.trim() || undefined,
+        teamIntroduction: values.teamIntroduction.trim(),
+        primaryKit: values.primaryKit.trim(),
+        backupKit: values.backupKit.trim(),
+        participationFeePaid: values.participationFeePaid ?? false,
+        feeReceiptCode: values.feeReceiptCode?.trim() || undefined,
+        feeReceiptUrl: values.feeReceiptUrl?.trim() || undefined,
+        externalCompetitionSchedule: (values.externalCompetitionSchedule ?? '').trim(),
+      });
+      setApplication(updatedApplication);
+      message.success('Đã nộp hồ sơ tham dự mùa giải cho BTC');
+    } catch (_err) {
+      message.error('Không thể nộp hồ sơ. Hãy kiểm tra các thông tin bắt buộc.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applicationStatus = getManagerApplicationStatus(application);
+  const applicationLocked = application?.status === 'APPROVED';
+  const teamName = application?.team?.name ?? assignment?.team?.name ?? 'CLB quản lý';
+
+  if (loading) {
+    return (
+      <div className="season-manager-application-panel">
+        <Typography.Text type="secondary">Đang tải hồ sơ mùa giải...</Typography.Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="season-manager-application-panel">
+      <Flex justify="space-between" align="center" gap={12} wrap style={{ marginBottom: 12 }}>
+        <Space size={8} wrap>
+          <FileDoneOutlined />
+          <Typography.Text strong>Hồ sơ tham dự mùa giải</Typography.Text>
+          <Tag>{season.name}</Tag>
+          <Tag color={applicationStatus.color}>{applicationStatus.label}</Tag>
+        </Space>
+        <Typography.Text type="secondary">{teamName}</Typography.Text>
+      </Flex>
+
+      {!application ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="CLB chưa có bản ghi tham dự mùa giải"
+          description="Hãy xác nhận lời mời tham dự mùa giải từ BTC trước khi nộp hồ sơ."
+        />
+      ) : (
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+          {application.status === 'REJECTED' && application.applicationReviewNote && (
+            <Alert
+              type="error"
+              showIcon
+              title="BTC đã từ chối hồ sơ"
+              description={application.applicationReviewNote}
+            />
+          )}
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmitApplication}
+            disabled={applicationLocked}
+          >
+            <Row gutter={[16, 8]}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="ownerName"
+                  label="Cơ quan/công ty chủ quản"
+                  rules={[{ required: true, message: 'Vui lòng nhập cơ quan chủ quản' }]}
+                >
+                  <Input placeholder="Ví dụ: Công ty Cổ phần Bóng đá Bình Định" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="ownerCountry"
+                  label="Quốc gia đặt trụ sở"
+                  rules={[{ required: true, message: 'Vui lòng nhập quốc gia đặt trụ sở' }]}
+                >
+                  <Input placeholder="Việt Nam" />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="ownerAddress" label="Địa chỉ cơ quan chủ quản">
+                  <Input placeholder="Địa chỉ tại Việt Nam" />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item
+                  name="teamIntroduction"
+                  label="Thông tin tự giới thiệu đội"
+                  rules={[{ required: true, message: 'Vui lòng nhập phần giới thiệu đội' }]}
+                >
+                  <Input.TextArea rows={3} placeholder="Tóm tắt lịch sử, mục tiêu mùa giải..." />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="primaryKit"
+                  label="Áo thi đấu chính thức"
+                  rules={[{ required: true, message: 'Vui lòng mô tả áo chính thức' }]}
+                >
+                  <Input placeholder="Ví dụ: Áo đỏ, quần đỏ, tất đỏ" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="backupKit"
+                  label="Áo thi đấu dự bị"
+                  rules={[{ required: true, message: 'Vui lòng mô tả áo dự bị' }]}
+                >
+                  <Input placeholder="Ví dụ: Áo trắng, quần trắng, tất trắng" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="feeReceiptCode" label="Mã biên lai/ghi chú nộp phí">
+                  <Input placeholder="Mã biên lai lệ phí 1 tỷ đồng" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="feeReceiptUrl" label="Link chứng từ nộp lệ phí">
+                  <Input placeholder="https://..." />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="participationFeePaid"
+                  label="Lệ phí tham dự"
+                  valuePropName="checked"
+                >
+                  <Checkbox>Đã nộp lệ phí 1 tỷ đồng</Checkbox>
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item
+                  name="externalCompetitionSchedule"
+                  label="Lịch giải khác đã/đang tham gia"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập lịch giải khác đã/đang tham gia' },
+                  ]}
+                >
+                  <Input.TextArea
+                    rows={2}
+                    placeholder="Nếu có, nhập tên giải và khoảng thời gian thi đấu"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={saving}
+              disabled={applicationLocked}
+            >
+              Nộp hồ sơ
+            </Button>
+          </Form>
+        </Space>
+      )}
+    </div>
+  );
 }
 
 // ─── Season Team Panel (expandable row) ───
@@ -1593,6 +1829,7 @@ export default function SeasonsPage() {
   ];
   const inProgressCount = seasons.filter((season) => season.status === 'IN_PROGRESS').length;
   const upcomingCount = seasons.filter((season) => season.status === 'UPCOMING').length;
+  const canExpandSeason = isAdmin || user?.role === 'TEAM_MANAGER';
 
   return (
     <>
@@ -1641,10 +1878,15 @@ export default function SeasonsPage() {
             pagination={false}
             size="middle"
             expandable={
-              isAdmin
+              canExpandSeason
                 ? {
-                    expandedRowRender: (record) => <SeasonTeamPanel seasonId={record.id} />,
-                    expandRowByClick: false,
+                    expandedRowRender: (record) =>
+                      isAdmin ? (
+                        <SeasonTeamPanel seasonId={record.id} />
+                      ) : (
+                        <ManagerSeasonApplicationPanel season={record} />
+                      ),
+                    expandRowByClick: !isAdmin,
                   }
                 : undefined
             }
