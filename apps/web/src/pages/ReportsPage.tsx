@@ -199,6 +199,24 @@ export default function ReportsPage() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
 
+  const topScorer = scorers[0] ?? null;
+  const topAssist = assists[0] ?? null;
+  const topYellowCard =
+    cardStats.length > 0
+      ? cardStats.reduce((best, player) => (player.yellowCards > best.yellowCards ? player : best))
+      : null;
+  const topRedCard =
+    cardStats.length > 0
+      ? cardStats.reduce((best, player) => (player.redCards > best.redCards ? player : best))
+      : null;
+
+  const renderPlayerMetricValue = (value: number, playerName?: string) => (
+    <span className="page-hero-metric-value-with-name">
+      <span className="page-hero-metric-number">{value.toLocaleString('vi-VN')}</span>
+      {playerName && <span className="page-hero-metric-person">{playerName}</span>}
+    </span>
+  );
+
   const exportActions = (
     <Space wrap>
       <Button
@@ -242,18 +260,26 @@ export default function ReportsPage() {
         metrics={[
           {
             label: cleanDecorativeLabel(t('reports.tabScorers')),
-            value: scorers.length.toLocaleString('vi-VN'),
+            value: renderPlayerMetricValue(topScorer?.goals ?? 0, topScorer?.playerName),
             icon: <AimOutlined />,
           },
           {
             label: cleanDecorativeLabel(t('reports.tabAssists')),
-            value: assists.length.toLocaleString('vi-VN'),
+            value: renderPlayerMetricValue(topAssist?.assists ?? 0, topAssist?.playerName),
             icon: <RiseOutlined />,
           },
           {
-            label: cleanDecorativeLabel(t('reports.tabPlayerOfMatch')),
-            value: playerOfMatchStats.length.toLocaleString('vi-VN'),
-            icon: <StarOutlined />,
+            label: t('reports.metricYellowCards'),
+            value: renderPlayerMetricValue(
+              topYellowCard?.yellowCards ?? 0,
+              topYellowCard?.playerName,
+            ),
+            icon: <WarningOutlined />,
+          },
+          {
+            label: t('reports.metricRedCards'),
+            value: renderPlayerMetricValue(topRedCard?.redCards ?? 0, topRedCard?.playerName),
+            icon: <StopOutlined />,
           },
         ]}
       />

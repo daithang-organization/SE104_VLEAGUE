@@ -56,7 +56,15 @@ export function PageCover({
                       {metric.label}
                     </Typography.Text>
                   </Space>
-                  <strong>{metric.value}</strong>
+                  <strong
+                    className={
+                      typeof metric.value === 'string' || typeof metric.value === 'number'
+                        ? undefined
+                        : 'page-hero-metric-rich'
+                    }
+                  >
+                    {metric.value}
+                  </strong>
                 </div>
               ))}
             </div>

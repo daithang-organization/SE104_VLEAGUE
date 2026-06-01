@@ -9,6 +9,7 @@ const mockTeamApi = vi.hoisted(() => ({
     shortName: 'CAHN',
     logoUrl: null,
     city: 'Hà Nội',
+    coachName: 'Alexandre Polking',
     status: 'ACTIVE',
     stadiumId: 's1',
     stadium: { id: 's1', name: 'Sân vận động Hàng Đẫy', city: 'Hà Nội' },
@@ -85,9 +86,11 @@ describe('TeamDetailPage', () => {
     expect(code.closest('.club-detail-facts')).not.toBeNull();
   });
 
-  it('renders manager information in the overview table', async () => {
+  it('renders coach name with manager email in the overview table', async () => {
     renderPage();
 
-    expect(await screen.findByText('Manager CAHN (manager.cahn@demo.local)')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Alexandre Polking (manager.cahn@demo.local)'),
+    ).toBeInTheDocument();
   });
 });

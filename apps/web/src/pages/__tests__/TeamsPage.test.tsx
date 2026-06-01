@@ -21,6 +21,7 @@ const mockTeamApi = vi.hoisted(() => ({
         name: 'Hà Nội FC',
         shortName: 'HN',
         city: 'Hà Nội',
+        coachName: 'Harry Kewell',
         status: 'ACTIVE',
         stadiumId: 's1',
         logoUrl: null,
@@ -31,6 +32,7 @@ const mockTeamApi = vi.hoisted(() => ({
         name: 'Hải Phòng FC',
         shortName: 'HP',
         city: 'Hải Phòng',
+        coachName: 'Đặng Văn Thành',
         status: 'INACTIVE',
         stadiumId: null,
         logoUrl: null,
@@ -99,6 +101,13 @@ describe('TeamsPage', () => {
       expect(screen.getByText('Hà Nội FC')).toBeInTheDocument();
       expect(screen.getByText('Hải Phòng FC')).toBeInTheDocument();
     });
+  });
+
+  it('renders coach names on team cards', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Harry Kewell')).toBeInTheDocument();
+    expect(screen.getByText('Đặng Văn Thành')).toBeInTheDocument();
   });
 
   it('shows add button for admin users', () => {
