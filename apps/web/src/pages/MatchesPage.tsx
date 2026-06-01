@@ -49,6 +49,7 @@ import {
   type MatchEvent,
   type RosterPlayer,
 } from '../services/matchApi';
+import { getApiErrorMessage } from '../lib/apiError';
 import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
@@ -414,8 +415,8 @@ export default function MatchesPage() {
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
       loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
-    } catch (_err) {
-      message.error(t('matches.scoreUpdateError'));
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err) || t('matches.scoreUpdateError'));
     } finally {
       setSavingScore(false);
     }
