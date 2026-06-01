@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { isForeignPlayer } from '../common/utils/foreign-player.util';
 import { DEFAULT_REGULATIONS } from '../regulation/regulation.service';
 import {
   StandingsService,
@@ -80,6 +81,10 @@ type ResolvedPromotionImportRow = {
   qualificationType: PromotionQualificationType;
   status: PromotionCandidateStatus;
   note: string | null;
+};
+type InvitationForCompliance = {
+  teamId: string;
+  regulationsSnapshot: Prisma.JsonValue | null;
 };
 
 @Injectable()
@@ -578,7 +583,7 @@ export class TeamInvitationService {
 
     await this.markExpiredInvitations({ teamId: manager.managedTeamId });
 
-    return this.prisma.teamInvitation.findMany({
+    const invitations = await this.prisma.teamInvitation.findMany({
       where: {
         status: TeamInvitationStatus.SENT,
         deadlineAt: { gte: new Date() },
@@ -587,6 +592,12 @@ export class TeamInvitationService {
       include: this.invitationInclude,
       orderBy: { deadlineAt: 'asc' },
     });
+
+    return Promise.all(
+      invitations.map((invitation) =>
+        this.withInvitationCompliance(invitation),
+      ),
+    );
   }
 
   async respondToInvitation(
@@ -1068,8 +1079,167 @@ export class TeamInvitationService {
     await this.markExpiredInvitations({ id: invitationId });
   }
 
+  private async withInvitationCompliance<T extends InvitationForCompliance>(
+    invitation: T,
+  ) {
+    const rules = this.getComplianceRules(invitation.regulationsSnapshot);
+    const [activeRosterPlayers, team] = await Promise.all([
+      this.prisma.teamPlayer.findMany({
+        where: { teamId: invitation.teamId, leftAt: null },
+        select: {
+          player: {
+            select: {
+              dob: true,
+              playerType: true,
+              nationality: true,
+            },
+          },
+        },
+      }),
+      this.prisma.team.findUnique({
+        where: { id: invitation.teamId },
+        select: {
+          stadium: {
+            select: {
+              id: true,
+              name: true,
+              capacity: true,
+              fifaStars: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const rosterCount = activeRosterPlayers.length;
+    const foreignPlayers = activeRosterPlayers.filter((row) =>
+      isForeignPlayer(row.player),
+    ).length;
+    const ageViolations = activeRosterPlayers.filter((row) => {
+      const age = this.calculateAge(row.player.dob);
+      return age === null || age < rules.minAge || age > rules.maxAge;
+    }).length;
+    const stadium = team?.stadium ?? null;
+    const stadiumCapacity = stadium?.capacity ?? null;
+    const stadiumFifaStars = stadium?.fifaStars ?? null;
+
+    return {
+      ...invitation,
+      compliance: {
+        roster: {
+          current: rosterCount,
+          min: rules.minRoster,
+          max: rules.maxRoster,
+          ok: rosterCount >= rules.minRoster && rosterCount <= rules.maxRoster,
+        },
+        foreignPlayers: {
+          current: foreignPlayers,
+          max: rules.maxForeignPlayers,
+          maxOnField: rules.maxForeignPlayersOnField,
+          ok: foreignPlayers <= rules.maxForeignPlayers,
+        },
+        age: {
+          min: rules.minAge,
+          max: rules.maxAge,
+          total: rosterCount,
+          invalidCount: ageViolations,
+          ok: ageViolations === 0,
+        },
+        stadium: {
+          stadiumId: stadium?.id ?? null,
+          stadiumName: stadium?.name ?? null,
+          capacity: stadiumCapacity,
+          fifaStars: stadiumFifaStars,
+          minCapacity: rules.minStadiumCapacity,
+          minFifaStars: rules.minStadiumFifaStars,
+          ok:
+            stadiumCapacity !== null &&
+            stadiumFifaStars !== null &&
+            stadiumCapacity >= rules.minStadiumCapacity &&
+            stadiumFifaStars >= rules.minStadiumFifaStars,
+        },
+      },
+    };
+  }
+
+  private getComplianceRules(snapshot: Prisma.JsonValue | null) {
+    return {
+      minAge: this.getSnapshotNumber(snapshot, 'MIN_AGE', 16),
+      maxAge: this.getSnapshotNumber(snapshot, 'MAX_AGE', 40),
+      minRoster: this.getSnapshotNumber(snapshot, 'MIN_ROSTER', 16),
+      maxRoster: this.getSnapshotNumber(snapshot, 'MAX_ROSTER', 22),
+      maxForeignPlayers: this.getSnapshotNumber(
+        snapshot,
+        'MAX_FOREIGN_PLAYERS',
+        5,
+      ),
+      maxForeignPlayersOnField: this.getSnapshotNumber(
+        snapshot,
+        'MAX_FOREIGN_PLAYERS_ON_FIELD',
+        3,
+      ),
+      minStadiumCapacity: this.getSnapshotNumber(
+        snapshot,
+        'MIN_STADIUM_CAPACITY',
+        10000,
+      ),
+      minStadiumFifaStars: this.getSnapshotNumber(
+        snapshot,
+        'MIN_STADIUM_FIFA_STARS',
+        2,
+      ),
+    };
+  }
+
+  private calculateAge(dob?: Date | string | null) {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  }
+
+  private getSnapshotNumber(
+    snapshot: Prisma.JsonValue | null,
+    key: string,
+    fallback: number,
+  ) {
+    const snapshotValue = this.getSnapshotValue(snapshot, key);
+    const snapshotNumber = Number(snapshotValue);
+    if (Number.isFinite(snapshotNumber)) return snapshotNumber;
+
+    const defaultValue = DEFAULT_REGULATIONS.find(
+      (regulation) => regulation.key === key,
+    )?.value;
+    const defaultNumber = Number(defaultValue);
+    return Number.isFinite(defaultNumber) ? defaultNumber : fallback;
+  }
+
+  private getSnapshotValue(snapshot: Prisma.JsonValue | null, key: string) {
+    if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+      return undefined;
+    }
+
+    const value = (snapshot as Record<string, unknown>)[key];
+    if (typeof value === 'string' || typeof value === 'number') {
+      return value;
+    }
+    return undefined;
+  }
+
   private async buildRegulationsSnapshot(seasonId: string) {
     const keys = [
+      'MIN_AGE',
+      'MAX_AGE',
       'MIN_ROSTER',
       'MAX_ROSTER',
       'MAX_FOREIGN_PLAYERS',

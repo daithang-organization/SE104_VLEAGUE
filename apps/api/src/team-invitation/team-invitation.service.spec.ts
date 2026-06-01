@@ -49,6 +49,8 @@ describe('TeamInvitationService', () => {
     responseAt: null,
     responseReason: null,
     regulationsSnapshot: {
+      MIN_AGE: '16',
+      MAX_AGE: '40',
       MIN_ROSTER: '16',
       MAX_ROSTER: '22',
       PARTICIPATION_FEE_VND: '1000000000',
@@ -70,6 +72,7 @@ describe('TeamInvitationService', () => {
             $transaction: jest.fn(),
             season: { findUnique: jest.fn(), findFirst: jest.fn() },
             team: { findUnique: jest.fn(), findMany: jest.fn() },
+            teamPlayer: { findMany: jest.fn() },
             user: {
               findMany: jest.fn(),
               findFirst: jest.fn(),
@@ -129,6 +132,22 @@ describe('TeamInvitationService', () => {
       .mockImplementation((callback: any) => callback(prisma));
     jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(season as any);
     jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(team as any);
+    jest.spyOn((prisma as any).teamPlayer, 'findMany').mockResolvedValue([
+      {
+        player: {
+          dob: new Date('2000-01-01T00:00:00.000Z'),
+          playerType: 'DOMESTIC',
+          nationality: 'Việt Nam',
+        },
+      },
+      {
+        player: {
+          dob: new Date('1998-01-01T00:00:00.000Z'),
+          playerType: 'FOREIGN',
+          nationality: 'Brazil',
+        },
+      },
+    ] as any);
     jest.spyOn(prisma.user, 'findMany').mockResolvedValue([managerUser] as any);
     jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(managerUser as any);
     jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(managerUser as any);
@@ -139,6 +158,8 @@ describe('TeamInvitationService', () => {
       .spyOn(prisma.teamManagerAssignment, 'upsert')
       .mockResolvedValue(managerAssignment as any);
     jest.spyOn(prisma.regulation, 'findMany').mockResolvedValue([
+      { key: 'MIN_AGE', value: '16', valueType: 'number' },
+      { key: 'MAX_AGE', value: '40', valueType: 'number' },
       { key: 'MIN_ROSTER', value: '16', valueType: 'number' },
       { key: 'MAX_ROSTER', value: '22', valueType: 'number' },
       { key: 'MAX_FOREIGN_PLAYERS', value: '5', valueType: 'number' },
@@ -665,10 +686,37 @@ describe('TeamInvitationService', () => {
       jest
         .spyOn(prisma.teamInvitation, 'findMany')
         .mockResolvedValue([invitation] as any);
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        ...team,
+        stadium: {
+          id: 'stadium-1',
+          name: 'Sân Hàng Đẫy',
+          capacity: 22500,
+          fifaStars: 3,
+        },
+      } as any);
 
       const result = await service.getPendingForManager('manager-1');
 
-      expect(result).toEqual([invitation]);
+      expect(result).toEqual([
+        expect.objectContaining({
+          ...invitation,
+          compliance: expect.objectContaining({
+            roster: expect.objectContaining({ current: 2, ok: false }),
+            foreignPlayers: expect.objectContaining({ current: 1, ok: true }),
+            age: expect.objectContaining({
+              min: 16,
+              max: 40,
+              invalidCount: 0,
+              ok: true,
+            }),
+            stadium: expect.objectContaining({
+              stadiumName: 'Sân Hàng Đẫy',
+              ok: true,
+            }),
+          }),
+        }),
+      ]);
       expect(prisma.teamInvitation.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {

@@ -11,6 +11,7 @@ import {
 } from '../common/utils/foreign-player.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
+import { DEFAULT_REGULATIONS } from '../regulation/regulation.service';
 import { CreateSeasonDto, UpdateSeasonDto } from './dto';
 
 // Valid season status transitions
@@ -107,14 +108,20 @@ export class SeasonService {
     });
 
     try {
-      return await this.prisma.season.create({
-        data: {
-          name,
-          year: dto.year,
-          status: (dto.status ?? 'UPCOMING') as never,
-          startDate: dto.startDate,
-          endDate: dto.endDate,
-        },
+      return await this.prisma.$transaction(async (tx) => {
+        const season = await tx.season.create({
+          data: {
+            name: dto.name,
+            year: dto.year,
+            status: (dto.status ?? 'UPCOMING') as never,
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+          },
+        });
+
+        await this.copyCurrentRegulationsToSeason(tx, season.id);
+
+        return season;
       });
     } catch (error) {
       if (isPrismaUniqueConstraintError(error)) {
@@ -122,6 +129,47 @@ export class SeasonService {
       }
       throw error;
     }
+  }
+
+  private async copyCurrentRegulationsToSeason(
+    tx: Prisma.TransactionClient,
+    seasonId: string,
+  ) {
+    const sourceSeason =
+      (await tx.season.findFirst({
+        where: {
+          id: { not: seasonId },
+          status: 'IN_PROGRESS',
+          regulations: { some: {} },
+        },
+        orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+      })) ??
+      (await tx.season.findFirst({
+        where: {
+          id: { not: seasonId },
+          regulations: { some: {} },
+        },
+        orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+      }));
+
+    const sourceRegulations = sourceSeason
+      ? await tx.regulation.findMany({
+          where: { seasonId: sourceSeason.id },
+          select: { key: true, value: true, valueType: true },
+        })
+      : [];
+    const regulations =
+      sourceRegulations.length > 0 ? sourceRegulations : DEFAULT_REGULATIONS;
+
+    await tx.regulation.createMany({
+      data: regulations.map((regulation) => ({
+        seasonId,
+        key: regulation.key,
+        value: regulation.value,
+        valueType: regulation.valueType,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   async update(id: string, dto: UpdateSeasonDto): Promise<Season> {

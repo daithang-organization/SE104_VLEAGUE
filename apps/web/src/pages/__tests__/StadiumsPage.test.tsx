@@ -118,8 +118,14 @@ describe('StadiumsPage', () => {
         screen.getByText('stadiums.maxCapacity').closest('.page-hero-metric'),
       ).toHaveTextContent('40.000');
       expect(
+        screen.getByText('stadiums.maxCapacity').closest('.page-hero-metric'),
+      ).toHaveTextContent('Sân Mỹ Đình');
+      expect(
         screen.getByText('stadiums.minCapacity').closest('.page-hero-metric'),
       ).toHaveTextContent('25.000');
+      expect(
+        screen.getByText('stadiums.minCapacity').closest('.page-hero-metric'),
+      ).toHaveTextContent('Sân Thống Nhất');
     });
   });
 
@@ -177,7 +183,7 @@ describe('StadiumsPage', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Sân Mỹ Đình')).toBeInTheDocument();
+      expect(screen.getAllByText('Sân Mỹ Đình').length).toBeGreaterThan(0);
     });
 
     const editButton = screen
