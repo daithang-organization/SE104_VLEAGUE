@@ -14,6 +14,7 @@ import {
   apiAssignMatchOfficial,
   apiCreateOfficial,
   apiGetDisciplineReport,
+  apiGetAssignedMatches,
   apiGetMatchOfficials,
   apiGetMatchLineups,
   apiGetMatch,
@@ -50,6 +51,16 @@ describe('matchApi', () => {
     mockApi.get.mockResolvedValue({ data: { data: [] } });
     await apiGetMatches();
     expect(mockApi.get).toHaveBeenCalledWith('/matches', { params: { page: 1, limit: 20 } });
+  });
+
+  it('apiGetAssignedMatches calls GET /matches/assigned-to-me with params', async () => {
+    const data = { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
+    mockApi.get.mockResolvedValue({ data });
+    const result = await apiGetAssignedMatches('s1', 2, 10);
+    expect(mockApi.get).toHaveBeenCalledWith('/matches/assigned-to-me', {
+      params: { page: 2, limit: 10, seasonId: 's1' },
+    });
+    expect(result).toEqual(data);
   });
 
   it('apiGetMatch calls GET /matches/:id', async () => {

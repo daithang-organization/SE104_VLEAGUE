@@ -244,6 +244,8 @@ const en = {
     btnDetail: 'Detail',
     btnEdit: 'Edit',
     tabMine: 'My match results ({count})',
+    tabAssigned: 'Assigned matches ({count})',
+    tabAllMatches: 'All matches ({count})',
     roundLabel: 'Round {round}',
     roundMatches: '{count} matches',
     roundProgress: '{finished}/{total} finished',

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -46,6 +46,25 @@ const mockMatchApi = vi.hoisted(() => ({
       },
     ],
     total: 2,
+  }),
+  apiGetAssignedMatches: vi.fn().mockResolvedValue({
+    data: [
+      {
+        id: 'm1',
+        roundNo: 1,
+        leg: 1,
+        homeTeamId: 't1',
+        awayTeamId: 't2',
+        homeTeam: { id: 't1', name: 'Ha Noi FC', shortName: 'HN' },
+        awayTeam: { id: 't2', name: 'Hai Phong FC', shortName: 'HP' },
+        stadium: { name: 'Hang Day' },
+        homeScore: 2,
+        awayScore: 1,
+        status: 'FINISHED',
+        kickoffAt: '2025-03-15T17:00:00Z',
+      },
+    ],
+    total: 1,
   }),
   apiGetMatch: vi.fn().mockResolvedValue({}),
   apiAddMatchEvent: vi.fn().mockResolvedValue({}),
@@ -155,6 +174,34 @@ describe('MatchesPage', () => {
     renderPage();
 
     expect(await screen.findByText(/Kết quả trận đấu của tôi/)).toBeInTheDocument();
+    expect(screen.queryByText(/Lượt đi/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lượt về/)).not.toBeInTheDocument();
+  });
+
+  it('defaults to assigned matches and lets referee users switch to all matches', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u3', email: 'referee@demo.local', role: 'REFEREE' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(mockMatchApi.apiGetAssignedMatches).toHaveBeenCalledWith('s1', 1, 1000);
+    });
+    expect(mockMatchApi.apiGetMatches).toHaveBeenCalledWith('s1', 1, 1000);
+    expect(await screen.findByText(/Trận được phân công/)).toBeInTheDocument();
+    expect(screen.getByText(/Tất cả trận đấu/)).toBeInTheDocument();
+    expect(screen.queryByText('HAGL')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Tất cả trận đấu/));
+
+    await waitFor(() => {
+      expect(screen.getByText('HAGL')).toBeInTheDocument();
+    });
     expect(screen.queryByText(/Lượt đi/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Lượt về/)).not.toBeInTheDocument();
   });
