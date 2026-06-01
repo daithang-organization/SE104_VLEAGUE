@@ -38,6 +38,7 @@ import {
 } from '../components';
 import {
   apiAddMatchEvent,
+  apiGetAssignedMatches,
   apiGetMatch,
   apiGetMatches,
   apiGetTeamRoster,
@@ -80,9 +81,13 @@ export default function MatchesPage() {
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterTeam, setFilterTeam] = useState<string | undefined>();
-  const [activeLeg, setActiveLeg] = useState<string>('all');
+  const [activeLeg, setActiveLeg] = useState<string>(() =>
+    user?.role === 'REFEREE' || user?.role === 'SUPERVISOR' ? 'assigned' : 'all',
+  );
   const [activeRoundNo, setActiveRoundNo] = useState<number | undefined>();
   const [managedTeamId, setManagedTeamId] = useState<string | null>(null);
+  const [officialAssignedCount, setOfficialAssignedCount] = useState<number | null>(null);
+  const [officialAllCount, setOfficialAllCount] = useState<number | null>(null);
 
   // Detail modal
   const [detailMatch, setDetailMatch] = useState<Match | null>(null);
@@ -101,6 +106,7 @@ export default function MatchesPage() {
 
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
   const isManager = user?.role === 'TEAM_MANAGER';
+  const isAssignedOfficial = user?.role === 'REFEREE' || user?.role === 'SUPERVISOR';
 
   useEffect(() => {
     let cancelled = false;
@@ -126,27 +132,52 @@ export default function MatchesPage() {
   }, [isManager]);
 
   const loadMatches = useCallback(
-    async (seasonId?: string, search?: string, status?: string, teamId?: string) => {
+    async (
+      seasonId?: string,
+      search?: string,
+      status?: string,
+      teamId?: string,
+      officialTabKey?: string,
+    ) => {
       setLoading(true);
       try {
-        // Use 1000 limit to ensure we get all matches for local grouping
-        const res = await apiGetMatches(seasonId, 1, 1000);
-        let data = res.data;
+        const applyLocalFilters = (source: Match[]) => {
+          let data = source;
+          if (search) {
+            const q = search.toLowerCase().trim();
+            data = data.filter(
+              (m) =>
+                m.homeTeam?.name?.toLowerCase().includes(q) ||
+                m.awayTeam?.name?.toLowerCase().includes(q),
+            );
+          }
+          if (status) {
+            data = data.filter((m) => m.status === status);
+          }
+          if (teamId) {
+            data = data.filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId);
+          }
+          return data;
+        };
 
-        // Local filtering (backend only supports seasonId currently in this service)
-        if (search) {
-          const q = search.toLowerCase().trim();
-          data = data.filter(
-            (m) =>
-              m.homeTeam?.name?.toLowerCase().includes(q) ||
-              m.awayTeam?.name?.toLowerCase().includes(q),
-          );
-        }
-        if (status) {
-          data = data.filter((m) => m.status === status);
-        }
-        if (teamId) {
-          data = data.filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId);
+        let data: Match[];
+
+        // Use 1000 limit to ensure we get all matches for local grouping
+        if (isAssignedOfficial) {
+          const [assignedRes, allRes] = await Promise.all([
+            apiGetAssignedMatches(seasonId, 1, 1000),
+            apiGetMatches(seasonId, 1, 1000),
+          ]);
+          const assignedData = applyLocalFilters(assignedRes.data);
+          const allData = applyLocalFilters(allRes.data);
+          setOfficialAssignedCount(assignedData.length);
+          setOfficialAllCount(allData.length);
+          data = officialTabKey === 'all' ? allData : assignedData;
+        } else {
+          const res = await apiGetMatches(seasonId, 1, 1000);
+          data = applyLocalFilters(res.data);
+          setOfficialAssignedCount(null);
+          setOfficialAllCount(null);
         }
 
         setMatches(data);
@@ -157,7 +188,7 @@ export default function MatchesPage() {
         setLoading(false);
       }
     },
-    [t],
+    [isAssignedOfficial, t],
   );
 
   // Initial fetch seasons
@@ -169,41 +200,58 @@ export default function MatchesPage() {
           const active = current ?? data.find((s) => s.status === 'IN_PROGRESS');
           const initialSeasonId = active ? active.id : data[0].id;
           setSelectedSeasonId(initialSeasonId);
-          loadMatches(initialSeasonId);
+          loadMatches(
+            initialSeasonId,
+            undefined,
+            undefined,
+            undefined,
+            isAssignedOfficial ? 'assigned' : 'all',
+          );
         } else {
           setLoading(false);
         }
       })
       .catch(() => setLoading(false));
-  }, [loadMatches]);
+  }, [isAssignedOfficial, loadMatches]);
 
   const onSearch = (value: string) => {
     setSearchText(value);
-    loadMatches(selectedSeasonId, value, filterStatus, filterTeam);
+    loadMatches(selectedSeasonId, value, filterStatus, filterTeam, activeLeg);
   };
 
   const onStatusChange = (val: string) => {
     setFilterStatus(val);
-    loadMatches(selectedSeasonId, searchText, val, filterTeam);
+    loadMatches(selectedSeasonId, searchText, val, filterTeam, activeLeg);
   };
 
   const onTeamChange = (val: string) => {
     setFilterTeam(val);
-    loadMatches(selectedSeasonId, searchText, filterStatus, val);
+    loadMatches(selectedSeasonId, searchText, filterStatus, val, activeLeg);
   };
 
   const onSeasonChange = (val: string) => {
     setSelectedSeasonId(val);
-    loadMatches(val, searchText, filterStatus, filterTeam);
+    loadMatches(val, searchText, filterStatus, filterTeam, activeLeg);
+  };
+
+  const onResultTabChange = (key: string) => {
+    setActiveLeg(key);
+    if (isAssignedOfficial) {
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, key);
+    }
   };
 
   useEffect(() => {
-    if (isManager && (activeLeg === '1' || activeLeg === '2')) {
+    if (isAssignedOfficial && (activeLeg === '1' || activeLeg === '2' || activeLeg === 'mine')) {
+      setActiveLeg('assigned');
+    } else if (!isAssignedOfficial && activeLeg === 'assigned') {
+      setActiveLeg('all');
+    } else if (isManager && (activeLeg === '1' || activeLeg === '2')) {
       setActiveLeg('all');
     } else if (!isManager && activeLeg === 'mine') {
       setActiveLeg('all');
     }
-  }, [activeLeg, isManager]);
+  }, [activeLeg, isAssignedOfficial, isManager]);
 
   const managerMatches = useMemo(() => {
     if (!managedTeamId) return [];
@@ -214,10 +262,11 @@ export default function MatchesPage() {
 
   // Group matches by round
   const filteredMatches = useMemo(() => {
+    if (isAssignedOfficial) return matches;
     if (isManager && activeLeg === 'mine') return managerMatches;
     if (activeLeg === 'all') return matches;
     return matches.filter((m) => m.leg === Number(activeLeg));
-  }, [activeLeg, isManager, managerMatches, matches]);
+  }, [activeLeg, isAssignedOfficial, isManager, managerMatches, matches]);
 
   const resultTabItems = useMemo(() => {
     if (isManager) {
@@ -226,6 +275,19 @@ export default function MatchesPage() {
         {
           key: 'mine',
           label: t('matches.tabMine', { count: managerMatches.length }),
+        },
+      ];
+    }
+
+    if (isAssignedOfficial) {
+      return [
+        {
+          key: 'assigned',
+          label: t('matches.tabAssigned', { count: officialAssignedCount ?? matches.length }),
+        },
+        {
+          key: 'all',
+          label: t('matches.tabAllMatches', { count: officialAllCount ?? matches.length }),
         },
       ];
     }
@@ -241,7 +303,15 @@ export default function MatchesPage() {
         label: t('schedule.tabLeg2', { count: matches.filter((m) => m.leg === 2).length }),
       },
     ];
-  }, [isManager, managerMatches.length, matches, t]);
+  }, [
+    isAssignedOfficial,
+    isManager,
+    managerMatches.length,
+    matches,
+    officialAllCount,
+    officialAssignedCount,
+    t,
+  ]);
 
   const availableTeams = useMemo(() => {
     const teamMap = new Map<string, string>();
@@ -343,7 +413,7 @@ export default function MatchesPage() {
       message.success(t('matches.scoreUpdated'));
       setScoreModalOpen(false);
       viewDetail(detailMatch.id);
-      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam);
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
     } catch (_err) {
       message.error(t('matches.scoreUpdateError'));
     } finally {
@@ -360,7 +430,7 @@ export default function MatchesPage() {
         t('matches.statusChanged', { status: STATUS_MAP[newStatus]?.label ?? newStatus }),
       );
       viewDetail(detailMatch.id);
-      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam);
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
     } catch (err: unknown) {
       const msg =
         err &&
@@ -403,7 +473,7 @@ export default function MatchesPage() {
         message.success(t('matches.eventSuccess', { count: successCount }));
         setEventModalOpen(false);
         viewDetail(detailMatch.id);
-        loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam);
+        loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
       }
     } catch (_err) {
       message.error(t('matches.eventAddError'));
@@ -564,23 +634,25 @@ export default function MatchesPage() {
               label,
             }))}
           />
-          <Select
-            value={filterTeam}
-            onChange={onTeamChange}
-            style={{ width: 180 }}
-            placeholder={t('matches.teamFilterPlaceholder')}
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            options={availableTeams}
-          />
+          {!isAssignedOfficial && (
+            <Select
+              value={filterTeam}
+              onChange={onTeamChange}
+              style={{ width: 180 }}
+              placeholder={t('matches.teamFilterPlaceholder')}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={availableTeams}
+            />
+          )}
         </Space>
       </div>
 
       <Card className="schedule-page-card">
         <Tabs
           activeKey={activeLeg}
-          onChange={setActiveLeg}
+          onChange={onResultTabChange}
           items={resultTabItems}
           style={{ marginBottom: 12 }}
         />
