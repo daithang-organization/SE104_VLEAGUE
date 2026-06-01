@@ -189,6 +189,7 @@ describe('RosterService', () => {
 
   describe('removePlayerFromRoster', () => {
     it('should mark player as left', async () => {
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue(mockTeam as any);
       jest
         .spyOn(prisma.teamPlayer, 'findFirst')
         .mockResolvedValue(mockTeamPlayer as any);
