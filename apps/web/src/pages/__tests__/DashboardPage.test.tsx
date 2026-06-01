@@ -29,6 +29,14 @@ const mockScheduleApi = vi.hoisted(() => ({
   apiGetSchedule: vi.fn().mockResolvedValue({ matches: [] }),
 }));
 const mockSeasonApi = vi.hoisted(() => ({
+  apiGetCurrentSeason: vi.fn().mockResolvedValue({
+    id: 's1',
+    name: 'V.League 2025',
+    startDate: '2000-01-01',
+    endDate: '2099-12-31',
+    status: 'IN_PROGRESS',
+    _count: { matches: 8, seasonTeams: 4 },
+  }),
   apiGetSeasons: vi.fn().mockResolvedValue([
     {
       id: 's1',
@@ -82,13 +90,44 @@ async function waitForAsyncEffects() {
 }
 
 describe('DashboardPage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+  });
   afterEach(() => cleanup());
 
   it('renders the dashboard title', async () => {
     const { container } = renderPage();
     expect(screen.getByText('Trang chủ')).toBeInTheDocument();
     expect(container.querySelector('.dashboard-page .page-hero')).toBeInTheDocument();
+    await waitForAsyncEffects();
+  });
+
+  it('shows admin welcome text only for admins', async () => {
+    renderPage();
+    expect(screen.getByText('Welcome to VLeague Admin')).toBeInTheDocument();
+    expect(screen.queryByText('Welcome to VLeague')).not.toBeInTheDocument();
+    await waitForAsyncEffects();
+  });
+
+  it('shows generic welcome text for non-admin roles', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-public', email: 'public@vl.local', role: 'PUBLIC' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    renderPage();
+    expect(screen.getByText('Welcome to VLeague')).toBeInTheDocument();
+    expect(screen.queryByText('Welcome to VLeague Admin')).not.toBeInTheDocument();
     await waitForAsyncEffects();
   });
 
@@ -128,10 +167,16 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(mockTeamApi.apiGetTeams).toHaveBeenCalled();
       expect(mockPlayerApi.apiGetPlayers).toHaveBeenCalled();
+      expect(mockSeasonApi.apiGetCurrentSeason).toHaveBeenCalled();
       expect(mockScheduleApi.apiGetSchedule).toHaveBeenCalled();
+      expect(mockScheduleApi.apiGetSchedule).toHaveBeenCalledWith('s1');
       expect(mockSeasonApi.apiGetSeasons).toHaveBeenCalled();
       expect(mockStandingsApi.apiGetStandings).toHaveBeenCalled();
+      expect(mockStandingsApi.apiGetStandings).toHaveBeenCalledWith('s1');
       expect(mockMatchApi.apiGetMatches).toHaveBeenCalled();
+      expect(mockMatchApi.apiGetMatches).toHaveBeenCalledWith('s1', 1, 1000);
+      expect(mockStandingsApi.apiGetTopScorers).toHaveBeenCalledWith('s1', 5);
+      expect(mockStandingsApi.apiGetCardStats).toHaveBeenCalledWith('s1', 5);
     });
   });
 

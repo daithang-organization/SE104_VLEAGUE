@@ -163,7 +163,8 @@ const en = {
 
   dashboard: {
     title: 'Dashboard',
-    welcome: 'Welcome to VLeague Admin! System overview:',
+    welcome: 'Welcome to VLeague',
+    adminWelcome: 'Welcome to VLeague Admin',
     refereeWelcome: 'Official match operations dashboard for referees',
     supervisorWelcome: 'Match supervision and discipline reporting dashboard',
     errorLoad: 'Failed to load dashboard data',

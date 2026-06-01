@@ -793,12 +793,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isAdmin = user?.role === 'ADMIN';
-  const dashboardWelcome =
-    user?.role === 'REFEREE'
-      ? t('dashboard.refereeWelcome')
-      : user?.role === 'SUPERVISOR'
-        ? t('dashboard.supervisorWelcome')
-        : t('dashboard.welcome');
+  const dashboardWelcome = isAdmin ? t('dashboard.adminWelcome') : t('dashboard.welcome');
   const [stats, setStats] = useState({
     teams: 0,
     players: 0,
@@ -826,74 +821,58 @@ export default function DashboardPage() {
 
       setLoading(true);
       try {
-        const [
-          teams,
-          players,
-          schedule,
-          seasons,
-          standingsData,
-          matchesData,
-          scorersData,
-          cardStatsData,
-        ] = await Promise.allSettled([
+        const [teams, players, seasons] = await Promise.allSettled([
           apiGetTeams(),
           apiGetPlayers(),
-          apiGetSchedule(),
           apiGetSeasons(),
-          apiGetStandings(),
-          apiGetMatches(undefined, 1, 100),
-          apiGetTopScorers(undefined, 5),
-          apiGetCardStats(undefined, 5),
         ]);
 
         if (cancelled) return;
 
-        setStats({
-          teams: teams.status === 'fulfilled' ? teams.value.total : 0,
-          players: players.status === 'fulfilled' ? players.value.total : 0,
-          matches: schedule.status === 'fulfilled' ? (schedule.value.matches?.length ?? 0) : 0,
-          seasons: seasons.status === 'fulfilled' ? seasons.value.length : 0,
-        });
-
-        if (standingsData.status === 'fulfilled') {
-          setStandings(standingsData.value.slice(0, 5));
-        }
-
-        if (matchesData.status === 'fulfilled') {
-          const finished = matchesData.value.data
-            .filter((m) => m.status === 'FINISHED')
-            .sort((a, b) => {
-              if (a.kickoffAt && b.kickoffAt)
-                return new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
-              return b.roundNo - a.roundNo;
-            })
-            .slice(0, 5) as RecentResult[];
-          setRecentResults(finished);
-        }
-
         const dashboardSeason =
-          (await apiGetCurrentSeason()) ??
-          (seasons.status === 'fulfilled'
-            ? (seasons.value.find((season) => season.status === 'IN_PROGRESS') ??
-              seasons.value.find((season) => {
-                if (!season.startDate || !season.endDate) return false;
-                const start = dayjs(season.startDate).startOf('day').valueOf();
-                const end = dayjs(season.endDate).endOf('day').valueOf();
-                const now = dayjs().valueOf();
-                return now >= start && now <= end;
-              }) ??
-              seasons.value
-                .filter((season) => season.startDate)
-                .sort((a, b) => dayjs(b.startDate).valueOf() - dayjs(a.startDate).valueOf())[0] ??
-              null)
-            : null);
+          (await apiGetCurrentSeason().catch(() => null)) ??
+          (seasons.status === 'fulfilled' ? getDashboardSeason(seasons.value) : null);
 
         if (cancelled) return;
         setCurrentSeason(dashboardSeason);
 
+        if (!dashboardSeason) {
+          setStats({
+            teams: teams.status === 'fulfilled' ? teams.value.total : 0,
+            players: players.status === 'fulfilled' ? players.value.total : 0,
+            matches: 0,
+            seasons: seasons.status === 'fulfilled' ? seasons.value.length : 0,
+          });
+          setStandings([]);
+          setRecentResults([]);
+          setUpcoming([]);
+          setSeasonProgress(null);
+          setTopScorers([]);
+          setCardStats([]);
+          setGoalsPerRound([]);
+          return;
+        }
+
+        const [schedule, standingsData, matchesData, scorersData, cardStatsData] =
+          await Promise.allSettled([
+            apiGetSchedule(dashboardSeason.id),
+            apiGetStandings(dashboardSeason.id),
+            apiGetMatches(dashboardSeason.id, 1, 1000),
+            apiGetTopScorers(dashboardSeason.id, 5),
+            apiGetCardStats(dashboardSeason.id, 5),
+          ]);
+
+        if (cancelled) return;
+
+        if (standingsData.status === 'fulfilled') {
+          setStandings(standingsData.value.slice(0, 5));
+        } else {
+          setStandings([]);
+        }
+
         if (dashboardSeason) {
-          const seasonMatches = await apiGetMatches(dashboardSeason.id, 1, 1000);
-          if (cancelled) return;
+          const seasonMatches =
+            matchesData.status === 'fulfilled' ? matchesData.value : { data: [], total: 0 };
           const teamIds = new Set<string>();
           let finishedMatches = 0;
           const sortedSeasonMatches = [...seasonMatches.data].sort((a, b) => {
@@ -906,6 +885,32 @@ export default function DashboardPage() {
             teamIds.add(match.awayTeamId);
             if (match.status === 'FINISHED') finishedMatches++;
           });
+
+          const recentFinished = [...seasonMatches.data]
+            .filter((match) => match.status === 'FINISHED')
+            .sort((a, b) => {
+              if (a.roundNo !== b.roundNo) return b.roundNo - a.roundNo;
+              return dayjs(b.kickoffAt ?? 0).valueOf() - dayjs(a.kickoffAt ?? 0).valueOf();
+            })
+            .slice(0, 5) as RecentResult[];
+          setRecentResults(recentFinished);
+
+          const roundGoals = new Map<number, number>();
+          seasonMatches.data
+            .filter((match) => match.status === 'FINISHED')
+            .forEach((match) => {
+              const goals = (match.homeScore ?? 0) + (match.awayScore ?? 0);
+              roundGoals.set(match.roundNo, (roundGoals.get(match.roundNo) ?? 0) + goals);
+            });
+          setGoalsPerRound(
+            [...roundGoals.entries()]
+              .sort(([a], [b]) => a - b)
+              .slice(0, 15)
+              .map(([round, goals]) => ({
+                round: t('dashboard.roundShort', { round }),
+                goals,
+              })),
+          );
 
           const latestFinishedRound = Math.max(
             0,
@@ -926,8 +931,23 @@ export default function DashboardPage() {
           );
 
           const roundRobinFixtures = teamIds.size > 1 ? teamIds.size * (teamIds.size - 1) : 0;
+          const scheduledMatchCount =
+            schedule.status === 'fulfilled' ? (schedule.value.matches?.length ?? 0) : 0;
           const totalSeasonMatches =
-            seasonMatches.total || seasonMatches.data.length || roundRobinFixtures;
+            scheduledMatchCount ||
+            seasonMatches.total ||
+            seasonMatches.data.length ||
+            roundRobinFixtures;
+          setStats({
+            teams:
+              dashboardSeason._count?.seasonTeams ??
+              (standingsData.status === 'fulfilled' && standingsData.value.length > 0
+                ? standingsData.value.length
+                : teamIds.size || (teams.status === 'fulfilled' ? teams.value.total : 0)),
+            players: players.status === 'fulfilled' ? players.value.total : 0,
+            matches: totalSeasonMatches,
+            seasons: seasons.status === 'fulfilled' ? seasons.value.length : 0,
+          });
           setSeasonProgress(
             totalSeasonMatches > 0
               ? Math.min(100, Math.round((finishedMatches / totalSeasonMatches) * 100))
@@ -944,26 +964,6 @@ export default function DashboardPage() {
 
         if (cardStatsData.status === 'fulfilled') {
           setCardStats(cardStatsData.value.slice(0, 5));
-        }
-
-        if (cancelled) return;
-
-        if (matchesData.status === 'fulfilled') {
-          const finished = matchesData.value.data.filter((m: Match) => m.status === 'FINISHED');
-          const roundGoals = new Map<number, number>();
-          finished.forEach((m: Match) => {
-            const round = m.roundNo;
-            const goals = (m.homeScore ?? 0) + (m.awayScore ?? 0);
-            roundGoals.set(round, (roundGoals.get(round) ?? 0) + goals);
-          });
-          const chartData = [...roundGoals.entries()]
-            .sort(([a], [b]) => a - b)
-            .slice(0, 15)
-            .map(([round, goals]) => ({
-              round: t('dashboard.roundShort', { round }),
-              goals,
-            }));
-          setGoalsPerRound(chartData);
         }
       } catch (_err) {
         if (!cancelled) message.error(t('dashboard.errorLoad'));
