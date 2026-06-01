@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { TeamManagerScopeService } from '../team-manager/team-manager-scope.service';
-import { PlayerPosition } from './dto/player.dto';
+import { PlayerPosition, PlayerType } from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
 describe('RegistrationService', () => {
@@ -102,6 +102,8 @@ describe('RegistrationService', () => {
             teamPlayer: {
               create: jest.fn(),
               findFirst: jest.fn(),
+              findMany: jest.fn(),
+              count: jest.fn(),
               updateMany: jest.fn(),
             },
           },
@@ -360,6 +362,10 @@ describe('RegistrationService', () => {
         id: 'player-new',
         fullName: dto.fullName,
       } as any);
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue(mockTeams[0] as any);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(10);
       jest.spyOn(prisma.teamPlayer, 'create').mockResolvedValue({} as any);
 
       await service.createPlayer(dto, {
@@ -374,6 +380,84 @@ describe('RegistrationService', () => {
       expect(prisma.teamPlayer.create).toHaveBeenCalledWith({
         data: { teamId: 'team-1', playerId: 'player-new' },
       });
+    });
+
+    it('rejects creating a player when team already reached max roster', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue(mockTeams[0] as any);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(22);
+
+      await expect(
+        service.createPlayer({
+          fullName: 'Full Roster Player',
+          dob: '2000-01-01',
+          nationality: 'Vietnam',
+          position: PlayerPosition.FW,
+          teamId: 'team-1',
+          ...validPlayerProfile,
+        }),
+      ).rejects.toThrow(/giới hạn 22|gioi han 22/i);
+      expect(prisma.player.create).not.toHaveBeenCalled();
+      expect(prisma.teamPlayer.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects creating a sixth foreign player for the same team', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue(mockTeams[0] as any);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(10);
+      jest.spyOn(prisma.teamPlayer, 'findMany').mockResolvedValue(
+        Array.from({ length: 5 }, (_, index) => ({
+          player: {
+            playerType: PlayerType.FOREIGN,
+            nationality: index % 2 === 0 ? 'Brazil' : 'Nigeria',
+          },
+        })) as any,
+      );
+
+      await expect(
+        service.createPlayer({
+          fullName: 'Foreign Player',
+          dob: '2000-01-01',
+          nationality: 'Nigeria',
+          position: PlayerPosition.FW,
+          playerType: PlayerType.FOREIGN,
+          teamId: 'team-1',
+          ...validPlayerProfile,
+        }),
+      ).rejects.toThrow(/ngoại binh tối đa|ngoai binh toi da/i);
+      expect(prisma.player.create).not.toHaveBeenCalled();
+      expect(prisma.teamPlayer.create).not.toHaveBeenCalled();
+    });
+
+    it('counts non-Vietnam nationality as foreign even when playerType is domestic', async () => {
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue(mockTeams[0] as any);
+      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(10);
+      jest.spyOn(prisma.teamPlayer, 'findMany').mockResolvedValue(
+        Array.from({ length: 5 }, () => ({
+          player: {
+            playerType: PlayerType.DOMESTIC,
+            nationality: 'Brazil',
+          },
+        })) as any,
+      );
+
+      await expect(
+        service.createPlayer({
+          fullName: 'Naturalized Player',
+          dob: '2000-01-01',
+          nationality: 'Nigeria',
+          position: PlayerPosition.FW,
+          playerType: PlayerType.DOMESTIC,
+          teamId: 'team-1',
+          ...validPlayerProfile,
+        }),
+      ).rejects.toThrow(/ngoại binh tối đa|ngoai binh toi da/i);
+      expect(prisma.player.create).not.toHaveBeenCalled();
+      expect(prisma.teamPlayer.create).not.toHaveBeenCalled();
     });
 
     it.each([
