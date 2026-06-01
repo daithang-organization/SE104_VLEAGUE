@@ -186,6 +186,30 @@ describe('RegistrationService', () => {
         NotFoundException,
       );
     });
+
+    it('should filter team matches by seasonId when provided', async () => {
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        ...mockTeams[0],
+        homeMatches: [],
+        awayMatches: [],
+      } as any);
+
+      await service.findOneTeam('team-1', 'season-2026');
+
+      expect(prisma.team.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'team-1' },
+          include: expect.objectContaining({
+            homeMatches: expect.objectContaining({
+              where: { seasonId: 'season-2026' },
+            }),
+            awayMatches: expect.objectContaining({
+              where: { seasonId: 'season-2026' },
+            }),
+          }),
+        }),
+      );
+    });
   });
 
   describe('createTeam', () => {

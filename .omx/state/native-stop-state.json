@@ -199,6 +199,26 @@
         "last_turn_id": "019e824c-0874-76e3-808a-bd4a2ada4850",
         "last_thread_id": null
       }
+    },
+    "019e83f8-3802-7e61-85ae-b69c5c6db2ff": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã thêm ràng buộc ở backend theo flow hiện có: - `published -> locked` / “đã khóa, trận đang diễn ra” chỉ cho phép khi: - cả đội nhà và đội khách đều có lineup `approved`. - đã phân công ít nhất một trọng tài. - đã phân công giám sát. - trọng tài và giám sát không phải cùng một người. - `locked -> finished` / kết thúc trận chỉ cho phép khi: - đã có tỉ số. - trọng tài đã nộp biên bản/kết quả. - giám sát đã nộp báo cáo. file chính: - [match.service.ts](c:/se104_vleague/apps/api/src/match/match.service.ts) - [match.service.spec.ts](c:/se104_vleague/apps/api/src/match/match.service.spec.ts) - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts) - [match-official.service.spec.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.spec.ts) verification: - `jest match.service.spec.ts match-official.service.spec.ts --runinband`: 56/56 passed. - `pnpm --filter api build`: passed.",
+        "first_seen_at": "2026-06-01T17:35:11.220Z",
+        "last_seen_at": "2026-06-01T17:35:11.220Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e8432-d099-7d83-8579-8f085eabf31d",
+        "last_thread_id": null
+      }
+    },
+    "019e83f4-b7a1-7172-889a-5218b94b9ca9": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã fix lỗi trong [season.service.spec.ts](c:/se104_vleague/apps/api/src/season/season.service.spec.ts:168). nguyên nhân còn lại: test “copies regulations…” mock `prisma.season.findfirst` quá rộng, nên service vừa vào bước kiểm tra trùng tên mùa giải đã nhận về `source-season` và throw `conflictexception`. tôi đổi mock này thành conditional: chỉ trả `source-season` khi query đang tìm mùa có `regulations`, còn các query kiểm tra trùng name/year/date trả `null`. đã xác minh lại: ```bash pnpm --dir apps/api exec tsc --noemit pnpm --dir apps/api run test -- season.service.spec.ts --runinband pnpm --dir apps/api exec eslint src/season/season.service.spec.ts ``` kết quả: typecheck pass, `season.service.spec.ts` pass `31/31`, eslint pass.",
+        "first_seen_at": "2026-06-01T18:11:51.216Z",
+        "last_seen_at": "2026-06-01T18:11:51.216Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e845c-9f90-7e93-87df-07672f5ec375",
+        "last_thread_id": null
+      }
     }
   }
 }

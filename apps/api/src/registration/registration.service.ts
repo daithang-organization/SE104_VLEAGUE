@@ -88,7 +88,9 @@ export class RegistrationService {
     };
   }
 
-  async findOneTeam(id: string) {
+  async findOneTeam(id: string, seasonId?: string) {
+    const matchWhere = seasonId ? { seasonId } : undefined;
+
     const team = await this.prisma.team.findUnique({
       where: { id },
       include: {
@@ -115,6 +117,7 @@ export class RegistrationService {
           orderBy: { jerseyNumber: 'asc' },
         },
         homeMatches: {
+          ...(matchWhere ? { where: matchWhere } : {}),
           include: {
             awayTeam: {
               select: {
@@ -130,6 +133,7 @@ export class RegistrationService {
           orderBy: [{ roundNo: 'asc' }, { kickoffAt: 'asc' }],
         },
         awayMatches: {
+          ...(matchWhere ? { where: matchWhere } : {}),
           include: {
             homeTeam: {
               select: {
