@@ -76,6 +76,7 @@ export class MatchOfficialService {
   async assignOfficial(matchId: string, dto: AssignOfficialDto) {
     await this.ensureMatch(matchId);
     await this.ensureOfficial(dto.officialId);
+    await this.ensureOfficialHasNoOtherMatchRole(matchId, dto);
 
     if (dto.role === 'SUPERVISOR') {
       const supervisorCount = await this.prisma.matchOfficialAssignment.count({
@@ -446,6 +447,22 @@ export class MatchOfficialService {
     if (assignmentCount === 0) {
       throw new BadRequestException(
         'Giám sát viên phải được phân công cho trận trước khi nộp báo cáo.',
+      );
+    }
+  }
+
+  private async ensureOfficialHasNoOtherMatchRole(
+    matchId: string,
+    dto: AssignOfficialDto,
+  ) {
+    const assignments = await this.prisma.matchOfficialAssignment.findMany({
+      where: { matchId, officialId: dto.officialId },
+      select: { role: true },
+    });
+
+    if (assignments.some((assignment) => assignment.role !== dto.role)) {
+      throw new BadRequestException(
+        'Một trọng tài/giám sát viên chỉ được đảm nhận 1 vai trò trong cùng một trận.',
       );
     }
   }

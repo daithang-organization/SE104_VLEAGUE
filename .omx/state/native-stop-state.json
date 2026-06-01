@@ -202,21 +202,21 @@
     },
     "019e83f8-3802-7e61-85ae-b69c5c6db2ff": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã sửa backend notification cho admin khi trọng tài nộp biên bản. thay đổi chính: - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts:150): lấy assignment của trọng tài kèm `official.fullname`. - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts:259): message giờ dạng: `nguyễn văn trọng đã nộp biên bản trận hà nội fc vs trường tươi đồng nai với tỉ số 1 - 0. vui lòng kiểm tra.` - [match-official.service.spec.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.spec.ts:399): thêm regression test đảm bảo notification có tên trọng tài, cặp đấu và tỉ số. verification: - `.\\node_modules\\.bin\\jest.cmd match-official.service.spec.ts --runinband`: 18/18 tests passed. - `pnpm --filter api build`: build thành công. lưu ý: notification cũ đã lưu trong db vẫn giữ nội dung cũ; các lần trọng tài nộp biên bản mới sẽ hiển thị đủ thông tin.",
-        "first_seen_at": "2026-06-01T17:15:26.141Z",
-        "last_seen_at": "2026-06-01T17:15:26.141Z",
+        "fingerprint": "ordinary|đã thêm ràng buộc ở backend theo flow hiện có: - `published -> locked` / “đã khóa, trận đang diễn ra” chỉ cho phép khi: - cả đội nhà và đội khách đều có lineup `approved`. - đã phân công ít nhất một trọng tài. - đã phân công giám sát. - trọng tài và giám sát không phải cùng một người. - `locked -> finished` / kết thúc trận chỉ cho phép khi: - đã có tỉ số. - trọng tài đã nộp biên bản/kết quả. - giám sát đã nộp báo cáo. file chính: - [match.service.ts](c:/se104_vleague/apps/api/src/match/match.service.ts) - [match.service.spec.ts](c:/se104_vleague/apps/api/src/match/match.service.spec.ts) - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts) - [match-official.service.spec.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.spec.ts) verification: - `jest match.service.spec.ts match-official.service.spec.ts --runinband`: 56/56 passed. - `pnpm --filter api build`: passed.",
+        "first_seen_at": "2026-06-01T17:35:11.220Z",
+        "last_seen_at": "2026-06-01T17:35:11.220Z",
         "repeat_count": 1,
-        "last_turn_id": "019e8429-200c-79e0-adb0-6c5c4b7a08a9",
+        "last_turn_id": "019e8432-d099-7d83-8579-8f085eabf31d",
         "last_thread_id": null
       }
     },
     "019e83f4-b7a1-7172-889a-5218b94b9ca9": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã fix phần phân công trọng tài/giám sát: - backend enrich thêm `accountrole` cho official theo email tài khoản ở [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts). - frontend hiển thị dòng `tài khoản: trọng tài` / `tài khoản: giám sát viên` trong bảng phân công và các select liên quan ở [matchdetailpage.tsx](c:/se104_vleague/apps/web/src/pages/matchdetailpage.tsx). - bổ sung type/test/i18n tương ứng. đã verify: - `pnpm --dir apps/api test -- match-official.service.spec.ts` → 17/17 passed - `pnpm --dir apps/web run test -- src/pages/__tests__/matchdetailpage.test.tsx` → 27/27 passed - targeted eslint backend/frontend → passed - `pnpm --dir apps/api build` → passed - `pnpm --dir apps/web build` → passed web test vẫn có warning jsdom/css sẵn có, và vite build vẫn báo chunk lớn như hiện trạng, nhưng không fail.",
-        "first_seen_at": "2026-06-01T17:08:52.932Z",
-        "last_seen_at": "2026-06-01T17:08:52.932Z",
+        "fingerprint": "ordinary|đã bổ sung ràng buộc backend cho phân công trọng tài/giám sát: - khi btc chuyển trận sang `đã khóa`, api kiểm tra: - có đội hình được duyệt cho cả hai đội, - có ít nhất một trọng tài, - có giám sát viên, - trọng tài và giám sát phải là hai người khác nhau. - khi phân công trước trận, một official đã có vai trò trong trận đó sẽ không thể được gán thêm vai trò khác. file chính: - [match.service.ts](c:/se104_vleague/apps/api/src/match/match.service.ts) - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts) - spec tương ứng đã bổ sung regression test. đã verify: - `pnpm --dir apps/api run test -- match.service.spec.ts match-official.service.spec.ts --runinband` → 56/56 passed - targeted eslint backend → passed - `pnpm --dir apps/api build` → passed",
+        "first_seen_at": "2026-06-01T17:38:05.929Z",
+        "last_seen_at": "2026-06-01T17:38:05.929Z",
         "repeat_count": 1,
-        "last_turn_id": "019e840c-65c8-7c90-abea-480665dd5286",
+        "last_turn_id": "019e843a-0ea5-7f33-aad1-cfe8998086bc",
         "last_thread_id": null
       }
     }

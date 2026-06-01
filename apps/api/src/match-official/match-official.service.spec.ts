@@ -105,6 +105,9 @@ describe('MatchOfficialService', () => {
     jest.spyOn(prisma.matchReport, 'findUnique').mockResolvedValue(null);
     jest.spyOn(prisma.disciplineReport, 'findUnique').mockResolvedValue(null);
     jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue(null);
+    jest
+      .spyOn(prisma.matchOfficialAssignment, 'findMany')
+      .mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -222,6 +225,28 @@ describe('MatchOfficialService', () => {
         role: 'SUPERVISOR',
       }),
     ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.matchOfficialAssignment.upsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects assigning one official to multiple roles in the same match', async () => {
+    jest.spyOn(prisma.matchOfficialAssignment, 'findMany').mockResolvedValue([
+      {
+        id: 'assignment-existing',
+        matchId: 'match-1',
+        officialId: 'official-1',
+        role: 'SUPERVISOR',
+      },
+    ] as any);
+
+    await expect(
+      service.assignOfficial('match-1', {
+        officialId: 'official-1',
+        role: 'MAIN_REFEREE',
+      }),
+    ).rejects.toThrow(
+      'Một trọng tài/giám sát viên chỉ được đảm nhận 1 vai trò trong cùng một trận.',
+    );
 
     expect(prisma.matchOfficialAssignment.upsert).not.toHaveBeenCalled();
   });
