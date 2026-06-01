@@ -5,7 +5,6 @@
   FileDoneOutlined,
   HomeOutlined,
   PlusOutlined,
-  SaveOutlined,
   SettingOutlined,
   TeamOutlined,
   TrophyOutlined,
@@ -16,10 +15,7 @@ import {
   Badge,
   Button,
   Card,
-  Checkbox,
   Col,
-  Form,
-  Input,
   message,
   Progress,
   Row,
@@ -52,12 +48,8 @@ import {
 } from '../services/standingsApi';
 import { apiGetTeam, apiGetTeams, type TeamDetail } from '../services/teamApi';
 import {
-  apiGetTeamManagerApplication,
   apiGetTeamManagerAssignment,
   apiGetTeamManagerManagementRequest,
-  apiSubmitTeamManagerApplication,
-  type SubmitTeamManagerApplicationPayload,
-  type TeamManagerApplication,
   type TeamManagerRequest,
 } from '../services/teamManagerApi';
 import { getTeamLogoUrl } from '../utils/teamLogos';
@@ -127,22 +119,11 @@ function renderDashboardRecentForm(recentForm: TeamStanding['recentForm'] = []) 
   );
 }
 
-function getApplicationStatus(application: TeamManagerApplication | null) {
-  if (!application) return { label: 'Chưa có hồ sơ', color: 'default' };
-  if (application.status === 'APPROVED') return { label: 'Đã được BTC duyệt', color: 'success' };
-  if (application.status === 'REJECTED') return { label: 'Bị từ chối', color: 'error' };
-  if (application.applicationSubmittedAt) return { label: 'Đã nộp hồ sơ', color: 'processing' };
-  return { label: 'Chờ nộp hồ sơ', color: 'warning' };
-}
-
 function TeamManagerDashboard() {
   const navigate = useNavigate();
-  const [applicationForm] = Form.useForm<SubmitTeamManagerApplicationPayload>();
   const [loading, setLoading] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [team, setTeam] = useState<TeamDetail | null>(null);
-  const [application, setApplication] = useState<TeamManagerApplication | null>(null);
-  const [applicationSaving, setApplicationSaving] = useState(false);
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [managementRequest, setManagementRequest] = useState<TeamManagerRequest | null>(null);
   const [standings, setStandings] = useState<TeamStanding[]>([]);
@@ -182,7 +163,6 @@ function TeamManagerDashboard() {
   useEffect(() => {
     if (!selectedTeamId || !currentSeason) {
       setTeam(null);
-      setApplication(null);
       setSeasonMatches([]);
       setTeamMatches([]);
       setStandings([]);
@@ -195,14 +175,12 @@ function TeamManagerDashboard() {
     const loadTeamDashboard = async () => {
       setLoading(true);
       try {
-        const [teamData, standingsData, matchesData, scorersData, applicationData] =
-          await Promise.all([
-            apiGetTeam(selectedTeamId),
-            apiGetStandings(currentSeason.id),
-            apiGetMatches(currentSeason.id, 1, 1000),
-            apiGetTopScorers(currentSeason.id, 100),
-            apiGetTeamManagerApplication(currentSeason.id),
-          ]);
+        const [teamData, standingsData, matchesData, scorersData] = await Promise.all([
+          apiGetTeam(selectedTeamId),
+          apiGetStandings(currentSeason.id),
+          apiGetMatches(currentSeason.id, 1, 1000),
+          apiGetTopScorers(currentSeason.id, 100),
+        ]);
 
         if (cancelled) return;
 
@@ -211,7 +189,6 @@ function TeamManagerDashboard() {
         );
 
         setTeam(teamData);
-        setApplication(applicationData);
         setSeasonMatches(matchesData.data);
         setTeamMatches(matches);
         setStandings(standingsData);
@@ -235,50 +212,6 @@ function TeamManagerDashboard() {
       cancelled = true;
     };
   }, [currentSeason, selectedTeamId]);
-
-  useEffect(() => {
-    if (!currentSeason) {
-      applicationForm.resetFields();
-      return;
-    }
-
-    applicationForm.setFieldsValue({
-      seasonId: currentSeason.id,
-      ownerName: application?.ownerName ?? '',
-      ownerCountry: application?.ownerCountry ?? 'Việt Nam',
-      ownerAddress: application?.ownerAddress ?? '',
-      teamIntroduction: application?.teamIntroduction ?? '',
-      primaryKit: application?.primaryKit ?? '',
-      backupKit: application?.backupKit ?? '',
-      participationFeePaid: application?.participationFeePaid ?? false,
-      feeReceiptCode: application?.feeReceiptCode ?? '',
-      feeReceiptUrl: application?.feeReceiptUrl ?? '',
-      externalCompetitionSchedule: application?.externalCompetitionSchedule ?? '',
-    });
-  }, [application, applicationForm, currentSeason]);
-
-  const handleSubmitApplication = async (values: SubmitTeamManagerApplicationPayload) => {
-    if (!currentSeason?.id) return;
-
-    setApplicationSaving(true);
-    try {
-      const updatedApplication = await apiSubmitTeamManagerApplication({
-        ...values,
-        seasonId: currentSeason.id,
-        ownerAddress: values.ownerAddress?.trim() || undefined,
-        feeReceiptCode: values.feeReceiptCode?.trim() || undefined,
-        feeReceiptUrl: values.feeReceiptUrl?.trim() || undefined,
-        externalCompetitionSchedule: values.externalCompetitionSchedule.trim(),
-        participationFeePaid: values.participationFeePaid ?? false,
-      });
-      setApplication(updatedApplication);
-      message.success('Đã nộp hồ sơ tham dự mùa giải cho BTC');
-    } catch (_err) {
-      message.error('Không thể nộp hồ sơ. Hãy kiểm tra các thông tin bắt buộc.');
-    } finally {
-      setApplicationSaving(false);
-    }
-  };
 
   const selectedStanding = standings.find((standing) => standing.teamId === selectedTeamId);
   const standingsWindow = selectedStanding
@@ -310,8 +243,6 @@ function TeamManagerDashboard() {
     .filter((match) => match.status === 'FINISHED')
     .sort((a, b) => b.roundNo - a.roundNo)
     .slice(0, 5);
-  const applicationStatus = getApplicationStatus(application);
-  const applicationLocked = application?.status === 'APPROVED';
   const teamLogoUrl = getTeamLogoUrl(team);
 
   if (!selectedTeamId) {
@@ -419,15 +350,38 @@ function TeamManagerDashboard() {
 
       <div className="dashboard-stat-grid dashboard-manager-info-grid">
         <Card loading={loading} hoverable className="dashboard-stat-card">
-          <Space align="center">
-            {teamLogoUrl && (
-              <img
-                src={teamLogoUrl}
-                alt={`${team?.name ?? 'CLB quản lý'} logo`}
-                className="dashboard-stat-logo"
-              />
-            )}
-            <Statistic title="CLB quản lý" value={team?.name ?? '...'} />
+          <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+            <Space
+              align="start"
+              size={12}
+              wrap
+              style={{ width: '100%', justifyContent: 'space-between' }}
+            >
+              <Space align="center" size={12} style={{ minWidth: 0, flex: '1 1 220px' }}>
+                {teamLogoUrl && (
+                  <img
+                    src={teamLogoUrl}
+                    alt={`${team?.name ?? 'CLB quản lý'} logo`}
+                    className="dashboard-stat-logo"
+                  />
+                )}
+                <span style={{ minWidth: 0 }}>
+                  <Typography.Text type="secondary">CLB quản lý</Typography.Text>
+                  <Typography.Title level={4} style={{ margin: '4px 0 0' }}>
+                    {team?.name ?? '...'}
+                  </Typography.Title>
+                </span>
+              </Space>
+              <Button type="primary" icon={<TeamOutlined />} onClick={() => navigate('/teams')}>
+                Chỉnh sửa đội bóng
+              </Button>
+            </Space>
+            <span>
+              <Typography.Text type="secondary">HLV trưởng</Typography.Text>
+              <Typography.Text strong style={{ display: 'block', marginTop: 4 }}>
+                {team?.coachName || '—'}
+              </Typography.Text>
+            </span>
           </Space>
         </Card>
         <Card loading={loading} hoverable className="dashboard-stat-card">
@@ -438,155 +392,6 @@ function TeamManagerDashboard() {
           />
         </Card>
       </div>
-
-      <Card
-        title={<DashboardCardTitle icon={<UserOutlined />}>Thông tin CLB</DashboardCardTitle>}
-        className="dashboard-panel-card"
-        size="small"
-        loading={loading && !team}
-      >
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Row gutter={[16, 12]}>
-            <Col xs={24} md={12}>
-              <Typography.Text type="secondary">Tên HLV trưởng</Typography.Text>
-              <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
-                {team?.coachName || '—'}
-              </Typography.Title>
-            </Col>
-            <Col xs={24} md={12}>
-              <Typography.Text type="secondary">CLB quản lý</Typography.Text>
-              <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
-                {team?.name || '—'}
-              </Typography.Title>
-            </Col>
-          </Row>
-          <Button type="primary" icon={<TeamOutlined />} onClick={() => navigate('/teams')}>
-            Chỉnh sửa đội bóng
-          </Button>
-        </Space>
-      </Card>
-
-      <Card
-        title={
-          <DashboardCardTitle icon={<FileDoneOutlined />}>
-            Hồ sơ tham dự mùa giải
-          </DashboardCardTitle>
-        }
-        className="dashboard-panel-card"
-        size="small"
-        extra={<Tag color={applicationStatus.color}>{applicationStatus.label}</Tag>}
-        loading={loading && !application}
-      >
-        {!application ? (
-          <Alert
-            type="warning"
-            showIcon
-            message="CLB chưa có bản ghi tham dự mùa giải"
-            description="Hãy xác nhận lời mời tham dự mùa giải từ BTC trước khi nộp hồ sơ."
-          />
-        ) : (
-          <Form
-            form={applicationForm}
-            layout="vertical"
-            onFinish={handleSubmitApplication}
-            disabled={applicationLocked}
-          >
-            <Row gutter={[16, 8]}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="ownerName"
-                  label="Cơ quan/công ty chủ quản"
-                  rules={[{ required: true, message: 'Vui lòng nhập cơ quan chủ quản' }]}
-                >
-                  <Input placeholder="Ví dụ: Công ty Cổ phần Bóng đá Bình Định" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="ownerCountry"
-                  label="Quốc gia đặt trụ sở"
-                  rules={[{ required: true, message: 'Vui lòng nhập quốc gia đặt trụ sở' }]}
-                >
-                  <Input placeholder="Việt Nam" />
-                </Form.Item>
-              </Col>
-              <Col xs={24}>
-                <Form.Item name="ownerAddress" label="Địa chỉ cơ quan chủ quản">
-                  <Input placeholder="Địa chỉ tại Việt Nam" />
-                </Form.Item>
-              </Col>
-              <Col xs={24}>
-                <Form.Item
-                  name="teamIntroduction"
-                  label="Thông tin tự giới thiệu đội"
-                  rules={[{ required: true, message: 'Vui lòng nhập phần giới thiệu đội' }]}
-                >
-                  <Input.TextArea rows={3} placeholder="Tóm tắt lịch sử, mục tiêu mùa giải..." />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="primaryKit"
-                  label="Áo thi đấu chính thức"
-                  rules={[{ required: true, message: 'Vui lòng mô tả áo chính thức' }]}
-                >
-                  <Input placeholder="Ví dụ: Áo đỏ, quần đỏ, tất đỏ" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="backupKit"
-                  label="Áo thi đấu dự bị"
-                  rules={[{ required: true, message: 'Vui lòng mô tả áo dự bị' }]}
-                >
-                  <Input placeholder="Ví dụ: Áo trắng, quần trắng, tất trắng" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="feeReceiptCode" label="Mã biên lai/ghi chú nộp phí">
-                  <Input placeholder="Mã biên lai lệ phí 1 tỷ đồng" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="feeReceiptUrl" label="Link chứng từ nộp lệ phí">
-                  <Input placeholder="https://..." />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="participationFeePaid"
-                  label="Lệ phí tham dự"
-                  valuePropName="checked"
-                >
-                  <Checkbox>Đã nộp lệ phí 1 tỷ đồng</Checkbox>
-                </Form.Item>
-              </Col>
-              <Col xs={24}>
-                <Form.Item
-                  name="externalCompetitionSchedule"
-                  label="Lịch giải khác đã/đang tham gia"
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập lịch giải khác đã/đang tham gia' },
-                  ]}
-                >
-                  <Input.TextArea
-                    rows={2}
-                    placeholder="Nếu có, nhập tên giải và khoảng thời gian thi đấu"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<SaveOutlined />}
-              loading={applicationSaving}
-            >
-              Nộp hồ sơ
-            </Button>
-          </Form>
-        )}
-      </Card>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>

@@ -189,7 +189,7 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('shows the season application form for assigned team managers', async () => {
+  it('moves the season application form out of the manager dashboard', async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
       loading: false,
@@ -224,11 +224,16 @@ describe('DashboardPage', () => {
 
     const { container } = renderPage();
 
-    expect(await screen.findByText('Hồ sơ tham dự mùa giải')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockTeamApi.apiGetTeam).toHaveBeenCalledWith('team-1');
+    });
     expect(container.querySelector('.dashboard-manager-page .page-hero')).toBeInTheDocument();
-    expect(await screen.findByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
-    expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
+    expect(screen.queryByText('Thông tin CLB')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hồ sơ tham dự mùa giải')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Cơ quan/công ty chủ quản')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Link chứng từ nộp lệ phí')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Mở tab Mùa giải/i })).not.toBeInTheDocument();
+    expect(mockTeamManagerApi.apiGetTeamManagerApplication).not.toHaveBeenCalled();
   });
 
   it('shows team information and edit CTA for assigned team managers', async () => {
@@ -277,8 +282,9 @@ describe('DashboardPage', () => {
     await waitFor(() => {
       expect(mockTeamApi.apiGetTeam).toHaveBeenCalledWith('team-1');
     });
-    expect(await screen.findByText('Thông tin CLB')).toBeInTheDocument();
-    expect(screen.getByText('HLV Trưởng')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Chỉnh sửa đội bóng/i })).toBeInTheDocument();
+    expect(screen.getAllByText('CLB quản lý')).toHaveLength(1);
+    expect(screen.queryByText('Thông tin CLB')).not.toBeInTheDocument();
+    expect(await screen.findByText('HLV Trưởng')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Chỉnh sửa đội bóng/i })).toBeInTheDocument();
   });
 });

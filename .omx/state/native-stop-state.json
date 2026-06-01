@@ -142,11 +142,11 @@
     },
     "019e7c78-e1e2-70e3-9353-e40e30975b2a": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đúng. tôi đã giữ label coach trong match center là **“huấn luyện viên”**, không còn dạng `hlv + tên đội`. đồng thời giữ fix cho tab trọng tài: - team manager thấy tab **“trọng tài”** và chỉ xem danh sách phân công. - supervisor không bị hiện tab **“biên bản trận đấu”**. đã chỉnh: - [matchdetailpage.tsx](<c:\\se104_vleague\\apps\\web\\src\\pages\\matchdetailpage.tsx:214>) - [matchdetailpage.test.tsx](<c:\\se104_vleague\\apps\\web\\src\\pages\\__tests__\\matchdetailpage.test.tsx:650>) đã verify: - `matchdetailpage.test.tsx` → 26/26 passed - full web test → 41 files passed, 278 passed, 1 skipped - `pnpm --dir apps/web build` → passed",
-        "first_seen_at": "2026-05-31T12:24:33.529Z",
-        "last_seen_at": "2026-05-31T12:24:33.529Z",
+        "fingerprint": "ordinary|đã bỏ tên hlv khỏi card lịch/kết quả trận đấu trong [matchfixturecard.tsx](<c:\\se104_vleague\\apps\\web\\src\\components\\matchfixturecard.tsx>). các card như **lịch thi đấu** và **kết quả trận đấu** giờ chỉ hiện tên đội/logo/tỉ số/thời gian/sân, không hiện `coachname`. đã cập nhật test để khóa hành vi không render hlv trong fixture card. verify: - `pnpm --dir apps/web test -- src/components/__tests__/matchfixturecard.test.tsx src/pages/__tests__/schedulepage.test.tsx src/pages/__tests__/matchespage.test.tsx` → 18/18 passed - `pnpm --dir apps/web build` → passed",
+        "first_seen_at": "2026-05-31T12:43:58.580Z",
+        "last_seen_at": "2026-05-31T12:43:58.580Z",
         "repeat_count": 1,
-        "last_turn_id": "019e7dcd-99c6-78c1-b3f9-54548d2276e0",
+        "last_turn_id": "019e7e0c-b23b-7211-bc02-6f75373276bb",
         "last_thread_id": null
       }
     },
@@ -167,6 +167,36 @@
         "last_seen_at": "2026-05-31T08:24:59.330Z",
         "repeat_count": 1,
         "last_turn_id": "019e7d1c-e33c-7ad2-907a-61189c33c31f",
+        "last_thread_id": null
+      }
+    },
+    "019e81ea-9e4a-72a1-bc0d-277225db1f76": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đây là lỗi typescript compile do **prisma client đang bị lệch với `schema.prisma`**. code đang gọi: ```ts tx.teammanagerrequest team.managedusers team.managerrequests ``` nhưng type của `@prisma/client` trong `node_modules` hiện tại không biết các model/relation đó. trong schema của repo thì chúng có tồn tại, ví dụ `teammanagerrequest`, `team.managedusers`, `team.managerrequests`, nên nguyên nhân nhiều khả năng là **chưa generate lại prisma client sau khi sửa schema/migration**, hoặc dev server đang dùng client cũ. cách xử lý thường là chạy lại prisma generate trong app api: ```bash pnpm --dir apps/api exec prisma generate ``` nếu db cũng chưa migrate thì chạy: ```bash pnpm --dir apps/api exec prisma migrate dev pnpm --dir apps/api exec prisma generate ``` sau đó restart nest/typescript watcher. 78 lỗi là lỗi dây chuyền: prisma client không nhận model/relation mới nên typescript báo sai ở nhiều chỗ.",
+        "first_seen_at": "2026-06-01T06:43:55.387Z",
+        "last_seen_at": "2026-06-01T06:43:55.387Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e81ea-f10d-74c0-a52f-61e05c0e6141",
+        "last_thread_id": null
+      }
+    },
+    "019e8215-42a4-72b1-926a-97c889041caa": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã fix lỗi test ở [dashboardpage.test.tsx](/c:/se104_vleague/apps/web/src/pages/__tests__/dashboardpage.test.tsx:287). nguyên nhân là test đang dùng `getbytext('hlv trưởng')` ngay sau khi chỉ mới đợi `apigetteam` được gọi. khi chạy full suite, react/antd có thể chưa render xong state sau async load, nên assertion bị race. mình đổi sang: ```ts await screen.findbytext('hlv trưởng') await screen.findbyrole('button', { name: /chỉnh sửa đội bóng/i }) ``` đã kiểm tra: - `pnpm --filter web test -- src/pages/__tests__/dashboardpage.test.tsx`: 10/10 pass - `pnpm --filter web test`: 41/41 test files pass, 285 passed, 1 skipped.",
+        "first_seen_at": "2026-06-01T08:55:57.791Z",
+        "last_seen_at": "2026-06-01T08:55:57.791Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e8257-9278-7e40-bd31-dcae863db520",
+        "last_thread_id": null
+      }
+    },
+    "019e823e-87f7-7a93-84aa-7899ea4fdb17": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã đổi trong [apps/web/index.html](c:/se104_vleague/apps/web/index.html:4): - favicon từ `/vite.svg` sang `/v.league_1_2025-26_logo.svg.png` - browser title từ `web` sang `vleague admin` đã verify bằng `pnpm --filter web build`: build pass. có warning chunk size lớn từ vite, không liên quan thay đổi này. các file dirty khác trong repo được giữ nguyên, mình chỉ sửa `apps/web/index.html`.",
+        "first_seen_at": "2026-06-01T08:31:01.673Z",
+        "last_seen_at": "2026-06-01T08:31:01.673Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e824c-0874-76e3-808a-bd4a2ada4850",
         "last_thread_id": null
       }
     }
