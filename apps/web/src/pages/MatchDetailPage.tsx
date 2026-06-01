@@ -151,11 +151,11 @@ export default function MatchDetailPage() {
     const accountRoleLabel = getOfficialAccountRoleLabel(official?.accountRole);
 
     return (
-      <Space direction="vertical" size={0}>
+      <Space orientation="vertical" size={0}>
         <Text>{official?.fullName ?? fallback}</Text>
         {accountRoleLabel && (
           <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
-            {t('matchDetail.officialAccountRoleLabel', { role: accountRoleLabel })}
+            {t('matchDetail.officialAccountRolePrefix')}: {accountRoleLabel}
           </Text>
         )}
       </Space>

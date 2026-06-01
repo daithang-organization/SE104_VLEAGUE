@@ -147,7 +147,10 @@ export class MatchOfficialService {
     dto: SubmitMatchReportDto,
   ) {
     const match = await this.ensureMatch(matchId);
-    await this.ensureRefereeCanReport(matchId, submittedByUser);
+    const refereeAssignment = await this.ensureRefereeCanReport(
+      matchId,
+      submittedByUser,
+    );
     const existingReport = await this.prisma.matchReport.findUnique({
       where: { matchId },
       select: { id: true },
@@ -243,9 +246,17 @@ export class MatchOfficialService {
     });
 
     if (submittedByUser?.role === 'REFEREE') {
+      const refereeName =
+        refereeAssignment?.official?.fullName?.trim() ||
+        submittedByUser.email ||
+        'Trọng tài';
+      const matchName = `${match.homeTeam?.name ?? 'Đội nhà'} vs ${
+        match.awayTeam?.name ?? 'Đội khách'
+      }`;
+
       await this.notificationService.notifyAdmins({
         title: 'Trọng tài nộp biên bản',
-        message: `Trọng tài đã nộp biên bản trận đấu với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
+        message: `${refereeName} đã nộp biên bản trận ${matchName} với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
         type: 'SYSTEM',
         entityType: 'match',
         entityId: matchId,
@@ -393,6 +404,10 @@ export class MatchOfficialService {
   private async ensureMatch(matchId: string) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
+      include: {
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+      },
     });
 
     if (!match) {
@@ -439,7 +454,7 @@ export class MatchOfficialService {
     matchId: string,
     user: CurrentUserPayload | undefined,
   ) {
-    if (user?.role === 'ADMIN') return;
+    if (user?.role === 'ADMIN') return null;
 
     const assignment = await this.prisma.matchOfficialAssignment.findFirst({
       where: {
@@ -450,6 +465,9 @@ export class MatchOfficialService {
           status: 'ACTIVE',
         },
       },
+      include: {
+        official: { select: { fullName: true, email: true } },
+      },
     });
 
     if (!assignment) {
@@ -457,6 +475,8 @@ export class MatchOfficialService {
         'Trọng tài phải được phân công cho trận trước khi nộp báo cáo.',
       );
     }
+
+    return assignment;
   }
 
   private ensureOfficialMatchesUser(

@@ -396,6 +396,58 @@ describe('MatchOfficialService', () => {
     );
   });
 
+  it('includes referee and match details in the admin notification when a referee submits a report', async () => {
+    jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+      ...match,
+      homeTeam: { name: 'Hà Nội FC' },
+      awayTeam: { name: 'Trường Tươi Đồng Nai' },
+    } as any);
+    jest.spyOn(prisma.matchOfficialAssignment, 'findFirst').mockResolvedValue({
+      id: 'assignment-1',
+      matchId: 'match-1',
+      officialId: 'official-1',
+      role: 'MAIN_REFEREE',
+      official,
+    } as any);
+    jest.spyOn(prisma.match, 'update').mockResolvedValue({
+      ...match,
+      homeScore: 1,
+      awayScore: 0,
+      scoreSource: 'REFEREE',
+    } as any);
+    jest.spyOn(prisma.matchReport, 'upsert').mockResolvedValue({
+      id: 'report-1',
+      matchId: 'match-1',
+      submittedByUserId: 'user-referee',
+      homeScore: 1,
+      awayScore: 0,
+    } as any);
+
+    await service.submitMatchReport(
+      'match-1',
+      { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+      {
+        homeScore: 1,
+        awayScore: 0,
+        events: [{ minute: 12, type: 'GOAL', teamId: 'team-home' }],
+      },
+    );
+
+    const notification = (notificationService.notifyAdmins as jest.Mock).mock
+      .calls[0][0];
+    expect(notification).toEqual(
+      expect.objectContaining({
+        title: 'Trọng tài nộp biên bản',
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
+      }),
+    );
+    expect(notification.message).toContain('Nguyễn Văn Trọng');
+    expect(notification.message).toContain('Hà Nội FC vs Trường Tươi Đồng Nai');
+    expect(notification.message).toContain('1 - 0');
+  });
+
   it('rejects a referee report with two red cards for the same player', async () => {
     await expect(
       service.submitMatchReport(

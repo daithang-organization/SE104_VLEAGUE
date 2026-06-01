@@ -202,21 +202,21 @@
     },
     "019e83f8-3802-7e61-85ae-b69c5c6db2ff": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã fix. tôi đổi luồng chi tiết clb sang season-aware: - backend `get /teams/:id?seasonid=...` giờ truyền `seasonid` xuống service và lọc `homematches`/`awaymatches`: [teams.controller.ts](c:/se104_vleague/apps/api/src/registration/teams.controller.ts:56), [registration.service.ts](c:/se104_vleague/apps/api/src/registration/registration.service.ts:91). - frontend `teamdetailpage` lấy mùa hiện tại rồi gọi `apigetteam(id, seasonid)`, nên không còn trộn các trận `draft` có `seasonid = null`: [teamdetailpage.tsx](c:/se104_vleague/apps/web/src/pages/teamdetailpage.tsx:31), [teamapi.ts](c:/se104_vleague/apps/web/src/services/teamapi.ts:123). - thêm regression tests cho backend service/controller và frontend api/page. verification: - backend: `.\\node_modules\\.bin\\jest.cmd registration.service.spec.ts teams.controller.spec.ts --runinband` -> 2 suites, 44 tests passed. - frontend: `pnpm --filter web test -- src/services/__tests__/teamapi.test.ts src/pages/__tests__/teamdetailpage.test.tsx` -> 2 files, 13 tests passed. vitest vẫn in warning css parse từ môi trường test, nhưng test pass.",
-        "first_seen_at": "2026-06-01T16:46:36.627Z",
-        "last_seen_at": "2026-06-01T16:46:36.627Z",
+        "fingerprint": "ordinary|đã sửa backend notification cho admin khi trọng tài nộp biên bản. thay đổi chính: - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts:150): lấy assignment của trọng tài kèm `official.fullname`. - [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts:259): message giờ dạng: `nguyễn văn trọng đã nộp biên bản trận hà nội fc vs trường tươi đồng nai với tỉ số 1 - 0. vui lòng kiểm tra.` - [match-official.service.spec.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.spec.ts:399): thêm regression test đảm bảo notification có tên trọng tài, cặp đấu và tỉ số. verification: - `.\\node_modules\\.bin\\jest.cmd match-official.service.spec.ts --runinband`: 18/18 tests passed. - `pnpm --filter api build`: build thành công. lưu ý: notification cũ đã lưu trong db vẫn giữ nội dung cũ; các lần trọng tài nộp biên bản mới sẽ hiển thị đủ thông tin.",
+        "first_seen_at": "2026-06-01T17:15:26.141Z",
+        "last_seen_at": "2026-06-01T17:15:26.141Z",
         "repeat_count": 1,
-        "last_turn_id": "019e840a-da20-71f3-9b50-b97abdd85c82",
+        "last_turn_id": "019e8429-200c-79e0-adb0-6c5c4b7a08a9",
         "last_thread_id": null
       }
     },
     "019e83f4-b7a1-7172-889a-5218b94b9ca9": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đã fix ràng buộc tạo/cập nhật mùa giải. thay đổi chính: - api chặn trùng mùa giải theo `name` không phân biệt hoa thường, trùng `year`, và khoảng ngày giao nhau ở [season.service.ts](c:/se104_vleague/apps/api/src/season/season.service.ts:164). - thêm regression tests cho trùng năm, trùng khoảng ngày khi tạo/cập nhật ở [season.service.spec.ts](c:/se104_vleague/apps/api/src/season/season.service.spec.ts:146). - ui giờ hiển thị đúng lỗi backend thay vì chỉ báo “lỗi khi lưu mùa giải” ở [seasonspage.tsx](c:/se104_vleague/apps/web/src/pages/seasonspage.tsx:1713). - thêm test ui cho thông báo lỗi validation ở [seasonspage.test.tsx](c:/se104_vleague/apps/web/src/pages/__tests__/seasonspage.test.tsx:416). đã kiểm chứng: - `pnpm --dir apps/api test -- season.service.spec.ts` → 30/30 pass - `pnpm --dir apps/web test -- src/pages/__tests__/seasonspage.test.tsx` → 16/16 pass - `pnpm --dir apps/api build` → pass - `pnpm --dir apps/web build` → pass - eslint targeted api/web files → pass",
-        "first_seen_at": "2026-06-01T16:27:05.534Z",
-        "last_seen_at": "2026-06-01T16:27:05.534Z",
+        "fingerprint": "ordinary|đã fix phần phân công trọng tài/giám sát: - backend enrich thêm `accountrole` cho official theo email tài khoản ở [match-official.service.ts](c:/se104_vleague/apps/api/src/match-official/match-official.service.ts). - frontend hiển thị dòng `tài khoản: trọng tài` / `tài khoản: giám sát viên` trong bảng phân công và các select liên quan ở [matchdetailpage.tsx](c:/se104_vleague/apps/web/src/pages/matchdetailpage.tsx). - bổ sung type/test/i18n tương ứng. đã verify: - `pnpm --dir apps/api test -- match-official.service.spec.ts` → 17/17 passed - `pnpm --dir apps/web run test -- src/pages/__tests__/matchdetailpage.test.tsx` → 27/27 passed - targeted eslint backend/frontend → passed - `pnpm --dir apps/api build` → passed - `pnpm --dir apps/web build` → passed web test vẫn có warning jsdom/css sẵn có, và vite build vẫn báo chunk lớn như hiện trạng, nhưng không fail.",
+        "first_seen_at": "2026-06-01T17:08:52.932Z",
+        "last_seen_at": "2026-06-01T17:08:52.932Z",
         "repeat_count": 1,
-        "last_turn_id": "019e83f5-735d-7482-8204-8485fd7ef781",
+        "last_turn_id": "019e840c-65c8-7c90-abea-480665dd5286",
         "last_thread_id": null
       }
     }

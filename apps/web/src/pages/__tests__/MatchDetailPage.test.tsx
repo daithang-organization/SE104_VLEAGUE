@@ -699,8 +699,8 @@ describe('MatchDetailPage', () => {
       expect(mockMatchApi.apiGetMatchOfficials).toHaveBeenCalledWith('m1');
     });
 
-    expect(screen.getAllByText('Tài khoản: Trọng tài').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Tài khoản: Giám sát viên').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Tài khoản: Trọng tài')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Tài khoản: Giám sát viên')).length).toBeGreaterThan(0);
   });
 
   it('lets team managers view match official assignments without requesting restricted official data', async () => {
