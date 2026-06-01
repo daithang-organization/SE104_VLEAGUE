@@ -352,6 +352,9 @@ describe('RegistrationService', () => {
       jest
         .spyOn(teamManagerScope, 'resolveWritableTeamId')
         .mockResolvedValue('team-1');
+      jest
+        .spyOn(prisma.team, 'findUnique')
+        .mockResolvedValue(mockTeams[0] as any);
       jest.spyOn(prisma.player, 'create').mockResolvedValue({
         ...mockPlayers[0],
         id: 'player-new',

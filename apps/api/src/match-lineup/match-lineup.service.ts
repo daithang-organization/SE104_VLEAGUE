@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,7 @@ import {
   MatchStatus,
   PlayerSuspensionStatus,
   Prisma,
+  TeamStatus,
 } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -64,6 +66,8 @@ export class MatchLineupService {
         'Chỉ hai đội tham gia trận đấu mới được đăng ký đội hình.',
       );
     }
+
+    await this.assertTeamIsActive(dto.teamId);
 
     this.assertFormation(dto.formation);
 
@@ -189,6 +193,7 @@ export class MatchLineupService {
   ) {
     const match = await this.ensureMatch(matchId);
     this.assertCanReviewLineup(match.status);
+    await this.assertTeamIsActive(teamId);
 
     const existing = await this.prisma.matchTeamRegistration.findUnique({
       where: { matchId_teamId: { matchId, teamId } },
@@ -384,6 +389,23 @@ export class MatchLineupService {
       throw new NotFoundException('Không tìm thấy trận đấu.');
     }
     return match;
+  }
+
+  private async assertTeamIsActive(teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { status: true },
+    });
+
+    if (!team) {
+      throw new NotFoundException('Không tìm thấy CLB.');
+    }
+
+    if (team.status === TeamStatus.INACTIVE) {
+      throw new ForbiddenException(
+        'CLB đang không hoạt động, không thể nộp đội hình ra sân.',
+      );
+    }
   }
 
   private assertCanSubmitLineup(status: MatchStatus) {

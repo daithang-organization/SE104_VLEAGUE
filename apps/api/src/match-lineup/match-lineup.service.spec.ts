@@ -59,6 +59,9 @@ describe('MatchLineupService', () => {
         {
           provide: PrismaService,
           useValue: {
+            team: {
+              findUnique: jest.fn(),
+            },
             match: {
               findUnique: jest.fn(),
               findFirst: jest.fn(),
@@ -114,6 +117,9 @@ describe('MatchLineupService', () => {
     teamManagerScope = module.get(TeamManagerScopeService);
     notificationService = module.get(NotificationService);
 
+    jest
+      .spyOn(prisma.team, 'findUnique')
+      .mockResolvedValue({ id: 'team-1', status: 'ACTIVE' } as any);
     jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
     jest
       .spyOn(prisma.teamPlayer, 'findMany')

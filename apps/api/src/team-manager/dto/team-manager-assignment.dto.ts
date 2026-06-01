@@ -5,6 +5,7 @@ import {
   ManagerStadiumRequestType,
   PlayerPosition,
   PlayerType,
+  TeamStatus,
   TeamManagerRequestStatus,
   TeamManagerRequestType,
 } from '@prisma/client';
@@ -70,6 +71,15 @@ export class CreateTeamManagerRequestDto {
   @IsString()
   @MaxLength(500)
   proposedTeamLogoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'Trạng thái CLB đề xuất',
+    enum: TeamStatus,
+    example: TeamStatus.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(TeamStatus)
+  proposedTeamStatus?: TeamStatus;
 
   @ApiPropertyOptional({
     description: 'Sân nhà của CLB đề xuất',

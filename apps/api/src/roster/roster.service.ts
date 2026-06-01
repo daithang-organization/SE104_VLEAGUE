@@ -1,10 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, TeamStatus } from '@prisma/client';
 import { isForeignPlayer } from '../common/utils/foreign-player.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
@@ -79,6 +80,7 @@ export class RosterService {
     if (actor) {
       await this.teamManagerScope.assertCanManageTeam(actor, teamId);
     }
+    await this.assertActiveTeamById(teamId);
 
     // Check team exists
     const team = await this.prisma.team.findUnique({
@@ -253,6 +255,7 @@ export class RosterService {
     if (actor) {
       await this.teamManagerScope.assertCanManageTeam(actor, teamId);
     }
+    await this.assertActiveTeamById(teamId);
 
     const teamPlayer = await this.prisma.teamPlayer.findFirst({
       where: {
@@ -302,6 +305,7 @@ export class RosterService {
     if (actor) {
       await this.teamManagerScope.assertCanManageTeam(actor, teamId);
     }
+    await this.assertActiveTeamById(teamId);
 
     const teamPlayer = await this.prisma.teamPlayer.findFirst({
       where: {
@@ -325,5 +329,22 @@ export class RosterService {
       success: true,
       message: `Đã xóa ${teamPlayer.player.fullName} khỏi ${teamPlayer.team.name}`,
     };
+  }
+
+  private async assertActiveTeamById(teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { status: true },
+    });
+
+    if (!team) {
+      throw new NotFoundException(`Không tìm thấy đội bóng với ID ${teamId}`);
+    }
+
+    if (team.status === TeamStatus.INACTIVE) {
+      throw new ForbiddenException(
+        'CLB dang khong hoat dong, khong the thao tac doi hinh.',
+      );
+    }
   }
 }

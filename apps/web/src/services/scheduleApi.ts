@@ -7,8 +7,20 @@ export type ScheduleMatch = {
   leg: number;
   homeTeamId: string;
   awayTeamId: string;
-  homeTeam?: { id: string; name: string; shortName?: string | null; coachName?: string | null };
-  awayTeam?: { id: string; name: string; shortName?: string | null; coachName?: string | null };
+  homeTeam?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+    coachName?: string | null;
+    status?: 'ACTIVE' | 'INACTIVE';
+  };
+  awayTeam?: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+    coachName?: string | null;
+    status?: 'ACTIVE' | 'INACTIVE';
+  };
   stadium?: { id: string; name: string; city?: string } | null;
   stadiumId?: string | null;
   kickoffAt?: string | null;

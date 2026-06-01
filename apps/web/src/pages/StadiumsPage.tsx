@@ -153,6 +153,10 @@ export default function StadiumsPage() {
   };
 
   const openManagerHomeStadium = (stadium?: Stadium) => {
+    if (managedTeam?.status === 'INACTIVE') {
+      message.warning('CLB đang không hoạt động, không thể thêm hoặc chỉnh sửa sân nhà.');
+      return;
+    }
     const current = stadium ?? stadiums.find((item) => item.id === managedTeam?.stadiumId);
     setEditing(null);
     setEditingStadiumRequest(null);
@@ -206,6 +210,19 @@ export default function StadiumsPage() {
     try {
       const values = await form.validateFields();
       setSaving(true);
+
+      if (isManager && managedTeam?.status === 'INACTIVE') {
+        message.warning('CLB đang không hoạt động, không thể gửi yêu cầu sân nhà.');
+        return;
+      }
+
+      if (!isManager && values.teamId) {
+        const selectedTeam = teams.find((team) => team.id === values.teamId);
+        if (selectedTeam?.status === 'INACTIVE') {
+          message.warning('CLB đang không hoạt động, không thể thêm hoặc chỉnh sửa sân nhà.');
+          return;
+        }
+      }
 
       const payload: CreateStadiumPayload = {
         name: values.name,
@@ -275,6 +292,11 @@ export default function StadiumsPage() {
   };
 
   const handleManagerDeleteHomeStadium = async (stadium: Stadium) => {
+    if (managedTeam?.status === 'INACTIVE') {
+      message.warning('CLB đang không hoạt động, không thể gửi yêu cầu xóa sân nhà.');
+      return;
+    }
+
     try {
       await apiCreateManagerStadiumRequest({
         requestType: 'REMOVE_HOME_STADIUM',
@@ -327,6 +349,9 @@ export default function StadiumsPage() {
   const hasPendingStadiumRequest = managerStadiumRequests.some(
     (request) => request.status === 'PENDING',
   );
+  const isManagedTeamInactive = isManager && managedTeam?.status === 'INACTIVE';
+  const getStadiumHomeTeam = (stadium: Stadium) =>
+    teams.find((team) => team.stadiumId === stadium.id);
   const handleReload = useCallback(() => {
     fetchStadiums();
     if (isManager) fetchManagerStadiumState();
@@ -383,7 +408,7 @@ export default function StadiumsPage() {
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => openManagerHomeStadium()}
-          disabled={!managedTeam || hasPendingStadiumRequest}
+          disabled={!managedTeam || hasPendingStadiumRequest || isManagedTeamInactive}
         >
           {managedTeam?.stadiumId ? 'Chỉnh sửa sân nhà' : 'Thêm sân nhà'}
         </Button>
@@ -452,31 +477,38 @@ export default function StadiumsPage() {
             key: 'actions',
             align: 'center',
             width: 120,
-            render: (_: unknown, record: Stadium) => (
-              <Space>
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  aria-label={t('stadiums.editAction')}
-                  onClick={() => openEdit(record)}
-                />
-                <Popconfirm
-                  title={t('stadiums.deleteConfirmTitle')}
-                  description={t('stadiums.deleteConfirmDesc', { name: record.name })}
-                  onConfirm={() => handleDelete(record.id)}
-                  okText={t('stadiums.deleteOk')}
-                  cancelText={t('stadiums.deleteCancel')}
-                  okButtonProps={{ danger: true }}
-                >
+            render: (_: unknown, record: Stadium) => {
+              const isInactiveHome = getStadiumHomeTeam(record)?.status === 'INACTIVE';
+
+              return (
+                <Space>
                   <Button
                     type="text"
-                    danger
-                    icon={<DeleteOutlined />}
-                    aria-label={t('stadiums.deleteAction')}
+                    icon={<EditOutlined />}
+                    aria-label={t('stadiums.editAction')}
+                    disabled={isInactiveHome}
+                    onClick={() => openEdit(record)}
                   />
-                </Popconfirm>
-              </Space>
-            ),
+                  <Popconfirm
+                    title={t('stadiums.deleteConfirmTitle')}
+                    description={t('stadiums.deleteConfirmDesc', { name: record.name })}
+                    disabled={isInactiveHome}
+                    onConfirm={() => handleDelete(record.id)}
+                    okText={t('stadiums.deleteOk')}
+                    cancelText={t('stadiums.deleteCancel')}
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label={t('stadiums.deleteAction')}
+                      disabled={isInactiveHome}
+                    />
+                  </Popconfirm>
+                </Space>
+              );
+            },
           },
         ] as ColumnType<Stadium>[])
       : []),
@@ -494,13 +526,13 @@ export default function StadiumsPage() {
             type="text"
             icon={<EditOutlined />}
             aria-label={t('stadiums.editAction')}
-            disabled={hasPendingStadiumRequest}
+            disabled={hasPendingStadiumRequest || isManagedTeamInactive}
             onClick={() => openManagerHomeStadium(record)}
           />
           <Popconfirm
             title="Gửi yêu cầu xóa sân nhà?"
             description={`Yêu cầu xóa "${record.name}" sẽ được gửi Admin để duyệt.`}
-            disabled={hasPendingStadiumRequest}
+            disabled={hasPendingStadiumRequest || isManagedTeamInactive}
             onConfirm={() => handleManagerDeleteHomeStadium(record)}
             okText="Gửi"
             cancelText={t('common.cancel')}
@@ -511,7 +543,7 @@ export default function StadiumsPage() {
               danger
               icon={<DeleteOutlined />}
               aria-label={t('stadiums.deleteAction')}
-              disabled={hasPendingStadiumRequest}
+              disabled={hasPendingStadiumRequest || isManagedTeamInactive}
               onClick={(e) => e.stopPropagation()}
             />
           </Popconfirm>
@@ -912,10 +944,12 @@ export default function StadiumsPage() {
                 allowClear
                 showSearch
                 optionFilterProp="label"
-                options={teams.map((team) => ({
-                  value: team.id,
-                  label: `${team.name}${team.city ? ` (${team.city})` : ''}`,
-                }))}
+                options={teams
+                  .filter((team) => team.status === 'ACTIVE')
+                  .map((team) => ({
+                    value: team.id,
+                    label: `${team.name}${team.city ? ` (${team.city})` : ''}`,
+                  }))}
               />
             </Form.Item>
           )}

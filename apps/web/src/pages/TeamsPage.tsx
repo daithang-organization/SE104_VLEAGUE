@@ -248,6 +248,7 @@ export default function TeamsPage() {
     setEditingManagerRequest(null);
     setRequestModalPurpose('management');
     createRequestForm.resetFields();
+    createRequestForm.setFieldsValue({ proposedTeamStatus: 'ACTIVE' });
     claimRequestForm.resetFields();
     setRequestModalTab('create');
     setRequestModalOpen(true);
@@ -266,6 +267,7 @@ export default function TeamsPage() {
       shortName: request.proposedTeamShortName ?? undefined,
       city: request.proposedTeamCity ?? undefined,
       logoUrl: request.proposedTeamLogoUrl ?? undefined,
+      proposedTeamStatus: request.proposedTeamStatus ?? request.team?.status ?? 'ACTIVE',
       requestNote: request.requestNote ?? undefined,
     });
     claimRequestForm.setFieldsValue({
@@ -285,6 +287,7 @@ export default function TeamsPage() {
       shortName: request?.proposedTeamShortName ?? team.shortName ?? undefined,
       city: request?.proposedTeamCity ?? team.city ?? undefined,
       logoUrl: request?.proposedTeamLogoUrl ?? team.logoUrl ?? undefined,
+      proposedTeamStatus: request?.proposedTeamStatus ?? team.status ?? 'ACTIVE',
       requestNote: request?.requestNote ?? undefined,
     });
     setRequestModalOpen(true);
@@ -349,6 +352,7 @@ export default function TeamsPage() {
             proposedTeamShortName: values.shortName || undefined,
             proposedTeamCity: values.city || undefined,
             proposedTeamLogoUrl: values.logoUrl || undefined,
+            proposedTeamStatus: values.proposedTeamStatus || 'ACTIVE',
             requestNote: values.requestNote || undefined,
           } as const)
         : ({
@@ -357,6 +361,7 @@ export default function TeamsPage() {
             proposedTeamShortName: values.shortName || undefined,
             proposedTeamCity: values.city || undefined,
             proposedTeamLogoUrl: values.logoUrl || undefined,
+            proposedTeamStatus: values.proposedTeamStatus || 'ACTIVE',
             requestNote: values.requestNote || undefined,
           } as const);
       if (editingManagerRequest) {
@@ -507,7 +512,7 @@ export default function TeamsPage() {
           shortName: request.proposedTeamShortName ?? request.team?.shortName ?? null,
           city: request.proposedTeamCity ?? request.team?.city ?? null,
           logoUrl: request.proposedTeamLogoUrl ?? request.team?.logoUrl ?? null,
-          status: request.team?.status ?? 'ACTIVE',
+          status: request.proposedTeamStatus ?? request.team?.status ?? 'ACTIVE',
           stadiumId: request.team?.stadiumId ?? null,
           stadium: request.team?.stadium ?? null,
           createdAt: request.createdAt,
@@ -844,7 +849,7 @@ export default function TeamsPage() {
             </button>
 
             <div className="club-card-footer">
-              <Tag color={team.status === 'ACTIVE' ? 'green' : 'default'}>
+              <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'default'}>
                 {team.status === 'ACTIVE' ? t('teams.filterActive') : t('teams.filterInactive')}
               </Tag>
             </div>
@@ -933,7 +938,7 @@ export default function TeamsPage() {
               </button>
 
               <div className="club-card-footer">
-                <Tag color={isActive ? 'green' : 'default'}>
+                <Tag color={isActive ? 'green-inverse' : 'default'}>
                   {isActive ? t('teams.filterActive') : 'Không hoạt động'}
                 </Tag>
               </div>
@@ -1296,6 +1301,14 @@ export default function TeamsPage() {
                   </Row>
                   <Form.Item name="logoUrl" label={t('teams.formLogo')}>
                     <ImageUpload />
+                  </Form.Item>
+                  <Form.Item name="proposedTeamStatus" label={t('teams.formStatus')}>
+                    <Select
+                      options={[
+                        { value: 'ACTIVE', label: t('teams.filterActive') },
+                        { value: 'INACTIVE', label: t('teams.filterInactive') },
+                      ]}
+                    />
                   </Form.Item>
                   <Form.Item name="requestNote" label="Ghi chú gửi Admin">
                     <Input.TextArea rows={2} placeholder="Thông tin bổ sung để Admin xét duyệt" />

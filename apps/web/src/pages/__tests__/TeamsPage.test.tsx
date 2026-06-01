@@ -121,8 +121,14 @@ describe('TeamsPage', () => {
   it('renders status tags', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Hoạt động')).toBeInTheDocument();
-      expect(screen.getByText('Ngưng')).toBeInTheDocument();
+      expect(
+        screen.getAllByText('Hoạt động').some((element) => element.classList.contains('ant-tag')),
+      ).toBe(true);
+      expect(
+        screen
+          .getAllByText('Không hoạt động')
+          .some((element) => element.classList.contains('ant-tag')),
+      ).toBe(true);
     });
   });
 

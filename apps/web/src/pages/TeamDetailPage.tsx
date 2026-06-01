@@ -327,11 +327,11 @@ export default function TeamDetailPage() {
 
   const renderStatusTag = (isHero = false) => {
     if (requestStatus === 'PENDING') return <Tag color="gold-inverse">Chờ duyệt</Tag>;
-    if (requestStatus === 'APPROVED') return <Tag color="green-inverse">Được duyệt</Tag>;
+    if (requestStatus === 'APPROVED') return <Tag color="green">Được duyệt</Tag>;
     if (requestStatus === 'REJECTED') return <Tag color="red-inverse">Từ chối</Tag>;
 
     return (
-      <Tag color={team.status === 'ACTIVE' ? 'green' : 'red'}>
+      <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'red'}>
         {team.status === 'ACTIVE'
           ? t('teamDetail.statusActive')
           : isHero
@@ -340,6 +340,12 @@ export default function TeamDetailPage() {
       </Tag>
     );
   };
+
+  const renderActivityTag = () => (
+    <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'red'}>
+      {team.status === 'ACTIVE' ? t('teamDetail.statusActive') : t('teamDetail.statusInactive')}
+    </Tag>
+  );
 
   const managerRequestNote =
     typeof requestNote === 'string' && requestNote.trim() ? requestNote.trim() : null;
@@ -362,7 +368,10 @@ export default function TeamDetailPage() {
           >
             {t('teamDetail.back')}
           </Button>
-          {renderStatusTag(true)}
+          <Space size={8}>
+            {requestStatus === 'APPROVED' && renderActivityTag()}
+            {renderStatusTag(true)}
+          </Space>
         </div>
 
         <div className="club-detail-hero-main">
@@ -435,6 +444,11 @@ export default function TeamDetailPage() {
                   <Descriptions.Item label={t('teamDetail.descManager')}>
                     {managerDisplay}
                   </Descriptions.Item>
+                  {requestStatus === 'APPROVED' && (
+                    <Descriptions.Item label={t('teamDetail.descActivity')}>
+                      {renderActivityTag()}
+                    </Descriptions.Item>
+                  )}
                   <Descriptions.Item label={t('teamDetail.descStatus')}>
                     {renderStatusTag(false)}
                   </Descriptions.Item>

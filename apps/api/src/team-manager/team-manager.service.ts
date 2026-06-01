@@ -12,6 +12,7 @@ import {
   PlayerPosition,
   PlayerType,
   Prisma,
+  TeamStatus,
   TeamManagerRequestStatus,
   TeamManagerRequestType,
   UserRole,
@@ -381,6 +382,7 @@ export class TeamManagerService {
           proposedTeamShortName: null,
           proposedTeamCity: null,
           proposedTeamLogoUrl: null,
+          proposedTeamStatus: null,
           proposedStadiumId: null,
           requestNote: dto.requestNote?.trim() || null,
           adminNote: null,
@@ -430,6 +432,7 @@ export class TeamManagerService {
         proposedTeamShortName: dto.proposedTeamShortName?.trim() || null,
         proposedTeamCity: dto.proposedTeamCity?.trim() || null,
         proposedTeamLogoUrl: dto.proposedTeamLogoUrl?.trim() || null,
+        proposedTeamStatus: dto.proposedTeamStatus ?? TeamStatus.ACTIVE,
         proposedStadiumId: dto.proposedStadiumId || null,
         requestNote: dto.requestNote?.trim() || null,
         adminNote: null,
@@ -618,7 +621,7 @@ export class TeamManagerService {
     userId: string,
     dto: CreateManagerPlayerRequestDto,
   ) {
-    const teamId = await this.requireManagedTeamId(userId);
+    const teamId = await this.requireActiveManagedTeamId(userId);
     const payload = this.buildPlayerRequestPayload(dto);
 
     if (dto.requestType === ManagerPlayerRequestType.ADD_PLAYER) {
@@ -654,7 +657,7 @@ export class TeamManagerService {
     requestId: string,
     dto: CreateManagerPlayerRequestDto,
   ) {
-    const teamId = await this.requireManagedTeamId(userId);
+    const teamId = await this.requireActiveManagedTeamId(userId);
     const request = await this.prisma.managerPlayerRequest.findUnique({
       where: { id: requestId },
       select: {
@@ -826,7 +829,7 @@ export class TeamManagerService {
     userId: string,
     dto: CreateManagerStadiumRequestDto,
   ) {
-    const teamId = await this.requireManagedTeamId(userId);
+    const teamId = await this.requireActiveManagedTeamId(userId);
     const pending = await this.prisma.managerStadiumRequest.findFirst({
       where: { teamId, status: ManagerRequestStatus.PENDING },
       select: { id: true },
@@ -886,7 +889,7 @@ export class TeamManagerService {
     requestId: string,
     dto: CreateManagerStadiumRequestDto,
   ) {
-    const teamId = await this.requireManagedTeamId(userId);
+    const teamId = await this.requireActiveManagedTeamId(userId);
     const request = await this.prisma.managerStadiumRequest.findUnique({
       where: { id: requestId },
       select: {
@@ -1181,6 +1184,26 @@ export class TeamManagerService {
     }
 
     return user.managedTeamId;
+  }
+
+  private async requireActiveManagedTeamId(userId: string) {
+    const teamId = await this.requireManagedTeamId(userId);
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { status: true },
+    });
+
+    if (!team) {
+      throw new NotFoundException('Không tìm thấy CLB quản lý.');
+    }
+
+    if (team.status === TeamStatus.INACTIVE) {
+      throw new ForbiddenException(
+        'CLB đang không hoạt động, không thể thao tác.',
+      );
+    }
+
+    return teamId;
   }
 
   private buildPlayerRequestPayload(dto: CreateManagerPlayerRequestDto) {
@@ -1626,6 +1649,7 @@ export class TeamManagerService {
           proposedTeamShortName: dto.proposedTeamShortName?.trim() || null,
           proposedTeamCity: dto.proposedTeamCity?.trim() || null,
           proposedTeamLogoUrl: dto.proposedTeamLogoUrl?.trim() || null,
+          proposedTeamStatus: dto.proposedTeamStatus ?? TeamStatus.ACTIVE,
           proposedStadiumId: dto.proposedStadiumId || null,
           requestNote: dto.requestNote?.trim() || null,
         },
@@ -1653,6 +1677,7 @@ export class TeamManagerService {
         proposedTeamShortName: dto.proposedTeamShortName?.trim() || null,
         proposedTeamCity: dto.proposedTeamCity?.trim() || null,
         proposedTeamLogoUrl: dto.proposedTeamLogoUrl?.trim() || null,
+        proposedTeamStatus: dto.proposedTeamStatus ?? TeamStatus.ACTIVE,
         proposedStadiumId: null,
         requestNote: dto.requestNote?.trim() || null,
       },
@@ -1693,6 +1718,7 @@ export class TeamManagerService {
         proposedTeamShortName: dto.proposedTeamShortName?.trim() || null,
         proposedTeamCity: dto.proposedTeamCity?.trim() || null,
         proposedTeamLogoUrl: dto.proposedTeamLogoUrl?.trim() || null,
+        proposedTeamStatus: dto.proposedTeamStatus ?? TeamStatus.ACTIVE,
         proposedStadiumId: null,
         requestNote: dto.requestNote?.trim() || null,
         adminNote: null,
@@ -1718,6 +1744,7 @@ export class TeamManagerService {
         proposedTeamShortName: null,
         proposedTeamCity: null,
         proposedTeamLogoUrl: null,
+        proposedTeamStatus: null,
         proposedStadiumId: null,
         requestNote: dto.requestNote?.trim() || null,
         adminNote: null,
@@ -1792,6 +1819,7 @@ export class TeamManagerService {
       proposedTeamShortName: string | null;
       proposedTeamCity: string | null;
       proposedTeamLogoUrl: string | null;
+      proposedTeamStatus: TeamStatus | null;
       proposedStadiumId: string | null;
     },
     adminNote?: string,
@@ -1818,7 +1846,7 @@ export class TeamManagerService {
             city: request.proposedTeamCity?.trim() || null,
             logoUrl: request.proposedTeamLogoUrl?.trim() || null,
             stadiumId: request.proposedStadiumId || null,
-            status: 'ACTIVE',
+            status: request.proposedTeamStatus ?? TeamStatus.ACTIVE,
           },
         });
 
@@ -1863,6 +1891,7 @@ export class TeamManagerService {
       proposedTeamShortName: string | null;
       proposedTeamCity: string | null;
       proposedTeamLogoUrl: string | null;
+      proposedTeamStatus: TeamStatus | null;
     },
     adminNote?: string,
   ) {
@@ -1887,6 +1916,7 @@ export class TeamManagerService {
           shortName: request.proposedTeamShortName?.trim() || null,
           city: request.proposedTeamCity?.trim() || null,
           logoUrl: request.proposedTeamLogoUrl?.trim() || null,
+          status: request.proposedTeamStatus ?? TeamStatus.ACTIVE,
         },
       });
 
