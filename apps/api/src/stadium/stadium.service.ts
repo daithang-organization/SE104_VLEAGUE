@@ -1,10 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Stadium } from '@prisma/client';
+import { Prisma, Stadium, TeamStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStadiumDto, UpdateStadiumDto } from './dto';
 
@@ -68,12 +69,13 @@ export class StadiumService {
       return await this.prisma.$transaction(async (tx) => {
         const team = await tx.team.findUnique({
           where: { id: teamId },
-          select: { id: true },
+          select: { id: true, status: true },
         });
 
         if (!team) {
           throw new NotFoundException(`Team with ID ${teamId} not found`);
         }
+        this.assertActiveTeam(team.status);
 
         const stadium = await tx.stadium.create({
           data: data as never,
@@ -100,6 +102,7 @@ export class StadiumService {
 
   async update(id: string, dto: UpdateStadiumDto): Promise<Stadium> {
     await this.findOne(id);
+    await this.assertStadiumIsNotInactiveHome(id);
     this.assertEligibleStadium(dto);
     const { teamId, ...stadiumDto } = dto;
 
@@ -114,12 +117,13 @@ export class StadiumService {
       return await this.prisma.$transaction(async (tx) => {
         const team = await tx.team.findUnique({
           where: { id: teamId },
-          select: { id: true },
+          select: { id: true, status: true },
         });
 
         if (!team) {
           throw new NotFoundException(`Team with ID ${teamId} not found`);
         }
+        this.assertActiveTeam(team.status);
 
         const stadium = await tx.stadium.update({
           where: { id },
@@ -147,6 +151,7 @@ export class StadiumService {
 
   async delete(id: string): Promise<{ success: boolean }> {
     await this.findOne(id);
+    await this.assertStadiumIsNotInactiveHome(id);
 
     await this.prisma.stadium.delete({
       where: { id },
@@ -182,5 +187,26 @@ export class StadiumService {
       .trim();
 
     return normalized === 'viet nam' || normalized === 'vietnam';
+  }
+
+  private assertActiveTeam(status: TeamStatus) {
+    if (status === TeamStatus.INACTIVE) {
+      throw new ForbiddenException(
+        'CLB không hoạt động, không thể thêm hoặc chỉnh sửa sân nhà.',
+      );
+    }
+  }
+
+  private async assertStadiumIsNotInactiveHome(stadiumId: string) {
+    const inactiveTeam = await this.prisma.team.findFirst({
+      where: { stadiumId, status: TeamStatus.INACTIVE },
+      select: { id: true },
+    });
+
+    if (inactiveTeam) {
+      throw new ForbiddenException(
+        'CLB không hoạt động, không thể chỉnh sửa sân nhà',
+      );
+    }
   }
 }

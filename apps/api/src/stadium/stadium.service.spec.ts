@@ -26,6 +26,9 @@ describe('StadiumService', () => {
         {
           provide: PrismaService,
           useValue: {
+            team: {
+              findFirst: jest.fn(),
+            },
             stadium: {
               findMany: jest.fn(),
               findUnique: jest.fn(),
@@ -40,6 +43,7 @@ describe('StadiumService', () => {
 
     service = module.get<StadiumService>(StadiumService);
     prisma = module.get<PrismaService>(PrismaService);
+    jest.spyOn(prisma.team, 'findFirst').mockResolvedValue(null);
   });
 
   it('should be defined', () => {

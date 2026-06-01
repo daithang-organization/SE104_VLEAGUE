@@ -5,7 +5,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, UserRole, type Player, type Team } from '@prisma/client';
+import {
+  Prisma,
+  TeamStatus,
+  UserRole,
+  type Player,
+  type Team,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
@@ -439,6 +445,9 @@ export class RegistrationService {
     const writableTeamId = actor
       ? await this.teamManagerScope.resolveWritableTeamId(actor, dto.teamId)
       : dto.teamId;
+    if (writableTeamId) {
+      await this.assertActiveTeamById(writableTeamId);
+    }
 
     // Query age limits from regulations (or use defaults)
     const minAge = await this.regulationHelper.getNumericValue(
@@ -517,6 +526,7 @@ export class RegistrationService {
     this.assertProvidedPlayerProfile(dto);
 
     await this.findOnePlayer(id);
+    await this.assertPlayerCurrentTeamActive(id);
     if (actor) {
       await this.assertCanManagePlayer(actor, id);
     }
@@ -525,6 +535,9 @@ export class RegistrationService {
       dto.teamId !== undefined && actor
         ? await this.teamManagerScope.resolveWritableTeamId(actor, dto.teamId)
         : dto.teamId;
+    if (writableTeamId) {
+      await this.assertActiveTeamById(writableTeamId);
+    }
 
     const data: Record<string, unknown> = {};
     if (dto.fullName !== undefined) data.fullName = dto.fullName;
@@ -571,6 +584,7 @@ export class RegistrationService {
     actor?: TeamScopeActor,
   ): Promise<{ success: boolean }> {
     await this.findOnePlayer(id);
+    await this.assertPlayerCurrentTeamActive(id);
     if (actor) {
       await this.assertCanManagePlayer(actor, id);
     }
@@ -596,6 +610,36 @@ export class RegistrationService {
     if (!rosterRow) {
       throw new ForbiddenException(
         'Tài khoản này chỉ được thao tác với cầu thủ thuộc CLB đã được admin gắn.',
+      );
+    }
+  }
+
+  private async assertActiveTeamById(teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { status: true },
+    });
+
+    if (!team) {
+      throw new NotFoundException(`Không tìm thấy đội bóng với ID ${teamId}`);
+    }
+
+    if (team.status === TeamStatus.INACTIVE) {
+      throw new ForbiddenException(
+        'CLB dang khong hoat dong, khong the thao tac cau thu.',
+      );
+    }
+  }
+
+  private async assertPlayerCurrentTeamActive(playerId: string) {
+    const rosterRow = await this.prisma.teamPlayer.findFirst({
+      where: { playerId, leftAt: null },
+      select: { team: { select: { status: true } } },
+    });
+
+    if (rosterRow?.team.status === TeamStatus.INACTIVE) {
+      throw new ForbiddenException(
+        'CLB dang khong hoat dong, khong the thao tac cau thu.',
       );
     }
   }
