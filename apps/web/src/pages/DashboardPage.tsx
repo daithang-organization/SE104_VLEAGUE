@@ -383,7 +383,7 @@ function TeamManagerDashboard() {
                   : rejectedRequest
                     ? managementRequest?.adminNote ||
                       'Bạn có thể gửi yêu cầu mới từ trang Đội bóng.'
-                    : 'Hãy chọn tạo CLB mới hoặc nhận quản lý một CLB chưa có Manager trong trang Đội bóng.'
+                    : 'Hãy chọn tạo CLB mới hoặc nhận quản lý một CLB chưa có Huấn luyện viên trong trang Đội bóng.'
               }
             />
             <Button type="primary" icon={<TeamOutlined />} onClick={() => navigate('/teams')}>

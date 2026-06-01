@@ -206,6 +206,16 @@ export class TeamManagerService {
     });
   }
 
+  async listMyManagementRequests(userId: string) {
+    await this.getTeamManagerUser(userId);
+
+    return this.prisma.teamManagerRequest.findMany({
+      where: { managerId: userId },
+      include: this.requestInclude,
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    });
+  }
+
   async getClaimableTeams() {
     return this.prisma.team.findMany({
       where: {

@@ -54,6 +54,13 @@ export class TeamManagerController {
     return this.teamManagerService.getLatestManagementRequest(user.id);
   }
 
+  @Get('management-requests/mine')
+  @ApiOperation({ summary: 'Manager xem danh sách yêu cầu CLB của mình' })
+  @ApiOkResponse({ description: 'Danh sách yêu cầu CLB của manager' })
+  listMyManagementRequests(@CurrentUser() user: CurrentUserPayload) {
+    return this.teamManagerService.listMyManagementRequests(user.id);
+  }
+
   @Get('claimable-teams')
   @ApiOperation({ summary: 'Lấy danh sách CLB chưa có manager để gửi yêu cầu' })
   @ApiOkResponse({ description: 'Danh sách CLB có thể nhận quản lý' })

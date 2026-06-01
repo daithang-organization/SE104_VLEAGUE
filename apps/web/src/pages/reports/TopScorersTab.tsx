@@ -51,7 +51,12 @@ export default function TopScorersTab({ data, loading }: Props) {
         columns={scorerColumns}
         dataSource={data}
         loading={loading}
-        pagination={false}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 15, 20, 50],
+          showTotal: (total) => t('players.totalCount', { total }),
+        }}
         size="middle"
         locale={{ emptyText: t('topScorersTab.empty') }}
       />

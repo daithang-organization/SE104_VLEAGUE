@@ -1,7 +1,8 @@
-import { Table, Tag } from 'antd';
+import { Flex, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import type { SuspensionStat } from '../../services/standingsApi';
+import ExportButton from '../../components/ExportButton';
 
 interface Props {
   data: SuspensionStat[];
@@ -18,6 +19,13 @@ export default function SuspensionsTab({ data, loading }: Props) {
   };
 
   const columns: ColumnsType<SuspensionStat> = [
+    {
+      title: '#',
+      key: 'index',
+      width: 50,
+      align: 'center',
+      render: (_, __, index) => index + 1,
+    },
     { title: t('suspensionsTab.colPlayer'), dataIndex: 'playerName', ellipsis: true },
     { title: t('suspensionsTab.colTeam'), dataIndex: 'teamName', ellipsis: true },
     { title: t('suspensionsTab.colReason'), dataIndex: 'reason', ellipsis: true },
@@ -48,15 +56,41 @@ export default function SuspensionsTab({ data, loading }: Props) {
   ];
 
   return (
-    <Table
-      rowKey="id"
-      columns={columns}
-      dataSource={data}
-      loading={loading}
-      pagination={false}
-      size="middle"
-      scroll={{ x: 760 }}
-      locale={{ emptyText: t('suspensionsTab.empty') }}
-    />
+    <>
+      <Flex justify="flex-end" style={{ marginBottom: 8 }}>
+        <ExportButton
+          columns={[
+            { title: t('suspensionsTab.colPlayer'), key: 'playerName' },
+            { title: t('suspensionsTab.colTeam'), key: 'teamName' },
+            { title: t('suspensionsTab.colReason'), key: 'reason' },
+            { title: t('suspensionsTab.colStatus'), key: 'status' },
+            { title: t('suspensionsTab.colSourceRound'), key: 'sourceRound' },
+            { title: t('suspensionsTab.colEffectiveRound'), key: 'effectiveRound' },
+          ]}
+          dataSource={
+            data.map((item) => ({
+              ...item,
+              status: statusMeta[item.status].label,
+            })) as unknown as Record<string, unknown>[]
+          }
+          filename="treo-gio"
+        />
+      </Flex>
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={data}
+        loading={loading}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 15, 20, 50],
+          showTotal: (total) => t('players.totalCount', { total }),
+        }}
+        size="middle"
+        scroll={{ x: 760 }}
+        locale={{ emptyText: t('suspensionsTab.empty') }}
+      />
+    </>
   );
 }

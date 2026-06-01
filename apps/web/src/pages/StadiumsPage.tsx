@@ -1,14 +1,13 @@
-import {
+﻿import {
   BankOutlined,
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
-  EnvironmentOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SearchOutlined,
   TeamOutlined,
-  ReloadOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -20,6 +19,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Popover,
   Row,
   Select,
   Space,
@@ -27,7 +27,7 @@ import {
   Tabs,
   Tag,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, ColumnType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -323,7 +323,6 @@ export default function StadiumsPage() {
     .filter((capacity): capacity is number => typeof capacity === 'number' && capacity > 0);
   const maxCapacity = capacities.length > 0 ? Math.max(...capacities) : null;
   const minCapacity = capacities.length > 0 ? Math.min(...capacities) : null;
-  const cityCount = new Set(stadiums.map((stadium) => stadium.city).filter(Boolean)).size;
   const homeStadium = stadiums.find((stadium) => stadium.id === managedTeam?.stadiumId);
   const hasPendingStadiumRequest = managerStadiumRequests.some(
     (request) => request.status === 'PENDING',
@@ -355,11 +354,6 @@ export default function StadiumsPage() {
           label: t('stadiums.minCapacity'),
           value: minCapacity != null ? minCapacity.toLocaleString('vi-VN') : '—',
           icon: <TeamOutlined />,
-        },
-        {
-          label: t('stadiums.colCity'),
-          value: cityCount.toLocaleString('vi-VN'),
-          icon: <EnvironmentOutlined />,
         },
       ]}
     />
@@ -401,6 +395,7 @@ export default function StadiumsPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => i + 1,
     },
@@ -439,7 +434,6 @@ export default function StadiumsPage() {
       title: t('stadiums.colCapacity'),
       dataIndex: 'capacity',
       width: 120,
-      align: 'right',
       sorter: (a, b) => (a.capacity ?? 0) - (b.capacity ?? 0),
       render: (v: number | null) => (v ? v.toLocaleString('vi-VN') : '—'),
     },
@@ -452,10 +446,11 @@ export default function StadiumsPage() {
       render: (v: number | null) => (v != null ? `${v}/5` : '—'),
     },
     ...(isAdmin
-      ? [
+      ? ([
           {
             title: t('stadiums.colActions'),
             key: 'actions',
+            align: 'center',
             width: 120,
             render: (_: unknown, record: Stadium) => (
               <Space>
@@ -483,7 +478,7 @@ export default function StadiumsPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<Stadium>[])
       : []),
   ];
 
@@ -564,6 +559,40 @@ export default function StadiumsPage() {
         ? 'Chỉnh sửa sân nhà'
         : 'Xóa sân nhà';
 
+  const renderStadiumRequestName = (record: ManagerStadiumRequest) => {
+    const name = record.payload?.name || record.stadium?.name || '—';
+    const isAdminReview = user?.role === 'ADMIN';
+    const noteTitle = isAdminReview ? 'Ghi chú của Manager' : 'Phản hồi';
+    const noteTone = isAdminReview ? 'info' : 'danger';
+    const noteText = isAdminReview ? record.requestNote : record.adminNote;
+
+    return (
+      <Popover
+        trigger="hover"
+        placement="topLeft"
+        overlayClassName="manager-request-note-popover"
+        title={
+          <span className={`manager-request-note-title manager-request-note-title-${noteTone}`}>
+            {noteTitle}
+          </span>
+        }
+        content={<div className="manager-request-note-content">{noteText || '—'}</div>}
+      >
+        <a
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/stadiums/${record.stadiumId || `request-${record.id}`}`, {
+              state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
+            });
+          }}
+          style={{ fontWeight: 600 }}
+        >
+          {name}
+        </a>
+      </Popover>
+    );
+  };
+
   const getReviewActionTitle = (
     request: ManagerStadiumRequest,
     status: 'APPROVED' | 'REJECTED',
@@ -619,6 +648,7 @@ export default function StadiumsPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => i + 1,
     },
@@ -631,21 +661,7 @@ export default function StadiumsPage() {
     {
       title: 'Tên sân vận động',
       key: 'name',
-      render: (_, record) => {
-        const name = record.payload?.name || record.stadium?.name || '—';
-        return (
-          <a
-            onClick={() =>
-              navigate(`/stadiums/${record.stadiumId || `request-${record.id}`}`, {
-                state: { request: record },
-              })
-            }
-            style={{ fontWeight: 600 }}
-          >
-            {name}
-          </a>
-        );
-      },
+      render: (_, record) => renderStadiumRequestName(record),
     },
     {
       title: 'Người yêu cầu',
@@ -680,10 +696,11 @@ export default function StadiumsPage() {
       sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     ...(isAdmin
-      ? [
+      ? ([
           {
             title: t('stadiums.colActions'),
             key: 'actions',
+            align: 'center',
             width: 100,
             render: (_: unknown, record: ManagerStadiumRequest) => (
               <Space>
@@ -718,12 +735,13 @@ export default function StadiumsPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<ManagerStadiumRequest>[])
       : isManager
-        ? [
+        ? ([
             {
               title: t('stadiums.colActions'),
               key: 'actions',
+              align: 'center',
               width: 120,
               render: (_: unknown, record: ManagerStadiumRequest) => (
                 <Space>
@@ -756,7 +774,7 @@ export default function StadiumsPage() {
                 </Space>
               ),
             },
-          ]
+          ] as ColumnType<ManagerStadiumRequest>[])
         : []),
   ];
 

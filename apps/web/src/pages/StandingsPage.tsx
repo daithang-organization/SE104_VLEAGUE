@@ -1,5 +1,5 @@
 ﻿import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
-import { AimOutlined, StopOutlined, TeamOutlined, WarningOutlined } from '@ant-design/icons';
+import { AimOutlined, RiseOutlined, TeamOutlined } from '@ant-design/icons';
 import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
@@ -268,9 +268,8 @@ export default function StandingsPage() {
   };
   const standingsTitle = cleanDecorativeLabel(t('standings.title'));
   const summarySource = teamStats.length > 0 ? teamStats : standings;
-  const totalGoals = summarySource.reduce((sum, team) => sum + team.goalsFor, 0);
-  const totalYellowCards = teamStats.reduce((sum, team) => sum + team.yellowCards, 0);
-  const totalRedCards = teamStats.reduce((sum, team) => sum + team.redCards, 0);
+  const maxGoalsFor = Math.max(0, ...summarySource.map((team) => team.goalsFor ?? 0));
+  const maxPoints = Math.max(0, ...summarySource.map((team) => team.points ?? 0));
   const champion =
     selectedSeason?.status === 'COMPLETED'
       ? standings.find((team) => team.position === 1)
@@ -343,19 +342,14 @@ export default function StandingsPage() {
             icon: <TeamOutlined />,
           },
           {
-            label: t('standings.totalGoals'),
-            value: totalGoals.toLocaleString('vi-VN'),
+            label: t('standings.maxGoals'),
+            value: maxGoalsFor.toLocaleString('vi-VN'),
             icon: <AimOutlined />,
           },
           {
-            label: t('standings.yellowCards'),
-            value: totalYellowCards.toLocaleString('vi-VN'),
-            icon: <WarningOutlined />,
-          },
-          {
-            label: t('standings.redCards'),
-            value: totalRedCards.toLocaleString('vi-VN'),
-            icon: <StopOutlined />,
+            label: t('standings.maxPoints'),
+            value: maxPoints.toLocaleString('vi-VN'),
+            icon: <RiseOutlined />,
           },
         ]}
       />

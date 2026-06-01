@@ -1,8 +1,9 @@
 import { WarningOutlined } from '@ant-design/icons';
-import { Table } from 'antd';
+import { Flex, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import type { TeamStat } from '../../services/standingsApi';
+import ExportButton from '../../components/ExportButton';
 
 interface Props {
   data: TeamStat[];
@@ -13,6 +14,13 @@ export default function TeamStatsTab({ data, loading }: Props) {
   const { t } = useTranslation();
 
   const teamColumns: ColumnsType<TeamStat> = [
+    {
+      title: '#',
+      key: 'index',
+      width: 50,
+      align: 'center',
+      render: (_, __, index) => index + 1,
+    },
     {
       title: t('teamStatsTab.colTeam'),
       dataIndex: 'teamName',
@@ -82,15 +90,42 @@ export default function TeamStatsTab({ data, loading }: Props) {
   ];
 
   return (
-    <Table
-      rowKey="teamId"
-      columns={teamColumns}
-      dataSource={data}
-      loading={loading}
-      pagination={false}
-      size="middle"
-      scroll={{ x: 900 }}
-      locale={{ emptyText: t('teamStatsTab.empty') }}
-    />
+    <>
+      <Flex justify="flex-end" style={{ marginBottom: 8 }}>
+        <ExportButton
+          columns={[
+            { title: t('teamStatsTab.colTeam'), key: 'teamName' },
+            { title: t('teamStatsTab.colPlayed'), key: 'played' },
+            { title: t('teamStatsTab.colWon'), key: 'won' },
+            { title: t('teamStatsTab.colDrawn'), key: 'drawn' },
+            { title: t('teamStatsTab.colLost'), key: 'lost' },
+            { title: t('teamStatsTab.colGoalsFor'), key: 'goalsFor' },
+            { title: t('teamStatsTab.colGoalsAgainst'), key: 'goalsAgainst' },
+            { title: t('teamStatsTab.colGoalDiff'), key: 'goalDifference' },
+            { title: t('teamStatsTab.colPoints'), key: 'points' },
+            { title: t('teamStatsTab.colCleanSheets'), key: 'cleanSheets' },
+            { title: 'Thẻ vàng', key: 'yellowCards' },
+            { title: 'Thẻ đỏ', key: 'redCards' },
+          ]}
+          dataSource={data as unknown as Record<string, unknown>[]}
+          filename="thong-ke-doi"
+        />
+      </Flex>
+      <Table
+        rowKey="teamId"
+        columns={teamColumns}
+        dataSource={data}
+        loading={loading}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 15, 20, 50],
+          showTotal: (total) => t('common.totalCount', { total }),
+        }}
+        size="middle"
+        scroll={{ x: 900 }}
+        locale={{ emptyText: t('teamStatsTab.empty') }}
+      />
+    </>
   );
 }
