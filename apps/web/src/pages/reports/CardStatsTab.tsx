@@ -77,7 +77,12 @@ export default function CardStatsTab({ data, loading }: Props) {
             columns={buildCardColumns('yellowCards', '#fadb14')}
             dataSource={yellowCardData}
             loading={loading}
-            pagination={false}
+            pagination={{
+              defaultPageSize: 10,
+              showSizeChanger: true,
+              pageSizeOptions: [10, 15, 20, 50],
+              showTotal: (total) => t('players.totalCount', { total }),
+            }}
             size="middle"
             locale={{ emptyText: t('cardStatsTab.emptyYellow') }}
           />
@@ -89,7 +94,12 @@ export default function CardStatsTab({ data, loading }: Props) {
             columns={buildCardColumns('redCards', '#f5222d')}
             dataSource={redCardData}
             loading={loading}
-            pagination={false}
+            pagination={{
+              defaultPageSize: 10,
+              showSizeChanger: true,
+              pageSizeOptions: [10, 15, 20, 50],
+              showTotal: (total) => t('players.totalCount', { total }),
+            }}
             size="middle"
             locale={{ emptyText: t('cardStatsTab.emptyRed') }}
           />

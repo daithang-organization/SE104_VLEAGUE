@@ -51,7 +51,12 @@ export default function TopAssistsTab({ data, loading }: Props) {
         columns={assistColumns}
         dataSource={data}
         loading={loading}
-        pagination={false}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 15, 20, 50],
+          showTotal: (total) => t('players.totalCount', { total }),
+        }}
         size="middle"
         locale={{ emptyText: t('topAssistsTab.empty') }}
       />

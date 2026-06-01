@@ -209,12 +209,14 @@ describe('ReportsPage', () => {
     expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
-  it('shows top scoring and assist values in the hero metrics', async () => {
-    renderPage();
+  it('shows player counts in the hero metrics', async () => {
+    const { container } = renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('12')).toBeInTheDocument();
-      expect(screen.getByText('6')).toBeInTheDocument();
+      const metricValues = Array.from(container.querySelectorAll('.page-hero-metric strong')).map(
+        (node) => node.textContent,
+      );
+      expect(metricValues).toEqual(['1', '1', '1']);
     });
   });
 

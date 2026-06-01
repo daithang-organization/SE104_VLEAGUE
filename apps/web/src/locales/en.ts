@@ -720,6 +720,8 @@ const en = {
     colGoalDiff: 'GD',
     colPoints: 'Pts',
     totalGoals: 'Total goals',
+    maxGoals: 'Most goals scored',
+    maxPoints: 'Highest points',
     yellowCards: 'Yellow cards',
     redCards: 'Red cards',
     champion: 'Champion',

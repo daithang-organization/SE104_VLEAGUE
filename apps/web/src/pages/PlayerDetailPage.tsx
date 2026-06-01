@@ -1,4 +1,9 @@
-import { ArrowLeftOutlined, TrophyOutlined, WarningOutlined } from '@ant-design/icons';
+import {
+  ArrowLeftOutlined,
+  ExclamationCircleOutlined,
+  TrophyOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -226,7 +231,7 @@ export default function PlayerDetailPage() {
             }
           >
             {request.status === 'APPROVED'
-              ? 'Đã duyệt'
+              ? 'Được duyệt'
               : request.status === 'REJECTED'
                 ? 'Từ chối'
                 : 'Chờ duyệt'}
@@ -330,13 +335,19 @@ export default function PlayerDetailPage() {
               <div className="team-detail-note-grid">
                 {visibleManagerRequestNote && (
                   <div className="team-detail-note-card">
-                    <span className="team-detail-note-label">Ghi chú của Manager</span>
+                    <span className="team-detail-note-heading">
+                      <ExclamationCircleOutlined className="team-detail-note-icon" />
+                      <span className="team-detail-note-label">Ghi chú</span>
+                    </span>
                     <p>{visibleManagerRequestNote}</p>
                   </div>
                 )}
                 {visibleAdminDecisionNote && (
                   <div className="team-detail-note-card team-detail-note-card-admin">
-                    <span className="team-detail-note-label">Phản hồi</span>
+                    <span className="team-detail-note-heading">
+                      <ExclamationCircleOutlined className="team-detail-note-icon" />
+                      <span className="team-detail-note-label">Phản hồi</span>
+                    </span>
                     <p>{visibleAdminDecisionNote}</p>
                   </div>
                 )}

@@ -25,6 +25,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Popover,
   Row,
   Select,
   Space,
@@ -32,7 +33,7 @@ import {
   Tabs,
   Tag,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, ColumnType } from 'antd/es/table';
 import type { SortOrder as AntSortOrder, FilterValue, SorterResult } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 import {
@@ -68,8 +69,8 @@ import {
   apiUpdateManagerPlayerRequest,
   type ManagerPlayerRequest,
 } from '../services/teamManagerApi';
-import { cleanDecorativeLabel } from '../utils/textLabels';
 import { getTeamLogoUrl } from '../utils/teamLogos';
+import { cleanDecorativeLabel } from '../utils/textLabels';
 
 const POSITION_TRANSLATION_KEYS: Record<string, string> = {
   GK: 'players.formPositionGK',
@@ -596,6 +597,7 @@ export default function PlayersPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => (pagination.page - 1) * pagination.limit + i + 1,
     },
@@ -711,10 +713,11 @@ export default function PlayersPage() {
       sortOrder: sortState.sortBy === 'weightKg' ? toAntSortOrder(sortState.sortOrder) : null,
     },
     ...(showPlayerActions
-      ? [
+      ? ([
           {
             title: t('players.colActions'),
             key: 'actions',
+            align: 'center',
             width: 120,
             render: (_: unknown, record: Player) => (
               <Space>
@@ -759,7 +762,7 @@ export default function PlayersPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<Player>[])
       : []),
   ];
 
@@ -794,6 +797,40 @@ export default function PlayersPage() {
       : type === 'UPDATE_PLAYER'
         ? 'Chỉnh sửa cầu thủ'
         : 'Xóa cầu thủ';
+
+  const renderPlayerRequestName = (record: ManagerPlayerRequest) => {
+    const name = record.payload?.fullName || record.player?.fullName || '—';
+    const isAdminReview = user?.role === 'ADMIN';
+    const noteTitle = isAdminReview ? 'Ghi chú của Manager' : 'Phản hồi';
+    const noteTone = isAdminReview ? 'info' : 'danger';
+    const noteText = isAdminReview ? record.requestNote : record.adminNote;
+
+    return (
+      <Popover
+        trigger="hover"
+        placement="topLeft"
+        overlayClassName="manager-request-note-popover"
+        title={
+          <span className={`manager-request-note-title manager-request-note-title-${noteTone}`}>
+            {noteTitle}
+          </span>
+        }
+        content={<div className="manager-request-note-content">{noteText || '—'}</div>}
+      >
+        <a
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/players/${record.playerId || `request-${record.id}`}`, {
+              state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
+            });
+          }}
+          style={{ fontWeight: 600 }}
+        >
+          {name}
+        </a>
+      </Popover>
+    );
+  };
 
   const getReviewActionTitle = (request: ManagerPlayerRequest, status: 'APPROVED' | 'REJECTED') => {
     const action = status === 'APPROVED' ? 'Duyệt' : 'Từ chối';
@@ -847,6 +884,7 @@ export default function PlayersPage() {
     {
       title: '#',
       key: 'index',
+      align: 'center',
       width: 60,
       render: (_, __, i) => i + 1,
     },
@@ -859,22 +897,7 @@ export default function PlayersPage() {
     {
       title: 'Họ và tên',
       key: 'name',
-      render: (_, record) => {
-        const name = record.payload?.fullName || record.player?.fullName || '—';
-        return (
-          <a
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/players/${record.playerId || `request-${record.id}`}`, {
-                state: { request: record, fromTab: user?.role === 'ADMIN' ? 'review' : 'requests' },
-              });
-            }}
-            style={{ fontWeight: 600 }}
-          >
-            {name}
-          </a>
-        );
-      },
+      render: (_, record) => renderPlayerRequestName(record),
     },
     {
       title: 'Người yêu cầu',
@@ -891,13 +914,13 @@ export default function PlayersPage() {
       width: 130,
       filters: [
         { text: 'Chờ duyệt', value: 'PENDING' },
-        { text: 'Đã duyệt', value: 'APPROVED' },
+        { text: 'Được duyệt', value: 'APPROVED' },
         { text: 'Từ chối', value: 'REJECTED' },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status: ManagerPlayerRequest['status']) => (
         <Tag color={status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'gold'}>
-          {status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+          {status === 'APPROVED' ? 'Được duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
         </Tag>
       ),
     },
@@ -909,10 +932,11 @@ export default function PlayersPage() {
       sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     },
     ...(user?.role === 'ADMIN'
-      ? [
+      ? ([
           {
             title: t('players.colActions'),
             key: 'actions',
+            align: 'center',
             width: 120,
             render: (_: unknown, record: ManagerPlayerRequest) => (
               <Space>
@@ -947,12 +971,13 @@ export default function PlayersPage() {
               </Space>
             ),
           },
-        ]
+        ] as ColumnType<ManagerPlayerRequest>[])
       : isTeamManager
-        ? [
+        ? ([
             {
               title: t('players.colActions'),
               key: 'actions',
+              align: 'center',
               width: 120,
               render: (_: unknown, record: ManagerPlayerRequest) => (
                 <Space>
@@ -985,7 +1010,7 @@ export default function PlayersPage() {
                 </Space>
               ),
             },
-          ]
+          ] as ColumnType<ManagerPlayerRequest>[])
         : []),
   ];
 

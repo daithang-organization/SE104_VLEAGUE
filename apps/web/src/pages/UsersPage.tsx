@@ -27,7 +27,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppMenuIcon } from '../components';
 import { TableSkeleton } from '../components/LoadingSkeleton';
@@ -172,6 +172,7 @@ export default function UsersPage() {
     key: string;
     status: Extract<ManagerRequestStatus, 'APPROVED' | 'REJECTED'>;
   } | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm] = Form.useForm();
@@ -370,15 +371,17 @@ export default function UsersPage() {
   const handleReviewRequest = async (
     record: AggregateManagerRequest,
     status: Extract<ManagerRequestStatus, 'APPROVED' | 'REJECTED'>,
+    adminNote?: string,
   ) => {
     setReviewingRequest({ key: record.key, status });
     try {
+      const payload = { status, adminNote: adminNote || undefined };
       if (record.entity === 'team') {
-        await apiReviewTeamManagerRequest(record.id, { status });
+        await apiReviewTeamManagerRequest(record.id, payload);
       } else if (record.entity === 'player') {
-        await apiReviewManagerPlayerRequest(record.id, { status });
+        await apiReviewManagerPlayerRequest(record.id, payload);
       } else {
-        await apiReviewManagerStadiumRequest(record.id, { status });
+        await apiReviewManagerStadiumRequest(record.id, payload);
       }
 
       message.success(status === 'APPROVED' ? 'Đã duyệt yêu cầu' : 'Đã từ chối yêu cầu');
@@ -395,6 +398,55 @@ export default function UsersPage() {
       setReviewingRequest(null);
     }
   };
+
+  const getReviewActionTitle = (
+    record: AggregateManagerRequest,
+    status: Extract<ManagerRequestStatus, 'APPROVED' | 'REJECTED'>,
+  ) => {
+    const action = status === 'APPROVED' ? 'Duyệt' : 'Từ chối';
+    return `${action} ${record.requestLabel.toLowerCase()}`;
+  };
+
+  const renderReviewConfirmContent = () => (
+    <div className="team-review-popconfirm-content">
+      <Input.TextArea
+        rows={3}
+        placeholder="Nhập phản hồi gửi Manager"
+        value={reviewNote}
+        onChange={(event) => setReviewNote(event.target.value)}
+      />
+    </div>
+  );
+
+  const renderReviewPopconfirm = (
+    record: AggregateManagerRequest,
+    status: Extract<ManagerRequestStatus, 'APPROVED' | 'REJECTED'>,
+    button: ReactElement,
+  ) => (
+    <Popconfirm
+      title={getReviewActionTitle(record, status)}
+      description={renderReviewConfirmContent()}
+      icon={null}
+      okText="Gửi"
+      cancelText={t('common.cancel')}
+      okButtonProps={{
+        danger: status === 'REJECTED',
+        loading: reviewingRequest?.key === record.key && reviewingRequest.status === status,
+      }}
+      disabled={record.status !== 'PENDING'}
+      overlayClassName="team-review-popconfirm"
+      onOpenChange={(open) => {
+        if (open) {
+          setReviewNote('');
+          return;
+        }
+        setReviewNote('');
+      }}
+      onConfirm={() => handleReviewRequest(record, status, reviewNote)}
+    >
+      {button}
+    </Popconfirm>
+  );
 
   const requestColumns: ColumnsType<AggregateManagerRequest> = [
     {
@@ -442,32 +494,38 @@ export default function UsersPage() {
       width: 120,
       render: (_, record) => (
         <Space>
-          <Button
-            aria-label="Duyệt yêu cầu"
-            type="text"
-            style={record.status === 'REJECTED' ? {} : { color: '#52c41a' }}
-            icon={<CheckOutlined />}
-            disabled={record.status !== 'PENDING'}
-            loading={reviewingRequest?.key === record.key && reviewingRequest.status === 'APPROVED'}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleReviewRequest(record, 'APPROVED');
-            }}
-          />
-          <Button
-            aria-label="Từ chối yêu cầu"
-            danger
-            type="text"
-            className={record.status === 'REJECTED' ? 'review-reject-button-active' : undefined}
-            style={record.status === 'REJECTED' ? { color: '#ff4d4f' } : undefined}
-            icon={<CloseOutlined />}
-            disabled={record.status !== 'PENDING'}
-            loading={reviewingRequest?.key === record.key && reviewingRequest.status === 'REJECTED'}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleReviewRequest(record, 'REJECTED');
-            }}
-          />
+          {renderReviewPopconfirm(
+            record,
+            'APPROVED',
+            <Button
+              aria-label="Duyệt yêu cầu"
+              type="text"
+              style={record.status === 'REJECTED' ? {} : { color: '#52c41a' }}
+              icon={<CheckOutlined />}
+              disabled={record.status !== 'PENDING'}
+              loading={
+                reviewingRequest?.key === record.key && reviewingRequest.status === 'APPROVED'
+              }
+              onClick={(e) => e.stopPropagation()}
+            />,
+          )}
+          {renderReviewPopconfirm(
+            record,
+            'REJECTED',
+            <Button
+              aria-label="Từ chối yêu cầu"
+              danger
+              type="text"
+              className={record.status === 'REJECTED' ? 'review-reject-button-active' : undefined}
+              style={record.status === 'REJECTED' ? { color: '#ff4d4f' } : undefined}
+              icon={<CloseOutlined />}
+              disabled={record.status !== 'PENDING'}
+              loading={
+                reviewingRequest?.key === record.key && reviewingRequest.status === 'REJECTED'
+              }
+              onClick={(e) => e.stopPropagation()}
+            />,
+          )}
         </Space>
       ),
     },

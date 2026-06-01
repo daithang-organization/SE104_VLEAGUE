@@ -200,6 +200,12 @@ export function apiGetTeamManagerManagementRequest() {
     .then((res) => res.data);
 }
 
+export function apiGetMyTeamManagerRequests() {
+  return api
+    .get<TeamManagerRequest[]>('/team-manager/management-requests/mine')
+    .then((res) => res.data);
+}
+
 export function apiGetTeamManagerClaimableTeams() {
   return api.get<Team[]>('/team-manager/claimable-teams').then((res) => res.data);
 }

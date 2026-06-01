@@ -3069,31 +3069,44 @@ select {
   border-radius: 8px;
   width: 100%;
   padding: 18px 26px;
-  background: var(--surface);
+  background:
+    linear-gradient(135deg, rgba(22, 119, 255, 0.16), rgba(22, 119, 255, 0.08)), var(--surface);
 }
 
 .team-detail-note-card-admin {
   border-color: rgba(255, 77, 79, 0.6);
   border-left-color: var(--danger);
+  background:
+    linear-gradient(135deg, rgba(255, 77, 79, 0.18), rgba(255, 77, 79, 0.08)), var(--surface);
 }
 
 .team-detail-note-card-admin .team-detail-note-label,
-.team-detail-note-card-admin p {
+.team-detail-note-card-admin .team-detail-note-icon {
   color: var(--danger);
 }
 
-.team-detail-note-label {
-  display: block;
-  margin-bottom: 4px;
+.team-detail-note-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.team-detail-note-icon {
   color: var(--info);
   font-size: 16px;
+}
+
+.team-detail-note-label {
+  color: var(--info);
+  font-size: 18px;
   font-weight: 600;
 }
 
 .team-detail-note-card p {
   margin: 0;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.2;
   white-space: pre-wrap;
 }

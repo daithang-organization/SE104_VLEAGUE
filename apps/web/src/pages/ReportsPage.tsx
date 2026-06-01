@@ -1,4 +1,5 @@
 ﻿import {
+  AimOutlined,
   BarChartOutlined,
   DownloadOutlined,
   RiseOutlined,
@@ -8,7 +9,6 @@
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { AimOutlined, CalendarOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, message, Select, Space, Tabs } from 'antd';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import {
   apiGetCardStats,
   apiGetPlayerOfMatchStats,
   apiGetSeasonAwards,
+  apiGetSuspensionStats,
   apiGetTeamStats,
   apiGetTopAssists,
   apiGetTopScorers,
@@ -29,8 +30,9 @@ import {
   type TeamStat,
   type TopAssist,
   type TopScorer,
-  apiGetSuspensionStats,
 } from '../services/standingsApi';
+import { exportPdf } from '../utils/pdfExport';
+import { cleanDecorativeLabel } from '../utils/textLabels';
 import CardStatsTab from './reports/CardStatsTab';
 import ChartsTab from './reports/ChartsTab';
 import PlayerOfMatchTab from './reports/PlayerOfMatchTab';
@@ -39,8 +41,6 @@ import SuspensionsTab from './reports/SuspensionsTab';
 import TeamStatsTab from './reports/TeamStatsTab';
 import TopAssistsTab from './reports/TopAssistsTab';
 import TopScorersTab from './reports/TopScorersTab';
-import { exportPdf } from '../utils/pdfExport';
-import { cleanDecorativeLabel } from '../utils/textLabels';
 
 function reportTabLabel(icon: ReactNode, label: string) {
   return (
@@ -67,7 +67,6 @@ export default function ReportsPage() {
   const {
     loading: seasonsLoading,
     seasons,
-    selectedSeason,
     selectedSeasonId,
     setSelectedSeasonId,
   } = useSeasonSelection();
@@ -200,9 +199,6 @@ export default function ReportsPage() {
 
   if (error) return <Alert type="error" message={error} showIcon />;
 
-  const topScorerGoals = scorers.reduce((max, scorer) => Math.max(max, scorer.goals), 0);
-  const topAssistCount = assists.reduce((max, assist) => Math.max(max, assist.assists), 0);
-
   const exportActions = (
     <Space wrap>
       <Button
@@ -245,18 +241,13 @@ export default function ReportsPage() {
         icon={<AppMenuIcon menuKey="reports" />}
         metrics={[
           {
-            label: t('reports.currentSeason'),
-            value: selectedSeason?.name ?? '-',
-            icon: <CalendarOutlined />,
-          },
-          {
             label: cleanDecorativeLabel(t('reports.tabScorers')),
-            value: topScorerGoals.toLocaleString('vi-VN'),
+            value: scorers.length.toLocaleString('vi-VN'),
             icon: <AimOutlined />,
           },
           {
             label: cleanDecorativeLabel(t('reports.tabAssists')),
-            value: topAssistCount.toLocaleString('vi-VN'),
+            value: assists.length.toLocaleString('vi-VN'),
             icon: <RiseOutlined />,
           },
           {
@@ -296,19 +287,17 @@ export default function ReportsPage() {
               {
                 key: 'scorers',
                 label: reportTabLabel(<AimOutlined />, t('reports.tabScorers')),
-                children: <TopScorersTab data={scorers.slice(0, 20)} loading={loading} />,
+                children: <TopScorersTab data={scorers} loading={loading} />,
               },
               {
                 key: 'assists',
                 label: reportTabLabel(<RiseOutlined />, t('reports.tabAssists')),
-                children: <TopAssistsTab data={assists.slice(0, 20)} loading={loading} />,
+                children: <TopAssistsTab data={assists} loading={loading} />,
               },
               {
                 key: 'player-of-match',
                 label: reportTabLabel(<StarOutlined />, t('reports.tabPlayerOfMatch')),
-                children: (
-                  <PlayerOfMatchTab data={playerOfMatchStats.slice(0, 20)} loading={loading} />
-                ),
+                children: <PlayerOfMatchTab data={playerOfMatchStats} loading={loading} />,
               },
               {
                 key: 'cards',
