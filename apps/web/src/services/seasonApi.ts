@@ -8,6 +8,10 @@ export type Season = {
   status: 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED';
   startDate?: string | null;
   endDate?: string | null;
+  _count?: {
+    matches?: number;
+    seasonTeams?: number;
+  };
   createdAt: string;
   updatedAt: string;
 };

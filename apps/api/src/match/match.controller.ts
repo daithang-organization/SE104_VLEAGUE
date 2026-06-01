@@ -22,7 +22,15 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, Public, Role, Roles, RolesGuard } from '../auth';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+  JwtAuthGuard,
+  Public,
+  Role,
+  Roles,
+  RolesGuard,
+} from '../auth';
 import { AuditLogInterceptor } from '../common/interceptors/audit-log.interceptor';
 import { AddMatchEventDto } from './dto/add-match-event.dto';
 import { FindAllMatchesQueryDto } from './dto/find-all-matches-query.dto';
@@ -54,6 +62,30 @@ export class MatchController {
   findAll(@Query() query: FindAllMatchesQueryDto) {
     const { seasonId, ...filters } = query;
     return this.match.findAll(seasonId, filters);
+  }
+
+  @Get('assigned-to-me')
+  @Roles(Role.REFEREE, Role.SUPERVISOR)
+  @ApiOperation({
+    summary: 'Lấy danh sách trận đấu được phân công',
+    description:
+      'Trả về các trận đấu mà trọng tài hoặc giám sát hiện tại được phân công.',
+  })
+  @ApiOkResponse({
+    description: 'Danh sách trận đấu được phân công cho tài khoản hiện tại',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Chưa đăng nhập hoặc token không hợp lệ',
+  })
+  @ApiForbiddenResponse({
+    description: 'Chỉ REFEREE và SUPERVISOR được truy cập',
+  })
+  findAssignedToMe(
+    @Query() query: FindAllMatchesQueryDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const { seasonId, ...filters } = query;
+    return this.match.findAssignedToOfficial(user, seasonId, filters);
   }
 
   @Get(':id')

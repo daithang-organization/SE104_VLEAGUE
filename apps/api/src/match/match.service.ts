@@ -5,6 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { MatchOfficialRole, Prisma } from '@prisma/client';
+import type { CurrentUserPayload } from '../auth';
 import { MatchLineupService } from '../match-lineup/match-lineup.service';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,6 +35,17 @@ const MATCH_STATUS_TRANSITIONS: Record<string, string[]> = {
   FINISHED: [],
   POSTPONED: ['DRAFT'],
 };
+
+type FindAllMatchesPagination = {
+  page?: number;
+  limit?: number;
+  round?: number;
+  status?: string;
+  teamId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
 @Injectable()
 export class MatchService {
   private readonly logger = new Logger(MatchService.name);
@@ -74,24 +87,17 @@ export class MatchService {
 
   async findAll(
     seasonId?: string,
-    pagination?: {
-      page?: number;
-      limit?: number;
-      round?: number;
-      status?: string;
-      teamId?: string;
-      dateFrom?: string;
-      dateTo?: string;
-    },
+    pagination?: FindAllMatchesPagination,
+    extraWhere?: Prisma.MatchWhereInput,
   ) {
     const page = pagination?.page ?? 1;
     const limit = pagination?.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Prisma.MatchWhereInput = { ...extraWhere };
     if (seasonId) where.seasonId = seasonId;
     if (pagination?.round) where.roundNo = pagination.round;
-    if (pagination?.status) where.status = pagination.status;
+    if (pagination?.status) where.status = pagination.status as never;
     if (pagination?.teamId) {
       where.OR = [
         { homeTeamId: pagination.teamId },
@@ -132,6 +138,33 @@ export class MatchService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async findAssignedToOfficial(
+    user: CurrentUserPayload,
+    seasonId?: string,
+    pagination?: FindAllMatchesPagination,
+  ) {
+    const roles =
+      user.role === 'SUPERVISOR'
+        ? [MatchOfficialRole.SUPERVISOR]
+        : [
+            MatchOfficialRole.MAIN_REFEREE,
+            MatchOfficialRole.ASSISTANT_REFEREE,
+            MatchOfficialRole.FOURTH_OFFICIAL,
+          ];
+
+    return this.findAll(seasonId, pagination, {
+      officialAssignments: {
+        some: {
+          role: { in: roles },
+          official: {
+            email: { equals: user.email, mode: 'insensitive' },
+            status: 'ACTIVE',
+          },
+        },
+      },
+    });
   }
 
   async updateMatch(

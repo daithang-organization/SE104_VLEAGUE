@@ -47,6 +47,7 @@ describe('MatchController', () => {
           provide: MatchService,
           useValue: {
             findAll: jest.fn().mockResolvedValue(mockPaginated),
+            findAssignedToOfficial: jest.fn().mockResolvedValue(mockPaginated),
             getMatchById: jest.fn().mockResolvedValue(mockMatch),
             addEvent: jest.fn().mockResolvedValue(mockEventResult),
             updateEvent: jest.fn().mockResolvedValue(mockUpdateEventResult),
@@ -107,6 +108,28 @@ describe('MatchController', () => {
       await controller.findAll(query as any);
 
       expect(service.findAll).toHaveBeenCalledWith('season-1', {});
+    });
+
+    it('should return matches assigned to the current official', async () => {
+      const query = {
+        seasonId: 'season-1',
+        page: 1,
+        limit: 10,
+      };
+      const user = {
+        id: 'user-1',
+        email: 'referee@demo.local',
+        role: 'REFEREE',
+      };
+
+      const result = await controller.findAssignedToMe(query as any, user);
+
+      expect(result).toEqual(mockPaginated);
+      expect(service.findAssignedToOfficial).toHaveBeenCalledWith(
+        user,
+        'season-1',
+        { page: 1, limit: 10 },
+      );
     });
   });
 

@@ -260,6 +260,14 @@ export function apiGetMatches(seasonId?: string, page = 1, limit = 20) {
   return api.get<PaginatedResponse<Match>>('/matches', { params }).then((res) => res.data);
 }
 
+export function apiGetAssignedMatches(seasonId?: string, page = 1, limit = 20) {
+  const params: Record<string, string | number> = { page, limit };
+  if (seasonId) params.seasonId = seasonId;
+  return api
+    .get<PaginatedResponse<Match>>('/matches/assigned-to-me', { params })
+    .then((res) => res.data);
+}
+
 export function apiGetMatch(id: string) {
   return api.get<Match>(`/matches/${id}`).then((res) => res.data);
 }

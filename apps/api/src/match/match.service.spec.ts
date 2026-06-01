@@ -178,6 +178,71 @@ describe('MatchService', () => {
         }),
       );
     });
+
+    it('should filter assigned matches by official email and referee roles', async () => {
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.match, 'count').mockResolvedValue(0);
+
+      await service.findAssignedToOfficial(
+        {
+          id: 'user-1',
+          email: 'referee@demo.local',
+          role: 'REFEREE',
+        },
+        'season-1',
+        { page: 1, limit: 10 },
+      );
+
+      const assignmentFilter = {
+        some: {
+          role: {
+            in: ['MAIN_REFEREE', 'ASSISTANT_REFEREE', 'FOURTH_OFFICIAL'],
+          },
+          official: {
+            email: { equals: 'referee@demo.local', mode: 'insensitive' },
+            status: 'ACTIVE',
+          },
+        },
+      };
+
+      expect(prisma.match.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            seasonId: 'season-1',
+            officialAssignments: assignmentFilter,
+          }),
+        }),
+      );
+      expect(prisma.match.count).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          seasonId: 'season-1',
+          officialAssignments: assignmentFilter,
+        }),
+      });
+    });
+
+    it('should filter assigned matches by supervisor role', async () => {
+      jest.spyOn(prisma.match, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.match, 'count').mockResolvedValue(0);
+
+      await service.findAssignedToOfficial({
+        id: 'user-1',
+        email: 'supervisor@demo.local',
+        role: 'SUPERVISOR',
+      });
+
+      expect(prisma.match.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            officialAssignments: expect.objectContaining({
+              some: expect.objectContaining({
+                role: { in: ['SUPERVISOR'] },
+              }),
+            }),
+          }),
+        }),
+      );
+    });
   });
 
   describe('updateMatch', () => {
