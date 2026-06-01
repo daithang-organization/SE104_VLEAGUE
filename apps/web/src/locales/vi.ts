@@ -186,7 +186,8 @@ const vi = {
 
   dashboard: {
     title: 'Trang chủ',
-    welcome: 'Chào mừng đến với VLeague Admin! Tổng quan hệ thống:',
+    welcome: 'Welcome to VLeague',
+    adminWelcome: 'Welcome to VLeague Admin',
     refereeWelcome: 'Trang vận hành trận đấu chính thức dành cho trọng tài',
     supervisorWelcome: 'Trang giám sát trận đấu và báo cáo kỷ luật',
     errorLoad: 'Không thể tải dữ liệu dashboard',
