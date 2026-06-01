@@ -31,11 +31,27 @@ const pendingInvitation = {
   regulationsSnapshot: {
     MIN_ROSTER: '16',
     MAX_ROSTER: '22',
+    MIN_AGE: '16',
+    MAX_AGE: '40',
     MAX_FOREIGN_PLAYERS: '5',
     MAX_FOREIGN_PLAYERS_ON_FIELD: '3',
     MIN_STADIUM_CAPACITY: '10000',
     MIN_STADIUM_FIFA_STARS: '2',
     PARTICIPATION_FEE_VND: '1000000000',
+  },
+  compliance: {
+    roster: { current: 20, min: 16, max: 22, ok: true },
+    foreignPlayers: { current: 4, max: 5, maxOnField: 3, ok: true },
+    age: { min: 16, max: 40, total: 20, invalidCount: 0, ok: true },
+    stadium: {
+      stadiumId: 'stadium-1',
+      stadiumName: 'Sân Hàng Đẫy',
+      capacity: 22500,
+      fifaStars: 3,
+      minCapacity: 10000,
+      minFifaStars: 2,
+      ok: true,
+    },
   },
   season: { id: 'season-1', name: 'V.League 2026', year: 2026 },
   team: { id: 'team-1', name: 'Hà Nội FC' },
@@ -62,7 +78,54 @@ describe('TeamInvitationPopup', () => {
     expect(await screen.findByText('Lời mời tham dự V.League 2026')).toBeInTheDocument();
     expect(screen.getByText('Hà Nội FC')).toBeInTheDocument();
     expect(screen.getByText('1.000.000.000 VND')).toBeInTheDocument();
-    expect(screen.getByText('16 - 22 cầu thủ')).toBeInTheDocument();
+    expect(screen.getByText(/16 - 22 cầu thủ/)).toBeInTheDocument();
+    expect(screen.getByText(/16 - 40 tuổi/)).toBeInTheDocument();
+    expect(screen.getByText(/hiện tại: 20/)).toBeInTheDocument();
+    expect(screen.getByText(/20\/20 cầu thủ đạt/)).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Đạt quy định')).toHaveLength(4);
+  });
+
+  it('shows an alert when the current roster violates the invited season regulations', async () => {
+    mockInvitationApi.apiGetMyPendingInvitations.mockResolvedValue([
+      {
+        ...pendingInvitation,
+        compliance: {
+          ...pendingInvitation.compliance,
+          roster: { current: 12, min: 16, max: 22, ok: false },
+        },
+      },
+    ]);
+
+    render(<TeamInvitationPopup />);
+
+    expect(
+      await screen.findByText('Số lượng cầu thủ hiện tại không đảm bảo quy định'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Không đạt quy định')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Đồng ý tham gia/i })).toBeDisabled();
+    expect(
+      screen.getByText('Vui lòng đáp ứng đầy đủ các quy định để tham gia mùa giải'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an alert when a player age violates the invited season regulations', async () => {
+    mockInvitationApi.apiGetMyPendingInvitations.mockResolvedValue([
+      {
+        ...pendingInvitation,
+        compliance: {
+          ...pendingInvitation.compliance,
+          age: { min: 16, max: 40, total: 20, invalidCount: 2, ok: false },
+        },
+      },
+    ]);
+
+    render(<TeamInvitationPopup />);
+
+    expect(
+      await screen.findByText('Độ tuổi cầu thủ hiện tại không đảm bảo quy định'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/18\/20 cầu thủ đạt/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Đồng ý tham gia/i })).toBeDisabled();
   });
 
   it('accepts the active invitation', async () => {

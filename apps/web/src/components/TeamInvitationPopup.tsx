@@ -1,7 +1,7 @@
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { Alert, Button, Descriptions, Input, message, Modal, Space, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
   apiGetMyPendingInvitations,
@@ -17,6 +17,34 @@ function formatVnd(value: string) {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return value;
   return `${amount.toLocaleString('vi-VN')} VND`;
+}
+
+function ComplianceRuleValue({
+  children,
+  ok,
+  alert,
+}: {
+  children: ReactNode;
+  ok?: boolean;
+  alert: string;
+}) {
+  return (
+    <Space direction="vertical" size={2}>
+      <Space size={8}>
+        {ok === undefined ? null : ok ? (
+          <CheckCircleOutlined style={{ color: '#52c41a' }} aria-label="Đạt quy định" />
+        ) : (
+          <CloseCircleOutlined style={{ color: '#ff4d4f' }} aria-label="Không đạt quy định" />
+        )}
+        <span>{children}</span>
+      </Space>
+      {ok === false && (
+        <Typography.Text type="danger" style={{ fontSize: 12 }}>
+          {alert}
+        </Typography.Text>
+      )}
+    </Space>
+  );
 }
 
 export default function TeamInvitationPopup() {
@@ -48,6 +76,11 @@ export default function TeamInvitationPopup() {
     if (!activeInvitation) return null;
     return {
       fee: formatVnd(readRule(activeInvitation, 'PARTICIPATION_FEE_VND', '1000000000')),
+      age: `${readRule(activeInvitation, 'MIN_AGE', '16')} - ${readRule(
+        activeInvitation,
+        'MAX_AGE',
+        '40',
+      )} tuổi`,
       roster: `${readRule(activeInvitation, 'MIN_ROSTER', '16')} - ${readRule(
         activeInvitation,
         'MAX_ROSTER',
@@ -106,6 +139,13 @@ export default function TeamInvitationPopup() {
     PROMOTED: 'Đội thăng hạng',
     REPLACEMENT: 'Đội thay thế',
   };
+  const compliance = activeInvitation.compliance;
+  const canAcceptInvitation = compliance
+    ? compliance.roster.ok &&
+      compliance.foreignPlayers.ok &&
+      compliance.age.ok &&
+      compliance.stadium.ok
+    : true;
 
   return (
     <Modal
@@ -139,6 +179,7 @@ export default function TeamInvitationPopup() {
               type="primary"
               icon={<CheckCircleOutlined />}
               loading={submitting}
+              disabled={!canAcceptInvitation}
               onClick={() => respond('ACCEPTED')}
             >
               Đồng ý tham gia
@@ -167,10 +208,51 @@ export default function TeamInvitationPopup() {
             {dayjs(activeInvitation.deadlineAt).format('DD/MM/YYYY HH:mm')}
           </Descriptions.Item>
           <Descriptions.Item label="Lệ phí tham dự">{rules.fee}</Descriptions.Item>
-          <Descriptions.Item label="Số lượng cầu thủ">{rules.roster}</Descriptions.Item>
-          <Descriptions.Item label="Cầu thủ ngoại">{rules.foreignPlayers}</Descriptions.Item>
-          <Descriptions.Item label="Sân nhà">{rules.stadium}</Descriptions.Item>
+          <Descriptions.Item label="Số lượng cầu thủ">
+            <ComplianceRuleValue
+              ok={compliance?.roster.ok}
+              alert="Số lượng cầu thủ hiện tại không đảm bảo quy định"
+            >
+              {rules.roster}
+              {compliance ? ` (hiện tại: ${compliance.roster.current})` : ''}
+            </ComplianceRuleValue>
+          </Descriptions.Item>
+          <Descriptions.Item label="Cầu thủ ngoại">
+            <ComplianceRuleValue
+              ok={compliance?.foreignPlayers.ok}
+              alert="Số lượng cầu thủ ngoại hiện tại không đảm bảo quy định"
+            >
+              {rules.foreignPlayers}
+              {compliance ? ` (hiện tại: ${compliance.foreignPlayers.current})` : ''}
+            </ComplianceRuleValue>
+          </Descriptions.Item>
+          <Descriptions.Item label="Độ tuổi cầu thủ">
+            <ComplianceRuleValue
+              ok={compliance?.age.ok}
+              alert="Độ tuổi cầu thủ hiện tại không đảm bảo quy định"
+            >
+              {rules.age}
+              {compliance
+                ? ` (${compliance.age.total - compliance.age.invalidCount}/${compliance.age.total} cầu thủ đạt)`
+                : ''}
+            </ComplianceRuleValue>
+          </Descriptions.Item>
+          <Descriptions.Item label="Sân nhà">
+            <ComplianceRuleValue
+              ok={compliance?.stadium.ok}
+              alert="Sân nhà hiện tại không đảm bảo quy định"
+            >
+              {rules.stadium}
+              {compliance?.stadium.stadiumName ? ` (${compliance.stadium.stadiumName})` : ''}
+            </ComplianceRuleValue>
+          </Descriptions.Item>
         </Descriptions>
+
+        {!canAcceptInvitation && (
+          <Typography.Text type="danger">
+            Vui lòng đáp ứng đầy đủ các quy định để tham gia mùa giải
+          </Typography.Text>
+        )}
 
         {declining && (
           <Input.TextArea

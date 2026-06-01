@@ -340,11 +340,23 @@ export default function StadiumsPage() {
       s.city.toLowerCase().includes(search.toLowerCase()) ||
       (s.country ?? '').toLowerCase().includes(search.toLowerCase()),
   );
-  const capacities = stadiums
-    .map((stadium) => stadium.capacity)
-    .filter((capacity): capacity is number => typeof capacity === 'number' && capacity > 0);
-  const maxCapacity = capacities.length > 0 ? Math.max(...capacities) : null;
-  const minCapacity = capacities.length > 0 ? Math.min(...capacities) : null;
+  const capacityStadiums = stadiums.filter(
+    (stadium) => typeof stadium.capacity === 'number' && stadium.capacity > 0,
+  );
+  const maxCapacityStadium =
+    capacityStadiums.length > 0
+      ? capacityStadiums.reduce((best, stadium) =>
+          (stadium.capacity ?? 0) > (best.capacity ?? 0) ? stadium : best,
+        )
+      : null;
+  const minCapacityStadium =
+    capacityStadiums.length > 0
+      ? capacityStadiums.reduce((best, stadium) =>
+          (stadium.capacity ?? 0) < (best.capacity ?? 0) ? stadium : best,
+        )
+      : null;
+  const maxCapacity = maxCapacityStadium?.capacity ?? null;
+  const minCapacity = minCapacityStadium?.capacity ?? null;
   const homeStadium = stadiums.find((stadium) => stadium.id === managedTeam?.stadiumId);
   const hasPendingStadiumRequest = managerStadiumRequests.some(
     (request) => request.status === 'PENDING',
@@ -357,6 +369,17 @@ export default function StadiumsPage() {
     if (isManager) fetchManagerStadiumState();
     if (isAdmin) fetchAdminStadiumRequests();
   }, [fetchStadiums, fetchManagerStadiumState, fetchAdminStadiumRequests, isManager, isAdmin]);
+
+  const renderCapacityMetricValue = (capacity: number | null, stadiumName?: string) => {
+    if (capacity == null) return '—';
+
+    return (
+      <span className="page-hero-metric-value-with-name">
+        <span className="page-hero-metric-number">{capacity.toLocaleString('vi-VN')}</span>
+        {stadiumName && <span className="page-hero-metric-person">{stadiumName}</span>}
+      </span>
+    );
+  };
 
   const hero = (
     <PageCover
@@ -372,12 +395,12 @@ export default function StadiumsPage() {
         },
         {
           label: t('stadiums.maxCapacity'),
-          value: maxCapacity != null ? maxCapacity.toLocaleString('vi-VN') : '—',
+          value: renderCapacityMetricValue(maxCapacity, maxCapacityStadium?.name),
           icon: <TeamOutlined />,
         },
         {
           label: t('stadiums.minCapacity'),
-          value: minCapacity != null ? minCapacity.toLocaleString('vi-VN') : '—',
+          value: renderCapacityMetricValue(minCapacity, minCapacityStadium?.name),
           icon: <TeamOutlined />,
         },
       ]}

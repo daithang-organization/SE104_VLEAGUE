@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegulationHelper } from '../regulation/regulation.helper';
 import { StandingsService } from './standings.service';
 
 describe('StandingsService', () => {
@@ -65,6 +66,19 @@ describe('StandingsService', () => {
               deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
               updateMany: jest.fn().mockResolvedValue({ count: 0 }),
             },
+          },
+        },
+        {
+          provide: RegulationHelper,
+          useValue: {
+            getNumericValue: jest
+              .fn()
+              .mockImplementation((_seasonId, key, fallback) => {
+                if (key === 'WIN_POINTS') return Promise.resolve(3);
+                if (key === 'DRAW_POINTS') return Promise.resolve(1);
+                if (key === 'LOSS_POINTS') return Promise.resolve(0);
+                return Promise.resolve(fallback);
+              }),
           },
         },
       ],
