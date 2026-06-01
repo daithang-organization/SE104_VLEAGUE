@@ -519,6 +519,52 @@ select {
   white-space: nowrap;
 }
 
+.page-hero-metric strong.page-hero-metric-rich {
+  font-size: inherit;
+  line-height: 1.15;
+}
+
+.page-hero-metric-value-with-logo,
+.page-hero-metric-value-with-name {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.page-hero-metric-value-with-logo {
+  gap: 8px;
+}
+
+.page-hero-metric-value-with-name {
+  max-width: 100%;
+  gap: 7px;
+}
+
+.page-hero-metric-team-logo {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.page-hero-metric-number {
+  color: var(--text-main);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.page-hero-metric-person {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .page-hero-metric-label.ant-typography {
   color: var(--text-muted);
   font-size: 12px;

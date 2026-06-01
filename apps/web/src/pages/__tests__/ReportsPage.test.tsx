@@ -73,7 +73,26 @@ const mockStandingsApi = vi.hoisted(() => ({
       assists: 6,
     },
   ]),
-  apiGetCardStats: vi.fn().mockResolvedValue([]),
+  apiGetCardStats: vi.fn().mockResolvedValue([
+    {
+      playerId: 'p5',
+      playerName: 'Yellow Card Player',
+      teamName: 'Hà Nội FC',
+      position: 1,
+      yellowCards: 4,
+      redCards: 0,
+      totalCards: 4,
+    },
+    {
+      playerId: 'p6',
+      playerName: 'Red Card Player',
+      teamName: 'Hải Phòng FC',
+      position: 2,
+      yellowCards: 1,
+      redCards: 2,
+      totalCards: 3,
+    },
+  ]),
   apiGetTeamStats: vi.fn().mockResolvedValue([
     {
       teamName: 'Hà Nội FC',
@@ -209,14 +228,19 @@ describe('ReportsPage', () => {
     expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
-  it('shows player counts in the hero metrics', async () => {
+  it('shows leaders in the hero metrics', async () => {
     const { container } = renderPage();
 
     await waitFor(() => {
       const metricValues = Array.from(container.querySelectorAll('.page-hero-metric strong')).map(
         (node) => node.textContent,
       );
-      expect(metricValues).toEqual(['1', '1', '1']);
+      expect(metricValues).toEqual([
+        '12Nguyễn Tiến Linh',
+        '6Player Assist',
+        '4Yellow Card Player',
+        '2Red Card Player',
+      ]);
     });
   });
 
@@ -255,7 +279,8 @@ describe('ReportsPage', () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getAllByText('reports.tabScorers').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('reports.tabPlayerOfMatch').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('reports.metricYellowCards').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('reports.metricRedCards').length).toBeGreaterThan(0);
     });
   });
 
