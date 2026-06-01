@@ -205,12 +205,14 @@ describe('SeasonService', () => {
         startDate: new Date('2024-09-01'),
         endDate: new Date('2025-06-30'),
       };
-      jest.spyOn(prisma.season, 'findFirst').mockImplementation((args: any) => {
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
         if (args?.where?.year === 2024) {
           return Promise.resolve(mockSeason);
         }
         return Promise.resolve(null);
-      });
+      }) as any);
 
       await expect(service.create(createDto)).rejects.toThrow(
         ConflictException,
@@ -225,12 +227,14 @@ describe('SeasonService', () => {
         startDate: new Date('2024-06-01'),
         endDate: new Date('2024-10-01'),
       };
-      jest.spyOn(prisma.season, 'findFirst').mockImplementation((args: any) => {
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
         if (args?.where?.startDate && args?.where?.endDate) {
           return Promise.resolve(mockSeason);
         }
         return Promise.resolve(null);
-      });
+      }) as any);
 
       await expect(service.create(createDto)).rejects.toThrow(
         ConflictException,
@@ -264,12 +268,14 @@ describe('SeasonService', () => {
         matches: [],
       };
       jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(existingSeason);
-      jest.spyOn(prisma.season, 'findFirst').mockImplementation((args: any) => {
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
         if (args?.where?.startDate && args?.where?.endDate) {
           return Promise.resolve(mockSeason);
         }
         return Promise.resolve(null);
-      });
+      }) as any);
 
       await expect(
         service.update('season-2', {
