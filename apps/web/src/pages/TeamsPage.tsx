@@ -266,6 +266,7 @@ export default function TeamsPage() {
       name: request.proposedTeamName ?? undefined,
       shortName: request.proposedTeamShortName ?? undefined,
       city: request.proposedTeamCity ?? undefined,
+      coachName: request.proposedCoachName ?? undefined,
       logoUrl: request.proposedTeamLogoUrl ?? undefined,
       proposedTeamStatus: request.proposedTeamStatus ?? request.team?.status ?? 'ACTIVE',
       requestNote: request.requestNote ?? undefined,
@@ -286,6 +287,7 @@ export default function TeamsPage() {
       name: request?.proposedTeamName ?? team.name,
       shortName: request?.proposedTeamShortName ?? team.shortName ?? undefined,
       city: request?.proposedTeamCity ?? team.city ?? undefined,
+      coachName: request?.proposedCoachName ?? team.coachName ?? undefined,
       logoUrl: request?.proposedTeamLogoUrl ?? team.logoUrl ?? undefined,
       proposedTeamStatus: request?.proposedTeamStatus ?? team.status ?? 'ACTIVE',
       requestNote: request?.requestNote ?? undefined,
@@ -351,6 +353,7 @@ export default function TeamsPage() {
             proposedTeamName: values.name,
             proposedTeamShortName: values.shortName || undefined,
             proposedTeamCity: values.city || undefined,
+            proposedCoachName: values.coachName || undefined,
             proposedTeamLogoUrl: values.logoUrl || undefined,
             proposedTeamStatus: values.proposedTeamStatus || 'ACTIVE',
             requestNote: values.requestNote || undefined,
@@ -360,6 +363,7 @@ export default function TeamsPage() {
             proposedTeamName: values.name,
             proposedTeamShortName: values.shortName || undefined,
             proposedTeamCity: values.city || undefined,
+            proposedCoachName: values.coachName || undefined,
             proposedTeamLogoUrl: values.logoUrl || undefined,
             proposedTeamStatus: values.proposedTeamStatus || 'ACTIVE',
             requestNote: values.requestNote || undefined,
@@ -634,22 +638,8 @@ export default function TeamsPage() {
     );
   };
 
-  const getTeamManagerDisplay = (team: Team, request?: TeamManagerRequest) => {
-    if (team.coachName?.trim()) {
-      return team.coachName.trim();
-    }
-
-    const assignedManager = team.managedUsers?.[0];
-    if (assignedManager?.name || assignedManager?.email) {
-      return assignedManager.name || assignedManager.email;
-    }
-    if (request?.manager?.name || request?.manager?.email) {
-      return request.manager.name || request.manager.email;
-    }
-    if (user?.role === 'TEAM_MANAGER' && managedTeam?.id === team.id) {
-      return user.name || user.email;
-    }
-    return '—';
+  const getTeamManagerDisplay = (team: Team) => {
+    return team.coachName?.trim() || '—';
   };
 
   const getTeamRequestName = (request: TeamManagerRequest) =>
@@ -681,6 +671,7 @@ export default function TeamsPage() {
     proposedTeamName: request.proposedTeamName,
     proposedTeamShortName: request.proposedTeamShortName,
     proposedTeamCity: request.proposedTeamCity,
+    proposedCoachName: request.proposedCoachName,
     proposedTeamLogoUrl: request.proposedTeamLogoUrl,
     proposedTeamStatus: request.proposedTeamStatus,
   });
@@ -1297,7 +1288,12 @@ export default function TeamsPage() {
                     </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col xs={24}>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="coachName" label={t('teams.formCoachName')}>
+                        <Input placeholder={t('teams.formCoachNamePlaceholder')} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
                       <Form.Item name="city" label={t('teams.formCity')}>
                         <Input placeholder={t('teams.formCityPlaceholder')} />
                       </Form.Item>
@@ -1414,7 +1410,12 @@ export default function TeamsPage() {
           </Row>
 
           <Row gutter={16}>
-            <Col span={24}>
+            <Col span={12}>
+              <Form.Item name="coachName" label={t('teams.formCoachName')}>
+                <Input placeholder={t('teams.formCoachNamePlaceholder')} maxLength={120} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
               <Form.Item name="city" label={t('teams.formCity')}>
                 <Input placeholder={t('teams.formCityPlaceholder')} />
               </Form.Item>
@@ -1431,10 +1432,6 @@ export default function TeamsPage() {
                 ...availableManagerOptions,
               ]}
             />
-          </Form.Item>
-
-          <Form.Item name="coachName" label={t('teams.formCoachName')}>
-            <Input placeholder={t('teams.formCoachNamePlaceholder')} maxLength={120} />
           </Form.Item>
 
           <Form.Item name="logoUrl" label={t('teams.formLogo')}>

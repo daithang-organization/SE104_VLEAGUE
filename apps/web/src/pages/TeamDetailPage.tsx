@@ -46,8 +46,6 @@ export default function TeamDetailPage() {
   const requestNote = state?.requestNote;
   const requestStatus = state?.requestStatus;
   const adminNote = state?.adminNote;
-  const stateManagerName = state?.managerName;
-  const stateManagerEmail = state?.managerEmail;
   const stateSeasonId = typeof state?.seasonId === 'string' ? state.seasonId : undefined;
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -60,6 +58,7 @@ export default function TeamDetailPage() {
       name: state?.proposedTeamName ?? teamData.name,
       shortName: state?.proposedTeamShortName ?? teamData.shortName,
       city: state?.proposedTeamCity ?? teamData.city,
+      coachName: state?.proposedCoachName ?? teamData.coachName,
       status: state?.proposedTeamStatus ?? teamData.status,
     };
   }, [teamData, state]);
@@ -326,24 +325,8 @@ export default function TeamDetailPage() {
   const currentStanding = (team.standings || []).length > 0 ? team.standings[0] : null;
   const teamLogoUrl = state?.proposedTeamLogoUrl ?? getTeamLogoUrl(team);
   const teamInitials = (team.shortName || team.name).slice(0, 2).toUpperCase();
-  const manager = team.managedUsers?.[0] ?? null;
   const coachName = team.coachName?.trim();
-  const getFallbackManagerDisplay = () => {
-    if (stateManagerName && stateManagerEmail) {
-      return `${stateManagerName} (${stateManagerEmail})`;
-    }
-    return stateManagerName || stateManagerEmail || '—';
-  };
-
-  const managerDisplay = coachName
-    ? manager?.email
-      ? `${coachName} (${manager.email})`
-      : coachName
-    : manager
-      ? manager.name
-        ? `${manager.name} (${manager.email})`
-        : manager.email
-      : getFallbackManagerDisplay();
+  const managerDisplay = coachName || '—';
 
   const renderStatusTag = () => {
     if (requestStatus === 'PENDING') return <Tag color="gold">Chờ duyệt</Tag>;

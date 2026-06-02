@@ -55,7 +55,9 @@ export class TeamManagerService {
         coachName: true,
         city: true,
         status: true,
-        stadium: { select: { id: true, name: true, city: true } },
+        stadium: {
+          select: { id: true, name: true, city: true, address: true },
+        },
       },
     },
   } satisfies Prisma.TeamManagerAssignmentInclude;
@@ -78,7 +80,9 @@ export class TeamManagerService {
         logoUrl: true,
         city: true,
         status: true,
-        stadium: { select: { id: true, name: true, city: true } },
+        stadium: {
+          select: { id: true, name: true, city: true, address: true },
+        },
       },
     },
     reviewedBy: {
@@ -192,7 +196,9 @@ export class TeamManagerService {
         stadiumId: true,
         createdAt: true,
         updatedAt: true,
-        stadium: { select: { id: true, name: true, city: true } },
+        stadium: {
+          select: { id: true, name: true, city: true, address: true },
+        },
       },
     });
   }
@@ -239,7 +245,9 @@ export class TeamManagerService {
         stadiumId: true,
         createdAt: true,
         updatedAt: true,
-        stadium: { select: { id: true, name: true, city: true } },
+        stadium: {
+          select: { id: true, name: true, city: true, address: true },
+        },
       },
       orderBy: { name: 'asc' },
     });
@@ -1818,6 +1826,7 @@ export class TeamManagerService {
       proposedTeamName: string | null;
       proposedTeamShortName: string | null;
       proposedTeamCity: string | null;
+      proposedCoachName: string | null;
       proposedTeamLogoUrl: string | null;
       proposedTeamStatus: TeamStatus | null;
       proposedStadiumId: string | null;
@@ -1844,6 +1853,7 @@ export class TeamManagerService {
             name: request.proposedTeamName!.trim(),
             shortName: request.proposedTeamShortName?.trim() || null,
             city: request.proposedTeamCity?.trim() || null,
+            coachName: request.proposedCoachName?.trim() || null,
             logoUrl: request.proposedTeamLogoUrl?.trim() || null,
             stadiumId: request.proposedStadiumId || null,
             status: request.proposedTeamStatus ?? TeamStatus.ACTIVE,
@@ -1890,6 +1900,7 @@ export class TeamManagerService {
       proposedTeamName: string | null;
       proposedTeamShortName: string | null;
       proposedTeamCity: string | null;
+      proposedCoachName: string | null;
       proposedTeamLogoUrl: string | null;
       proposedTeamStatus: TeamStatus | null;
     },
@@ -1915,6 +1926,7 @@ export class TeamManagerService {
           name: request.proposedTeamName!.trim(),
           shortName: request.proposedTeamShortName?.trim() || null,
           city: request.proposedTeamCity?.trim() || null,
+          coachName: request.proposedCoachName?.trim() || null,
           logoUrl: request.proposedTeamLogoUrl?.trim() || null,
           status: request.proposedTeamStatus ?? TeamStatus.ACTIVE,
         },

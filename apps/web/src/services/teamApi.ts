@@ -10,7 +10,7 @@ export type Team = {
   city?: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   stadiumId?: string | null;
-  stadium?: { id: string; name: string; city?: string } | null;
+  stadium?: { id: string; name: string; city?: string; address?: string | null } | null;
   managedUsers?: {
     id: string;
     email: string;

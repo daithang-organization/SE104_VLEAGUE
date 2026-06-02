@@ -307,13 +307,7 @@ select {
   vertical-align: middle;
   background: currentColor;
   opacity: 0.94;
-}
-
-.sidebar-menu-icon-head-to-head,
-.sidebar-menu-icon-regulations,
-.sidebar-menu-icon-users {
-  width: 22px;
-  transform: translateX(-2px);
+  transform: translateX(-4px);
 }
 
 .sidebar-menu-ant-icon.anticon {

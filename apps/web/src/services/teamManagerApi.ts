@@ -50,6 +50,7 @@ export type TeamManagerRequest = {
   proposedTeamName?: string | null;
   proposedTeamShortName?: string | null;
   proposedTeamCity?: string | null;
+  proposedCoachName?: string | null;
   proposedTeamLogoUrl?: string | null;
   proposedTeamStatus?: Team['status'] | null;
   proposedStadiumId?: string | null;
@@ -77,6 +78,7 @@ export type CreateTeamManagerRequestPayload =
       proposedTeamName: string;
       proposedTeamShortName?: string;
       proposedTeamCity?: string;
+      proposedCoachName?: string;
       proposedTeamLogoUrl?: string;
       proposedTeamStatus?: Team['status'];
       proposedStadiumId?: string;
@@ -88,6 +90,7 @@ export type CreateTeamManagerRequestPayload =
       proposedTeamName: string;
       proposedTeamShortName?: string;
       proposedTeamCity?: string;
+      proposedCoachName?: string;
       proposedTeamLogoUrl?: string;
       proposedTeamStatus?: Team['status'];
       requestNote?: string;
