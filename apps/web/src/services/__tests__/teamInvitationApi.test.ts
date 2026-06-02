@@ -10,13 +10,14 @@ const mockApi = vi.hoisted(() => ({
 vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
+  apiApproveAllInvitationCandidates,
+  apiDeletePromotionCandidate,
   apiGetInvitationCandidates,
   apiGetMyInvitations,
   apiGetMyPendingInvitations,
   apiGetPromotionCandidates,
   apiGetSeasonInvitations,
   apiImportPromotionCandidates,
-  apiDeletePromotionCandidate,
   apiRespondTeamInvitation,
   apiSendTeamInvitation,
   apiUpsertPromotionCandidate,
@@ -49,6 +50,18 @@ describe('teamInvitationApi', () => {
       sourceType: 'REPLACEMENT',
     });
     expect(result).toEqual(invitation);
+  });
+
+  it('apiApproveAllInvitationCandidates calls POST /seasons/:id/invitation-candidates/approve-all', async () => {
+    const response = { approvedCount: 2, candidates: [] };
+    mockApi.post.mockResolvedValue({ data: response });
+
+    const result = await apiApproveAllInvitationCandidates('season-1');
+
+    expect(mockApi.post).toHaveBeenCalledWith(
+      '/seasons/season-1/invitation-candidates/approve-all',
+    );
+    expect(result).toEqual(response);
   });
 
   it('apiGetInvitationCandidates calls GET /seasons/:id/invitation-candidates', async () => {
