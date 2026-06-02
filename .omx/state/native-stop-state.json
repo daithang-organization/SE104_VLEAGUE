@@ -242,11 +242,11 @@
     },
     "019e877c-8da5-7382-be66-157985210410": {
       "ordinary_no_progress_guard": {
-        "fingerprint": "ordinary|đây không phải lỗi seed. đây là lỗi migration prisma. nguyên nhân: migration `20260602060332` đang rename lại một index đã được rename ở migration trước `20260602031513_add_proposed_coach_name`. vì index tên cũ không còn tồn tại nên postgresql báo: `relation \"...effective_match_id\" does not exist` tôi đã sửa file [migration.sql](/c:/se104_vleague/apps/api/prisma/migrations/20260602060332/migration.sql) bằng cách bỏ lệnh `alter index ... rename` bị lặp. vì prisma đã ghi nhận migration này là failed, bạn cần resolve rồi chạy lại: ```powershell pnpm --dir apps/api exec prisma migrate resolve --rolled-back 20260602060332 pnpm --dir apps/api exec prisma migrate deploy ``` nếu vẫn thấy `command \"prisma\" not found`, đó là lỗi phụ từ pnpm/dependency resolution. chạy lại bằng `--dir apps/api` như trên thường tránh lỗi `--filter`. nếu vẫn lỗi thì chạy `pnpm install` ở root rồi chạy lại 2 lệnh trên.",
-        "first_seen_at": "2026-06-02T09:16:30.642Z",
-        "last_seen_at": "2026-06-02T09:16:30.642Z",
+        "fingerprint": "ordinary|đúng lỗi: backend đang cache luôn `get /standings/draw-lot/status`, nên sau khi bấm “rút thăm tự động”, frontend đọc lại vẫn nhận status cũ. vì vậy bảng “kết quả rút thăm” và nút “xác nhận kết quả” không hiện. tôi đã sửa [standings.controller.ts](/c:/se104_vleague/apps/api/src/standings/standings.controller.ts) để `cacheinterceptor` chỉ áp dụng cho `get /standings`, không áp dụng cho `draw-lot/status` và `awards`. đã kiểm tra: - `pnpm --dir apps/api test -- standings.controller.spec.ts` passed - `pnpm --dir apps/api test -- standings.service.spec.ts` passed - prettier check passed bạn restart api rồi refresh trang. sau khi bấm “rút thăm tự động (random)”, nó sẽ hiện bảng “kết quả rút thăm” và nút “xác nhận kết quả”; bấm xác nhận xong thì đội vô địch sẽ được chốt theo kết quả rút thăm.",
+        "first_seen_at": "2026-06-02T09:24:17.191Z",
+        "last_seen_at": "2026-06-02T09:24:17.191Z",
         "repeat_count": 1,
-        "last_turn_id": "019e879b-9f4b-7bf2-8097-d9599ab2fc5f",
+        "last_turn_id": "019e87a4-4953-78c3-ab99-a6b6d85e99e9",
         "last_thread_id": null
       }
     }
