@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { MatchFixtureCard, ProfileSkeleton } from '../components';
+import { apiGetCurrentSeason } from '../services/seasonApi';
 import { apiGetTeam, type TeamDetail } from '../services/teamApi';
 
 import { POSITION_MAP, STATUS_MAP } from '../utils/constants';
@@ -70,7 +71,9 @@ export default function TeamDetailPage() {
     let cancelled = false;
     const fetchTeam = async () => {
       try {
-        const data = await apiGetTeam(id);
+        const currentSeasonId =
+          stateSeasonId ?? (await apiGetCurrentSeason().catch(() => null))?.id;
+        const data = await apiGetTeam(id, currentSeasonId);
         if (!cancelled) setTeamData(data);
       } catch (_err) {
         if (!cancelled) message.error(t('teamDetail.loadError'));
