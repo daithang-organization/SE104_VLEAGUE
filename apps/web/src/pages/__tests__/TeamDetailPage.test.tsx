@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +9,7 @@ const mockTeamApi = vi.hoisted(() => ({
     shortName: 'CAHN',
     logoUrl: null,
     city: 'Hà Nội',
+    coachName: 'Alexandre Polking',
     status: 'ACTIVE',
     stadiumId: 's1',
     stadium: { id: 's1', name: 'Sân vận động Hàng Đẫy', city: 'Hà Nội' },
@@ -28,6 +29,17 @@ const mockTeamApi = vi.hoisted(() => ({
   }),
 }));
 
+const mockSeasonApi = vi.hoisted(() => ({
+  apiGetCurrentSeason: vi.fn().mockResolvedValue({
+    id: 'season-2026',
+    name: 'VLeague 2026-2027',
+    year: 2026,
+    status: 'IN_PROGRESS',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }),
+}));
+
 const mockUseAuth = vi.hoisted(() =>
   vi.fn(() => ({
     user: { id: 'u-admin', email: 'admin@demo.local', role: 'ADMIN' },
@@ -40,6 +52,7 @@ const mockUseAuth = vi.hoisted(() =>
 
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/teamApi', () => mockTeamApi);
+vi.mock('../../services/seasonApi', () => mockSeasonApi);
 
 import TeamDetailPage from '../TeamDetailPage';
 
@@ -85,9 +98,21 @@ describe('TeamDetailPage', () => {
     expect(code.closest('.club-detail-facts')).not.toBeNull();
   });
 
-  it('renders manager information in the overview table', async () => {
+  it('renders coach name with manager email in the overview table', async () => {
     renderPage();
 
-    expect(await screen.findByText('Manager CAHN (manager.cahn@demo.local)')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Alexandre Polking (manager.cahn@demo.local)'),
+    ).toBeInTheDocument();
+  });
+
+  it('loads team matches for the current season', async () => {
+    renderPage();
+
+    await screen.findByRole('img', { name: 'Công An Hà Nội' });
+
+    await waitFor(() => {
+      expect(mockTeamApi.apiGetTeam).toHaveBeenCalledWith('t1', 'season-2026');
+    });
   });
 });

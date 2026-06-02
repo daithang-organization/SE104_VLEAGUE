@@ -1716,7 +1716,7 @@ export default function SeasonsPage() {
       fetchSeasons();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'errorFields' in err) return;
-      message.error(t('seasons.saveError'));
+      message.error(getBackendErrorMessage(err) || t('seasons.saveError'));
     } finally {
       setSaving(false);
     }

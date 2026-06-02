@@ -72,17 +72,21 @@ const mockStandingsApi = vi.hoisted(() => ({
   apiGetTeamStats: vi.fn().mockResolvedValue([
     {
       teamId: 't1',
-      teamName: 'HÃ  Ná»™i FC',
+      teamName: 'Hà Nội FC',
       played: 10,
       goalsFor: 20,
+      goalsAgainst: 5,
+      points: 25,
       yellowCards: 8,
       redCards: 1,
     },
     {
       teamId: 't2',
-      teamName: 'Háº£i PhÃ²ng FC',
+      teamName: 'Hải Phòng FC',
       played: 10,
       goalsFor: 18,
+      goalsAgainst: 8,
+      points: 23,
       yellowCards: 7,
       redCards: 0,
     },
@@ -174,6 +178,18 @@ describe('StandingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Hà Nội FC')).toBeInTheDocument();
       expect(screen.getByText('Hải Phòng FC')).toBeInTheDocument();
+    });
+  });
+
+  it('summarizes total goals and defensive leader in the hero metrics', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Tổng số bàn thắng')).toBeInTheDocument();
+    expect(screen.getByText('Bàn thua ít nhất')).toBeInTheDocument();
+    expect(screen.queryByText('Số điểm cao nhất')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('38').length).toBeGreaterThan(0);
+      expect(screen.getAllByAltText('Hà Nội FC logo').length).toBeGreaterThan(0);
     });
   });
 

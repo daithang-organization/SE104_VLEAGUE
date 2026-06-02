@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { MatchOfficialRole, Prisma } from '@prisma/client';
+import { MatchLineupStatus, MatchOfficialRole, Prisma } from '@prisma/client';
 import type { CurrentUserPayload } from '../auth';
 import { MatchLineupService } from '../match-lineup/match-lineup.service';
 import { NotificationService } from '../notification/notification.service';
@@ -188,8 +188,19 @@ export class MatchService {
       throw new NotFoundException(`Không tìm thấy trận đấu với ID ${matchId}`);
     }
 
+    const isScoreUpdate =
+      data.homeScore !== undefined || data.awayScore !== undefined;
+
     // Block edits on FINISHED or LOCKED matches
     if (match.status === 'FINISHED' || match.status === 'LOCKED') {
+      if (isScoreUpdate) {
+        const reason =
+          match.status === 'FINISHED'
+            ? 'Trận đấu đã kết thúc nên không thể cập nhật tỉ số. Hãy mở lại trạng thái trận đấu trước khi chỉnh sửa tỉ số.'
+            : 'Trận đấu đang khóa nên không thể cập nhật tỉ số. Hãy chuyển trạng thái trận đấu trước khi chỉnh sửa tỉ số.';
+        throw new BadRequestException(reason);
+      }
+
       throw new BadRequestException(
         `Không thể chỉnh sửa trận đấu ở trạng thái ${match.status}`,
       );
@@ -210,7 +221,7 @@ export class MatchService {
       updateData.kickoffAt = data.kickoffAt ? new Date(data.kickoffAt) : null;
     if (data.homeScore !== undefined) updateData.homeScore = data.homeScore;
     if (data.awayScore !== undefined) updateData.awayScore = data.awayScore;
-    if (data.homeScore !== undefined || data.awayScore !== undefined) {
+    if (isScoreUpdate) {
       updateData.scoreSource =
         data.homeScore === null && data.awayScore === null ? null : 'ADMIN';
     }
@@ -228,7 +239,7 @@ export class MatchService {
     if (
       updatedMatch.homeScore !== null &&
       updatedMatch.awayScore !== null &&
-      (data.homeScore !== undefined || data.awayScore !== undefined)
+      isScoreUpdate
     ) {
       await this.prisma.matchReport.updateMany({
         where: { matchId },
@@ -557,6 +568,10 @@ export class MatchService {
       );
     }
 
+    if (newStatus === 'LOCKED') {
+      await this.assertCanLockMatch(match);
+    }
+
     // Validate that scores are set before transitioning to FINISHED
     if (newStatus === 'FINISHED') {
       if (match.homeScore === null || match.awayScore === null) {
@@ -564,6 +579,7 @@ export class MatchService {
           'Phải có tỷ số trước khi kết thúc trận đấu',
         );
       }
+      await this.assertCanFinishMatch(matchId);
     }
 
     const updated = await this.prisma.match.update({
@@ -628,5 +644,115 @@ export class MatchService {
     }
 
     return updated;
+  }
+
+  private async assertCanLockMatch(match: {
+    id: string;
+    homeTeamId: string;
+    awayTeamId: string;
+  }) {
+    const refereeRoles: MatchOfficialRole[] = [
+      MatchOfficialRole.MAIN_REFEREE,
+      MatchOfficialRole.ASSISTANT_REFEREE,
+      MatchOfficialRole.FOURTH_OFFICIAL,
+    ];
+    const [
+      approvedLineupCount,
+      refereeAssignmentCount,
+      supervisorCount,
+      officialAssignments,
+    ] = await Promise.all([
+      this.prisma.matchTeamRegistration.count({
+        where: {
+          matchId: match.id,
+          teamId: { in: [match.homeTeamId, match.awayTeamId] },
+          status: MatchLineupStatus.APPROVED,
+        },
+      }),
+      this.prisma.matchOfficialAssignment.count({
+        where: {
+          matchId: match.id,
+          role: { in: refereeRoles },
+          official: { status: 'ACTIVE' },
+        },
+      }),
+      this.prisma.matchOfficialAssignment.count({
+        where: {
+          matchId: match.id,
+          role: MatchOfficialRole.SUPERVISOR,
+          official: { status: 'ACTIVE' },
+        },
+      }),
+      this.prisma.matchOfficialAssignment.findMany({
+        where: {
+          matchId: match.id,
+          role: {
+            in: [...refereeRoles, MatchOfficialRole.SUPERVISOR],
+          },
+          official: { status: 'ACTIVE' },
+        },
+        select: { officialId: true, role: true },
+      }),
+    ]);
+
+    if (approvedLineupCount < 2) {
+      throw new BadRequestException(
+        'Phải có đội hình đã được BTC duyệt cho cả hai đội trước khi khóa trận.',
+      );
+    }
+
+    if (refereeAssignmentCount === 0) {
+      throw new BadRequestException(
+        'Phải phân công trọng tài trước khi khóa trận.',
+      );
+    }
+
+    if (supervisorCount === 0) {
+      throw new BadRequestException(
+        'Phải phân công giám sát trước khi khóa trận.',
+      );
+    }
+
+    const refereeOfficialIds = new Set(
+      (officialAssignments ?? [])
+        .filter((assignment) => refereeRoles.includes(assignment.role))
+        .map((assignment) => assignment.officialId),
+    );
+    const supervisorAlsoReferee = (officialAssignments ?? []).some(
+      (assignment) =>
+        assignment.role === MatchOfficialRole.SUPERVISOR &&
+        refereeOfficialIds.has(assignment.officialId),
+    );
+
+    if (supervisorAlsoReferee) {
+      throw new BadRequestException(
+        'Trọng tài và giám sát phải là 2 người khác nhau trước khi khóa trận.',
+      );
+    }
+  }
+
+  private async assertCanFinishMatch(matchId: string) {
+    const [matchReport, disciplineReport] = await Promise.all([
+      this.prisma.matchReport.findUnique({
+        where: { matchId },
+        select: { id: true },
+      }),
+      this.prisma.disciplineReport.findUnique({
+        where: { matchId },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!matchReport) {
+      throw new BadRequestException(
+        'Phải có biên bản trọng tài trước khi kết thúc trận đấu.',
+      );
+    }
+
+    if (!disciplineReport) {
+      throw new BadRequestException(
+        'Phải có báo cáo giám sát trước khi kết thúc trận đấu.',
+      );
+    }
   }
 }

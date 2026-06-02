@@ -1,6 +1,7 @@
 import { Flex, Form, InputNumber, message, Modal, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../../lib/apiError';
 import { apiUpdateMatch, type Match } from '../../services/matchApi';
 
 const { Title } = Typography;
@@ -37,8 +38,8 @@ export default function ScoreModal({ match, open, onCancel, onSuccess }: Props) 
       message.success(t('scoreModal.success'));
       onCancel();
       onSuccess();
-    } catch (_err) {
-      message.error(t('scoreModal.error'));
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err) || t('scoreModal.error'));
     } finally {
       setSaving(false);
     }

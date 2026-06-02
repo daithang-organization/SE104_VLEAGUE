@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
@@ -21,35 +21,41 @@ describe('SeasonService', () => {
   };
 
   beforeEach(async () => {
+    const prismaMock: any = {
+      $transaction: jest.fn((callback) => callback(prismaMock)),
+      season: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      seasonTeam: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      team: {
+        findUnique: jest.fn(),
+      },
+      teamPlayer: {
+        count: jest.fn(),
+        findMany: jest.fn(),
+      },
+      regulation: {
+        findMany: jest.fn(),
+        createMany: jest.fn(),
+      },
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SeasonService,
         {
           provide: PrismaService,
-          useValue: {
-            season: {
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              findFirst: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-            seasonTeam: {
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
-            team: {
-              findUnique: jest.fn(),
-            },
-            teamPlayer: {
-              count: jest.fn(),
-              findMany: jest.fn(),
-            },
-          },
+          useValue: prismaMock,
         },
         {
           provide: RegulationHelper,
@@ -141,6 +147,106 @@ describe('SeasonService', () => {
       const result = await service.create(createDto);
 
       expect(result.name).toBe('VLeague 2025');
+      expect(prisma.regulation.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              seasonId: 'new-id',
+              key: 'WIN_POINTS',
+              value: '3',
+            }),
+          ]),
+          skipDuplicates: true,
+        }),
+      );
+    });
+
+    it('copies regulations from the active season when creating a new season', async () => {
+      const createDto = { name: 'VLeague 2025', year: 2025 };
+      jest.spyOn(prisma.season, 'create').mockResolvedValue({
+        ...mockSeason,
+        ...createDto,
+        id: 'new-id',
+      });
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
+        if (args?.where?.regulations) {
+          return Promise.resolve({
+            ...mockSeason,
+            id: 'source-season',
+          });
+        }
+        return Promise.resolve(null);
+      }) as any);
+      jest.spyOn(prisma.regulation, 'findMany').mockResolvedValue([
+        { key: 'WIN_POINTS', value: '4', valueType: 'number' },
+        { key: 'DRAW_POINTS', value: '2', valueType: 'number' },
+      ] as any);
+
+      await service.create(createDto);
+
+      expect(prisma.regulation.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            seasonId: 'new-id',
+            key: 'WIN_POINTS',
+            value: '4',
+            valueType: 'number',
+          },
+          {
+            seasonId: 'new-id',
+            key: 'DRAW_POINTS',
+            value: '2',
+            valueType: 'number',
+          },
+        ],
+        skipDuplicates: true,
+      });
+    });
+
+    it('should reject creating a season when the selected year already exists', async () => {
+      const createDto = {
+        name: 'VLeague 2024-2025',
+        year: 2024,
+        startDate: new Date('2024-09-01'),
+        endDate: new Date('2025-06-30'),
+      };
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
+        if (args?.where?.year === 2024) {
+          return Promise.resolve(mockSeason);
+        }
+        return Promise.resolve(null);
+      }) as any);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.season.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject creating a season when its date range overlaps another season', async () => {
+      const createDto = {
+        name: 'VLeague 2026',
+        year: 2026,
+        startDate: new Date('2024-06-01'),
+        endDate: new Date('2024-10-01'),
+      };
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
+        if (args?.where?.startDate && args?.where?.endDate) {
+          return Promise.resolve(mockSeason);
+        }
+        return Promise.resolve(null);
+      }) as any);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.season.create).not.toHaveBeenCalled();
     });
 
     it('should throw ConflictException if season name exists', async () => {
@@ -155,6 +261,36 @@ describe('SeasonService', () => {
       // The service rethrows as-is if not Prisma.PrismaClientKnownRequestError instance
       // So we just test that the create was rejected
       await expect(service.create(createDto)).rejects.toBeDefined();
+    });
+  });
+
+  describe('update', () => {
+    it('should reject updating a season when its date range overlaps another season', async () => {
+      const existingSeason = {
+        ...mockSeason,
+        id: 'season-2',
+        year: 2026,
+        startDate: new Date('2026-09-01'),
+        endDate: new Date('2027-06-30'),
+        matches: [],
+      };
+      jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(existingSeason);
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
+        if (args?.where?.startDate && args?.where?.endDate) {
+          return Promise.resolve(mockSeason);
+        }
+        return Promise.resolve(null);
+      }) as any);
+
+      await expect(
+        service.update('season-2', {
+          startDate: new Date('2024-06-01'),
+          endDate: new Date('2024-10-01'),
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.season.update).not.toHaveBeenCalled();
     });
   });
 

@@ -7,6 +7,37 @@ export type TeamInvitationStatus = 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
 export type PromotionQualificationType = 'CHAMPION' | 'RUNNER_UP' | 'PLAYOFF' | 'REPLACEMENT_POOL';
 export type PromotionCandidateStatus = 'ELIGIBLE' | 'INVITED' | 'ACCEPTED' | 'DECLINED' | 'SKIPPED';
 
+export type TeamInvitationCompliance = {
+  roster: {
+    current: number;
+    min: number;
+    max: number;
+    ok: boolean;
+  };
+  foreignPlayers: {
+    current: number;
+    max: number;
+    maxOnField: number;
+    ok: boolean;
+  };
+  age: {
+    min: number;
+    max: number;
+    total: number;
+    invalidCount: number;
+    ok: boolean;
+  };
+  stadium: {
+    stadiumId: string | null;
+    stadiumName: string | null;
+    capacity: number | null;
+    fifaStars: number | null;
+    minCapacity: number;
+    minFifaStars: number;
+    ok: boolean;
+  };
+};
+
 export type TeamInvitation = {
   id: string;
   seasonId: string;
@@ -18,6 +49,7 @@ export type TeamInvitation = {
   responseAt: string | null;
   responseReason: string | null;
   regulationsSnapshot: Record<string, string> | null;
+  compliance?: TeamInvitationCompliance;
   promotionNote: string | null;
   season?: Season;
   team?: Team;

@@ -136,6 +136,32 @@ export default function MatchDetailPage() {
     FOURTH_OFFICIAL: t('matchDetail.officialRoleFourthOfficial'),
     SUPERVISOR: t('matchDetail.officialRoleSupervisor'),
   };
+  const officialAccountRoleLabel: Record<NonNullable<Official['accountRole']>, string> = {
+    ADMIN: t('roleLabel.ADMIN'),
+    TEAM_MANAGER: t('roleLabel.TEAM_MANAGER'),
+    REFEREE: t('roleLabel.REFEREE'),
+    SUPERVISOR: t('matchDetail.officialRoleSupervisor'),
+    PUBLIC: t('roleLabel.PUBLIC'),
+  };
+  const getOfficialAccountRoleLabel = (role?: Official['accountRole'] | null) =>
+    role ? (officialAccountRoleLabel[role] ?? role) : null;
+  const renderOfficialNameWithAccountRole = (
+    official: Official | null | undefined,
+    fallback: string,
+  ) => {
+    const accountRoleLabel = getOfficialAccountRoleLabel(official?.accountRole);
+
+    return (
+      <Space orientation="vertical" size={0}>
+        <Text>{official?.fullName ?? fallback}</Text>
+        {accountRoleLabel && (
+          <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+            {t('matchDetail.officialAccountRolePrefix')}: {accountRoleLabel}
+          </Text>
+        )}
+      </Space>
+    );
+  };
   const disciplineRatingMeta: Record<
     string,
     { alertType: 'success' | 'warning' | 'error' | 'info'; label: string }
@@ -1035,7 +1061,7 @@ export default function MatchDetailPage() {
       title: t('matchDetail.colFullName'),
       key: 'official',
       render: (_: unknown, assignment: MatchOfficialAssignment) =>
-        assignment.official?.fullName ?? assignment.officialId,
+        renderOfficialNameWithAccountRole(assignment.official, assignment.officialId),
     },
     {
       title: t('matchDetail.colNote'),
@@ -1161,11 +1187,14 @@ export default function MatchDetailPage() {
                 supervisorAssignments.length
                   ? supervisorAssignments.map((assignment) => ({
                       value: assignment.officialId,
-                      label: assignment.official?.fullName ?? assignment.officialId,
+                      label: renderOfficialNameWithAccountRole(
+                        assignment.official,
+                        assignment.officialId,
+                      ),
                     }))
                   : officials.map((official) => ({
                       value: official.id,
-                      label: official.fullName,
+                      label: renderOfficialNameWithAccountRole(official, official.id),
                     }))
               }
             />
@@ -1336,7 +1365,7 @@ export default function MatchDetailPage() {
                   onChange={setSelectedOfficialId}
                   options={officials.map((official) => ({
                     value: official.id,
-                    label: official.fullName,
+                    label: renderOfficialNameWithAccountRole(official, official.id),
                   }))}
                 />
               </Space>

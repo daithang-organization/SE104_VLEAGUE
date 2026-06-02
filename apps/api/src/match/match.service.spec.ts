@@ -54,7 +54,18 @@ describe('MatchService', () => {
               delete: jest.fn(),
             },
             matchReport: {
+              findUnique: jest.fn(),
               updateMany: jest.fn(),
+            },
+            disciplineReport: {
+              findUnique: jest.fn(),
+            },
+            matchTeamRegistration: {
+              count: jest.fn(),
+            },
+            matchOfficialAssignment: {
+              count: jest.fn(),
+              findMany: jest.fn(),
             },
           },
         },
@@ -246,6 +257,38 @@ describe('MatchService', () => {
   });
 
   describe('updateMatch', () => {
+    it('rejects score updates on finished matches with a specific reason', async () => {
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+        ...mockMatch,
+        status: 'FINISHED',
+      } as any);
+
+      await expect(
+        service.updateMatch('match-1', {
+          homeScore: 3,
+          awayScore: 0,
+        }),
+      ).rejects.toThrow(
+        'Trận đấu đã kết thúc nên không thể cập nhật tỉ số. Hãy mở lại trạng thái trận đấu trước khi chỉnh sửa tỉ số.',
+      );
+    });
+
+    it('rejects score updates on locked matches with a specific reason', async () => {
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+        ...mockMatch,
+        status: 'LOCKED',
+      } as any);
+
+      await expect(
+        service.updateMatch('match-1', {
+          homeScore: 1,
+          awayScore: 1,
+        }),
+      ).rejects.toThrow(
+        'Trận đấu đang khóa nên không thể cập nhật tỉ số. Hãy chuyển trạng thái trận đấu trước khi chỉnh sửa tỉ số.',
+      );
+    });
+
     it('syncs an existing match report score when the admin score is updated', async () => {
       jest
         .spyOn(prisma.match, 'findUnique')
@@ -508,6 +551,15 @@ describe('MatchService', () => {
     it('should allow PUBLISHED → LOCKED transition', async () => {
       const match = { ...mockMatch, status: 'PUBLISHED' };
       jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.matchTeamRegistration, 'count').mockResolvedValue(2);
+      jest
+        .spyOn(prisma.matchOfficialAssignment, 'count')
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(1);
+      jest.spyOn(prisma.matchOfficialAssignment, 'findMany').mockResolvedValue([
+        { officialId: 'official-referee', role: 'MAIN_REFEREE' },
+        { officialId: 'official-supervisor', role: 'SUPERVISOR' },
+      ] as any);
       jest.spyOn(prisma.match, 'update').mockResolvedValue({
         ...match,
         status: 'LOCKED',
@@ -518,9 +570,94 @@ describe('MatchService', () => {
       expect(result.status).toBe('LOCKED');
     });
 
+    it('should reject PUBLISHED → LOCKED when both teams do not have approved lineups', async () => {
+      const match = { ...mockMatch, status: 'PUBLISHED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.matchTeamRegistration, 'count').mockResolvedValue(1);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'LOCKED',
+      } as any);
+
+      await expect(service.updateStatus('match-1', 'LOCKED')).rejects.toThrow(
+        'Phải có đội hình đã được BTC duyệt cho cả hai đội trước khi khóa trận.',
+      );
+
+      expect(prisma.match.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject PUBLISHED → LOCKED when no referee has been assigned', async () => {
+      const match = { ...mockMatch, status: 'PUBLISHED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.matchTeamRegistration, 'count').mockResolvedValue(2);
+      jest
+        .spyOn(prisma.matchOfficialAssignment, 'count')
+        .mockResolvedValueOnce(0);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'LOCKED',
+      } as any);
+
+      await expect(service.updateStatus('match-1', 'LOCKED')).rejects.toThrow(
+        'Phải phân công trọng tài trước khi khóa trận.',
+      );
+
+      expect(prisma.match.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject PUBLISHED → LOCKED when no supervisor has been assigned', async () => {
+      const match = { ...mockMatch, status: 'PUBLISHED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.matchTeamRegistration, 'count').mockResolvedValue(2);
+      jest
+        .spyOn(prisma.matchOfficialAssignment, 'count')
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'LOCKED',
+      } as any);
+
+      await expect(service.updateStatus('match-1', 'LOCKED')).rejects.toThrow(
+        'Phải phân công giám sát trước khi khóa trận.',
+      );
+
+      expect(prisma.match.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject PUBLISHED → LOCKED when one official is assigned as both referee and supervisor', async () => {
+      const match = { ...mockMatch, status: 'PUBLISHED' };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.matchTeamRegistration, 'count').mockResolvedValue(2);
+      jest
+        .spyOn(prisma.matchOfficialAssignment, 'count')
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(1);
+      jest.spyOn(prisma.matchOfficialAssignment, 'findMany').mockResolvedValue([
+        { officialId: 'official-1', role: 'MAIN_REFEREE' },
+        { officialId: 'official-1', role: 'SUPERVISOR' },
+      ] as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'LOCKED',
+      } as any);
+
+      await expect(service.updateStatus('match-1', 'LOCKED')).rejects.toThrow(
+        'Trọng tài và giám sát phải là 2 người khác nhau trước khi khóa trận.',
+      );
+
+      expect(prisma.match.update).not.toHaveBeenCalled();
+    });
+
     it('should allow LOCKED → FINISHED transition', async () => {
       const match = { ...mockMatch, status: 'LOCKED' };
       jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest
+        .spyOn(prisma.matchReport, 'findUnique')
+        .mockResolvedValue({ id: 'report-1' } as any);
+      jest
+        .spyOn(prisma.disciplineReport, 'findUnique')
+        .mockResolvedValue({ id: 'discipline-1' } as any);
       jest.spyOn(prisma.match, 'update').mockResolvedValue({
         ...match,
         status: 'FINISHED',
@@ -529,6 +666,54 @@ describe('MatchService', () => {
       const result = await service.updateStatus('match-1', 'FINISHED');
 
       expect(result.status).toBe('FINISHED');
+    });
+
+    it('should reject LOCKED → FINISHED when the referee report is missing', async () => {
+      const match = {
+        ...mockMatch,
+        status: 'LOCKED',
+        homeScore: 2,
+        awayScore: 1,
+      };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest.spyOn(prisma.matchReport, 'findUnique').mockResolvedValue(null);
+      jest
+        .spyOn(prisma.disciplineReport, 'findUnique')
+        .mockResolvedValue({ id: 'discipline-1' } as any);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'FINISHED',
+      } as any);
+
+      await expect(service.updateStatus('match-1', 'FINISHED')).rejects.toThrow(
+        'Phải có biên bản trọng tài trước khi kết thúc trận đấu.',
+      );
+
+      expect(prisma.match.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject LOCKED → FINISHED when the supervisor report is missing', async () => {
+      const match = {
+        ...mockMatch,
+        status: 'LOCKED',
+        homeScore: 2,
+        awayScore: 1,
+      };
+      jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest
+        .spyOn(prisma.matchReport, 'findUnique')
+        .mockResolvedValue({ id: 'report-1' } as any);
+      jest.spyOn(prisma.disciplineReport, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prisma.match, 'update').mockResolvedValue({
+        ...match,
+        status: 'FINISHED',
+      } as any);
+
+      await expect(service.updateStatus('match-1', 'FINISHED')).rejects.toThrow(
+        'Phải có báo cáo giám sát trước khi kết thúc trận đấu.',
+      );
+
+      expect(prisma.match.update).not.toHaveBeenCalled();
     });
 
     it('should reject invalid transition DRAFT → FINISHED', async () => {
@@ -593,6 +778,12 @@ describe('MatchService', () => {
         seasonId: 'season-1',
       };
       jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(match as any);
+      jest
+        .spyOn(prisma.matchReport, 'findUnique')
+        .mockResolvedValue({ id: 'report-1' } as any);
+      jest
+        .spyOn(prisma.disciplineReport, 'findUnique')
+        .mockResolvedValue({ id: 'discipline-1' } as any);
       jest.spyOn(prisma.match, 'update').mockResolvedValue({
         ...match,
         status: 'FINISHED',

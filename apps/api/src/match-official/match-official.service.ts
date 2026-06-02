@@ -24,10 +24,12 @@ export class MatchOfficialService {
     private readonly matchLineupService: MatchLineupService,
   ) {}
 
-  listOfficials() {
-    return this.prisma.official.findMany({
+  async listOfficials() {
+    const officials = await this.prisma.official.findMany({
       orderBy: [{ status: 'asc' }, { fullName: 'asc' }],
     });
+
+    return this.addAccountRolesToOfficials(officials);
   }
 
   async createOfficial(dto: CreateOfficialDto) {
@@ -49,16 +51,32 @@ export class MatchOfficialService {
   async listAssignments(matchId: string) {
     await this.ensureMatch(matchId);
 
-    return this.prisma.matchOfficialAssignment.findMany({
+    const assignments = await this.prisma.matchOfficialAssignment.findMany({
       where: { matchId },
       include: { official: true },
       orderBy: [{ role: 'asc' }, { publishedAt: 'asc' }],
     });
+
+    const roleByEmail = await this.getAccountRoleByOfficialEmail(
+      assignments.map((assignment) => assignment.official),
+    );
+
+    return assignments.map((assignment) => ({
+      ...assignment,
+      official: {
+        ...assignment.official,
+        accountRole: this.resolveOfficialAccountRole(
+          assignment.official,
+          roleByEmail,
+        ),
+      },
+    }));
   }
 
   async assignOfficial(matchId: string, dto: AssignOfficialDto) {
     await this.ensureMatch(matchId);
     await this.ensureOfficial(dto.officialId);
+    await this.ensureOfficialHasNoOtherMatchRole(matchId, dto);
 
     if (dto.role === 'SUPERVISOR') {
       const supervisorCount = await this.prisma.matchOfficialAssignment.count({
@@ -130,7 +148,10 @@ export class MatchOfficialService {
     dto: SubmitMatchReportDto,
   ) {
     const match = await this.ensureMatch(matchId);
-    await this.ensureRefereeCanReport(matchId, submittedByUser);
+    const refereeAssignment = await this.ensureRefereeCanReport(
+      matchId,
+      submittedByUser,
+    );
     const existingReport = await this.prisma.matchReport.findUnique({
       where: { matchId },
       select: { id: true },
@@ -226,9 +247,17 @@ export class MatchOfficialService {
     });
 
     if (submittedByUser?.role === 'REFEREE') {
+      const refereeName =
+        refereeAssignment?.official?.fullName?.trim() ||
+        submittedByUser.email ||
+        'Trọng tài';
+      const matchName = `${match.homeTeam?.name ?? 'Đội nhà'} vs ${
+        match.awayTeam?.name ?? 'Đội khách'
+      }`;
+
       await this.notificationService.notifyAdmins({
         title: 'Trọng tài nộp biên bản',
-        message: `Trọng tài đã nộp biên bản trận đấu với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
+        message: `${refereeName} đã nộp biên bản trận ${matchName} với tỉ số ${homeScore} - ${awayScore}. Vui lòng kiểm tra.`,
         type: 'SYSTEM',
         entityType: 'match',
         entityId: matchId,
@@ -376,6 +405,10 @@ export class MatchOfficialService {
   private async ensureMatch(matchId: string) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
+      include: {
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+      },
     });
 
     if (!match) {
@@ -418,11 +451,27 @@ export class MatchOfficialService {
     }
   }
 
+  private async ensureOfficialHasNoOtherMatchRole(
+    matchId: string,
+    dto: AssignOfficialDto,
+  ) {
+    const assignments = await this.prisma.matchOfficialAssignment.findMany({
+      where: { matchId, officialId: dto.officialId },
+      select: { role: true },
+    });
+
+    if (assignments.some((assignment) => assignment.role !== dto.role)) {
+      throw new BadRequestException(
+        'Một trọng tài/giám sát viên chỉ được đảm nhận 1 vai trò trong cùng một trận.',
+      );
+    }
+  }
+
   private async ensureRefereeCanReport(
     matchId: string,
     user: CurrentUserPayload | undefined,
   ) {
-    if (user?.role === 'ADMIN') return;
+    if (user?.role === 'ADMIN') return null;
 
     const assignment = await this.prisma.matchOfficialAssignment.findFirst({
       where: {
@@ -433,6 +482,9 @@ export class MatchOfficialService {
           status: 'ACTIVE',
         },
       },
+      include: {
+        official: { select: { fullName: true, email: true } },
+      },
     });
 
     if (!assignment) {
@@ -440,6 +492,8 @@ export class MatchOfficialService {
         'Trọng tài phải được phân công cho trận trước khi nộp báo cáo.',
       );
     }
+
+    return assignment;
   }
 
   private ensureOfficialMatchesUser(
@@ -463,6 +517,62 @@ export class MatchOfficialService {
   private cleanOptional(value?: string) {
     const trimmed = value?.trim();
     return trimmed ? trimmed : undefined;
+  }
+
+  private async addAccountRolesToOfficials<
+    TOfficial extends { email?: string | null },
+  >(officials: TOfficial[]) {
+    const roleByEmail = await this.getAccountRoleByOfficialEmail(officials);
+
+    return officials.map((official) => ({
+      ...official,
+      accountRole: this.resolveOfficialAccountRole(official, roleByEmail),
+    }));
+  }
+
+  private async getAccountRoleByOfficialEmail(
+    officials: Array<{ email?: string | null }>,
+  ) {
+    const emails = Array.from(
+      new Set(
+        officials
+          .map((official) => this.normalizeEmail(official.email))
+          .filter((email): email is string => Boolean(email)),
+      ),
+    );
+
+    if (emails.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        OR: emails.map((email) => ({
+          email: { equals: email, mode: 'insensitive' },
+        })),
+      },
+      select: { email: true, role: true },
+    });
+
+    return new Map(
+      users.map((user) => [
+        this.normalizeEmail(user.email) as string,
+        user.role,
+      ]),
+    );
+  }
+
+  private resolveOfficialAccountRole(
+    official: { email?: string | null },
+    roleByEmail: Map<string, string>,
+  ) {
+    const email = this.normalizeEmail(official.email);
+    return email ? (roleByEmail.get(email) ?? null) : null;
+  }
+
+  private normalizeEmail(email?: string | null) {
+    const trimmed = email?.trim();
+    return trimmed ? trimmed.toLowerCase() : null;
   }
 
   private async getExistingReportEvents(matchId: string) {

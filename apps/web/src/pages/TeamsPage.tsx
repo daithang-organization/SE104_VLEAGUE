@@ -635,6 +635,10 @@ export default function TeamsPage() {
   };
 
   const getTeamManagerDisplay = (team: Team, request?: TeamManagerRequest) => {
+    if (team.coachName?.trim()) {
+      return team.coachName.trim();
+    }
+
     const assignedManager = team.managedUsers?.[0];
     if (assignedManager?.name || assignedManager?.email) {
       return assignedManager.name || assignedManager.email;

@@ -40,6 +40,9 @@ describe('MatchOfficialService', () => {
               findUnique: jest.fn(),
               create: jest.fn(),
             },
+            user: {
+              findMany: jest.fn(),
+            },
             match: {
               findUnique: jest.fn(),
               update: jest.fn(),
@@ -102,6 +105,9 @@ describe('MatchOfficialService', () => {
     jest.spyOn(prisma.matchReport, 'findUnique').mockResolvedValue(null);
     jest.spyOn(prisma.disciplineReport, 'findUnique').mockResolvedValue(null);
     jest.spyOn(prisma.matchEvent, 'findFirst').mockResolvedValue(null);
+    jest
+      .spyOn(prisma.matchOfficialAssignment, 'findMany')
+      .mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -126,6 +132,52 @@ describe('MatchOfficialService', () => {
         status: 'ACTIVE',
       },
     });
+  });
+
+  it('adds matching user account roles to the officials directory', async () => {
+    jest.spyOn(prisma.official, 'findMany').mockResolvedValue([
+      official,
+      {
+        id: 'official-2',
+        fullName: 'Đỗ Quốc Hưng',
+        email: 'supervisor@demo.local',
+        status: 'ACTIVE',
+      },
+    ] as any);
+    jest.spyOn(prisma.user, 'findMany').mockResolvedValue([
+      { email: 'referee@demo.local', role: 'REFEREE' },
+      { email: 'supervisor@demo.local', role: 'SUPERVISOR' },
+    ] as any);
+
+    const result = await service.listOfficials();
+
+    expect(result).toEqual([
+      expect.objectContaining({ id: 'official-1', accountRole: 'REFEREE' }),
+      expect.objectContaining({ id: 'official-2', accountRole: 'SUPERVISOR' }),
+    ]);
+  });
+
+  it('adds matching user account roles to listed match assignments', async () => {
+    jest.spyOn(prisma.matchOfficialAssignment, 'findMany').mockResolvedValue([
+      {
+        id: 'assignment-1',
+        matchId: 'match-1',
+        officialId: 'official-1',
+        role: 'MAIN_REFEREE',
+        official,
+      },
+    ] as any);
+    jest
+      .spyOn(prisma.user, 'findMany')
+      .mockResolvedValue([
+        { email: 'referee@demo.local', role: 'REFEREE' },
+      ] as any);
+
+    const result = await service.listAssignments('match-1');
+
+    expect(result[0].official).toEqual(
+      expect.objectContaining({ accountRole: 'REFEREE' }),
+    );
   });
 
   it('assigns a referee to a match and stores publish metadata', async () => {
@@ -173,6 +225,28 @@ describe('MatchOfficialService', () => {
         role: 'SUPERVISOR',
       }),
     ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.matchOfficialAssignment.upsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects assigning one official to multiple roles in the same match', async () => {
+    jest.spyOn(prisma.matchOfficialAssignment, 'findMany').mockResolvedValue([
+      {
+        id: 'assignment-existing',
+        matchId: 'match-1',
+        officialId: 'official-1',
+        role: 'SUPERVISOR',
+      },
+    ] as any);
+
+    await expect(
+      service.assignOfficial('match-1', {
+        officialId: 'official-1',
+        role: 'MAIN_REFEREE',
+      }),
+    ).rejects.toThrow(
+      'Một trọng tài/giám sát viên chỉ được đảm nhận 1 vai trò trong cùng một trận.',
+    );
 
     expect(prisma.matchOfficialAssignment.upsert).not.toHaveBeenCalled();
   });
@@ -345,6 +419,58 @@ describe('MatchOfficialService', () => {
     expect(matchLineupService.syncSuspensionsForMatch).toHaveBeenCalledWith(
       'match-1',
     );
+  });
+
+  it('includes referee and match details in the admin notification when a referee submits a report', async () => {
+    jest.spyOn(prisma.match, 'findUnique').mockResolvedValue({
+      ...match,
+      homeTeam: { name: 'Hà Nội FC' },
+      awayTeam: { name: 'Trường Tươi Đồng Nai' },
+    } as any);
+    jest.spyOn(prisma.matchOfficialAssignment, 'findFirst').mockResolvedValue({
+      id: 'assignment-1',
+      matchId: 'match-1',
+      officialId: 'official-1',
+      role: 'MAIN_REFEREE',
+      official,
+    } as any);
+    jest.spyOn(prisma.match, 'update').mockResolvedValue({
+      ...match,
+      homeScore: 1,
+      awayScore: 0,
+      scoreSource: 'REFEREE',
+    } as any);
+    jest.spyOn(prisma.matchReport, 'upsert').mockResolvedValue({
+      id: 'report-1',
+      matchId: 'match-1',
+      submittedByUserId: 'user-referee',
+      homeScore: 1,
+      awayScore: 0,
+    } as any);
+
+    await service.submitMatchReport(
+      'match-1',
+      { id: 'user-referee', email: 'referee@demo.local', role: 'REFEREE' },
+      {
+        homeScore: 1,
+        awayScore: 0,
+        events: [{ minute: 12, type: 'GOAL', teamId: 'team-home' }],
+      },
+    );
+
+    const notification = (notificationService.notifyAdmins as jest.Mock).mock
+      .calls[0][0];
+    expect(notification).toEqual(
+      expect.objectContaining({
+        title: 'Trọng tài nộp biên bản',
+        type: 'SYSTEM',
+        entityType: 'match',
+        entityId: 'match-1',
+      }),
+    );
+    expect(notification.message).toContain('Nguyễn Văn Trọng');
+    expect(notification.message).toContain('Hà Nội FC vs Trường Tươi Đồng Nai');
+    expect(notification.message).toContain('1 - 0');
   });
 
   it('rejects a referee report with two red cards for the same player', async () => {

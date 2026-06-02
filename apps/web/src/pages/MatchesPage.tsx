@@ -57,8 +57,8 @@ import {
 } from '../services/matchApi';
 import { apiGenerateSchedule, apiPublishSchedule } from '../services/scheduleApi';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
-import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { apiGetStadiums, type Stadium } from '../services/teamApi';
+import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
 
@@ -543,8 +543,8 @@ export default function MatchesPage() {
         viewDetail(targetMatch.id);
       }
       loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
-    } catch (_err) {
-      message.error(t('matches.scoreUpdateError'));
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err) || t('matches.scoreUpdateError'));
     } finally {
       setSavingScore(false);
     }

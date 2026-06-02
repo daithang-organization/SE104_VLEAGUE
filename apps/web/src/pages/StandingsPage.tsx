@@ -1,5 +1,9 @@
-﻿import { CrownOutlined, TrophyOutlined } from '@ant-design/icons';
-import { AimOutlined, RiseOutlined, TeamOutlined } from '@ant-design/icons';
+﻿import {
+  AimOutlined,
+  CrownOutlined,
+  SafetyCertificateOutlined,
+  TrophyOutlined,
+} from '@ant-design/icons';
 import { Card, Empty, Flex, message, Select, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useState } from 'react';
@@ -266,10 +270,35 @@ export default function StandingsPage() {
     if (record.teamId === managerTeamId) classes.push('standings-manager-team');
     return classes.join(' ');
   };
+
+  const renderTeamMetricValue = (value: number, teamName?: string) => {
+    const logoUrl = teamName ? getTeamLogoUrl(teamName) : undefined;
+
+    return (
+      <span className="page-hero-metric-value-with-logo">
+        {logoUrl && (
+          <img src={logoUrl} alt={`${teamName} logo`} className="page-hero-metric-team-logo" />
+        )}
+        <span className="page-hero-metric-number">{value.toLocaleString('vi-VN')}</span>
+      </span>
+    );
+  };
+
   const standingsTitle = cleanDecorativeLabel(t('standings.title'));
-  const summarySource = teamStats.length > 0 ? teamStats : standings;
-  const maxGoalsFor = Math.max(0, ...summarySource.map((team) => team.goalsFor ?? 0));
-  const maxPoints = Math.max(0, ...summarySource.map((team) => team.points ?? 0));
+  const summarySource = (teamStats.length > 0 ? teamStats : standings).map((team) => ({
+    teamName: team.teamName,
+    goalsFor: team.goalsFor ?? 0,
+    goalsAgainst: team.goalsAgainst ?? 0,
+  }));
+  const totalGoals = summarySource.reduce((sum, team) => sum + team.goalsFor, 0);
+  const topGoalsTeam =
+    summarySource.length > 0
+      ? summarySource.reduce((best, team) => (team.goalsFor > best.goalsFor ? team : best))
+      : null;
+  const leastConcededTeam =
+    summarySource.length > 0
+      ? summarySource.reduce((best, team) => (team.goalsAgainst < best.goalsAgainst ? team : best))
+      : null;
   const champion =
     selectedSeason?.status === 'COMPLETED'
       ? standings.find((team) => team.position === 1)
@@ -337,19 +366,22 @@ export default function StandingsPage() {
               ]
             : []),
           {
-            label: t('standings.colTeam'),
-            value: totalTeams.toLocaleString('vi-VN'),
-            icon: <TeamOutlined />,
-          },
-          {
-            label: t('standings.maxGoals'),
-            value: maxGoalsFor.toLocaleString('vi-VN'),
+            label: t('standings.totalGoals'),
+            value: totalGoals.toLocaleString('vi-VN'),
             icon: <AimOutlined />,
           },
           {
-            label: t('standings.maxPoints'),
-            value: maxPoints.toLocaleString('vi-VN'),
-            icon: <RiseOutlined />,
+            label: t('standings.maxGoals'),
+            value: renderTeamMetricValue(topGoalsTeam?.goalsFor ?? 0, topGoalsTeam?.teamName),
+            icon: <AimOutlined />,
+          },
+          {
+            label: t('standings.minGoalsAgainst'),
+            value: renderTeamMetricValue(
+              leastConcededTeam?.goalsAgainst ?? 0,
+              leastConcededTeam?.teamName,
+            ),
+            icon: <SafetyCertificateOutlined />,
           },
         ]}
       />

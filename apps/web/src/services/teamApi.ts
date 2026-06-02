@@ -120,8 +120,11 @@ export function apiGetTeams(page = 1, limit = 100, filters?: { search?: string; 
   return api.get<PaginatedResponse<Team>>('/teams', { params }).then((res) => res.data);
 }
 
-export function apiGetTeam(id: string) {
-  return api.get<TeamDetail>(`/teams/${id}`).then((res) => res.data);
+export function apiGetTeam(id: string, seasonId?: string) {
+  if (!seasonId) {
+    return api.get<TeamDetail>(`/teams/${id}`).then((res) => res.data);
+  }
+  return api.get<TeamDetail>(`/teams/${id}`, { params: { seasonId } }).then((res) => res.data);
 }
 
 export function apiCreateTeam(data: CreateTeamPayload) {
