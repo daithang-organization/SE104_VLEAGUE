@@ -694,6 +694,23 @@ describe('MatchDetailPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('falls back to the home team stadium when the match stadium is not assigned', async () => {
+    mockMatchApi.apiGetMatch.mockResolvedValueOnce({
+      ...defaultMatch,
+      stadiumId: null,
+      stadium: null,
+      homeTeam: {
+        ...defaultMatch.homeTeam,
+        stadium: { id: 'home-stadium', name: 'Sân Hàng Đẫy', city: 'Hà Nội' },
+      },
+    });
+
+    renderPage();
+
+    await screen.findByText(/Chi tiết trận đấu/);
+    expect(screen.getAllByText('Sân Hàng Đẫy').length).toBeGreaterThan(0);
+  });
+
   it('shows club coaches as separate team fields in the match center', async () => {
     mockMatchApi.apiGetMatch.mockResolvedValueOnce({
       ...defaultMatch,
