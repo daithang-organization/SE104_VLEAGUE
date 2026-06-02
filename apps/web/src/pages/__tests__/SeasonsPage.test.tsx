@@ -223,6 +223,37 @@ function renderPage() {
   );
 }
 
+async function selectVisibleAntOption(control: HTMLElement, optionText: string) {
+  fireEvent.mouseDown(control);
+  let option: Element | undefined;
+
+  await waitFor(() => {
+    const visibleDropdowns = Array.from(
+      document.querySelectorAll('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+    );
+    const activeDropdown = visibleDropdowns[visibleDropdowns.length - 1];
+    option = Array.from(activeDropdown?.querySelectorAll('.ant-select-item-option') ?? []).find(
+      (element) => element.textContent?.includes(optionText),
+    );
+    expect(option).toBeDefined();
+  });
+
+  fireEvent.click(option as Element);
+}
+
+async function findButtonByText(container: HTMLElement, pattern: RegExp) {
+  let button: HTMLButtonElement | undefined;
+
+  await waitFor(() => {
+    button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+      pattern.test(candidate.textContent ?? ''),
+    );
+    expect(button).toBeDefined();
+  });
+
+  return button as HTMLButtonElement;
+}
+
 function resetMockImplementations() {
   mockUseAuth.mockReset();
   mockUseAuth.mockReturnValue({
@@ -439,6 +470,45 @@ describe('SeasonsPage', () => {
     expect(messageErrorSpy).toHaveBeenCalledWith('Mùa giải 2025-2026 đã tồn tại');
   });
 
+  it('shows the backend validation reason when season status update fails', async () => {
+    const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+    const backendReason =
+      'Không thể chuyển "VLeague 2026-2027" sang trạng thái Đang diễn ra vì mùa giải trước đó "VLeague 2025-2026" chưa kết thúc.';
+    mockSeasonApi.apiGetSeasons.mockResolvedValueOnce([
+      {
+        id: 's1',
+        name: 'VLeague 2025-2026',
+        year: 2025,
+        status: 'COMPLETED',
+        startDate: '2025-01-15T00:00:00Z',
+        endDate: '2025-06-30T00:00:00Z',
+      },
+      {
+        id: 's2',
+        name: 'VLeague 2026-2027',
+        year: 2026,
+        status: 'UPCOMING',
+        startDate: null,
+        endDate: null,
+      },
+    ]);
+    mockSeasonApi.apiUpdateSeasonStatus.mockRejectedValueOnce({
+      response: { data: { message: backendReason } },
+    });
+
+    renderPage();
+
+    const seasonName = await screen.findByText('VLeague 2026-2027');
+    const row = seasonName.closest('tr') as HTMLElement;
+    const statusSelect = within(row).getByRole('combobox');
+    await selectVisibleAntOption(statusSelect, 'Đang diễn ra');
+
+    await waitFor(() => {
+      expect(mockSeasonApi.apiUpdateSeasonStatus).toHaveBeenCalledWith('s2', 'IN_PROGRESS');
+    });
+    expect(messageErrorSpy).toHaveBeenCalledWith(backendReason);
+  });
+
   it('hides create button for non-admin users', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u2', email: 'user@vl.local', role: 'PUBLIC' },
@@ -610,7 +680,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Nguồn đội thăng hạng')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /import csv/i })).toBeInTheDocument();
+    expect(await findButtonByText(container, /import csv/i)).toBeInTheDocument();
     expect(await screen.findAllByText('V.League 2 2025')).not.toHaveLength(0);
     expect(mockTeamInvitationApi.apiGetPromotionCandidates).toHaveBeenCalledWith('s1');
   }, 30000);
@@ -626,7 +696,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /gửi top 8/i }));
+    fireEvent.click(await findButtonByText(container, /gửi top 8/i));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
@@ -650,7 +720,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /gửi thăng hạng/i }));
+    fireEvent.click(await findButtonByText(container, /gửi thăng hạng/i));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
@@ -686,11 +756,7 @@ describe('SeasonsPage', () => {
       { timeout: 5000 },
     );
 
-    const sendCurrentButton = await within(container).findByRole(
-      'button',
-      { name: /gửi 2 đội hiện tại/i },
-      { timeout: 5000 },
-    );
+    const sendCurrentButton = await findButtonByText(container, /gửi 2 đội hiện tại/i);
     fireEvent.click(sendCurrentButton);
 
     await waitFor(() => {
