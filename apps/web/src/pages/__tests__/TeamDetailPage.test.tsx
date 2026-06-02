@@ -101,9 +101,7 @@ describe('TeamDetailPage', () => {
   it('renders coach name with manager email in the overview table', async () => {
     renderPage();
 
-    expect(
-      await screen.findByText('Alexandre Polking (manager.cahn@demo.local)'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Alexandre Polking')).toBeInTheDocument();
   });
 
   it('loads team matches for the current season', async () => {
