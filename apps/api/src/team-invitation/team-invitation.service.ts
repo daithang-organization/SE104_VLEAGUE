@@ -600,6 +600,37 @@ export class TeamInvitationService {
     );
   }
 
+  async getForManager(userId: string) {
+    const manager = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, managedTeamId: true },
+    });
+
+    if (
+      !manager ||
+      manager.role !== UserRole.TEAM_MANAGER ||
+      !manager.managedTeamId
+    ) {
+      return [];
+    }
+
+    await this.markExpiredInvitations({ teamId: manager.managedTeamId });
+
+    const invitations = await this.prisma.teamInvitation.findMany({
+      where: {
+        teamId: manager.managedTeamId,
+      },
+      include: this.invitationInclude,
+      orderBy: [{ sentAt: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return Promise.all(
+      invitations.map((invitation) =>
+        this.withInvitationCompliance(invitation),
+      ),
+    );
+  }
+
   async respondToInvitation(
     invitationId: string,
     userId: string,

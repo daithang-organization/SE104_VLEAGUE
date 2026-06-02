@@ -1,6 +1,8 @@
 import {
   CalendarOutlined,
+  CheckCircleOutlined,
   CheckOutlined,
+  CloseCircleOutlined,
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -44,6 +46,10 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover } from '../components';
 import {
+  dispatchTeamInvitationReopen,
+  getInvitationRules,
+} from '../components/TeamInvitationPopup';
+import {
   apiCreateSeason,
   apiDeleteSeason,
   apiGetSeasons,
@@ -63,10 +69,12 @@ import { apiGetTeams, type Team } from '../services/teamApi';
 import {
   apiDeletePromotionCandidate,
   apiGetInvitationCandidates,
+  apiGetMyInvitations,
   apiGetPromotionCandidates,
   apiGetReplacementCandidates,
   apiGetSeasonInvitations,
   apiImportPromotionCandidates,
+  apiRespondTeamInvitation,
   apiSendTeamInvitation,
   apiUpsertPromotionCandidate,
   type ImportPromotionCandidateRow,
@@ -116,6 +124,12 @@ const TEAM_STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 const INVITATION_STATUS_MAP: Record<string, { label: string; color: string }> = {
   SENT: { label: 'Đã gửi', color: 'processing' },
+  ACCEPTED: { label: 'Đã đồng ý', color: 'success' },
+  DECLINED: { label: 'Đã từ chối', color: 'error' },
+  EXPIRED: { label: 'Quá hạn', color: 'default' },
+};
+const MANAGER_INVITATION_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  SENT: { label: 'Chờ phản hồi', color: 'processing' },
   ACCEPTED: { label: 'Đã đồng ý', color: 'success' },
   DECLINED: { label: 'Đã từ chối', color: 'error' },
   EXPIRED: { label: 'Quá hạn', color: 'default' },
@@ -367,18 +381,24 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
   const [form] = Form.useForm<SubmitTeamManagerApplicationPayload>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [responding, setResponding] = useState(false);
   const [assignment, setAssignment] = useState<TeamManagerAssignment | null>(null);
   const [application, setApplication] = useState<TeamManagerApplication | null>(null);
+  const [managerInvitation, setManagerInvitation] = useState<TeamInvitation | null>(null);
 
   const loadApplication = useCallback(async () => {
     setLoading(true);
     try {
-      const [assignmentData, applicationData] = await Promise.all([
+      const [assignmentData, applicationData, managerInvitations] = await Promise.all([
         apiGetTeamManagerAssignment(season.id),
         apiGetTeamManagerApplication(season.id),
+        apiGetMyInvitations(),
       ]);
       setAssignment(assignmentData);
       setApplication(applicationData);
+      setManagerInvitation(
+        managerInvitations.find((invitation) => invitation.seasonId === season.id) ?? null,
+      );
     } catch (_err) {
       message.error('Không tải được hồ sơ mùa giải của CLB');
     } finally {
@@ -431,9 +451,35 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
     }
   };
 
+  const handleAcceptInvitation = async () => {
+    if (!managerInvitation || managerInvitation.status !== 'SENT') return;
+
+    setResponding(true);
+    try {
+      await apiRespondTeamInvitation(managerInvitation.id, {
+        responseStatus: 'ACCEPTED',
+        responseReason: undefined,
+      });
+      message.success('Đã xác nhận tham gia mùa giải');
+      setManagerInvitation(null);
+      await loadApplication();
+    } catch {
+      message.error('Không thể gửi phản hồi lời mời');
+    } finally {
+      setResponding(false);
+    }
+  };
+
   const applicationStatus = getManagerApplicationStatus(application);
   const applicationLocked = application?.status === 'APPROVED';
   const teamName = application?.team?.name ?? assignment?.team?.name ?? 'CLB quản lý';
+  const invitationRules = managerInvitation ? getInvitationRules(managerInvitation) : null;
+  const managerInvitationStatus = managerInvitation
+    ? (MANAGER_INVITATION_STATUS_MAP[managerInvitation.status] ?? {
+        label: managerInvitation.status,
+        color: 'default',
+      })
+    : null;
 
   if (loading) {
     return (
@@ -454,6 +500,64 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
         </Space>
         <Typography.Text type="secondary">{teamName}</Typography.Text>
       </Flex>
+
+      {managerInvitation && invitationRules && managerInvitationStatus && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title={
+            <Flex justify="space-between" align="center" gap={12} wrap>
+              <Space orientation="vertical" size={4}>
+                <Space size={8} wrap>
+                  <Typography.Text strong>
+                    Lời mời tham dự {managerInvitation.season?.name ?? season.name}
+                  </Typography.Text>
+                  <Tag color="blue">
+                    {INVITATION_SOURCE_MAP[managerInvitation.sourceType] ??
+                      managerInvitation.sourceType}
+                  </Tag>
+                  <Tag color={managerInvitationStatus.color}>{managerInvitationStatus.label}</Tag>
+                </Space>
+                <Typography.Text type="secondary">
+                  {managerInvitation.team?.name ?? teamName} · hạn phản hồi{' '}
+                  {dayjs(managerInvitation.deadlineAt).format('DD/MM/YYYY HH:mm')} · lệ phí{' '}
+                  {invitationRules.fee}
+                </Typography.Text>
+              </Space>
+              <Space size={8} wrap>
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => dispatchTeamInvitationReopen(managerInvitation.id)}
+                >
+                  Xem lại lời mời
+                </Button>
+                {managerInvitation.status === 'SENT' && (
+                  <>
+                    <Button
+                      size="small"
+                      icon={<CloseCircleOutlined />}
+                      onClick={() => dispatchTeamInvitationReopen(managerInvitation.id)}
+                    >
+                      Từ chối
+                    </Button>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<CheckCircleOutlined />}
+                      loading={responding}
+                      onClick={handleAcceptInvitation}
+                    >
+                      Đồng ý tham gia
+                    </Button>
+                  </>
+                )}
+              </Space>
+            </Flex>
+          }
+        />
+      )}
 
       {!application ? (
         <Alert
