@@ -220,6 +220,24 @@ function renderPage() {
   );
 }
 
+async function selectVisibleAntOption(control: HTMLElement, optionText: string) {
+  fireEvent.mouseDown(control);
+  let option: Element | undefined;
+
+  await waitFor(() => {
+    const visibleDropdowns = Array.from(
+      document.querySelectorAll('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+    );
+    const activeDropdown = visibleDropdowns[visibleDropdowns.length - 1];
+    option = Array.from(activeDropdown?.querySelectorAll('.ant-select-item-option') ?? []).find(
+      (element) => element.textContent?.includes(optionText),
+    );
+    expect(option).toBeDefined();
+  });
+
+  fireEvent.click(option as Element);
+}
+
 function resetMockImplementations() {
   mockUseAuth.mockReset();
   mockUseAuth.mockReturnValue({
@@ -428,6 +446,45 @@ describe('SeasonsPage', () => {
       expect(mockSeasonApi.apiCreateSeason).toHaveBeenCalled();
     });
     expect(messageErrorSpy).toHaveBeenCalledWith('Mùa giải 2025-2026 đã tồn tại');
+  });
+
+  it('shows the backend validation reason when season status update fails', async () => {
+    const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+    const backendReason =
+      'Không thể chuyển "VLeague 2026-2027" sang trạng thái Đang diễn ra vì mùa giải trước đó "VLeague 2025-2026" chưa kết thúc.';
+    mockSeasonApi.apiGetSeasons.mockResolvedValueOnce([
+      {
+        id: 's1',
+        name: 'VLeague 2025-2026',
+        year: 2025,
+        status: 'COMPLETED',
+        startDate: '2025-01-15T00:00:00Z',
+        endDate: '2025-06-30T00:00:00Z',
+      },
+      {
+        id: 's2',
+        name: 'VLeague 2026-2027',
+        year: 2026,
+        status: 'UPCOMING',
+        startDate: null,
+        endDate: null,
+      },
+    ]);
+    mockSeasonApi.apiUpdateSeasonStatus.mockRejectedValueOnce({
+      response: { data: { message: backendReason } },
+    });
+
+    renderPage();
+
+    const seasonName = await screen.findByText('VLeague 2026-2027');
+    const row = seasonName.closest('tr') as HTMLElement;
+    const statusSelect = within(row).getByRole('combobox');
+    await selectVisibleAntOption(statusSelect, 'Đang diễn ra');
+
+    await waitFor(() => {
+      expect(mockSeasonApi.apiUpdateSeasonStatus).toHaveBeenCalledWith('s2', 'IN_PROGRESS');
+    });
+    expect(messageErrorSpy).toHaveBeenCalledWith(backendReason);
   });
 
   it('hides create button for non-admin users', () => {

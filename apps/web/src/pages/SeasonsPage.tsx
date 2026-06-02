@@ -1737,8 +1737,8 @@ export default function SeasonsPage() {
       await apiUpdateSeasonStatus(id, status);
       message.success(t('seasons.statusUpdateSuccess'));
       fetchSeasons();
-    } catch (_err) {
-      message.error(t('seasons.statusUpdateError'));
+    } catch (err) {
+      message.error(getBackendErrorMessage(err) || t('seasons.statusUpdateError'));
     }
   };
 

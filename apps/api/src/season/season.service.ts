@@ -21,6 +21,12 @@ const SEASON_STATUS_TRANSITIONS: Record<string, string[]> = {
   COMPLETED: [],
 };
 
+const SEASON_STATUS_LABELS: Record<string, string> = {
+  UPCOMING: 'Sắp diễn ra',
+  IN_PROGRESS: 'Đang diễn ra',
+  COMPLETED: 'Đã kết thúc',
+};
+
 const DEFAULT_MIN_ROSTER = 16;
 const DEFAULT_MAX_ROSTER = 22;
 const DEFAULT_MAX_FOREIGN_PLAYERS = 5;
@@ -59,6 +65,10 @@ function isPrismaUniqueConstraintError(error: unknown) {
       'code' in error &&
       error.code === 'P2002')
   );
+}
+
+function getSeasonStatusLabel(status: string) {
+  return SEASON_STATUS_LABELS[status] ?? status;
 }
 
 @Injectable()
@@ -296,20 +306,35 @@ export class SeasonService {
 
     if (!allowedTransitions.includes(newStatus)) {
       throw new BadRequestException(
-        `Không thể chuyển trạng thái từ ${currentStatus} sang ${newStatus}. ` +
-          `Trạng thái hợp lệ: ${allowedTransitions.length ? allowedTransitions.join(', ') : 'không có'}`,
+        `Không thể chuyển trạng thái từ ${getSeasonStatusLabel(currentStatus)} sang ${getSeasonStatusLabel(newStatus)}. ` +
+          `Trạng thái hợp lệ: ${allowedTransitions.length ? allowedTransitions.map(getSeasonStatusLabel).join(', ') : 'không có'}`,
       );
     }
 
     // Ensure only one season can be IN_PROGRESS at a time
     if (newStatus === 'IN_PROGRESS') {
       const activeSeason = await this.prisma.season.findFirst({
-        where: { status: 'IN_PROGRESS' },
+        where: { id: { not: id }, status: 'IN_PROGRESS' },
       });
 
       if (activeSeason) {
         throw new BadRequestException(
-          `Mùa giải "${activeSeason.name}" đang diễn ra. Chỉ được phép một mùa giải IN_PROGRESS.`,
+          `Không thể chuyển "${season.name}" sang trạng thái Đang diễn ra vì mùa giải "${activeSeason.name}" đang diễn ra. Vui lòng kết thúc mùa giải đó trước.`,
+        );
+      }
+
+      const unfinishedPreviousSeason = await this.prisma.season.findFirst({
+        where: {
+          id: { not: id },
+          year: { lt: season.year },
+          status: { not: 'COMPLETED' },
+        },
+        orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+      });
+
+      if (unfinishedPreviousSeason) {
+        throw new BadRequestException(
+          `Không thể chuyển "${season.name}" sang trạng thái Đang diễn ra vì mùa giải trước đó "${unfinishedPreviousSeason.name}" đang ở trạng thái ${getSeasonStatusLabel(unfinishedPreviousSeason.status)}, chưa phải Đã kết thúc. Vui lòng kết thúc các mùa giải trước trước khi bắt đầu mùa giải mới.`,
         );
       }
     }

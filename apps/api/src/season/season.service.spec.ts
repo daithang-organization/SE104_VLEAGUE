@@ -378,6 +378,45 @@ describe('SeasonService', () => {
       ).rejects.toThrow('đang diễn ra');
     });
 
+    it('should reject IN_PROGRESS when a previous season is not completed', async () => {
+      const upcomingSeason = {
+        ...mockSeason,
+        id: 'season-3',
+        name: 'VLeague 2026',
+        year: 2026,
+        status: 'UPCOMING',
+      };
+      const previousUpcomingSeason = {
+        ...mockSeason,
+        id: 'season-2',
+        name: 'VLeague 2025',
+        year: 2025,
+        status: 'UPCOMING',
+      };
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(upcomingSeason as any);
+      jest.spyOn(prisma.season, 'findFirst').mockImplementation(((
+        args: any,
+      ) => {
+        if (args?.where?.status === 'IN_PROGRESS') {
+          return Promise.resolve(null);
+        }
+        if (
+          args?.where?.year?.lt === 2026 &&
+          args?.where?.status?.not === 'COMPLETED'
+        ) {
+          return Promise.resolve(previousUpcomingSeason);
+        }
+        return Promise.resolve(null);
+      }) as any);
+
+      await expect(
+        service.updateStatus('season-3', 'IN_PROGRESS'),
+      ).rejects.toThrow('mùa giải trước đó');
+      expect(prisma.season.update).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException for non-existent season', async () => {
       jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(null);
 
