@@ -46,6 +46,10 @@ function formatKickoff(kickoffAt?: string | null) {
   return kickoffAt ? dayjs(kickoffAt).format('DD/MM/YYYY HH:mm') : 'Chưa đặt giờ';
 }
 
+function getMatchStadiumName(match: Match) {
+  return match.stadium?.name ?? match.homeTeam?.stadium?.name ?? 'Chưa chọn sân';
+}
+
 function TeamLogoMark({
   team,
   teamName,
@@ -125,7 +129,7 @@ function MatchCenterScoreboard({ match }: { match: Match }) {
   const statusMeta = MATCH_STATUS_META[match.status] ?? { label: match.status, tone: 'neutral' };
   const metaItems = [
     `Vòng ${match.roundNo}`,
-    match.stadium?.name ?? 'Chưa chọn sân',
+    getMatchStadiumName(match),
     formatKickoff(match.kickoffAt),
   ];
 

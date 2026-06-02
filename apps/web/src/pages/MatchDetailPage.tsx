@@ -112,6 +112,10 @@ function normalizeSearchText(value?: string | number | null) {
     .trim();
 }
 
+function getMatchDisplayStadium(match: Match) {
+  return match.stadium ?? match.homeTeam?.stadium ?? null;
+}
+
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -788,6 +792,7 @@ export default function MatchDetailPage() {
   }
 
   // ── Data derivation ──
+  const matchStadium = getMatchDisplayStadium(match);
   const events = match.events ?? [];
   const homeGoals = events
     .filter(
@@ -1500,7 +1505,7 @@ export default function MatchDetailPage() {
             <EnvironmentOutlined />
             <span>
               <Text>Sân vận động</Text>
-              <strong>{match.stadium?.name ?? '—'}</strong>
+              <strong>{matchStadium?.name ?? '—'}</strong>
             </span>
           </div>
           <div className="match-detail-score-meta-card">
@@ -1560,9 +1565,9 @@ export default function MatchDetailPage() {
                         {match.season?.name ?? '—'}
                       </Descriptions.Item>
                       <Descriptions.Item label={t('matchDetail.descStadium')}>
-                        {match.stadium?.name ? (
-                          <a onClick={() => navigate(`/stadiums/${match.stadiumId}`)}>
-                            {match.stadium.name}
+                        {matchStadium?.name ? (
+                          <a onClick={() => navigate(`/stadiums/${matchStadium.id}`)}>
+                            {matchStadium.name}
                           </a>
                         ) : (
                           '—'

@@ -132,6 +132,26 @@ describe('MatchService', () => {
       expect(result.events).toEqual([]);
     });
 
+    it('includes the home team stadium for match-detail fallback display', async () => {
+      jest
+        .spyOn(prisma.match, 'findUnique')
+        .mockResolvedValue(mockMatch as any);
+
+      await service.getMatchById('match-1');
+
+      expect(prisma.match.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            homeTeam: {
+              select: expect.objectContaining({
+                stadium: { select: { id: true, name: true, city: true } },
+              }),
+            },
+          }),
+        }),
+      );
+    });
+
     it('should throw NotFoundException if match not found', async () => {
       jest.spyOn(prisma.match, 'findUnique').mockResolvedValue(null);
 
