@@ -13,6 +13,9 @@
     "prepare": "husky",
     "seed:real": "pnpm --filter api exec tsx apps/api/prisma/setup-vleague-2024.ts",
     "seed:vleague-2025": "pnpm --dir apps/api exec tsx prisma/setup-vleague-2025.ts",
+    "seed:tie-goal-diff": "pnpm --dir apps/api exec tsx prisma/seed-standings-tie-scenarios.ts goal-diff",
+    "seed:tie-draw-lot": "pnpm --dir apps/api exec tsx prisma/seed-standings-tie-scenarios.ts draw-lot",
+    "seed:tie-scenarios": "pnpm --dir apps/api exec tsx prisma/seed-standings-tie-scenarios.ts all",
     "db:seed": "pnpm --filter api exec prisma db seed",
     "repair:users": "pnpm --filter api exec tsx apps/api/prisma/repair-users.ts"
   },

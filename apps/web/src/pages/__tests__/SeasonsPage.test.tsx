@@ -215,9 +215,9 @@ vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
 
 import SeasonsPage from '../SeasonsPage';
 
-function renderPage() {
+function renderPage(path = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <SeasonsPage />
     </MemoryRouter>,
   );
@@ -668,6 +668,20 @@ describe('SeasonsPage', () => {
     expect(screen.getByText('Đã đồng ý')).toBeInTheDocument();
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
+
+  it('expands the requested season panel from the seasonId query', async () => {
+    renderPage('/seasons?seasonId=s1');
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(mockSeasonTeamApi.apiGetSeasonTeams).toHaveBeenCalledWith('s1');
+      expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledWith('s1');
+    });
+    expect(await screen.findByText('Nguồn đội thăng hạng')).toBeInTheDocument();
+  }, 30000);
 
   it('renders the promotion ranking snapshot in the admin season team panel', async () => {
     const { container } = renderPage();

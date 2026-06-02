@@ -749,8 +749,8 @@ export class TeamInvitationService {
         updatedInvitation.responseReason,
       ),
       type: 'TEAM_INVITATION',
-      entityType: 'team_invitation',
-      entityId: updatedInvitation.id,
+      entityType: 'season',
+      entityId: updatedInvitation.seasonId,
     });
 
     return updatedInvitation;
@@ -783,7 +783,6 @@ export class TeamInvitationService {
     const promotionCandidates = await this.prisma.promotionCandidate.findMany({
       where: {
         seasonId,
-        teamId: { notIn: excludedTeamIds },
         status: {
           in: [
             PromotionCandidateStatus.ELIGIBLE,
@@ -823,10 +822,7 @@ export class TeamInvitationService {
 
     for (const candidate of sortedPromotionCandidates) {
       if (selected.length >= requiredSlots) break;
-      if (
-        excluded.has(candidate.teamId) ||
-        selectedTeamIds.has(candidate.teamId)
-      ) {
+      if (selectedTeamIds.has(candidate.teamId)) {
         continue;
       }
 

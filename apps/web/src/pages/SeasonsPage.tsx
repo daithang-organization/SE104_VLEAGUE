@@ -43,6 +43,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover } from '../components';
 import {
@@ -1435,7 +1436,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             <Table
               columns={candidateColumns}
               dataSource={candidateResult.candidates}
-              rowKey="teamId"
+              rowKey={(record) => `${record.sourceType}-${record.sourceRank}-${record.teamId}`}
               pagination={false}
               size="small"
             />
@@ -1719,9 +1720,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
 export default function SeasonsPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const location = useLocation();
+  const requestedSeasonId = new URLSearchParams(location.search).get('seasonId');
   const isAdmin = user?.role === 'ADMIN';
   const [loading, setLoading] = useState(true);
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [expandedSeasonIds, setExpandedSeasonIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Season | null>(null);
   const [saving, setSaving] = useState(false);
@@ -1941,6 +1945,13 @@ export default function SeasonsPage() {
   const upcomingCount = seasons.filter((season) => season.status === 'UPCOMING').length;
   const canExpandSeason = isAdmin || user?.role === 'TEAM_MANAGER';
 
+  useEffect(() => {
+    if (!requestedSeasonId || !canExpandSeason) return;
+    if (seasons.some((season) => season.id === requestedSeasonId)) {
+      setExpandedSeasonIds([requestedSeasonId]);
+    }
+  }, [canExpandSeason, requestedSeasonId, seasons]);
+
   return (
     <>
       <div className="page-stack">
@@ -1996,6 +2007,8 @@ export default function SeasonsPage() {
                       ) : (
                         <ManagerSeasonApplicationPanel season={record} />
                       ),
+                    expandedRowKeys: expandedSeasonIds,
+                    onExpandedRowsChange: (keys) => setExpandedSeasonIds(keys.map(String)),
                     expandRowByClick: !isAdmin,
                   }
                 : undefined

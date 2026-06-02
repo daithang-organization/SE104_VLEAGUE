@@ -219,6 +219,26 @@
         "last_turn_id": "019e845c-9f90-7e93-87df-07672f5ec375",
         "last_thread_id": null
       }
+    },
+    "019e8629-0d62-7900-be8c-f1624ffb826d": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đúng rồi: dữ liệu cũ vẫn còn vì postgresql đang lưu trong docker volume. seed script thường chỉ thêm/upsert dữ liệu, không tự xóa dữ liệu bạn đã tạo trước đó. với repo này, nếu bạn đang chạy full stack bằng `docker-compose.yml`, volume là `vleague_pgdata`. cách reset local db sạch nhất: ```powershell docker compose down -v .\\setup.ps1 docker compose up -d --build api web ``` ý nghĩa: - `docker compose down -v`: dừng container và xóa luôn volume db local, tức là mất toàn bộ dữ liệu cũ. - `.\\setup.ps1`: tạo lại db, chạy migration, seed lại dữ liệu mới. - `docker compose up -d --build api web`: bật lại api và web. nếu bạn chỉ chạy db-only bằng file `infra/docker-compose.db.yml`, thì dùng lệnh này thay vì lệnh đầu: ```powershell docker compose -f infra/docker-compose.db.yml down -v docker compose -f infra/docker-compose.db.yml up -d ``` sau đó chạy migration/seed tương tự theo script `setup.ps1`, hoặc chạy trực tiếp: ```powershell pnpm --filter api exec prisma migrate deploy pnpm --filter api exec tsx prisma/seed-stadiums.ts pnpm --filter api exec tsx prisma/seed-teams.ts pnpm --filter api exec tsx prisma/seed-players.ts pnpm --filter api exec tsx prisma/setup-vleague-2024.ts pnpm --filter api exec tsx prisma/setup-vleague-2025.ts pnpm --filter api exec tsx prisma/seed-report-demo.ts pnpm --filter api exec tsx prisma/seed-promotion-candidates.ts ``` lưu ý: `down -v` là thao tác xóa dữ liệu thật trong local volume. đừng chạy trên production/server nếu chưa backup.",
+        "first_seen_at": "2026-06-02T06:16:09.859Z",
+        "last_seen_at": "2026-06-02T06:16:09.859Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e86f8-e75b-7360-acb4-28ac398e74f0",
+        "last_thread_id": null
+      }
+    },
+    "019e8745-834d-7211-9fea-175cf60638d3": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đã fix xong. các thay đổi chính: - backend danh sách mời dự kiến giờ giữ đủ top 1-2 từ nguồn thăng hạng, kể cả khi clb đó cũng nằm trong top 8 mùa trước: [team-invitation.service.ts](c:/se104_vleague/apps/api/src/team-invitation/team-invitation.service.ts:783). - notification admin “clb nộp hồ sơ mùa giải” và “clb phản hồi lời mời” giờ trỏ về `seasonid`: [team-manager.service.ts](c:/se104_vleague/apps/api/src/team-manager/team-manager.service.ts:1158), [team-invitation.service.ts](c:/se104_vleague/apps/api/src/team-invitation/team-invitation.service.ts:752). - frontend click notification sẽ đi tới `/seasons?seasonid=...`, rồi tự mở panel mùa giải tương ứng: [notificationbell.tsx](c:/se104_vleague/apps/web/src/components/notificationbell.tsx:60), [seasonspage.tsx](c:/se104_vleague/apps/web/src/pages/seasonspage.tsx:1724). - bảng “danh sách mời dự kiến” dùng key theo nguồn + rank + team để không bị trùng dòng khi cùng `teamid`: [seasonspage.tsx](c:/se104_vleague/apps/web/src/pages/seasonspage.tsx:1439). đã verify: - `pnpm --filter api test -- team-invitation.service.spec.ts team-manager.service.spec.ts` → 2 suites, 26 tests passed. - `pnpm --filter web test -- src/components/__tests__/notificationbell.test.tsx src/pages/__tests__/seasonspage.test.tsx` → 2 files, 21 tests passed. - `pnpm --filter web build` → pass. - `pnpm --filter api build` → pass. workspace vẫn còn vài thay đổi ngoài phạm vi task như `.omx/state`, `package.json` seed scripts, và các file standings seed/migration untracked; tôi để nguyên, không revert.",
+        "first_seen_at": "2026-06-02T08:21:34.682Z",
+        "last_seen_at": "2026-06-02T08:21:34.682Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e875e-6e61-7f52-aaaf-b656e4e16adc",
+        "last_thread_id": null
+      }
     }
   }
 }
