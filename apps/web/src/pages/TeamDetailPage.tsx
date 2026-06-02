@@ -390,9 +390,9 @@ export default function TeamDetailPage() {
               <span>{team.city ?? 'Chưa cập nhật thành phố'}</span>
               <span>{team.stadium?.name ?? t('teamDetail.stadiumEmpty')}</span>
               {coachName && (
-                <span>
+                <span className="club-detail-coach-wrapper">
                   <UserOutlined />
-                  {coachName}
+                  <span>{coachName}</span>
                 </span>
               )}
             </div>
