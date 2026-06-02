@@ -75,12 +75,29 @@ describe('RegulationsPage', () => {
     );
   });
 
-  it('renders action buttons', async () => {
+  it('hides management actions when selected season has started', async () => {
+    renderPage();
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Khởi tạo mặc định')).not.toBeInTheDocument();
+        expect(screen.queryByText('Thêm quy định')).not.toBeInTheDocument();
+        expect(screen.queryByText('Thao tác')).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+  });
+
+  it('renders management actions for an upcoming season', async () => {
+    mockSeasonApi.apiGetSeasons.mockResolvedValueOnce([
+      { id: 's1', name: 'V.League 2025', year: 2025, status: 'UPCOMING' },
+    ]);
+
     renderPage();
     await waitFor(
       () => {
         expect(screen.getByText('Khởi tạo mặc định')).toBeInTheDocument();
         expect(screen.getByText('Thêm quy định')).toBeInTheDocument();
+        expect(screen.getByText('Thao tác')).toBeInTheDocument();
       },
       { timeout: 5000 },
     );

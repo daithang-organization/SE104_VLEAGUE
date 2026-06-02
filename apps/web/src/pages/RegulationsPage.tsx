@@ -67,6 +67,11 @@ export default function RegulationsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingReg, setEditingReg] = useState<Regulation | null>(null);
   const [form] = Form.useForm();
+  const selectedSeasonRecord = useMemo(
+    () => seasons.find((season) => season.id === selectedSeason),
+    [seasons, selectedSeason],
+  );
+  const canManageRegulations = selectedSeasonRecord?.status === 'UPCOMING';
 
   // Load seasons on mount
   useEffect(() => {
@@ -151,7 +156,7 @@ export default function RegulationsPage() {
     }
   }
 
-  const columns: ColumnsType<Regulation> = [
+  const baseColumns: ColumnsType<Regulation> = [
     {
       title: t('regulations.colKey'),
       dataIndex: 'key',
@@ -179,30 +184,35 @@ export default function RegulationsPage() {
       width: 100,
       render: (vt: string) => <Tag>{vt}</Tag>,
     },
-    {
-      title: t('regulations.colActions'),
-      key: 'actions',
-      width: 120,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-            size="small"
-          />
-          <Popconfirm
-            title={t('regulations.deleteConfirmTitle')}
-            onConfirm={() => handleDelete(record.key)}
-            okText={t('regulations.deleteOk')}
-            cancelText={t('regulations.deleteCancel')}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
-        </Space>
-      ),
-    },
   ];
+  const columns: ColumnsType<Regulation> = canManageRegulations
+    ? [
+        ...baseColumns,
+        {
+          title: t('regulations.colActions'),
+          key: 'actions',
+          width: 120,
+          render: (_, record) => (
+            <Space>
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => openEditModal(record)}
+                size="small"
+              />
+              <Popconfirm
+                title={t('regulations.deleteConfirmTitle')}
+                onConfirm={() => handleDelete(record.key)}
+                okText={t('regulations.deleteOk')}
+                cancelText={t('regulations.deleteCancel')}
+              >
+                <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              </Popconfirm>
+            </Space>
+          ),
+        },
+      ]
+    : baseColumns;
   const hero = (
     <PageCover
       eyebrow={t('menu.regulations')}
@@ -241,22 +251,26 @@ export default function RegulationsPage() {
             value: s.id,
           }))}
         />
+        {canManageRegulations && (
+          <Button
+            icon={<ThunderboltOutlined />}
+            onClick={handleSeedDefaults}
+            disabled={!selectedSeason}
+          >
+            {t('regulations.seedDefaultsBtn')}
+          </Button>
+        )}
+      </Space>
+      {canManageRegulations && (
         <Button
-          icon={<ThunderboltOutlined />}
-          onClick={handleSeedDefaults}
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={openCreateModal}
           disabled={!selectedSeason}
         >
-          {t('regulations.seedDefaultsBtn')}
+          {t('regulations.addBtn')}
         </Button>
-      </Space>
-      <Button
-        type="primary"
-        icon={<PlusOutlined />}
-        onClick={openCreateModal}
-        disabled={!selectedSeason}
-      >
-        {t('regulations.addBtn')}
-      </Button>
+      )}
     </div>
   );
 

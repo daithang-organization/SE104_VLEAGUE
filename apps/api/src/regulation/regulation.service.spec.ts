@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { DEFAULT_REGULATIONS, RegulationService } from './regulation.service';
@@ -11,11 +11,16 @@ describe('RegulationService', () => {
     id: 'season-1',
     name: 'VLeague 2024',
     year: 2024,
-    status: 'IN_PROGRESS',
+    status: 'UPCOMING',
     startDate: new Date(),
     endDate: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
+  };
+
+  const mockStartedSeason = {
+    ...mockSeason,
+    status: 'IN_PROGRESS',
   };
 
   const mockRegulation = {
@@ -137,6 +142,21 @@ describe('RegulationService', () => {
       expect(result.key).toBe('MAX_FOREIGN_PLAYERS');
     });
 
+    it('should reject upsert when season has started', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockStartedSeason as any);
+
+      await expect(
+        service.upsert('season-1', {
+          key: 'MAX_FOREIGN_PLAYERS',
+          value: '3',
+          valueType: 'number',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.regulation.upsert).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException if season not found', async () => {
       jest.spyOn(prisma.season, 'findUnique').mockResolvedValue(null);
 
@@ -148,6 +168,9 @@ describe('RegulationService', () => {
 
   describe('update', () => {
     it('should update a regulation value', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockSeason as any);
       jest
         .spyOn(prisma.regulation, 'findUnique')
         .mockResolvedValue(mockRegulation as any);
@@ -163,7 +186,21 @@ describe('RegulationService', () => {
       expect(result.value).toBe('5');
     });
 
+    it('should reject update when season has started', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockStartedSeason as any);
+
+      await expect(
+        service.update('season-1', 'MAX_FOREIGN_PLAYERS', { value: '5' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.regulation.update).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException if regulation not found', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockSeason as any);
       jest.spyOn(prisma.regulation, 'findUnique').mockResolvedValue(null);
 
       await expect(
@@ -174,6 +211,9 @@ describe('RegulationService', () => {
 
   describe('delete', () => {
     it('should delete a regulation', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockSeason as any);
       jest
         .spyOn(prisma.regulation, 'findUnique')
         .mockResolvedValue(mockRegulation as any);
@@ -186,7 +226,21 @@ describe('RegulationService', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should reject delete when season has started', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockStartedSeason as any);
+
+      await expect(
+        service.delete('season-1', 'MAX_FOREIGN_PLAYERS'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.regulation.delete).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException if regulation not found', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockSeason as any);
       jest.spyOn(prisma.regulation, 'findUnique').mockResolvedValue(null);
 
       await expect(service.delete('season-1', 'NON_EXISTENT')).rejects.toThrow(
@@ -208,6 +262,17 @@ describe('RegulationService', () => {
 
       expect(result.length).toBeGreaterThan(0);
       expect(prisma.regulation.upsert).toHaveBeenCalled();
+    });
+
+    it('should reject seed defaults when season has started', async () => {
+      jest
+        .spyOn(prisma.season, 'findUnique')
+        .mockResolvedValue(mockStartedSeason as any);
+
+      await expect(service.seedDefaults('season-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.regulation.upsert).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if season not found', async () => {
