@@ -1,10 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import {
-  PrismaClient,
-  SeasonStatus,
-  SeasonTeamStatus,
-  TeamStatus,
-} from '@prisma/client';
+import { PrismaClient, SeasonStatus, SeasonTeamStatus } from '@prisma/client';
 import 'dotenv/config';
 import pg from 'pg';
 import {
@@ -12,9 +7,8 @@ import {
   summarizeHeadToHeadAggregate,
   TIE_SCENARIO_DEFINITIONS,
   TIE_SCENARIO_SLUGS,
-  TIE_SCENARIO_TEAM_SEEDS,
+  TIE_SCENARIO_TEAM_NAMES,
   TieScenarioSlug,
-  TieScenarioTeamSeed,
 } from '../src/standings/standings-tie-scenarios.seed';
 
 const pool = new pg.Pool({ connectionString: process.env['DATABASE_URL'] });
@@ -45,47 +39,10 @@ const DEFAULT_REGULATIONS = [
   },
 ] as const;
 
-async function upsertTeam(row: TieScenarioTeamSeed) {
-  const stadium = await prisma.stadium.upsert({
-    where: { name: row.stadium.name },
-    update: {
-      address: row.stadium.address,
-      city: row.stadium.city,
-      country: 'Viet Nam',
-      capacity: row.stadium.capacity,
-      fifaStars: 2,
-    },
-    create: {
-      name: row.stadium.name,
-      address: row.stadium.address,
-      city: row.stadium.city,
-      country: 'Viet Nam',
-      capacity: row.stadium.capacity,
-      fifaStars: 2,
-    },
-  });
-
-  return prisma.team.upsert({
-    where: { name: row.name },
-    update: {
-      shortName: row.shortName,
-      city: row.city,
-      coachName: row.coachName,
-      status: TeamStatus.ACTIVE,
-      stadiumId: stadium.id,
-    },
-    create: {
-      name: row.name,
-      shortName: row.shortName,
-      city: row.city,
-      coachName: row.coachName,
-      status: TeamStatus.ACTIVE,
-      stadiumId: stadium.id,
-    },
-  });
-}
-
-type SeedTeamRecord = Awaited<ReturnType<typeof upsertTeam>>;
+const LEGACY_TIE_SCENARIO_SEASON_NAMES: Record<TieScenarioSlug, string[]> = {
+  'goal-diff': ['Tie Test 2027 - Equal Points Different GD'],
+  'draw-lot': ['Tie Test 2028 - Draw Lot Required'],
+};
 
 async function seedRegulations(seasonId: string) {
   for (const regulation of DEFAULT_REGULATIONS) {
@@ -112,32 +69,53 @@ async function resetScenarioSeason(seasonId: string) {
   await prisma.seasonTeam.deleteMany({ where: { seasonId } });
 }
 
+async function loadScenarioTeams() {
+  const teams = await prisma.team.findMany({
+    where: { name: { in: [...TIE_SCENARIO_TEAM_NAMES] } },
+    include: { stadium: { select: { id: true } } },
+  });
+  const teamByName = new Map(teams.map((team) => [team.name, team]));
+  const missingTeamNames = TIE_SCENARIO_TEAM_NAMES.filter(
+    (teamName) => !teamByName.has(teamName),
+  );
+
+  if (missingTeamNames.length > 0) {
+    throw new Error(
+      `Missing tie-scenario teams: ${missingTeamNames.join(', ')}. Run seed-stadiums.ts and seed-teams.ts before seed-standings-tie-scenarios.ts.`,
+    );
+  }
+
+  return TIE_SCENARIO_TEAM_NAMES.map((teamName) => teamByName.get(teamName)!);
+}
+
 async function seedScenario(scenario: TieScenarioSlug) {
   const definition = TIE_SCENARIO_DEFINITIONS[scenario];
-  const season = await prisma.season.upsert({
-    where: { name: definition.seasonName },
-    update: {
-      year: definition.year,
-      status: SeasonStatus.COMPLETED,
-      startDate: definition.startDate,
-      endDate: definition.endDate,
-    },
-    create: {
-      name: definition.seasonName,
-      year: definition.year,
-      status: SeasonStatus.COMPLETED,
-      startDate: definition.startDate,
-      endDate: definition.endDate,
-    },
-  });
+  const existingSeason =
+    (await prisma.season.findUnique({
+      where: { name: definition.seasonName },
+    })) ??
+    (await prisma.season.findFirst({
+      where: { name: { in: LEGACY_TIE_SCENARIO_SEASON_NAMES[scenario] } },
+      orderBy: { createdAt: 'asc' },
+    }));
+  const seasonData = {
+    name: definition.seasonName,
+    year: definition.year,
+    status: SeasonStatus.COMPLETED,
+    startDate: definition.startDate,
+    endDate: definition.endDate,
+  };
+  const season = existingSeason
+    ? await prisma.season.update({
+        where: { id: existingSeason.id },
+        data: seasonData,
+      })
+    : await prisma.season.create({ data: seasonData });
 
   await resetScenarioSeason(season.id);
   await seedRegulations(season.id);
 
-  const teams: SeedTeamRecord[] = [];
-  for (const row of TIE_SCENARIO_TEAM_SEEDS) {
-    teams.push(await upsertTeam(row));
-  }
+  const teams = await loadScenarioTeams();
 
   await prisma.seasonTeam.createMany({
     data: teams.map((team, index) => ({
@@ -146,16 +124,16 @@ async function seedScenario(scenario: TieScenarioSlug) {
       status: SeasonTeamStatus.APPROVED,
       registeredAt: new Date(`${definition.year}-08-01T00:00:00.000Z`),
       approvedAt: new Date(`${definition.year}-08-15T00:00:00.000Z`),
-      ownerName: `Tie Test Owner ${TIE_SCENARIO_TEAM_SEEDS[index].shortName}`,
-      ownerCountry: 'Viet Nam',
-      ownerAddress: TIE_SCENARIO_TEAM_SEEDS[index].city,
+      ownerName: `Công ty chủ quản ${team.name}`,
+      ownerCountry: 'Việt Nam',
+      ownerAddress: team.city ?? 'Việt Nam',
       teamIntroduction: `${team.name} participates in ${definition.seasonName}.`,
-      primaryKit: 'Primary kit',
-      backupKit: 'Backup kit',
+      primaryKit: 'Áo màu chính thức theo nhận diện CLB',
+      backupKit: 'Áo dự bị màu tương phản',
       participationFeePaid: true,
       feePaidAt: new Date(`${definition.year}-08-10T00:00:00.000Z`),
-      feeReceiptCode: `TIE-${definition.year}-${TIE_SCENARIO_TEAM_SEEDS[index].shortName}`,
-      externalCompetitionSchedule: 'None',
+      feeReceiptCode: `TIE-${definition.year}-${team.shortName ?? index + 1}`,
+      externalCompetitionSchedule: 'Cúp Quốc gia',
       applicationSubmittedAt: new Date(
         `${definition.year}-08-01T00:00:00.000Z`,
       ),
@@ -163,7 +141,7 @@ async function seedScenario(scenario: TieScenarioSlug) {
   });
 
   const homeStadiumIdByTeamId = new Map(
-    teams.map((team) => [team.id, team.stadiumId]),
+    teams.map((team) => [team.id, team.stadium?.id ?? team.stadiumId]),
   );
   const generatedSeason = buildTieScenarioSeason({
     scenario,

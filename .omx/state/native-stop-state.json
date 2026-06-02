@@ -239,6 +239,16 @@
         "last_turn_id": "019e875e-6e61-7f52-aaaf-b656e4e16adc",
         "last_thread_id": null
       }
+    },
+    "019e877c-8da5-7382-be66-157985210410": {
+      "ordinary_no_progress_guard": {
+        "fingerprint": "ordinary|đây không phải lỗi seed. đây là lỗi migration prisma. nguyên nhân: migration `20260602060332` đang rename lại một index đã được rename ở migration trước `20260602031513_add_proposed_coach_name`. vì index tên cũ không còn tồn tại nên postgresql báo: `relation \"...effective_match_id\" does not exist` tôi đã sửa file [migration.sql](/c:/se104_vleague/apps/api/prisma/migrations/20260602060332/migration.sql) bằng cách bỏ lệnh `alter index ... rename` bị lặp. vì prisma đã ghi nhận migration này là failed, bạn cần resolve rồi chạy lại: ```powershell pnpm --dir apps/api exec prisma migrate resolve --rolled-back 20260602060332 pnpm --dir apps/api exec prisma migrate deploy ``` nếu vẫn thấy `command \"prisma\" not found`, đó là lỗi phụ từ pnpm/dependency resolution. chạy lại bằng `--dir apps/api` như trên thường tránh lỗi `--filter`. nếu vẫn lỗi thì chạy `pnpm install` ở root rồi chạy lại 2 lệnh trên.",
+        "first_seen_at": "2026-06-02T09:16:30.642Z",
+        "last_seen_at": "2026-06-02T09:16:30.642Z",
+        "repeat_count": 1,
+        "last_turn_id": "019e879b-9f4b-7bf2-8097-d9599ab2fc5f",
+        "last_thread_id": null
+      }
     }
   }
 }

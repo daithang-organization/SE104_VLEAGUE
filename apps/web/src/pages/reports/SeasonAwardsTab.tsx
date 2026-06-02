@@ -51,9 +51,9 @@ export default function SeasonAwardsTab({ awards, loading, onAwardsChanged }: Pr
   const [drawLotLoading, setDrawLotLoading] = useState(false);
   const [overrides, setOverrides] = useState<Map<string, number>>(new Map());
 
-  const fetchDrawLotStatus = useCallback(async () => {
+  const fetchDrawLotStatus = useCallback(async (seasonId?: string | null) => {
     try {
-      const status = await apiGetDrawLotStatus();
+      const status = await apiGetDrawLotStatus(seasonId ?? undefined);
       setDrawLotStatus(status);
       // Init overrides from existing results
       if (status.results.length > 0) {
@@ -69,10 +69,13 @@ export default function SeasonAwardsTab({ awards, loading, onAwardsChanged }: Pr
   }, []);
 
   useEffect(() => {
-    if (awards?.requiresDrawLot || awards?.seasonId) {
-      fetchDrawLotStatus();
+    if (awards?.seasonId) {
+      fetchDrawLotStatus(awards.seasonId);
+    } else {
+      setDrawLotStatus(null);
+      setOverrides(new Map());
     }
-  }, [awards, fetchDrawLotStatus]);
+  }, [awards?.seasonId, fetchDrawLotStatus]);
 
   const handleExecute = async () => {
     if (!drawLotStatus?.seasonId) return;
@@ -80,7 +83,7 @@ export default function SeasonAwardsTab({ awards, loading, onAwardsChanged }: Pr
     try {
       const result = await apiExecuteDrawLot(drawLotStatus.seasonId);
       message.success(result.message);
-      await fetchDrawLotStatus();
+      await fetchDrawLotStatus(drawLotStatus.seasonId);
     } catch (_) {
       message.error('Không thể rút thăm. Hãy kiểm tra lại.');
     } finally {
@@ -98,7 +101,7 @@ export default function SeasonAwardsTab({ awards, loading, onAwardsChanged }: Pr
       }));
       const result = await apiConfirmDrawLot(drawLotStatus.seasonId, overrideArr);
       message.success(result.message);
-      await fetchDrawLotStatus();
+      await fetchDrawLotStatus(drawLotStatus.seasonId);
       await onAwardsChanged?.();
     } catch (_) {
       message.error('Không thể xác nhận. Hãy kiểm tra thứ hạng không trùng.');
@@ -114,7 +117,7 @@ export default function SeasonAwardsTab({ awards, loading, onAwardsChanged }: Pr
       const result = await apiResetDrawLot(drawLotStatus.seasonId);
       message.success(result.message);
       setOverrides(new Map());
-      await fetchDrawLotStatus();
+      await fetchDrawLotStatus(drawLotStatus.seasonId);
       await onAwardsChanged?.();
     } catch (_) {
       message.error('Không thể xóa kết quả rút thăm.');

@@ -5,7 +5,7 @@ import {
 
 describe('standings tie scenario seed generation', () => {
   const seasonId = 'season-tie-test';
-  const startDate = new Date('2027-09-04T00:00:00.000Z');
+  const startDate = new Date('2022-09-03T00:00:00.000Z');
   const teamIds = Array.from({ length: 10 }, (_, index) => `team-${index + 1}`);
 
   it('creates a full season where two teams have equal points but different goal difference', () => {

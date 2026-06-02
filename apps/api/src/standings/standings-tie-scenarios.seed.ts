@@ -58,145 +58,35 @@ export const TIE_SCENARIO_DEFINITIONS: Record<
   TieScenarioDefinition
 > = {
   'goal-diff': {
-    seasonName: 'Tie Test 2027 - Equal Points Different GD',
-    year: 2027,
-    startDate: new Date('2027-09-04T00:00:00.000Z'),
-    endDate: new Date('2028-05-27T00:00:00.000Z'),
+    seasonName: 'V.League 2022-2023 - Equal Points Different GD',
+    year: 2022,
+    startDate: new Date('2022-09-03T00:00:00.000Z'),
+    endDate: new Date('2023-05-27T00:00:00.000Z'),
     description:
-      'Top two teams finish level on points, but Alpha has higher goal difference.',
+      'Top two teams finish level on points, but the first seeded real team has higher goal difference.',
   },
   'draw-lot': {
-    seasonName: 'Tie Test 2028 - Draw Lot Required',
-    year: 2028,
-    startDate: new Date('2028-09-02T00:00:00.000Z'),
-    endDate: new Date('2029-05-26T00:00:00.000Z'),
+    seasonName: 'V.League 2023-2024 - Draw Lot Required',
+    year: 2023,
+    startDate: new Date('2023-09-02T00:00:00.000Z'),
+    endDate: new Date('2024-05-25T00:00:00.000Z'),
     description:
       'Top two teams finish level on points, goal difference, and head-to-head aggregate.',
   },
 };
 
-export const TIE_SCENARIO_TEAM_SEEDS: TieScenarioTeamSeed[] = [
-  {
-    name: 'Tie Test Alpha FC',
-    shortName: 'TTA',
-    city: 'Alpha City',
-    coachName: 'Alpha Coach',
-    stadium: {
-      name: 'Tie Test Alpha Stadium',
-      city: 'Alpha City',
-      address: '1 Alpha Avenue',
-      capacity: 22000,
-    },
-  },
-  {
-    name: 'Tie Test Bravo FC',
-    shortName: 'TTB',
-    city: 'Bravo City',
-    coachName: 'Bravo Coach',
-    stadium: {
-      name: 'Tie Test Bravo Stadium',
-      city: 'Bravo City',
-      address: '2 Bravo Avenue',
-      capacity: 21000,
-    },
-  },
-  {
-    name: 'Tie Test Charlie FC',
-    shortName: 'TTC',
-    city: 'Charlie City',
-    coachName: 'Charlie Coach',
-    stadium: {
-      name: 'Tie Test Charlie Stadium',
-      city: 'Charlie City',
-      address: '3 Charlie Avenue',
-      capacity: 20000,
-    },
-  },
-  {
-    name: 'Tie Test Delta FC',
-    shortName: 'TTD',
-    city: 'Delta City',
-    coachName: 'Delta Coach',
-    stadium: {
-      name: 'Tie Test Delta Stadium',
-      city: 'Delta City',
-      address: '4 Delta Avenue',
-      capacity: 19000,
-    },
-  },
-  {
-    name: 'Tie Test Echo FC',
-    shortName: 'TTE',
-    city: 'Echo City',
-    coachName: 'Echo Coach',
-    stadium: {
-      name: 'Tie Test Echo Stadium',
-      city: 'Echo City',
-      address: '5 Echo Avenue',
-      capacity: 18000,
-    },
-  },
-  {
-    name: 'Tie Test Foxtrot FC',
-    shortName: 'TTF',
-    city: 'Foxtrot City',
-    coachName: 'Foxtrot Coach',
-    stadium: {
-      name: 'Tie Test Foxtrot Stadium',
-      city: 'Foxtrot City',
-      address: '6 Foxtrot Avenue',
-      capacity: 17000,
-    },
-  },
-  {
-    name: 'Tie Test Golf FC',
-    shortName: 'TTG',
-    city: 'Golf City',
-    coachName: 'Golf Coach',
-    stadium: {
-      name: 'Tie Test Golf Stadium',
-      city: 'Golf City',
-      address: '7 Golf Avenue',
-      capacity: 16000,
-    },
-  },
-  {
-    name: 'Tie Test Hotel FC',
-    shortName: 'TTH',
-    city: 'Hotel City',
-    coachName: 'Hotel Coach',
-    stadium: {
-      name: 'Tie Test Hotel Stadium',
-      city: 'Hotel City',
-      address: '8 Hotel Avenue',
-      capacity: 15000,
-    },
-  },
-  {
-    name: 'Tie Test India FC',
-    shortName: 'TTI',
-    city: 'India City',
-    coachName: 'India Coach',
-    stadium: {
-      name: 'Tie Test India Stadium',
-      city: 'India City',
-      address: '9 India Avenue',
-      capacity: 14000,
-    },
-  },
-  {
-    name: 'Tie Test Juliet FC',
-    shortName: 'TTJ',
-    city: 'Juliet City',
-    coachName: 'Juliet Coach',
-    stadium: {
-      name: 'Tie Test Juliet Stadium',
-      city: 'Juliet City',
-      address: '10 Juliet Avenue',
-      capacity: 13000,
-    },
-  },
-];
+export const TIE_SCENARIO_TEAM_NAMES = [
+  'Thép Xanh Nam Định',
+  'Hà Nội FC',
+  'Công An Hà Nội',
+  'Thể Công-Viettel',
+  'Becamex Bình Dương',
+  'Hải Phòng FC',
+  'Đông Á Thanh Hóa',
+  'LPBank Hoàng Anh Gia Lai',
+  'TP.HCM FC',
+  'Sông Lam Nghệ An',
+] as const;
 
 export function buildTieScenarioSeason({
   scenario,
