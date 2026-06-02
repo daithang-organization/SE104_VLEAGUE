@@ -238,6 +238,19 @@ async function selectVisibleAntOption(control: HTMLElement, optionText: string) 
   fireEvent.click(option as Element);
 }
 
+async function findButtonByText(container: HTMLElement, pattern: RegExp) {
+  let button: HTMLButtonElement | undefined;
+
+  await waitFor(() => {
+    button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+      pattern.test(candidate.textContent ?? ''),
+    );
+    expect(button).toBeDefined();
+  });
+
+  return button as HTMLButtonElement;
+}
+
 function resetMockImplementations() {
   mockUseAuth.mockReset();
   mockUseAuth.mockReturnValue({
@@ -573,7 +586,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Nguồn đội thăng hạng')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /import csv/i })).toBeInTheDocument();
+    expect(await findButtonByText(container, /import csv/i)).toBeInTheDocument();
     expect(await screen.findAllByText('V.League 2 2025')).not.toHaveLength(0);
     expect(mockTeamInvitationApi.apiGetPromotionCandidates).toHaveBeenCalledWith('s1');
   }, 30000);
@@ -589,7 +602,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /gửi top 8/i }));
+    fireEvent.click(await findButtonByText(container, /gửi top 8/i));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
@@ -613,7 +626,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /gửi thăng hạng/i }));
+    fireEvent.click(await findButtonByText(container, /gửi thăng hạng/i));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
@@ -649,11 +662,7 @@ describe('SeasonsPage', () => {
       { timeout: 5000 },
     );
 
-    const sendCurrentButton = await within(container).findByRole(
-      'button',
-      { name: /gửi 2 đội hiện tại/i },
-      { timeout: 5000 },
-    );
+    const sendCurrentButton = await findButtonByText(container, /gửi 2 đội hiện tại/i);
     fireEvent.click(sendCurrentButton);
 
     await waitFor(() => {

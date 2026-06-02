@@ -203,15 +203,10 @@ describe('StandingsPage', () => {
   it('navigates to team detail when clicking a team in standings', async () => {
     renderPage();
 
-    const teamButton = await waitFor(() => {
-      const button = screen
-        .getAllByRole('button')
-        .find((candidate) => candidate.textContent?.includes('FC'));
+    const teamName = await screen.findByText('Hà Nội FC');
+    const teamButton = teamName.closest('[role="button"]');
 
-      expect(button).toBeDefined();
-      return button;
-    });
-
+    expect(teamButton).toBeInTheDocument();
     fireEvent.click(teamButton!);
 
     expect(screen.getByText('Team Detail Route')).toBeInTheDocument();
