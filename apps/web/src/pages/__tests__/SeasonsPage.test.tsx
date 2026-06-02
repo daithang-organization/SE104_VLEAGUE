@@ -770,7 +770,11 @@ describe('SeasonsPage', () => {
       { timeout: 5000 },
     );
 
-    const sendCurrentButton = await findButtonByText(container, /gửi 2 đội hiện tại/i);
+    const sendCurrentButton = await within(container).findByRole(
+      'button',
+      { name: /gửi 2 đội chưa gửi/i },
+      { timeout: 5000 },
+    );
     fireEvent.click(sendCurrentButton);
 
     await waitFor(() => {
@@ -823,24 +827,30 @@ describe('SeasonsPage', () => {
     expect(messageErrorSpy).toHaveBeenCalledWith('Đội chỉ được đăng ký tối đa 22 cầu thủ');
   });
 
-  it('shows the club decline reason in the admin season team panel', async () => {
-    mockTeamInvitationApi.apiGetSeasonInvitations.mockResolvedValueOnce([
-      {
-        id: 'invitation-1',
-        seasonId: 's1',
-        teamId: 'team-1',
-        sourceType: 'PREVIOUS_TOP_8',
-        status: 'DECLINED',
-        sentAt: '2025-01-01T00:00:00Z',
-        deadlineAt: '2025-01-15T00:00:00Z',
-        responseAt: '2025-01-03T00:00:00Z',
-        responseReason: 'Không đủ ngân sách tham dự mùa giải mới',
-        regulationsSnapshot: null,
-        team: { id: 'team-1', name: 'CLB Bình Định' },
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-03T00:00:00Z',
-      },
-    ]);
+  it('shows declined teams in the replacement warning instead of the participant table', async () => {
+    const declinedInvitation = {
+      id: 'invitation-1',
+      seasonId: 's1',
+      teamId: 'team-1',
+      sourceType: 'PREVIOUS_TOP_8',
+      status: 'DECLINED',
+      sentAt: '2025-01-01T00:00:00Z',
+      deadlineAt: '2025-01-15T00:00:00Z',
+      responseAt: '2025-01-03T00:00:00Z',
+      responseReason: 'Không đủ ngân sách tham dự mùa giải mới',
+      regulationsSnapshot: null,
+      team: { id: 'team-1', name: 'CLB Bình Định' },
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-03T00:00:00Z',
+    };
+    mockTeamInvitationApi.apiGetSeasonInvitations.mockResolvedValueOnce([declinedInvitation]);
+    mockTeamInvitationApi.apiGetReplacementCandidates.mockResolvedValueOnce({
+      totalRequired: 10,
+      filledSlots: 9,
+      slotsNeeded: 1,
+      declinedTeams: [declinedInvitation],
+      candidates: [],
+    });
 
     const { container } = renderPage();
 
@@ -851,7 +861,8 @@ describe('SeasonsPage', () => {
     const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
     fireEvent.click(expandButton);
 
-    expect(await screen.findByText('Đã từ chối')).toBeInTheDocument();
-    expect(screen.getByText('Không đủ ngân sách tham dự mùa giải mới')).toBeInTheDocument();
+    expect(await screen.findByText(/Có 1 đội đã từ chối/)).toBeInTheDocument();
+    expect(screen.getByText(/Không đủ ngân sách/)).toBeInTheDocument();
+    expect(screen.queryByText('Đội đã từ chối')).not.toBeInTheDocument();
   });
 });

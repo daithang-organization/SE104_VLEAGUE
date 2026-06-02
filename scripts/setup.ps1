@@ -64,6 +64,11 @@ pnpm prisma migrate deploy
 # 6. Seed database
 Write-Host "`n🌱 Seeding database..." -ForegroundColor Yellow
 pnpm prisma db seed
+pnpm exec tsx prisma/setup-vleague-2024.ts
+pnpm exec tsx prisma/setup-vleague-2025.ts
+pnpm exec tsx prisma/seed-invitation-rule-cases.ts
+pnpm exec tsx prisma/seed-report-demo.ts
+pnpm exec tsx prisma/seed-promotion-candidates.ts
 
 Pop-Location
 
