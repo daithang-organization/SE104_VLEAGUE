@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Regulation } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Regulation, SeasonStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
 
@@ -71,14 +75,7 @@ export class RegulationService {
     seasonId: string,
     dto: CreateRegulationDto,
   ): Promise<Regulation> {
-    // Verify season exists
-    const season = await this.prisma.season.findUnique({
-      where: { id: seasonId },
-    });
-
-    if (!season) {
-      throw new NotFoundException(`Season with ID ${seasonId} not found`);
-    }
+    await this.assertSeasonCanManageRegulations(seasonId);
 
     return this.prisma.regulation.upsert({
       where: { seasonId_key: { seasonId, key: dto.key } },
@@ -103,6 +100,8 @@ export class RegulationService {
     key: string,
     dto: UpdateRegulationDto,
   ): Promise<Regulation> {
+    await this.assertSeasonCanManageRegulations(seasonId);
+
     const regulation = await this.prisma.regulation.findUnique({
       where: { seasonId_key: { seasonId, key } },
     });
@@ -126,6 +125,8 @@ export class RegulationService {
    * Delete a regulation by key
    */
   async delete(seasonId: string, key: string): Promise<{ success: boolean }> {
+    await this.assertSeasonCanManageRegulations(seasonId);
+
     const regulation = await this.prisma.regulation.findUnique({
       where: { seasonId_key: { seasonId, key } },
     });
@@ -147,13 +148,7 @@ export class RegulationService {
    * Seed default regulations for a season
    */
   async seedDefaults(seasonId: string): Promise<Regulation[]> {
-    const season = await this.prisma.season.findUnique({
-      where: { id: seasonId },
-    });
-
-    if (!season) {
-      throw new NotFoundException(`Season with ID ${seasonId} not found`);
-    }
+    await this.assertSeasonCanManageRegulations(seasonId);
 
     const results: Regulation[] = [];
     for (const reg of DEFAULT_REGULATIONS) {
@@ -166,5 +161,21 @@ export class RegulationService {
     }
 
     return results;
+  }
+
+  private async assertSeasonCanManageRegulations(seasonId: string) {
+    const season = await this.prisma.season.findUnique({
+      where: { id: seasonId },
+    });
+
+    if (!season) {
+      throw new NotFoundException(`Season with ID ${seasonId} not found`);
+    }
+
+    if (season.status !== SeasonStatus.UPCOMING) {
+      throw new BadRequestException(
+        'Chỉ có thể cập nhật quy định khi mùa giải chưa bắt đầu',
+      );
+    }
   }
 }
