@@ -25,6 +25,7 @@ const MATCH_TEAM_SELECT = {
   logoUrl: true,
   coachName: true,
   status: true,
+  stadium: { select: { id: true, name: true, city: true } },
 };
 
 // Valid match status transitions

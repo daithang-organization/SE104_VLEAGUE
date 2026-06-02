@@ -84,6 +84,11 @@ export type InvitationCandidateResult = {
   candidates: InvitationCandidate[];
 };
 
+export type ApproveAllInvitationCandidatesResult = {
+  approvedCount: number;
+  candidates: InvitationCandidate[];
+};
+
 export type SendTeamInvitationPayload = {
   teamId: string;
   sourceType: TeamInvitationSourceType;
@@ -154,6 +159,14 @@ export function apiGetInvitationCandidates(seasonId: string, previousSeasonId?: 
 export function apiSendTeamInvitation(seasonId: string, payload: SendTeamInvitationPayload) {
   return api
     .post<TeamInvitation>(`/seasons/${seasonId}/invitations`, payload)
+    .then((res) => res.data);
+}
+
+export function apiApproveAllInvitationCandidates(seasonId: string) {
+  return api
+    .post<ApproveAllInvitationCandidatesResult>(
+      `/seasons/${seasonId}/invitation-candidates/approve-all`,
+    )
     .then((res) => res.data);
 }
 
