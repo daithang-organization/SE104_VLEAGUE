@@ -86,6 +86,10 @@ type InvitationForCompliance = {
   teamId: string;
   regulationsSnapshot: Prisma.JsonValue | null;
 };
+type ApproveAllInvitationCandidatesResult = {
+  approvedCount: number;
+  candidates: InvitationCandidate[];
+};
 
 @Injectable()
 export class TeamInvitationService {
@@ -289,6 +293,87 @@ export class TeamInvitationService {
     );
 
     return invitation;
+  }
+
+  async approveAllInvitationCandidates(
+    seasonId: string,
+  ): Promise<ApproveAllInvitationCandidatesResult> {
+    const candidateResult = await this.getInvitationCandidates(seasonId);
+    const now = new Date();
+    const deadlineAt = this.addDays(now, 14);
+    const regulationsSnapshot = await this.buildRegulationsSnapshot(seasonId);
+    const candidates = this.uniqueCandidatesByTeamId(
+      candidateResult.candidates,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const candidate of candidates) {
+        await tx.teamInvitation.upsert({
+          where: { seasonId_teamId: { seasonId, teamId: candidate.teamId } },
+          create: {
+            seasonId,
+            teamId: candidate.teamId,
+            sourceType: candidate.sourceType,
+            status: TeamInvitationStatus.ACCEPTED,
+            sentAt: now,
+            deadlineAt,
+            responseAt: now,
+            responseReason: null,
+            regulationsSnapshot,
+            promotionNote:
+              candidate.sourceType === TeamInvitationSourceType.PROMOTED
+                ? (candidate.sourceNote ?? candidate.sourceCompetition ?? null)
+                : null,
+          },
+          update: {
+            sourceType: candidate.sourceType,
+            status: TeamInvitationStatus.ACCEPTED,
+            sentAt: now,
+            deadlineAt,
+            responseAt: now,
+            responseReason: null,
+            regulationsSnapshot,
+            promotionNote:
+              candidate.sourceType === TeamInvitationSourceType.PROMOTED
+                ? (candidate.sourceNote ?? candidate.sourceCompetition ?? null)
+                : null,
+          },
+        });
+
+        await tx.seasonTeam.upsert({
+          where: { seasonId_teamId: { seasonId, teamId: candidate.teamId } },
+          create: {
+            seasonId,
+            teamId: candidate.teamId,
+            status: SeasonTeamStatus.APPROVED,
+            approvedAt: now,
+          },
+          update: {
+            status: SeasonTeamStatus.APPROVED,
+            approvedAt: now,
+          },
+        });
+      }
+
+      const promotedTeamIds = candidates
+        .filter(
+          (candidate) =>
+            candidate.sourceType === TeamInvitationSourceType.PROMOTED,
+        )
+        .map((candidate) => candidate.teamId);
+
+      if (promotedTeamIds.length > 0) {
+        await tx.promotionCandidate.updateMany({
+          where: { seasonId, teamId: { in: promotedTeamIds } },
+          data: { status: PromotionCandidateStatus.ACCEPTED },
+        });
+      }
+    });
+
+    return {
+      approvedCount: candidates.length,
+      candidates,
+    };
   }
 
   async getReplacementCandidates(seasonId: string) {
@@ -925,6 +1010,15 @@ export class TeamInvitationService {
       goalDifference: 0,
       played: 0,
     }));
+  }
+
+  private uniqueCandidatesByTeamId(candidates: InvitationCandidate[]) {
+    const seenTeamIds = new Set<string>();
+    return candidates.filter((candidate) => {
+      if (seenTeamIds.has(candidate.teamId)) return false;
+      seenTeamIds.add(candidate.teamId);
+      return true;
+    });
   }
 
   private async resolveManagerAssignmentsForInvitation(

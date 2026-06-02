@@ -1,4 +1,4 @@
-﻿import {
+import {
   BankOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -959,6 +959,7 @@ export default function StadiumsPage() {
         cancelText={t('common.cancel')}
         destroyOnClose
         width={600}
+        centered
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
@@ -969,7 +970,7 @@ export default function StadiumsPage() {
             <Input placeholder={t('stadiums.formNamePlaceholder')} />
           </Form.Item>
 
-          {isAdmin && (
+          {isAdmin ? (
             <Form.Item name="teamId" label={t('stadiums.formTeam')}>
               <Select
                 placeholder={t('stadiums.formTeamPlaceholder')}
@@ -983,6 +984,10 @@ export default function StadiumsPage() {
                     label: `${team.name}${team.city ? ` (${team.city})` : ''}`,
                   }))}
               />
+            </Form.Item>
+          ) : (
+            <Form.Item label={t('stadiums.formTeam')}>
+              <Input disabled value={managedTeam?.name || t('stadiums.formTeamPlaceholder')} />
             </Form.Item>
           )}
 

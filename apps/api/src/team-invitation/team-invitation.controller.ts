@@ -141,6 +141,18 @@ export class TeamInvitationController {
     return this.invitationService.sendInvitation(seasonId, dto);
   }
 
+  @Post('seasons/:seasonId/invitation-candidates/approve-all')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'BTC duyá»‡t nhanh toÃ n bá»™ danh sÃ¡ch má»i dá»± kiáº¿n vÃ o mÃ¹a giáº£i',
+  })
+  @ApiParam({ name: 'seasonId', type: String })
+  @ApiOkResponse({ description: 'Sá»‘ Ä‘á»™i Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t nhanh' })
+  approveAllInvitationCandidates(@Param('seasonId') seasonId: string) {
+    return this.invitationService.approveAllInvitationCandidates(seasonId);
+  }
+
   @Get('team-invitations/my-pending')
   @Roles(Role.TEAM_MANAGER)
   @ApiOperation({ summary: 'Manager xem các lời mời chưa phản hồi' })

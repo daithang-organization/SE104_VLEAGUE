@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarOutlined,
   CheckCircleOutlined,
   CheckOutlined,
@@ -69,6 +69,7 @@ import {
 } from '../services/seasonTeamApi';
 import { apiGetTeams, type Team } from '../services/teamApi';
 import {
+  apiApproveAllInvitationCandidates,
   apiDeletePromotionCandidate,
   apiGetInvitationCandidates,
   apiGetMyInvitations,
@@ -703,6 +704,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [approvingAll, setApprovingAll] = useState(false);
   const [viewingTeam, setViewingTeam] = useState<SeasonTeam | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>();
   const [selectedInvitationSource, setSelectedInvitationSource] =
@@ -776,6 +778,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   const invitationsByTeamId = new Map(
     invitations.map((invitation) => [invitation.teamId, invitation]),
   );
+  const approvedTeamIds = new Set(
+    teams.filter((team) => team.status === 'APPROVED').map((team) => team.teamId),
+  );
+  const pendingApprovalCandidateCount = Array.from(
+    new Set(candidateResult?.candidates.map((candidate) => candidate.teamId) ?? []),
+  ).filter((teamId) => !approvedTeamIds.has(teamId)).length;
   const candidateTopCount =
     candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PREVIOUS_TOP_8')
       .length ?? 0;
@@ -784,6 +792,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     0;
   const currentInvitationTargets =
     candidateResult?.candidates.filter((candidate) => {
+      if (approvedTeamIds.has(candidate.teamId)) return false;
       const invitationStatus =
         invitationsByTeamId.get(candidate.teamId)?.status ?? candidate.invitationStatus;
       return invitationStatus !== 'ACCEPTED';
@@ -962,6 +971,23 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
     }
   };
 
+  const handleApproveAllInvitationCandidates = async () => {
+    if (!candidateResult || pendingApprovalCandidateCount === 0) return;
+
+    setApprovingAll(true);
+    try {
+      const result = await apiApproveAllInvitationCandidates(seasonId);
+      message.success(`Đã chấp nhận tất cả ${result.approvedCount} đội dự kiến`);
+      await fetchTeams();
+    } catch (err: unknown) {
+      message.error(
+        getBackendErrorMessage(err) || 'Không thể chấp nhận tất cả đội trong danh sách dự kiến',
+      );
+    } finally {
+      setApprovingAll(false);
+    }
+  };
+
   const promotionColumns: ColumnsType<PromotionCandidate> = [
     {
       title: 'Hạng',
@@ -1092,6 +1118,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
       key: 'invitationStatus',
       width: 140,
       render: (_, r) => {
+        if (approvedTeamIds.has(r.teamId)) return <Tag color="success">Đã duyệt</Tag>;
         if (!r.invitationStatus) return <Tag>Chưa gửi</Tag>;
         const status = INVITATION_STATUS_MAP[r.invitationStatus] ?? {
           label: r.invitationStatus,
@@ -1117,7 +1144,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             size="small"
             icon={<SendOutlined />}
             loading={inviting}
-            disabled={r.invitationStatus === 'ACCEPTED'}
+            disabled={approvedTeamIds.has(r.teamId) || r.invitationStatus === 'ACCEPTED'}
             onClick={() =>
               handleSendInvitation(
                 r.teamId,
@@ -1128,7 +1155,11 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
               )
             }
           >
-            {r.invitationStatus === 'SENT' ? `Gửi lại ${actionSource}` : `Gửi ${actionSource}`}
+            {approvedTeamIds.has(r.teamId)
+              ? 'Đã duyệt'
+              : r.invitationStatus === 'SENT'
+                ? `Gửi lại ${actionSource}`
+                : `Gửi ${actionSource}`}
           </Button>
         );
       },
@@ -1361,12 +1392,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             <Input placeholder="Ghi chú" style={{ width: 180 }} allowClear />
           </Form.Item>
           <Button
-            size="small"
+            size="medium"
             icon={<PlusOutlined />}
             loading={promotionSaving}
             onClick={handleSavePromotionCandidate}
           >
-            Lưu nguồn
+            Thêm
           </Button>
         </Form>
         <Table
@@ -1428,11 +1459,23 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           <>
             <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
               <Typography.Text strong>Danh sách mời dự kiến</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Nguồn: {candidateResult.previousSeason.name} · Top 8: {candidateTopCount}/
-                {candidateResult.requiredTopLeagueSlots} · Thăng hạng: {candidatePromotedCount}/
-                {candidateResult.requiredPromotedSlots}
-              </Typography.Text>
+              <Space size={8} wrap>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Nguồn: {candidateResult.previousSeason.name} · Top 8: {candidateTopCount}/
+                  {candidateResult.requiredTopLeagueSlots} · Thăng hạng: {candidatePromotedCount}/
+                  {candidateResult.requiredPromotedSlots}
+                </Typography.Text>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CheckCircleOutlined />}
+                  loading={approvingAll}
+                  disabled={pendingApprovalCandidateCount === 0}
+                  onClick={handleApproveAllInvitationCandidates}
+                >
+                  Chấp nhận tất cả
+                </Button>
+              </Space>
             </Flex>
             {candidatePromotedCount < candidateResult.requiredPromotedSlots && (
               <Alert
@@ -1539,7 +1582,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           />
           <Button
             type="primary"
-            size="small"
+            size="medium"
             icon={<PlusOutlined />}
             disabled={!selectedTeamId}
             loading={adding}
@@ -1548,7 +1591,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             {t('seasons.teamPanelAddBtn')}
           </Button>
           <Button
-            size="small"
+            size="medium"
             icon={<SendOutlined />}
             disabled={!selectedTeamId}
             loading={inviting}
@@ -1568,7 +1611,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             value={promotionNoteInput}
             onChange={(e) => setPromotionNoteInput(e.target.value)}
             style={{ width: 400 }}
-            size="small"
+            size="medium"
             allowClear
           />
         </div>

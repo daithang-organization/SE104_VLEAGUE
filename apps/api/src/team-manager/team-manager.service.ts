@@ -16,6 +16,9 @@ import {
   TeamManagerRequestStatus,
   TeamManagerRequestType,
   UserRole,
+  TeamManagerRequest,
+  ManagerPlayerRequest,
+  ManagerStadiumRequest,
 } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -278,19 +281,29 @@ export class TeamManagerService {
           );
         }
 
+        let req: TeamManagerRequest | undefined;
         if (dto.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM) {
-          return this.createDeleteManagedTeamRequest(
+          req = await this.createDeleteManagedTeamRequest(
+            userId,
+            user.managedTeamId,
+            dto,
+          );
+        } else {
+          req = await this.createUpdateManagedTeamRequest(
             userId,
             user.managedTeamId,
             dto,
           );
         }
 
-        return this.createUpdateManagedTeamRequest(
-          userId,
-          user.managedTeamId,
-          dto,
-        );
+        await this.notificationService.notifyAdmins({
+          title: 'Yêu cầu quản lý CLB',
+          message: `Manager ${user.name || user.email} vừa gửi một yêu cầu thay đổi thông tin hoặc xoá CLB.`,
+          type: 'SYSTEM',
+          entityType: 'team_manager_request',
+          entityId: req.id,
+        });
+        return req;
       }
 
       throw new ConflictException('Tài khoản này đã được duyệt quản lý CLB.');
@@ -307,12 +320,22 @@ export class TeamManagerService {
       );
     }
 
+    let request: TeamManagerRequest | undefined;
     if (dto.requestType === TeamManagerRequestType.CLAIM_EXISTING_TEAM) {
-      return this.createClaimExistingTeamRequest(userId, dto);
+      request = await this.createClaimExistingTeamRequest(userId, dto);
+    } else if (dto.requestType === TeamManagerRequestType.CREATE_TEAM) {
+      request = await this.createNewTeamRequest(userId, dto);
     }
 
-    if (dto.requestType === TeamManagerRequestType.CREATE_TEAM) {
-      return this.createNewTeamRequest(userId, dto);
+    if (request) {
+      await this.notificationService.notifyAdmins({
+        title: 'Yêu cầu quản lý CLB mới',
+        message: `Manager ${user.name || user.email} vừa gửi một yêu cầu tạo hoặc nhận quản lý CLB.`,
+        type: 'SYSTEM',
+        entityType: 'team_manager_request',
+        entityId: request.id,
+      });
+      return request;
     }
 
     if (
@@ -552,8 +575,11 @@ export class TeamManagerService {
       throw new BadRequestException('Yêu cầu này đã được xét duyệt.');
     }
 
+    let updatedRequest: TeamManagerRequest | undefined;
+    let isApproved = false;
+
     if (dto.status === TeamManagerRequestStatus.REJECTED) {
-      return this.prisma.teamManagerRequest.update({
+      updatedRequest = await this.prisma.teamManagerRequest.update({
         where: { id: requestId },
         data: {
           status: TeamManagerRequestStatus.REJECTED,
@@ -563,55 +589,75 @@ export class TeamManagerService {
         },
         include: this.requestInclude,
       });
-    }
-
-    if (request.requestType === TeamManagerRequestType.UPDATE_MANAGED_TEAM) {
+    } else if (
+      request.requestType === TeamManagerRequestType.UPDATE_MANAGED_TEAM
+    ) {
       if (!request.teamId || request.manager.managedTeamId !== request.teamId) {
         throw new ForbiddenException('Manager không còn quản lý CLB này.');
       }
 
-      return this.approveUpdateManagedTeamRequest(
+      updatedRequest = await this.approveUpdateManagedTeamRequest(
         request.id,
         reviewerId,
         request.teamId,
         request,
         dto.adminNote,
       );
-    }
-
-    if (request.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM) {
+      isApproved = true;
+    } else if (
+      request.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM
+    ) {
       if (!request.teamId || request.manager.managedTeamId !== request.teamId) {
         throw new ForbiddenException('Manager không còn quản lý CLB này.');
       }
 
-      return this.approveDeleteManagedTeamRequest(
+      updatedRequest = await this.approveDeleteManagedTeamRequest(
         request.id,
         reviewerId,
         request.teamId,
         request.managerId,
         dto.adminNote,
       );
+      isApproved = true;
+    } else {
+      if (request.manager.managedTeamId) {
+        throw new ConflictException('Manager này đã được gán CLB khác.');
+      }
+
+      if (request.requestType === TeamManagerRequestType.CLAIM_EXISTING_TEAM) {
+        updatedRequest = await this.approveClaimExistingTeamRequest(
+          request.id,
+          reviewerId,
+          request.teamId,
+          dto.adminNote,
+        );
+      } else {
+        updatedRequest = await this.approveCreateTeamRequest(
+          request.id,
+          reviewerId,
+          request,
+          dto.adminNote,
+        );
+      }
+      isApproved = true;
     }
 
-    if (request.manager.managedTeamId) {
-      throw new ConflictException('Manager này đã được gán CLB khác.');
+    if (updatedRequest) {
+      await this.notificationService.createForUser({
+        userId: request.managerId,
+        title: isApproved
+          ? 'Yêu cầu quản lý CLB đã được duyệt'
+          : 'Yêu cầu quản lý CLB bị từ chối',
+        message: isApproved
+          ? 'Admin đã chấp nhận yêu cầu liên quan đến CLB của bạn.'
+          : 'Admin đã từ chối yêu cầu của bạn. Vui lòng kiểm tra lại.',
+        type: 'STATUS_CHANGE',
+        entityType: 'team_manager_request',
+        entityId: updatedRequest.id,
+      });
     }
 
-    if (request.requestType === TeamManagerRequestType.CLAIM_EXISTING_TEAM) {
-      return this.approveClaimExistingTeamRequest(
-        request.id,
-        reviewerId,
-        request.teamId,
-        dto.adminNote,
-      );
-    }
-
-    return this.approveCreateTeamRequest(
-      request.id,
-      reviewerId,
-      request,
-      dto.adminNote,
-    );
+    return updatedRequest;
   }
 
   async listMyPlayerRequests(userId: string) {
@@ -643,7 +689,7 @@ export class TeamManagerService {
     }
 
     try {
-      return await this.prisma.managerPlayerRequest.create({
+      const req = await this.prisma.managerPlayerRequest.create({
         data: {
           managerId: userId,
           teamId,
@@ -654,6 +700,17 @@ export class TeamManagerService {
         },
         include: this.playerRequestInclude,
       });
+
+      const user = await this.getTeamManagerUser(userId);
+      await this.notificationService.notifyAdmins({
+        title: 'Yêu cầu thay đổi cầu thủ',
+        message: `Manager ${user.name || user.email} vừa gửi một yêu cầu thêm/sửa/xóa cầu thủ.`,
+        type: 'SYSTEM',
+        entityType: 'player_request',
+        entityId: req.id,
+      });
+
+      return req;
     } catch (error) {
       this.handleRequestConflict(error);
       throw error;
@@ -772,8 +829,11 @@ export class TeamManagerService {
       throw new BadRequestException('Yêu cầu này đã được xét duyệt.');
     }
 
+    let updatedRequest: ManagerPlayerRequest | undefined;
+    let isApproved = false;
+
     if (dto.status === ManagerRequestStatus.REJECTED) {
-      return this.prisma.managerPlayerRequest.update({
+      updatedRequest = await this.prisma.managerPlayerRequest.update({
         where: { id: requestId },
         data: {
           status: ManagerRequestStatus.REJECTED,
@@ -783,43 +843,63 @@ export class TeamManagerService {
         },
         include: this.playerRequestInclude,
       });
+    } else {
+      const payload = this.getJsonObject(request.payload);
+
+      if (request.requestType === ManagerPlayerRequestType.ADD_PLAYER) {
+        this.assertRequiredPlayerPayload(payload);
+        updatedRequest = await this.approveAddPlayerRequest(
+          request.id,
+          reviewerId,
+          request.teamId,
+          payload,
+          dto.adminNote,
+        );
+      } else {
+        if (!request.playerId) {
+          throw new BadRequestException(
+            'Yêu cầu chưa có cầu thủ để xét duyệt.',
+          );
+        }
+        await this.assertPlayerBelongsToTeam(request.playerId, request.teamId);
+
+        if (request.requestType === ManagerPlayerRequestType.UPDATE_PLAYER) {
+          updatedRequest = await this.approveUpdatePlayerRequest(
+            request.id,
+            reviewerId,
+            request.playerId,
+            payload,
+            dto.adminNote,
+          );
+        } else {
+          updatedRequest = await this.approveRemovePlayerRequest(
+            request.id,
+            reviewerId,
+            request.teamId,
+            request.playerId,
+            dto.adminNote,
+          );
+        }
+      }
+      isApproved = true;
     }
 
-    const payload = this.getJsonObject(request.payload);
-
-    if (request.requestType === ManagerPlayerRequestType.ADD_PLAYER) {
-      this.assertRequiredPlayerPayload(payload);
-      return this.approveAddPlayerRequest(
-        request.id,
-        reviewerId,
-        request.teamId,
-        payload,
-        dto.adminNote,
-      );
+    if (updatedRequest) {
+      await this.notificationService.createForUser({
+        userId: request.managerId,
+        title: isApproved
+          ? 'Yêu cầu thay đổi cầu thủ đã được duyệt'
+          : 'Yêu cầu thay đổi cầu thủ bị từ chối',
+        message: isApproved
+          ? 'Admin đã chấp nhận yêu cầu thay đổi cầu thủ của bạn.'
+          : 'Admin đã từ chối yêu cầu thay đổi cầu thủ. Vui lòng kiểm tra lại.',
+        type: 'STATUS_CHANGE',
+        entityType: 'player_request',
+        entityId: updatedRequest.id,
+      });
     }
 
-    if (!request.playerId) {
-      throw new BadRequestException('Yêu cầu chưa có cầu thủ để xét duyệt.');
-    }
-    await this.assertPlayerBelongsToTeam(request.playerId, request.teamId);
-
-    if (request.requestType === ManagerPlayerRequestType.UPDATE_PLAYER) {
-      return this.approveUpdatePlayerRequest(
-        request.id,
-        reviewerId,
-        request.playerId,
-        payload,
-        dto.adminNote,
-      );
-    }
-
-    return this.approveRemovePlayerRequest(
-      request.id,
-      reviewerId,
-      request.teamId,
-      request.playerId,
-      dto.adminNote,
-    );
+    return updatedRequest;
   }
 
   async listMyStadiumRequests(userId: string) {
@@ -875,7 +955,7 @@ export class TeamManagerService {
         : dto.stadiumId;
 
     try {
-      return await this.prisma.managerStadiumRequest.create({
+      const req = await this.prisma.managerStadiumRequest.create({
         data: {
           managerId: userId,
           teamId,
@@ -886,6 +966,17 @@ export class TeamManagerService {
         },
         include: this.stadiumRequestInclude,
       });
+
+      const user = await this.getTeamManagerUser(userId);
+      await this.notificationService.notifyAdmins({
+        title: 'Yêu cầu thay đổi sân vận động',
+        message: `Manager ${user.name || user.email} vừa gửi một yêu cầu về sân vận động.`,
+        type: 'SYSTEM',
+        entityType: 'stadium_request',
+        entityId: req.id,
+      });
+
+      return req;
     } catch (error) {
       this.handleRequestConflict(error);
       throw error;
@@ -1033,8 +1124,11 @@ export class TeamManagerService {
       throw new BadRequestException('Yêu cầu này đã được xét duyệt.');
     }
 
+    let updatedRequest: ManagerStadiumRequest | undefined;
+    let isApproved = false;
+
     if (dto.status === ManagerRequestStatus.REJECTED) {
-      return this.prisma.managerStadiumRequest.update({
+      updatedRequest = await this.prisma.managerStadiumRequest.update({
         where: { id: requestId },
         data: {
           status: ManagerRequestStatus.REJECTED,
@@ -1044,32 +1138,51 @@ export class TeamManagerService {
         },
         include: this.stadiumRequestInclude,
       });
-    }
-
-    if (request.requestType === ManagerStadiumRequestType.REMOVE_HOME_STADIUM) {
+    } else if (
+      request.requestType === ManagerStadiumRequestType.REMOVE_HOME_STADIUM
+    ) {
       if (!request.stadiumId) {
         throw new BadRequestException('Yêu cầu chưa có sân nhà để xóa.');
       }
 
-      return this.approveRemoveStadiumRequest(
+      updatedRequest = await this.approveRemoveStadiumRequest(
         request.id,
         reviewerId,
         request.teamId,
         request.stadiumId,
         dto.adminNote,
       );
+      isApproved = true;
+    } else {
+      const payload = this.getJsonObject(request.payload);
+      this.assertRequiredStadiumPayload(payload);
+
+      updatedRequest = await this.approveStadiumRequest(
+        request.id,
+        reviewerId,
+        request.teamId,
+        payload,
+        dto.adminNote,
+      );
+      isApproved = true;
     }
 
-    const payload = this.getJsonObject(request.payload);
-    this.assertRequiredStadiumPayload(payload);
+    if (updatedRequest) {
+      await this.notificationService.createForUser({
+        userId: request.managerId,
+        title: isApproved
+          ? 'Yêu cầu sân vận động đã được duyệt'
+          : 'Yêu cầu sân vận động bị từ chối',
+        message: isApproved
+          ? 'Admin đã chấp nhận yêu cầu thay đổi sân vận động của bạn.'
+          : 'Admin đã từ chối yêu cầu thay đổi sân vận động. Vui lòng kiểm tra lại.',
+        type: 'STATUS_CHANGE',
+        entityType: 'stadium_request',
+        entityId: updatedRequest.id,
+      });
+    }
 
-    return this.approveStadiumRequest(
-      request.id,
-      reviewerId,
-      request.teamId,
-      payload,
-      dto.adminNote,
-    );
+    return updatedRequest;
   }
 
   async getApplication(userId: string, seasonId: string) {
@@ -1579,7 +1692,13 @@ export class TeamManagerService {
   private async getTeamManagerUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, managedTeamId: true },
+      select: {
+        id: true,
+        role: true,
+        managedTeamId: true,
+        email: true,
+        name: true,
+      },
     });
 
     if (!user) {

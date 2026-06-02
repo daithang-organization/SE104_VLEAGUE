@@ -828,6 +828,8 @@ const vi = {
     formFifaStarsPlaceholder: 'Tối thiểu 2 sao',
     formAddress: 'Địa chỉ',
     formAddressPlaceholder: 'VD: Đường Lê Đức Thọ, Nam Từ Liêm',
+    formTeam: 'Câu lạc bộ',
+    formTeamPlaceholder: 'Chọn câu lạc bộ',
   },
 
   // ─────────────────────────────────────────────

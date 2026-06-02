@@ -741,6 +741,62 @@ describe('TeamInvitationService', () => {
       ).rejects.toThrow(BadRequestException);
       expect(standingsService.getStandings).not.toHaveBeenCalled();
     });
+
+    it('directly approves every invitation candidate without notifying managers', async () => {
+      jest.spyOn(prisma.seasonTeam, 'upsert').mockResolvedValue({} as any);
+
+      const result = await service.approveAllInvitationCandidates('season-1');
+
+      expect(result.approvedCount).toBe(10);
+      expect(prisma.teamInvitation.upsert).toHaveBeenCalledTimes(10);
+      expect(prisma.teamInvitation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' },
+          },
+          create: expect.objectContaining({
+            seasonId: 'season-1',
+            teamId: 'team-1',
+            sourceType: 'PREVIOUS_TOP_8',
+            status: 'ACCEPTED',
+            responseAt: now,
+          }),
+          update: expect.objectContaining({
+            sourceType: 'PREVIOUS_TOP_8',
+            status: 'ACCEPTED',
+            responseAt: now,
+          }),
+        }),
+      );
+      expect(prisma.seasonTeam.upsert).toHaveBeenCalledTimes(10);
+      expect(prisma.seasonTeam.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' },
+          },
+          create: expect.objectContaining({
+            seasonId: 'season-1',
+            teamId: 'team-1',
+            status: 'APPROVED',
+            approvedAt: now,
+          }),
+          update: expect.objectContaining({
+            status: 'APPROVED',
+            approvedAt: now,
+          }),
+        }),
+      );
+      expect(
+        (prisma as any).promotionCandidate.updateMany,
+      ).toHaveBeenCalledWith({
+        where: {
+          seasonId: 'season-1',
+          teamId: { in: ['promoted-1', 'promoted-2'] },
+        },
+        data: { status: 'ACCEPTED' },
+      });
+      expect(notificationService.createForUser).not.toHaveBeenCalled();
+    });
   });
 
   describe('getPendingForManager', () => {
