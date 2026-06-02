@@ -86,6 +86,18 @@ export function getInvitationRules(invitation: TeamInvitation) {
   };
 }
 
+export function canAcceptTeamInvitation(invitation: TeamInvitation) {
+  const compliance = invitation.compliance;
+  if (!compliance) return true;
+
+  return (
+    compliance.roster.ok &&
+    compliance.foreignPlayers.ok &&
+    compliance.age.ok &&
+    compliance.stadium.ok
+  );
+}
+
 export default function TeamInvitationPopup() {
   const { user } = useAuth();
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
@@ -187,12 +199,7 @@ export default function TeamInvitationPopup() {
     EXPIRED: 'Quá hạn',
   };
   const compliance = activeInvitation.compliance;
-  const canAcceptInvitation = compliance
-    ? compliance.roster.ok &&
-      compliance.foreignPlayers.ok &&
-      compliance.age.ok &&
-      compliance.stadium.ok
-    : true;
+  const canAcceptInvitation = canAcceptTeamInvitation(activeInvitation);
 
   return (
     <Modal

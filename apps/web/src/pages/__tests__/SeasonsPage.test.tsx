@@ -635,6 +635,60 @@ describe('SeasonsPage', () => {
     expect(screen.queryByText('Đã gửi')).not.toBeInTheDocument();
   });
 
+  it('hides the inline accept button when a manager invitation is not compliant', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([
+      {
+        id: 'invitation-pending',
+        seasonId: 's1',
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+        status: 'SENT',
+        sentAt: '2025-01-01T00:00:00Z',
+        deadlineAt: '2025-01-15T00:00:00Z',
+        responseAt: null,
+        responseReason: null,
+        regulationsSnapshot: { PARTICIPATION_FEE_VND: '1000000000' },
+        compliance: {
+          roster: { current: 0, min: 17, max: 22, ok: false },
+          foreignPlayers: { current: 0, max: 5, maxOnField: 3, ok: true },
+          age: { min: 17, max: 43, total: 0, invalidCount: 0, ok: true },
+          stadium: {
+            stadiumId: 'stadium-1',
+            stadiumName: 'Sân Quy Nhơn',
+            capacity: 20000,
+            fifaStars: 2,
+            minCapacity: 10000,
+            minFifaStars: 2,
+            ok: true,
+          },
+        },
+        season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+        team: { id: 'team-1', name: 'CLB Bình Định' },
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+    ]);
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    fireEvent.click(container.querySelector('.ant-table-row-expand-icon') as HTMLElement);
+
+    expect(await screen.findByText('Chờ phản hồi')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Xem lại lời mời/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Từ chối/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Đồng ý tham gia/i })).not.toBeInTheDocument();
+  });
+
   it('renders season years', async () => {
     renderPage();
     await waitFor(() => {

@@ -47,6 +47,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover } from '../components';
 import {
+  canAcceptTeamInvitation,
   dispatchTeamInvitationReopen,
   getInvitationRules,
 } from '../components/TeamInvitationPopup';
@@ -454,6 +455,10 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
 
   const handleAcceptInvitation = async () => {
     if (!managerInvitation || managerInvitation.status !== 'SENT') return;
+    if (!canAcceptTeamInvitation(managerInvitation)) {
+      message.error('CLB chưa đáp ứng đầy đủ quy định để tham gia mùa giải');
+      return;
+    }
 
     setResponding(true);
     try {
@@ -475,6 +480,9 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
   const applicationLocked = application?.status === 'APPROVED';
   const teamName = application?.team?.name ?? assignment?.team?.name ?? 'CLB quản lý';
   const invitationRules = managerInvitation ? getInvitationRules(managerInvitation) : null;
+  const canAcceptInvitation = managerInvitation
+    ? canAcceptTeamInvitation(managerInvitation)
+    : false;
   const managerInvitationStatus = managerInvitation
     ? (MANAGER_INVITATION_STATUS_MAP[managerInvitation.status] ?? {
         label: managerInvitation.status,
@@ -543,15 +551,17 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
                     >
                       Từ chối
                     </Button>
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<CheckCircleOutlined />}
-                      loading={responding}
-                      onClick={handleAcceptInvitation}
-                    >
-                      Đồng ý tham gia
-                    </Button>
+                    {canAcceptInvitation && (
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<CheckCircleOutlined />}
+                        loading={responding}
+                        onClick={handleAcceptInvitation}
+                      >
+                        Đồng ý tham gia
+                      </Button>
+                    )}
                   </>
                 )}
               </Space>
