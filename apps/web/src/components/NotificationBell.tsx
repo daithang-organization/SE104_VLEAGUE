@@ -70,6 +70,23 @@ export default function NotificationBell() {
         dispatchTeamInvitationReopen(item.entityId);
       }
       setOpen(false);
+    } else if (item.entityType === 'team_manager_request') {
+      if (user?.role === 'ADMIN') {
+        nav('/teams?tab=review');
+      } else {
+        nav('/teams?tab=requests');
+      }
+      setOpen(false);
+    } else if (item.entityType === 'player_request') {
+      nav('/players?tab=requests');
+      setOpen(false);
+    } else if (item.entityType === 'stadium_request') {
+      if (user?.role === 'ADMIN') {
+        nav('/stadiums?tab=review');
+      } else {
+        nav('/stadiums?tab=requests');
+      }
+      setOpen(false);
     }
   };
 
