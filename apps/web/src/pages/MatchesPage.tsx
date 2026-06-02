@@ -1,4 +1,4 @@
-﻿import {
+import {
   EditOutlined,
   FieldTimeOutlined,
   LeftOutlined,
@@ -61,6 +61,7 @@ import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
+import { getApiErrorMessage } from '../lib/apiError';
 
 function formatMatchDateLabel(kickoffAt?: string | null) {
   if (!kickoffAt) return 'Chưa xếp lịch';
