@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
@@ -423,6 +427,52 @@ describe('SeasonService', () => {
       await expect(
         service.updateStatus('non-existent', 'IN_PROGRESS'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('removeTeam', () => {
+    const seasonTeamRecord = {
+      id: 'season-team-1',
+      seasonId: 'season-1',
+      teamId: 'team-1',
+      status: 'APPROVED',
+      registeredAt: new Date(),
+      approvedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should remove a team while the season is upcoming', async () => {
+      jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
+        ...seasonTeamRecord,
+        season: { status: 'UPCOMING' },
+      } as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'delete')
+        .mockResolvedValue(seasonTeamRecord as any);
+
+      const result = await service.removeTeam('season-1', 'team-1');
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.seasonTeam.findUnique).toHaveBeenCalledWith({
+        where: { seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' } },
+        include: { season: { select: { status: true } } },
+      });
+      expect(prisma.seasonTeam.delete).toHaveBeenCalledWith({
+        where: { seasonId_teamId: { seasonId: 'season-1', teamId: 'team-1' } },
+      });
+    });
+
+    it('should reject removing a team after the season is published', async () => {
+      jest.spyOn(prisma.seasonTeam, 'findUnique').mockResolvedValue({
+        ...seasonTeamRecord,
+        season: { status: 'IN_PROGRESS' },
+      } as any);
+
+      await expect(service.removeTeam('season-1', 'team-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.seasonTeam.delete).not.toHaveBeenCalled();
     });
   });
 

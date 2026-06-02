@@ -430,10 +430,17 @@ export class SeasonService {
   async removeTeam(seasonId: string, teamId: string) {
     const record = await this.prisma.seasonTeam.findUnique({
       where: { seasonId_teamId: { seasonId, teamId } },
+      include: { season: { select: { status: true } } },
     });
 
     if (!record) {
       throw new NotFoundException('Không tìm thấy đội trong mùa giải này');
+    }
+
+    if (record.season.status !== 'UPCOMING') {
+      throw new BadRequestException(
+        'Chỉ có thể xóa đội khi mùa giải đang ở trạng thái sắp diễn ra.',
+      );
     }
 
     await this.prisma.seasonTeam.delete({

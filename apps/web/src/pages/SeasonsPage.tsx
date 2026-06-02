@@ -47,6 +47,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AppMenuIcon, PageCover } from '../components';
 import {
+  canAcceptTeamInvitation,
   dispatchTeamInvitationReopen,
   getInvitationRules,
 } from '../components/TeamInvitationPopup';
@@ -455,6 +456,10 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
 
   const handleAcceptInvitation = async () => {
     if (!managerInvitation || managerInvitation.status !== 'SENT') return;
+    if (!canAcceptTeamInvitation(managerInvitation)) {
+      message.error('CLB chưa đáp ứng đầy đủ quy định để tham gia mùa giải');
+      return;
+    }
 
     setResponding(true);
     try {
@@ -476,6 +481,9 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
   const applicationLocked = application?.status === 'APPROVED';
   const teamName = application?.team?.name ?? assignment?.team?.name ?? 'CLB quản lý';
   const invitationRules = managerInvitation ? getInvitationRules(managerInvitation) : null;
+  const canAcceptInvitation = managerInvitation
+    ? canAcceptTeamInvitation(managerInvitation)
+    : false;
   const managerInvitationStatus = managerInvitation
     ? (MANAGER_INVITATION_STATUS_MAP[managerInvitation.status] ?? {
         label: managerInvitation.status,
@@ -544,15 +552,17 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
                     >
                       Từ chối
                     </Button>
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<CheckCircleOutlined />}
-                      loading={responding}
-                      onClick={handleAcceptInvitation}
-                    >
-                      Đồng ý tham gia
-                    </Button>
+                    {canAcceptInvitation && (
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<CheckCircleOutlined />}
+                        loading={responding}
+                        onClick={handleAcceptInvitation}
+                      >
+                        Đồng ý tham gia
+                      </Button>
+                    )}
                   </>
                 )}
               </Space>
@@ -686,7 +696,9 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
 }
 
 // ─── Season Team Panel (expandable row) ───
-function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
+function SeasonTeamPanel({ season }: { season: Season }) {
+  const seasonId = season.id;
+  const canRemoveTeams = season.status === 'UPCOMING';
   const { t } = useTranslation();
   const [teams, setTeams] = useState<SeasonTeam[]>([]);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
@@ -1195,6 +1207,11 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   };
 
   const handleRemove = async (teamId: string) => {
+    if (!canRemoveTeams) {
+      message.error('Chỉ có thể xóa đội khi mùa giải đang ở trạng thái sắp diễn ra.');
+      return;
+    }
+
     try {
       await apiRemoveSeasonTeam(seasonId, teamId);
       message.success(t('seasons.teamPanelRemoveSuccess'));
@@ -1345,14 +1362,22 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
                 </Tooltip>
               </>
             )}
-            <Popconfirm
-              title={t('seasons.teamPanelRemoveConfirm')}
-              onConfirm={() => handleRemove(r.teamId)}
-              okText={t('seasons.deleteOk')}
-              cancelText={t('seasons.deleteCancel')}
-            >
-              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
+            {canRemoveTeams && (
+              <Popconfirm
+                title={t('seasons.teamPanelRemoveConfirm')}
+                onConfirm={() => handleRemove(r.teamId)}
+                okText={t('seasons.deleteOk')}
+                cancelText={t('seasons.deleteCancel')}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  aria-label="Xóa đội khỏi mùa giải"
+                />
+              </Popconfirm>
+            )}
           </Space>
         );
       },
@@ -2075,7 +2100,7 @@ export default function SeasonsPage() {
                 ? {
                     expandedRowRender: (record) =>
                       isAdmin ? (
-                        <SeasonTeamPanel seasonId={record.id} />
+                        <SeasonTeamPanel season={record} />
                       ) : (
                         <ManagerSeasonApplicationPanel season={record} />
                       ),
