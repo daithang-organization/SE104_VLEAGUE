@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-/* ---------- hoisted mocks ---------- */
 const mockUseAuth = vi.hoisted(() =>
   vi.fn(() => ({
     user: { id: 'u1', email: 'admin@vl.local', role: 'ADMIN' },
@@ -22,8 +21,8 @@ const mockMatchApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't1',
         awayTeamId: 't2',
-        homeTeam: { id: 't1', name: 'Ha Noi FC', shortName: 'HN' },
-        awayTeam: { id: 't2', name: 'Hai Phong FC', shortName: 'HP' },
+        homeTeam: { id: 't1', name: 'Ha Noi FC', shortName: 'HN', status: 'ACTIVE' },
+        awayTeam: { id: 't2', name: 'Hai Phong FC', shortName: 'HP', status: 'ACTIVE' },
         stadium: { name: 'Hang Day' },
         homeScore: 2,
         awayScore: 1,
@@ -36,8 +35,8 @@ const mockMatchApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't3',
         awayTeamId: 't4',
-        homeTeam: { id: 't3', name: 'Hoang Anh Gia Lai', shortName: 'HAGL' },
-        awayTeam: { id: 't4', name: 'Binh Duong', shortName: 'BBD' },
+        homeTeam: { id: 't3', name: 'Hoang Anh Gia Lai', shortName: 'HAGL', status: 'ACTIVE' },
+        awayTeam: { id: 't4', name: 'Binh Duong', shortName: 'BBD', status: 'ACTIVE' },
         stadium: { name: 'Pleiku' },
         homeScore: null,
         awayScore: null,
@@ -55,8 +54,8 @@ const mockMatchApi = vi.hoisted(() => ({
         leg: 1,
         homeTeamId: 't1',
         awayTeamId: 't2',
-        homeTeam: { id: 't1', name: 'Ha Noi FC', shortName: 'HN' },
-        awayTeam: { id: 't2', name: 'Hai Phong FC', shortName: 'HP' },
+        homeTeam: { id: 't1', name: 'Ha Noi FC', shortName: 'HN', status: 'ACTIVE' },
+        awayTeam: { id: 't2', name: 'Hai Phong FC', shortName: 'HP', status: 'ACTIVE' },
         stadium: { name: 'Hang Day' },
         homeScore: 2,
         awayScore: 1,
@@ -93,10 +92,21 @@ const mockTeamManagerApi = vi.hoisted(() => ({
   }),
 }));
 
+const mockScheduleApi = vi.hoisted(() => ({
+  apiGenerateSchedule: vi.fn().mockResolvedValue({ matches: [] }),
+  apiPublishSchedule: vi.fn().mockResolvedValue({ updated: 0 }),
+}));
+
+const mockTeamApi = vi.hoisted(() => ({
+  apiGetStadiums: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/matchApi', () => mockMatchApi);
 vi.mock('../../services/seasonApi', () => mockSeasonApi);
 vi.mock('../../services/teamManagerApi', () => mockTeamManagerApi);
+vi.mock('../../services/scheduleApi', () => mockScheduleApi);
+vi.mock('../../services/teamApi', () => mockTeamApi);
 
 import MatchesPage from '../MatchesPage';
 
@@ -120,10 +130,10 @@ describe('MatchesPage', () => {
     });
   });
 
-  it('renders the page title', () => {
+  it('renders the merged matches page title', () => {
     const { container } = renderPage();
-    expect(screen.getAllByText(/Kết quả trận đấu/)[0]).toBeInTheDocument();
-    expect(screen.queryByText('⚽ Kết quả trận đấu')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Trận đấu/)[0]).toBeInTheDocument();
+    expect(screen.queryByText('Kết quả trận đấu')).not.toBeInTheDocument();
     expect(container.querySelector('.page-cover')).toBeInTheDocument();
   });
 
@@ -162,7 +172,7 @@ describe('MatchesPage', () => {
     );
   });
 
-  it('shows manager result tabs without leg filters', async () => {
+  it('shows manager match tabs without leg filters', async () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u2', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
       loading: false,
@@ -173,7 +183,7 @@ describe('MatchesPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText(/Kết quả trận đấu của tôi/)).toBeInTheDocument();
+    expect(await screen.findByText(/Trận đấu của tôi/)).toBeInTheDocument();
     expect(screen.queryByText(/Lượt đi/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Lượt về/)).not.toBeInTheDocument();
   });
@@ -217,7 +227,7 @@ describe('MatchesPage', () => {
     );
   });
 
-  it('renders results with the schedule fixture card layout', async () => {
+  it('renders matches with the schedule fixture card layout', async () => {
     const { container } = renderPage();
 
     await waitFor(

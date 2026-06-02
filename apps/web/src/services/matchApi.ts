@@ -44,6 +44,7 @@ export type Match = {
     shortName?: string | null;
     logoUrl?: string | null;
     coachName?: string | null;
+    status?: 'ACTIVE' | 'INACTIVE';
   };
   awayTeam?: {
     id: string;
@@ -51,6 +52,7 @@ export type Match = {
     shortName?: string | null;
     logoUrl?: string | null;
     coachName?: string | null;
+    status?: 'ACTIVE' | 'INACTIVE';
   };
   homeScore?: number | null;
   awayScore?: number | null;

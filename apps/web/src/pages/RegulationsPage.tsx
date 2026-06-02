@@ -24,6 +24,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppMenuIcon, PageCover, TableSkeleton } from '../components';
+import { compareSeasonsByLatest, getLatestSeason } from '../hooks/useSeasonSelection';
 import {
   apiDeleteRegulation,
   apiGetRegulations,
@@ -71,11 +72,9 @@ export default function RegulationsPage() {
   useEffect(() => {
     apiGetSeasons()
       .then((data) => {
-        setSeasons(data);
-        // Auto-select current season or first
-        const current = data.find((s) => s.status === 'IN_PROGRESS');
-        if (current) setSelectedSeason(current.id);
-        else if (data.length > 0) setSelectedSeason(data[0].id);
+        const sortedSeasons = [...data].sort(compareSeasonsByLatest);
+        setSeasons(sortedSeasons);
+        setSelectedSeason(getLatestSeason(sortedSeasons)?.id ?? '');
       })
       .catch(() => message.error(t('regulations.loadError')))
       .finally(() => setInitialLoad(false));

@@ -38,12 +38,6 @@ export const MENU: MenuItem[] = [
     roles: ['ADMIN', 'TEAM_MANAGER', 'SUPERVISOR', 'PUBLIC'],
   },
   {
-    key: 'schedule',
-    labelKey: 'menu.schedule',
-    path: '/schedule',
-    roles: ['ADMIN', 'TEAM_MANAGER', 'REFEREE', 'SUPERVISOR', 'PUBLIC'],
-  },
-  {
     key: 'matches',
     labelKey: 'menu.matches',
     path: '/matches',

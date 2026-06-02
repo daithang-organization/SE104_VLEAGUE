@@ -51,7 +51,18 @@ export default function TeamDetailPage() {
   const stateSeasonId = typeof state?.seasonId === 'string' ? state.seasonId : undefined;
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [team, setTeam] = useState<TeamDetail | null>(null);
+  const [teamData, setTeamData] = useState<TeamDetail | null>(null);
+
+  const team = useMemo(() => {
+    if (!teamData) return null;
+    return {
+      ...teamData,
+      name: state?.proposedTeamName ?? teamData.name,
+      shortName: state?.proposedTeamShortName ?? teamData.shortName,
+      city: state?.proposedTeamCity ?? teamData.city,
+      status: state?.proposedTeamStatus ?? teamData.status,
+    };
+  }, [teamData, state]);
   const [loading, setLoading] = useState(true);
   const [activeMatchMonthKey, setActiveMatchMonthKey] = useState<string | undefined>();
 
@@ -63,7 +74,7 @@ export default function TeamDetailPage() {
         const currentSeasonId =
           stateSeasonId ?? (await apiGetCurrentSeason().catch(() => null))?.id;
         const data = await apiGetTeam(id, currentSeasonId);
-        if (!cancelled) setTeam(data);
+        if (!cancelled) setTeamData(data);
       } catch (_err) {
         if (!cancelled) message.error(t('teamDetail.loadError'));
       } finally {
@@ -313,7 +324,7 @@ export default function TeamDetailPage() {
   ];
 
   const currentStanding = (team.standings || []).length > 0 ? team.standings[0] : null;
-  const teamLogoUrl = getTeamLogoUrl(team);
+  const teamLogoUrl = state?.proposedTeamLogoUrl ?? getTeamLogoUrl(team);
   const teamInitials = (team.shortName || team.name).slice(0, 2).toUpperCase();
   const manager = team.managedUsers?.[0] ?? null;
   const coachName = team.coachName?.trim();
@@ -334,24 +345,20 @@ export default function TeamDetailPage() {
         : manager.email
       : getFallbackManagerDisplay();
 
-  const renderStatusTag = (isHero = false) => {
-    if (requestStatus === 'PENDING') return <Tag color="gold-inverse">Chờ duyệt</Tag>;
+  const renderStatusTag = () => {
+    if (requestStatus === 'PENDING') return <Tag color="gold">Chờ duyệt</Tag>;
     if (requestStatus === 'APPROVED') return <Tag color="green">Được duyệt</Tag>;
-    if (requestStatus === 'REJECTED') return <Tag color="red-inverse">Từ chối</Tag>;
+    if (requestStatus === 'REJECTED') return <Tag color="red">Từ chối</Tag>;
 
     return (
-      <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'red'}>
-        {team.status === 'ACTIVE'
-          ? t('teamDetail.statusActive')
-          : isHero
-            ? t('teamDetail.statusInactive')
-            : t('teamDetail.statusInactiveShort')}
+      <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'default'}>
+        {team.status === 'ACTIVE' ? t('teamDetail.statusActive') : t('teamDetail.statusInactive')}
       </Tag>
     );
   };
 
   const renderActivityTag = () => (
-    <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'red'}>
+    <Tag color={team.status === 'ACTIVE' ? 'green-inverse' : 'default'}>
       {team.status === 'ACTIVE' ? t('teamDetail.statusActive') : t('teamDetail.statusInactive')}
     </Tag>
   );
@@ -378,8 +385,8 @@ export default function TeamDetailPage() {
             {t('teamDetail.back')}
           </Button>
           <Space size={8}>
-            {requestStatus === 'APPROVED' && renderActivityTag()}
-            {renderStatusTag(true)}
+            {requestStatus && renderActivityTag()}
+            {renderStatusTag()}
           </Space>
         </div>
 
@@ -453,13 +460,13 @@ export default function TeamDetailPage() {
                   <Descriptions.Item label={t('teamDetail.descManager')}>
                     {managerDisplay}
                   </Descriptions.Item>
-                  {requestStatus === 'APPROVED' && (
+                  {requestStatus && (
                     <Descriptions.Item label={t('teamDetail.descActivity')}>
                       {renderActivityTag()}
                     </Descriptions.Item>
                   )}
                   <Descriptions.Item label={t('teamDetail.descStatus')}>
-                    {renderStatusTag(false)}
+                    {renderStatusTag()}
                   </Descriptions.Item>
                 </Descriptions>
 

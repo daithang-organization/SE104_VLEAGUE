@@ -1,5 +1,5 @@
 import { CalendarOutlined } from '@ant-design/icons';
-import { Tag } from 'antd';
+import { Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { CSSProperties, ReactNode } from 'react';
 import { getTeamLogoUrl, getTeamTheme } from '../utils/teamLogos';
@@ -40,6 +40,12 @@ export type MatchFixtureCardProps = {
   actions?: ReactNode;
   onTeamClick?: (teamId: string) => void;
   onMatchClick?: (matchId: string) => void;
+  onScoreClick?: (matchId: string) => void;
+  onScheduleClick?: (matchId: string) => void;
+  onStatusClick?: (matchId: string) => void;
+  scoreTitle?: string;
+  scheduleTitle?: string;
+  statusTitle?: string;
 };
 
 function getTeamDisplay(
@@ -94,6 +100,12 @@ export default function MatchFixtureCard({
   actions,
   onTeamClick,
   onMatchClick,
+  onScoreClick,
+  onScheduleClick,
+  onStatusClick,
+  scoreTitle,
+  scheduleTitle,
+  statusTitle,
 }: MatchFixtureCardProps) {
   const home = getTeamDisplay(homeTeam, homeTeamId);
   const away = getTeamDisplay(awayTeam, awayTeamId);
@@ -125,52 +137,136 @@ export default function MatchFixtureCard({
     '--match-away-border': awayTheme.border,
   } as CSSProperties;
 
-  return (
-    <div className={rootClassName} style={themeStyle}>
-      <div className="schedule-fixture-meta">
-        <span className="schedule-fixture-round">{roundLabel}</span>
-        <Tag color={statusColor}>{statusLabel}</Tag>
-      </div>
+  const scoreClassName = `schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}${onScoreClick ? ' is-editable' : ''}`;
+  const tooltipColor = '#1e2f4a';
+  const scheduleContent = (
+    <>
+      <span>{stadiumName ?? stadiumFallback}</span>
+      <span>
+        <CalendarOutlined aria-hidden="true" />
+        {kickoffLabel}
+      </span>
+    </>
+  );
+  const statusContent = (
+    <>
+      <span className="schedule-fixture-round">{roundLabel}</span>
+      <Tag color={statusColor}>{statusLabel}</Tag>
+    </>
+  );
+  const statusMeta = onStatusClick ? (
+    <button
+      type="button"
+      className="schedule-fixture-meta schedule-fixture-meta-button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onStatusClick(id);
+      }}
+    >
+      {statusContent}
+    </button>
+  ) : (
+    <div className="schedule-fixture-meta">{statusContent}</div>
+  );
+  const scoreButton = (
+    <button
+      type="button"
+      className={scoreClassName}
+      onClick={(e) => {
+        if (!onScoreClick) return;
+        e.stopPropagation();
+        onScoreClick(id);
+      }}
+    >
+      {scoreText}
+    </button>
+  );
+  const scheduleDetail = onScheduleClick ? (
+    <button
+      type="button"
+      className="schedule-fixture-detail schedule-fixture-detail-button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onScheduleClick(id);
+      }}
+    >
+      {scheduleContent}
+    </button>
+  ) : (
+    <div className="schedule-fixture-detail">{scheduleContent}</div>
+  );
 
-      <button
-        type="button"
-        className="schedule-fixture-team schedule-fixture-team-left match-fixture-team-home"
-        onClick={() => onTeamClick?.(home.id)}
-      >
+  return (
+    <div
+      className={rootClassName}
+      style={{ ...themeStyle, cursor: onMatchClick ? 'pointer' : undefined }}
+      onClick={() => onMatchClick?.(id)}
+    >
+      {statusTitle ? (
+        <Tooltip title={statusTitle} color={tooltipColor}>
+          {statusMeta}
+        </Tooltip>
+      ) : (
+        statusMeta
+      )}
+
+      <div className="schedule-fixture-team schedule-fixture-team-left match-fixture-team-home">
         <span className="schedule-fixture-team-copy">
-          <span className="schedule-fixture-team-name">{home.name}</span>
+          <button
+            type="button"
+            className="schedule-fixture-team-name schedule-fixture-team-button"
+            onClick={(e) => {
+              if (!onTeamClick) return;
+              e.stopPropagation();
+              onTeamClick?.(home.id);
+            }}
+            style={{ cursor: onTeamClick ? 'pointer' : undefined }}
+          >
+            {home.name}
+          </button>
         </span>
         {renderTeamLogo(home)}
-      </button>
+      </div>
 
-      <button
-        type="button"
-        className={`schedule-fixture-score${hasScore ? ' is-final is-score-card' : ''}`}
-        onClick={() => onMatchClick?.(id)}
-      >
-        {scoreText}
-      </button>
+      {scoreTitle ? (
+        <Tooltip title={scoreTitle} color={tooltipColor}>
+          {scoreButton}
+        </Tooltip>
+      ) : (
+        scoreButton
+      )}
 
-      <button
-        type="button"
-        className="schedule-fixture-team schedule-fixture-team-right match-fixture-team-away"
-        onClick={() => onTeamClick?.(away.id)}
-      >
+      <div className="schedule-fixture-team schedule-fixture-team-right match-fixture-team-away">
         {renderTeamLogo(away)}
         <span className="schedule-fixture-team-copy">
-          <span className="schedule-fixture-team-name">{away.name}</span>
-        </span>
-      </button>
-
-      <div className="schedule-fixture-detail">
-        <span>{stadiumName ?? stadiumFallback}</span>
-        <span>
-          <CalendarOutlined aria-hidden="true" />
-          {kickoffLabel}
+          <button
+            type="button"
+            className="schedule-fixture-team-name schedule-fixture-team-button"
+            onClick={(e) => {
+              if (!onTeamClick) return;
+              e.stopPropagation();
+              onTeamClick?.(away.id);
+            }}
+            style={{ cursor: onTeamClick ? 'pointer' : undefined }}
+          >
+            {away.name}
+          </button>
         </span>
       </div>
 
-      <div className={actionRootClassName}>{actions}</div>
+      {scheduleTitle ? (
+        <Tooltip title={scheduleTitle} color={tooltipColor}>
+          {scheduleDetail}
+        </Tooltip>
+      ) : (
+        scheduleDetail
+      )}
+
+      {actions && (
+        <div className={actionRootClassName} onClick={(e) => e.stopPropagation()}>
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

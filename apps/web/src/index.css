@@ -3448,6 +3448,25 @@ select {
   min-width: 0;
 }
 
+.schedule-fixture-meta-button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin-left: -8px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.schedule-fixture-meta-button:hover {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--text-main);
+}
+
 .schedule-fixture-round {
   color: var(--text-muted);
   font-size: 13px;
@@ -3455,7 +3474,9 @@ select {
 }
 
 .schedule-fixture-team,
-.schedule-fixture-score {
+.schedule-fixture-score,
+.schedule-fixture-team-button,
+.schedule-fixture-detail-button {
   border: 0;
   background: transparent;
   color: var(--text-main);
@@ -3472,11 +3493,11 @@ select {
   font-weight: 700;
 }
 
-.match-fixture-card .schedule-fixture-team:hover span {
+.match-fixture-card .schedule-fixture-team-name:hover {
   color: var(--match-home-accent, var(--primary));
 }
 
-.match-fixture-card .match-fixture-team-away:hover span {
+.match-fixture-card .match-fixture-team-away .schedule-fixture-team-name:hover {
   color: var(--match-away-accent, var(--info));
 }
 
@@ -3496,6 +3517,17 @@ select {
 
 .schedule-fixture-team-name {
   font-weight: 800;
+}
+
+.schedule-fixture-team-button {
+  display: inline;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: inherit;
 }
 
 .schedule-fixture-coach {
@@ -3549,10 +3581,13 @@ select {
 }
 
 .schedule-fixture-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 92px;
   height: 48px;
   padding: 0 16px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 7px;
   background: var(--surface-soft);
   cursor: pointer;
@@ -3563,6 +3598,10 @@ select {
     box-shadow 0.18s ease,
     transform 0.18s ease;
   white-space: nowrap;
+}
+
+.schedule-fixture-score:not(.is-editable) {
+  cursor: inherit;
 }
 
 .schedule-fixture-score.is-final,
@@ -3581,8 +3620,8 @@ select {
     0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
-.schedule-fixture-score.is-score-card:hover {
-  border-color: var(--match-away-border, rgba(227, 34, 33, 0.34));
+.schedule-fixture-score.is-editable:hover {
+  border-color: var(--match-away-border, rgba(148, 163, 184, 0.48));
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   transform: translateY(-1px);
 }
@@ -3590,11 +3629,29 @@ select {
 .schedule-fixture-detail {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 6px;
   min-width: 0;
+  justify-self: end;
+  width: min(100%, 320px);
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.2;
+  text-align: right;
+}
+
+.schedule-fixture-detail-button {
+  cursor: pointer;
+  border-radius: 7px;
+  padding: 8px 10px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.schedule-fixture-detail-button:hover {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--text-main);
 }
 
 .schedule-fixture-detail span {
@@ -3617,9 +3674,50 @@ select {
 }
 
 .results-fixture-row {
-  grid-template-columns:
-    minmax(104px, 150px) minmax(170px, 1fr) 116px minmax(170px, 1fr)
-    minmax(190px, 260px) minmax(128px, auto);
+  --fixture-team-offset: clamp(132px, 15vw, 186px);
+  --fixture-team-width: clamp(116px, 13vw, 178px);
+  grid-template-columns: minmax(104px, 150px) minmax(0, 1fr) minmax(230px, 340px);
+  padding-right: 24px;
+}
+
+.results-fixture-row .schedule-fixture-meta {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.results-fixture-row .match-fixture-team-home,
+.results-fixture-row .schedule-fixture-score,
+.results-fixture-row .match-fixture-team-away {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: center;
+  z-index: 1;
+}
+
+.results-fixture-row .match-fixture-team-home,
+.results-fixture-row .match-fixture-team-away {
+  width: var(--fixture-team-width);
+}
+
+.results-fixture-row .match-fixture-team-home {
+  transform: translateX(calc(-1 * var(--fixture-team-offset)));
+}
+
+.results-fixture-row .match-fixture-team-away {
+  transform: translateX(var(--fixture-team-offset));
+}
+
+.results-fixture-row .schedule-fixture-score {
+  min-width: 128px;
+}
+
+.results-fixture-row .schedule-fixture-detail {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  width: max-content;
+  max-width: 100%;
+  z-index: 1;
 }
 
 .results-fixture-action {
@@ -4284,7 +4382,21 @@ select {
   }
 
   .results-fixture-row {
-    grid-template-columns: minmax(0, 1fr) 78px minmax(0, 1fr) minmax(86px, auto);
+    grid-template-columns: minmax(0, 1fr) 78px minmax(0, 1fr);
+    padding-right: 14px;
+  }
+
+  .results-fixture-row .match-fixture-team-home,
+  .results-fixture-row .schedule-fixture-score,
+  .results-fixture-row .match-fixture-team-away {
+    grid-column: auto;
+    grid-row: 2;
+    transform: none;
+    width: auto;
+  }
+
+  .results-fixture-row .schedule-fixture-score {
+    min-width: 78px;
   }
 
   .schedule-fixture-meta {
@@ -4296,6 +4408,14 @@ select {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 6px 16px;
+  }
+
+  .results-fixture-row .schedule-fixture-detail {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: start;
+    width: 100%;
+    max-width: 100%;
   }
 
   .schedule-fixture-action {
@@ -4492,7 +4612,7 @@ select {
   }
 
   .results-fixture-row {
-    grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr) minmax(34px, auto);
+    grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
   }
 
   .schedule-fixture-team {

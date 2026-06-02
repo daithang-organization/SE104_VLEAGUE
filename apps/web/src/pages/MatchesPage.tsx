@@ -1,26 +1,31 @@
-﻿import {
+import {
   EditOutlined,
-  EyeOutlined,
   FieldTimeOutlined,
   LeftOutlined,
   PlusOutlined,
+  ReloadOutlined,
   RightOutlined,
+  SendOutlined,
+  ThunderboltOutlined,
   TrophyOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
   Button,
   Card,
+  DatePicker,
   Descriptions,
   Flex,
+  Form,
   Input,
   message,
   Modal,
   Select,
   Space,
+  Spin,
   Tabs,
   Tag,
   Timeline,
-  Tooltip,
   Typography,
 } from 'antd';
 import dayjs from 'dayjs';
@@ -36,6 +41,7 @@ import {
   PageCover,
   ScoreEditModal,
 } from '../components';
+import { compareSeasonsByLatest, getLatestSeason } from '../hooks/useSeasonSelection';
 import {
   apiAddMatchEvent,
   apiGetAssignedMatches,
@@ -49,11 +55,13 @@ import {
   type MatchEvent,
   type RosterPlayer,
 } from '../services/matchApi';
-import { getApiErrorMessage } from '../lib/apiError';
-import { apiGetCurrentSeason, apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGenerateSchedule, apiPublishSchedule } from '../services/scheduleApi';
+import { apiGetSeasons, type Season } from '../services/seasonApi';
+import { apiGetStadiums, type Stadium } from '../services/teamApi';
 import { apiGetTeamManagerManagedTeam } from '../services/teamManagerApi';
 import { CAN_EDIT_ROLES, EVENT_TYPE_MAP, STATUS_MAP } from '../utils/constants';
 import { getTeamLogoUrl } from '../utils/teamLogos';
+import { getApiErrorMessage } from '../lib/apiError';
 
 function formatMatchDateLabel(kickoffAt?: string | null) {
   if (!kickoffAt) return 'Chưa xếp lịch';
@@ -69,6 +77,10 @@ function compareMatchesByKickoff(a: Match, b: Match) {
 
   const timeDiff = new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime();
   return timeDiff || a.id.localeCompare(b.id);
+}
+
+function isMatchLockedByInactiveTeam(match: Match) {
+  return match.homeTeam?.status === 'INACTIVE' || match.awayTeam?.status === 'INACTIVE';
 }
 
 export default function MatchesPage() {
@@ -89,6 +101,15 @@ export default function MatchesPage() {
   const [managedTeamId, setManagedTeamId] = useState<string | null>(null);
   const [officialAssignedCount, setOfficialAssignedCount] = useState<number | null>(null);
   const [officialAllCount, setOfficialAllCount] = useState<number | null>(null);
+  const [stadiums, setStadiums] = useState<Stadium[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [generateSeasonId, setGenerateSeasonId] = useState<string | undefined>();
+  const [editingScheduleMatch, setEditingScheduleMatch] = useState<Match | null>(null);
+  const [scheduleEditOpen, setScheduleEditOpen] = useState(false);
+  const [savingScheduleMatch, setSavingScheduleMatch] = useState(false);
+  const [scheduleForm] = Form.useForm();
 
   // Detail modal
   const [detailMatch, setDetailMatch] = useState<Match | null>(null);
@@ -96,7 +117,14 @@ export default function MatchesPage() {
 
   // Score edit
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [scoreMatch, setScoreMatch] = useState<Match | null>(null);
   const [savingScore, setSavingScore] = useState(false);
+
+  // Progress edit
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [progressMatch, setProgressMatch] = useState<Match | null>(null);
+  const [savingProgress, setSavingProgress] = useState(false);
+  const [progressForm] = Form.useForm<{ status: string }>();
 
   // Event modal
   const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -108,6 +136,7 @@ export default function MatchesPage() {
   const canEdit = useMemo(() => user?.role && CAN_EDIT_ROLES.includes(user.role), [user]);
   const isManager = user?.role === 'TEAM_MANAGER';
   const isAssignedOfficial = user?.role === 'REFEREE' || user?.role === 'SUPERVISOR';
+  const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +160,17 @@ export default function MatchesPage() {
       cancelled = true;
     };
   }, [isManager]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setStadiums([]);
+      return;
+    }
+
+    apiGetStadiums()
+      .then(setStadiums)
+      .catch(() => setStadiums([]));
+  }, [isAdmin]);
 
   const loadMatches = useCallback(
     async (
@@ -194,12 +234,13 @@ export default function MatchesPage() {
 
   // Initial fetch seasons
   useEffect(() => {
-    Promise.all([apiGetSeasons(), apiGetCurrentSeason().catch(() => null)])
-      .then(([data, current]) => {
-        setSeasons(data);
-        if (data.length > 0) {
-          const active = current ?? data.find((s) => s.status === 'IN_PROGRESS');
-          const initialSeasonId = active ? active.id : data[0].id;
+    apiGetSeasons()
+      .then((data) => {
+        const sortedSeasons = [...data].sort(compareSeasonsByLatest);
+        setSeasons(sortedSeasons);
+        const latestSeason = getLatestSeason(sortedSeasons);
+        if (latestSeason) {
+          const initialSeasonId = latestSeason.id;
           setSelectedSeasonId(initialSeasonId);
           loadMatches(
             initialSeasonId,
@@ -233,6 +274,10 @@ export default function MatchesPage() {
   const onSeasonChange = (val: string) => {
     setSelectedSeasonId(val);
     loadMatches(val, searchText, filterStatus, filterTeam, activeLeg);
+  };
+
+  const handleReload = () => {
+    loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
   };
 
   const onResultTabChange = (key: string) => {
@@ -392,6 +437,86 @@ export default function MatchesPage() {
     }
   };
 
+  const openGenerateModal = () => {
+    setGenerateSeasonId(selectedSeasonId);
+    setGenerateModalOpen(true);
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const result = await apiGenerateSchedule(generateSeasonId);
+      message.success(result.message || t('schedule.generateSuccess'));
+      const nextSeasonId = generateSeasonId ?? selectedSeasonId;
+      if (generateSeasonId && generateSeasonId !== selectedSeasonId) {
+        setSelectedSeasonId(generateSeasonId);
+      }
+      setGenerateModalOpen(false);
+      loadMatches(nextSeasonId, searchText, filterStatus, filterTeam, activeLeg);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || t('schedule.generateError'));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    try {
+      const result = await apiPublishSchedule(selectedSeasonId);
+      message.success(result.message || t('schedule.publishSuccess'));
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
+    } catch (_err) {
+      message.error(t('schedule.publishError'));
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const openScheduleEditModal = (match: Match) => {
+    if (isMatchLockedByInactiveTeam(match)) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa trận đấu.');
+      return;
+    }
+
+    setEditingScheduleMatch(match);
+    scheduleForm.setFieldsValue({
+      stadiumId: match.stadiumId || undefined,
+      kickoffAt: match.kickoffAt ? dayjs(match.kickoffAt) : null,
+    });
+    setScheduleEditOpen(true);
+  };
+
+  const handleSaveScheduleMatch = async () => {
+    if (!editingScheduleMatch) return;
+    if (isMatchLockedByInactiveTeam(editingScheduleMatch)) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa trận đấu.');
+      return;
+    }
+
+    setSavingScheduleMatch(true);
+    try {
+      const values = scheduleForm.getFieldsValue();
+      await apiUpdateMatch(editingScheduleMatch.id, {
+        stadiumId: values.stadiumId || null,
+        kickoffAt: values.kickoffAt ? (values.kickoffAt as dayjs.Dayjs).toISOString() : null,
+      });
+      message.success(t('schedule.matchUpdateSuccess'));
+      setScheduleEditOpen(false);
+      setEditingScheduleMatch(null);
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
+    } catch (_err) {
+      message.error(t('schedule.matchUpdateError'));
+    } finally {
+      setSavingScheduleMatch(false);
+    }
+  };
+
   const viewDetail = async (matchId: string) => {
     setDetailLoading(true);
     try {
@@ -407,13 +532,17 @@ export default function MatchesPage() {
 
   // Score update
   const handleSaveScore = async (homeScore: number, awayScore: number) => {
-    if (!detailMatch) return;
+    const targetMatch = scoreMatch ?? detailMatch;
+    if (!targetMatch) return;
     try {
       setSavingScore(true);
-      await apiUpdateMatch(detailMatch.id, { homeScore, awayScore });
+      await apiUpdateMatch(targetMatch.id, { homeScore, awayScore });
       message.success(t('matches.scoreUpdated'));
       setScoreModalOpen(false);
-      viewDetail(detailMatch.id);
+      setScoreMatch(null);
+      if (detailMatch?.id === targetMatch.id) {
+        viewDetail(targetMatch.id);
+      }
       loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
     } catch (err: unknown) {
       message.error(getApiErrorMessage(err) || t('matches.scoreUpdateError'));
@@ -422,7 +551,53 @@ export default function MatchesPage() {
     }
   };
 
+  const openScoreEditModal = (match: Match) => {
+    if (isMatchLockedByInactiveTeam(match)) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa trận đấu.');
+      return;
+    }
+
+    setScoreMatch(match);
+    setScoreModalOpen(true);
+  };
+
   // Status update
+  const openProgressEditModal = (match: Match) => {
+    if (isMatchLockedByInactiveTeam(match)) {
+      message.warning('CLB đang không hoạt động, không thể chỉnh sửa trận đấu.');
+      return;
+    }
+
+    setProgressMatch(match);
+    progressForm.setFieldsValue({ status: match.status });
+    setProgressModalOpen(true);
+  };
+
+  const handleSaveProgress = async ({ status }: { status: string }) => {
+    if (!progressMatch) return;
+
+    try {
+      setSavingProgress(true);
+      await apiUpdateMatchStatus(progressMatch.id, status);
+      message.success(t('matches.statusChanged', { status: STATUS_MAP[status]?.label ?? status }));
+      setProgressModalOpen(false);
+      setProgressMatch(null);
+      if (detailMatch?.id === progressMatch.id) {
+        viewDetail(progressMatch.id);
+      }
+      loadMatches(selectedSeasonId, searchText, filterStatus, filterTeam, activeLeg);
+    } catch (err: unknown) {
+      const msg =
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      message.error((msg as string) || t('matches.statusChangeError'));
+    } finally {
+      setSavingProgress(false);
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!detailMatch) return;
     try {
@@ -496,6 +671,7 @@ export default function MatchesPage() {
 
   const renderResultFixture = (match: Match) => {
     const status = STATUS_MAP[match.status] ?? { label: match.status, color: 'default' };
+    const inactiveTeamLocked = isMatchLockedByInactiveTeam(match);
 
     return (
       <MatchFixtureCard
@@ -519,37 +695,33 @@ export default function MatchesPage() {
         scoreMode="result-placeholder"
         onTeamClick={(teamId) => navigate(`/teams/${teamId}`)}
         onMatchClick={(matchId) => navigate(`/matches/${matchId}`)}
-        actions={
-          <>
-            <Tooltip title={t('matches.btnDetail')}>
-              <Button
-                type="link"
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => navigate(`/matches/${match.id}`)}
-              >
-                {t('matches.btnDetail')}
-              </Button>
-            </Tooltip>
-            {canEdit && (
-              <Tooltip title={t('matches.btnEdit')}>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => viewDetail(match.id)}
-                >
-                  {t('matches.btnEdit')}
-                </Button>
-              </Tooltip>
-            )}
-          </>
+        onScoreClick={canEdit && !inactiveTeamLocked ? () => openScoreEditModal(match) : undefined}
+        scoreTitle={canEdit && !inactiveTeamLocked ? t('matches.scoreUpdateTooltip') : undefined}
+        onStatusClick={
+          canEdit && !inactiveTeamLocked ? () => openProgressEditModal(match) : undefined
         }
+        statusTitle={
+          canEdit && !inactiveTeamLocked ? t('matches.progressUpdateTooltip') : undefined
+        }
+        onScheduleClick={
+          isAdmin && !inactiveTeamLocked ? () => openScheduleEditModal(match) : undefined
+        }
+        scheduleTitle={isAdmin && !inactiveTeamLocked ? t('schedule.editTooltip') : undefined}
       />
     );
   };
   const finishedMatches = matches.filter((match) => match.status === 'FINISHED').length;
   const openMatches = matches.length - finishedMatches;
+  const draftCount = matches.filter((match) => match.status === 'DRAFT').length;
+  const scoreEditTarget = scoreMatch ?? detailMatch;
+  const progressStatusOptions = progressMatch
+    ? [progressMatch.status, ...getStatusActions(progressMatch)]
+        .filter((status, index, values) => values.indexOf(status) === index)
+        .map((status) => ({
+          value: status,
+          label: STATUS_MAP[status]?.label ?? status,
+        }))
+    : [];
 
   const renderEventTimeline = (events: MatchEvent[]) => {
     if (!events || events.length === 0) {
@@ -647,7 +819,26 @@ export default function MatchesPage() {
               options={availableTeams}
             />
           )}
+          <Button icon={<ReloadOutlined />} onClick={handleReload} loading={loading}>
+            {t('schedule.reloadBtn')}
+          </Button>
         </Space>
+        {isAdmin && (
+          <Space wrap>
+            <Button icon={<ThunderboltOutlined />} onClick={openGenerateModal} loading={generating}>
+              {t('schedule.generateBtn')}
+            </Button>
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handlePublish}
+              loading={publishing}
+              disabled={draftCount === 0}
+            >
+              {t('schedule.publishBtn')}
+            </Button>
+          </Space>
+        )}
       </div>
 
       <Card className="schedule-page-card">
@@ -657,66 +848,159 @@ export default function MatchesPage() {
           items={resultTabItems}
           style={{ marginBottom: 12 }}
         />
-        {loading && matches.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-            {t('common.loading')}
-          </div>
-        ) : roundGroups.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
-            {searchText
-              ? t('matches.noSearchResult', { query: searchText })
-              : t('matches.noMatches')}
-          </div>
-        ) : (
-          <div>
-            <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
-              <Button
-                shape="circle"
-                size="large"
-                icon={<LeftOutlined />}
-                disabled={activeRoundIndex <= 0}
-                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
-              />
-              <div style={{ minWidth: 240, textAlign: 'center' }}>
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {activeRound
-                    ? t('matches.roundLabel', { round: activeRound[0] })
-                    : t('matches.title')}
-                </Typography.Title>
-                <Typography.Text type="secondary">
-                  {activeRound
-                    ? `${t('matches.roundMatches', { count: activeRoundMatches.length })}${
-                        activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
-                      } · ${t('matches.roundProgress', {
-                        finished: activeRoundFinishedCount,
-                        total: activeRoundMatches.length,
-                      })}`
-                    : ''}
-                </Typography.Text>
-              </div>
-              <Button
-                shape="circle"
-                size="large"
-                icon={<RightOutlined />}
-                disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
-                onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
-              />
-            </Flex>
-            <div className="schedule-fixture-list">
-              {activeRoundMatchGroups.map(([dayKey, dayMatches]) => (
-                <div key={dayKey} className="schedule-fixture-day-group">
-                  <Typography.Title level={5} className="schedule-fixture-date">
-                    {formatMatchDateLabel(dayMatches[0]?.kickoffAt)}
-                  </Typography.Title>
-                  <div className="schedule-fixture-day-list">
-                    {dayMatches.map((match) => renderResultFixture(match))}
-                  </div>
-                </div>
-              ))}
+        <Spin spinning={loading && matches.length > 0} tip={t('common.loading')}>
+          {loading && matches.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+              {t('common.loading')}
             </div>
-          </div>
-        )}
+          ) : roundGroups.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+              {searchText
+                ? t('matches.noSearchResult', { query: searchText })
+                : t('matches.noMatches')}
+            </div>
+          ) : (
+            <div>
+              <Flex justify="center" align="center" gap={18} style={{ margin: '12px 0 20px' }}>
+                <Button
+                  shape="circle"
+                  size="large"
+                  icon={<LeftOutlined />}
+                  disabled={activeRoundIndex <= 0}
+                  onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex - 1][0])}
+                />
+                <div style={{ minWidth: 240, textAlign: 'center' }}>
+                  <Typography.Title level={4} style={{ margin: 0 }}>
+                    {activeRound
+                      ? t('matches.roundLabel', { round: activeRound[0] })
+                      : t('matches.title')}
+                  </Typography.Title>
+                  <Typography.Text type="secondary">
+                    {activeRound
+                      ? `${t('matches.roundMatches', { count: activeRoundMatches.length })}${
+                          activeRoundDateLabel ? ` · ${activeRoundDateLabel}` : ''
+                        } · ${t('matches.roundProgress', {
+                          finished: activeRoundFinishedCount,
+                          total: activeRoundMatches.length,
+                        })}`
+                      : ''}
+                  </Typography.Text>
+                </div>
+                <Button
+                  shape="circle"
+                  size="large"
+                  icon={<RightOutlined />}
+                  disabled={activeRoundIndex < 0 || activeRoundIndex >= roundGroups.length - 1}
+                  onClick={() => setActiveRoundNo(roundGroups[activeRoundIndex + 1][0])}
+                />
+              </Flex>
+              <div className="schedule-fixture-list">
+                {activeRoundMatchGroups.map(([dayKey, dayMatches]) => (
+                  <div key={dayKey} className="schedule-fixture-day-group">
+                    <Typography.Title level={5} className="schedule-fixture-date">
+                      {formatMatchDateLabel(dayMatches[0]?.kickoffAt)}
+                    </Typography.Title>
+                    <div className="schedule-fixture-day-list">
+                      {dayMatches.map((match) => renderResultFixture(match))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Spin>
       </Card>
+
+      <Modal
+        title={
+          editingScheduleMatch
+            ? t('schedule.editModalTitleSpecific', {
+                home: editingScheduleMatch.homeTeam?.name ?? '?',
+                away: editingScheduleMatch.awayTeam?.name ?? '?',
+                round: editingScheduleMatch.roundNo,
+              })
+            : t('schedule.editModalTitle')
+        }
+        open={scheduleEditOpen}
+        onCancel={() => {
+          setScheduleEditOpen(false);
+          setEditingScheduleMatch(null);
+        }}
+        onOk={handleSaveScheduleMatch}
+        confirmLoading={savingScheduleMatch}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+      >
+        <Form form={scheduleForm} layout="vertical">
+          <Form.Item name="stadiumId" label={t('schedule.formStadium')}>
+            <Select
+              placeholder={t('schedule.formStadiumPlaceholder')}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={stadiums.map((s) => ({
+                value: s.id,
+                label: `${s.name}${s.city ? ` (${s.city})` : ''}`,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="kickoffAt" label={t('schedule.formKickoff')}>
+            <DatePicker
+              showTime={{ format: 'HH:mm' }}
+              format="DD/MM/YYYY HH:mm"
+              style={{ width: '100%' }}
+              placeholder={t('schedule.formKickoffPlaceholder')}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={
+          <Space>
+            <ThunderboltOutlined style={{ color: '#faad14' }} />
+            <span>{t('schedule.generateModalTitle')}</span>
+          </Space>
+        }
+        open={generateModalOpen}
+        onCancel={() => setGenerateModalOpen(false)}
+        onOk={handleGenerate}
+        confirmLoading={generating}
+        okText={t('schedule.generateModalOk')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ type: 'primary', icon: <ThunderboltOutlined /> }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Text>{t('schedule.generateModalDesc')}</Typography.Text>
+        </div>
+        <Select
+          value={generateSeasonId}
+          onChange={(v) => setGenerateSeasonId(v)}
+          style={{ width: '100%', marginBottom: 16 }}
+          placeholder={t('schedule.generateModalSeasonPlaceholder')}
+          size="large"
+          options={seasons.map((s) => ({
+            value: s.id,
+            label: `${s.name} (${s.year}/${s.year + 1})`,
+          }))}
+        />
+        <div
+          style={{
+            background: '#fffbe6',
+            border: '1px solid #ffe58f',
+            borderRadius: 8,
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <WarningOutlined style={{ color: '#faad14', fontSize: 16 }} />
+          <Typography.Text style={{ fontSize: 13 }}>
+            {t('schedule.generateModalWarning')}
+          </Typography.Text>
+        </div>
+      </Modal>
 
       {/* Match Detail Modal */}
       <Modal
@@ -938,7 +1222,10 @@ export default function MatchesPage() {
                 <Button
                   type="primary"
                   icon={<EditOutlined />}
-                  onClick={() => setScoreModalOpen(true)}
+                  onClick={() => {
+                    setScoreMatch(null);
+                    setScoreModalOpen(true);
+                  }}
                 >
                   {t('matches.scoreUpdateBtn')}
                 </Button>
@@ -976,18 +1263,57 @@ export default function MatchesPage() {
       </Modal>
 
       {/* Score Edit Modal */}
-      {detailMatch && (
+      {scoreEditTarget && (
         <ScoreEditModal
           open={scoreModalOpen}
-          onCancel={() => setScoreModalOpen(false)}
+          onCancel={() => {
+            setScoreModalOpen(false);
+            setScoreMatch(null);
+          }}
           onOk={handleSaveScore}
           loading={savingScore}
-          homeTeamName={detailMatch.homeTeam?.name ?? t('matches.homeTeamLabel')}
-          awayTeamName={detailMatch.awayTeam?.name ?? t('matches.awayTeamLabel')}
-          initialHomeScore={detailMatch.homeScore}
-          initialAwayScore={detailMatch.awayScore}
+          homeTeamName={scoreEditTarget.homeTeam?.name ?? t('matches.homeTeamLabel')}
+          awayTeamName={scoreEditTarget.awayTeam?.name ?? t('matches.awayTeamLabel')}
+          initialHomeScore={scoreEditTarget.homeScore}
+          initialAwayScore={scoreEditTarget.awayScore}
         />
       )}
+
+      <Modal
+        title={t('matches.progressModalTitle')}
+        open={progressModalOpen}
+        onCancel={() => {
+          setProgressModalOpen(false);
+          setProgressMatch(null);
+        }}
+        footer={null}
+        width={420}
+      >
+        <Form form={progressForm} layout="vertical" onFinish={handleSaveProgress}>
+          <Form.Item
+            name="status"
+            label={t('matches.statusPlaceholder')}
+            rules={[{ required: true, message: t('matches.statusRequired') }]}
+          >
+            <Select options={progressStatusOptions} />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setProgressModalOpen(false);
+                  setProgressMatch(null);
+                }}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button type="primary" htmlType="submit" loading={savingProgress}>
+                {t('common.save')}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Add Event Modal (Batch) */}
       {detailMatch && (

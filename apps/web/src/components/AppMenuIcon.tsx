@@ -2,11 +2,11 @@ import {
   BarChartOutlined,
   CalendarOutlined,
   HomeOutlined,
-  TableOutlined,
   TrophyOutlined,
 } from '@ant-design/icons';
 
 import headToHeadIcon from '../assets/menu-icons/1v1_icon.png';
+import matchIcon from '../assets/menu-icons/match_icon.png';
 import playerIcon from '../assets/menu-icons/player_icon.png';
 import roleIcon from '../assets/menu-icons/role_icon.png';
 import rulesIcon from '../assets/menu-icons/rules_icon.png';
@@ -23,6 +23,7 @@ type AppMenuIconProps = {
 
 const maskIconByKey: Record<string, string> = {
   seasons: seasonIcon,
+  matches: matchIcon,
   teams: teamIcon,
   stadiums: stadiumIcon,
   players: playerIcon,
@@ -47,8 +48,6 @@ export function AppMenuIcon({ menuKey, variant = 'cover' }: AppMenuIconProps) {
       return <HomeOutlined className={iconClassName} />;
     case 'schedule':
       return <CalendarOutlined className={iconClassName} />;
-    case 'matches':
-      return <TableOutlined className={iconClassName} />;
     case 'standings':
       return <TrophyOutlined className={iconClassName} />;
     case 'reports':

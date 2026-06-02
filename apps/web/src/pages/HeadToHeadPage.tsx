@@ -3,6 +3,7 @@ import { Button, Card, Col, Empty, Row, Select, Space, Spin, Statistic, Table } 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppMenuIcon, PageCover } from '../components';
+import { compareSeasonsByLatest, getLatestSeason } from '../hooks/useSeasonSelection';
 import { api } from '../lib/api';
 import { apiGetSeasons, type Season } from '../services/seasonApi';
 import { apiGetHeadToHead, type HeadToHeadResult } from '../services/searchApi';
@@ -25,7 +26,11 @@ export default function HeadToHeadPage() {
       .then((r) => setTeams(r.data.data ?? []))
       .catch(() => {});
     apiGetSeasons()
-      .then(setSeasons)
+      .then((data) => {
+        const sortedSeasons = [...data].sort(compareSeasonsByLatest);
+        setSeasons(sortedSeasons);
+        setSeasonId(getLatestSeason(sortedSeasons)?.id);
+      })
       .catch(() => setSeasons([]));
   }, []);
 

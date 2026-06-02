@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth, RequireRole } from './auth';
 import { ErrorBoundary, TableSkeleton } from './components';
 
@@ -27,7 +27,6 @@ const PlayersPage = lazy(() => import('./pages/PlayersPage'));
 const PlayerDetailPage = lazy(() => import('./pages/PlayerDetailPage'));
 const StadiumsPage = lazy(() => import('./pages/StadiumsPage'));
 const StadiumDetailPage = lazy(() => import('./pages/StadiumDetailPage'));
-const SchedulePage = lazy(() => import('./pages/SchedulePage'));
 const SeasonsPage = lazy(() => import('./pages/SeasonsPage'));
 const MatchesPage = lazy(() => import('./pages/MatchesPage'));
 const MatchDetailPage = lazy(() => import('./pages/MatchDetailPage'));
@@ -102,7 +101,7 @@ export default function App() {
                 </RequireRole>
               }
             />
-            <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/schedule" element={<Navigate to="/matches" replace />} />
             <Route
               path="/seasons"
               element={
