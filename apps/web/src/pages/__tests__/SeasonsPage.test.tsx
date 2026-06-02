@@ -74,6 +74,9 @@ const mockTeamApi = vi.hoisted(() => ({
   apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 0 }),
 }));
 const mockTeamInvitationApi = vi.hoisted(() => ({
+  apiGetMyInvitations: vi.fn().mockResolvedValue([]),
+  apiGetMyPendingInvitations: vi.fn().mockResolvedValue([]),
+  apiRespondTeamInvitation: vi.fn().mockResolvedValue({}),
   apiGetInvitationCandidates: vi.fn().mockResolvedValue({
     targetSeason: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
     previousSeason: { id: 's2', name: 'VLeague 2024-2025', year: 2024, status: 'COMPLETED' },
@@ -230,6 +233,12 @@ function resetMockImplementations() {
     logout: vi.fn(),
   });
 
+  mockTeamInvitationApi.apiGetMyPendingInvitations.mockReset();
+  mockTeamInvitationApi.apiGetMyPendingInvitations.mockResolvedValue([]);
+  mockTeamInvitationApi.apiGetMyInvitations.mockReset();
+  mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([]);
+  mockTeamInvitationApi.apiRespondTeamInvitation.mockReset();
+  mockTeamInvitationApi.apiRespondTeamInvitation.mockResolvedValue({});
   mockTeamInvitationApi.apiGetInvitationCandidates.mockReset();
   mockTeamInvitationApi.apiGetInvitationCandidates.mockResolvedValue({
     targetSeason: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
@@ -469,6 +478,91 @@ describe('SeasonsPage', () => {
     expect(screen.getByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
     expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
+  });
+
+  it('shows manager invitations in the season panel and can reopen the popup', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([
+      {
+        id: 'invitation-pending',
+        seasonId: 's1',
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+        status: 'DECLINED',
+        sentAt: '2025-01-01T00:00:00Z',
+        deadlineAt: '2025-01-15T00:00:00Z',
+        responseAt: null,
+        responseReason: null,
+        regulationsSnapshot: { PARTICIPATION_FEE_VND: '1000000000' },
+        season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+        team: { id: 'team-1', name: 'CLB BÃ¬nh Äá»‹nh' },
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+    ]);
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText(/Lời mời tham dự VLeague 2025-2026/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Xem lại lời mời/i }));
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'vleague:team-invitation:reopen',
+        detail: { invitationId: 'invitation-pending' },
+      }),
+    );
+  });
+
+  it('labels sent manager invitations as waiting for response', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([
+      {
+        id: 'invitation-pending',
+        seasonId: 's1',
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+        status: 'SENT',
+        sentAt: '2025-01-01T00:00:00Z',
+        deadlineAt: '2025-01-15T00:00:00Z',
+        responseAt: null,
+        responseReason: null,
+        regulationsSnapshot: { PARTICIPATION_FEE_VND: '1000000000' },
+        season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+        team: { id: 'team-1', name: 'CLB BÃ¬nh Äá»‹nh' },
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+    ]);
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    fireEvent.click(container.querySelector('.ant-table-row-expand-icon') as HTMLElement);
+
+    expect(await screen.findByText('Chờ phản hồi')).toBeInTheDocument();
+    expect(screen.queryByText('Đã gửi')).not.toBeInTheDocument();
   });
 
   it('renders season years', async () => {

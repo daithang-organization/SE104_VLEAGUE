@@ -11,6 +11,7 @@ vi.mock('../../lib/api', () => ({ api: mockApi }));
 
 import {
   apiGetInvitationCandidates,
+  apiGetMyInvitations,
   apiGetMyPendingInvitations,
   apiGetPromotionCandidates,
   apiGetSeasonInvitations,
@@ -72,6 +73,16 @@ describe('teamInvitationApi', () => {
     const result = await apiGetMyPendingInvitations();
 
     expect(mockApi.get).toHaveBeenCalledWith('/team-invitations/my-pending');
+    expect(result).toEqual(invitations);
+  });
+
+  it('apiGetMyInvitations calls GET /team-invitations/my', async () => {
+    const invitations = [{ id: 'inv-1', status: 'DECLINED' }];
+    mockApi.get.mockResolvedValue({ data: invitations });
+
+    const result = await apiGetMyInvitations();
+
+    expect(mockApi.get).toHaveBeenCalledWith('/team-invitations/my');
     expect(result).toEqual(invitations);
   });
 

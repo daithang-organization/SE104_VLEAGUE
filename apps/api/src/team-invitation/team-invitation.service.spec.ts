@@ -729,6 +729,41 @@ describe('TeamInvitationService', () => {
     });
   });
 
+  describe('getForManager', () => {
+    it('loads all invitations for the team assigned to the manager', async () => {
+      const declinedInvitation = { ...invitation, status: 'DECLINED' };
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockResolvedValue([declinedInvitation] as any);
+
+      const result = await service.getForManager('manager-1');
+
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          ...declinedInvitation,
+          compliance: expect.objectContaining({
+            roster: expect.objectContaining({ current: 2, ok: false }),
+            foreignPlayers: expect.objectContaining({ current: 1, ok: true }),
+            age: expect.objectContaining({
+              total: 2,
+              invalidCount: 0,
+              ok: true,
+            }),
+            stadium: expect.objectContaining({ ok: false }),
+          }),
+        }),
+      );
+      expect(prisma.teamInvitation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            teamId: 'team-1',
+          },
+          orderBy: [{ sentAt: 'desc' }, { createdAt: 'desc' }],
+        }),
+      );
+    });
+  });
+
   describe('getReplacementCandidates', () => {
     it('counts distinct accepted and approved teams when calculating replacement slots', async () => {
       jest.spyOn(prisma.teamInvitation, 'count').mockResolvedValue(8);

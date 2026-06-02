@@ -11,4 +11,4 @@ pnpm --filter api exec tsx prisma/setup-vleague-2025.ts
 pnpm --filter api exec tsx prisma/seed-report-demo.ts
 pnpm --filter api exec tsx prisma/seed-promotion-candidates.ts
 
-pnpm dev
+
