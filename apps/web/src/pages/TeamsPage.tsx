@@ -663,6 +663,24 @@ export default function TeamsPage() {
     return '—';
   };
 
+  const getTeamRequestDetailState = (
+    request: TeamManagerRequest,
+    fromTab: 'requests' | 'review',
+  ) => ({
+    fromTab,
+    requestType: request.requestType,
+    requestNote: request.requestNote,
+    adminNote: request.adminNote,
+    requestStatus: request.status,
+    managerName: request.manager?.name,
+    managerEmail: request.manager?.email,
+    proposedTeamName: request.proposedTeamName,
+    proposedTeamShortName: request.proposedTeamShortName,
+    proposedTeamCity: request.proposedTeamCity,
+    proposedTeamLogoUrl: request.proposedTeamLogoUrl,
+    proposedTeamStatus: request.proposedTeamStatus,
+  });
+
   const renderTeamRequestName = (request: TeamManagerRequest) => {
     const teamName = getTeamRequestName(request);
     const isAdminReview = user?.role === 'ADMIN';
@@ -676,14 +694,10 @@ export default function TeamsPage() {
         className="table-link-button"
         onClick={() =>
           navigate(`/teams/${request.teamId}`, {
-            state: {
-              fromTab: user?.role === 'TEAM_MANAGER' ? 'requests' : 'review',
-              requestNote: request.requestNote,
-              adminNote: request.adminNote,
-              requestStatus: request.status,
-              managerName: request.manager?.name,
-              managerEmail: request.manager?.email,
-            },
+            state: getTeamRequestDetailState(
+              request,
+              user?.role === 'TEAM_MANAGER' ? 'requests' : 'review',
+            ),
           })
         }
       >
@@ -1021,14 +1035,7 @@ export default function TeamsPage() {
                 onClick={() =>
                   request.teamId &&
                   navigate(`/teams/${request.teamId}`, {
-                    state: {
-                      fromTab: 'review',
-                      requestNote: request.requestNote,
-                      adminNote: request.adminNote,
-                      requestStatus: request.status,
-                      managerName: request.manager?.name,
-                      managerEmail: request.manager?.email,
-                    },
+                    state: getTeamRequestDetailState(request, 'review'),
                   })
                 }
               >
@@ -1061,14 +1068,7 @@ export default function TeamsPage() {
                   onClick={() =>
                     request.teamId &&
                     navigate(`/teams/${request.teamId}`, {
-                      state: {
-                        fromTab: 'review',
-                        requestNote: request.requestNote,
-                        adminNote: request.adminNote,
-                        requestStatus: request.status,
-                        managerName: request.manager?.name,
-                        managerEmail: request.manager?.email,
-                      },
+                      state: getTeamRequestDetailState(request, 'review'),
                     })
                   }
                 >

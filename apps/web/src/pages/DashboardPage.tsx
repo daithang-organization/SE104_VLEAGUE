@@ -1037,7 +1037,7 @@ export default function DashboardPage() {
                     <Button
                       icon={<CalendarOutlined />}
                       size="small"
-                      onClick={() => navigate('/schedule')}
+                      onClick={() => navigate('/matches')}
                     >
                       {t('dashboard.btnSchedule')}
                     </Button>

@@ -224,7 +224,7 @@ export default function AppShell() {
               )
             }
             onClick={toggleTheme}
-            title={isDark ? t('theme.light') : t('theme.dark')}
+            title={isDark ? t('Sáng') : t('Tối')}
           />
 
           {/* Language Toggle */}
@@ -232,7 +232,7 @@ export default function AppShell() {
             type="text"
             icon={<GlobalOutlined style={{ color: 'var(--text-main)' }} />}
             onClick={toggleLang}
-            title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+            title={i18n.language === 'vi' ? 'Tiếng Việt' : 'English'}
           >
             <span style={{ color: 'var(--text-main)', fontSize: 12, marginLeft: 4 }}>
               {i18n.language === 'vi' ? 'VI' : 'EN'}
