@@ -1496,7 +1496,6 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
                 </Button>
               </Space>
             </Flex>
-            </Flex>
             {candidatePromotedCount < candidateResult.requiredPromotedSlots && (
               <Alert
                 showIcon

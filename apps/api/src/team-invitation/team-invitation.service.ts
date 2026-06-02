@@ -1055,7 +1055,6 @@ export class TeamInvitationService {
     }));
   }
 
-<<<<<<< HEAD
   private async buildReplacementInvitationCandidates(
     seasonId: string,
     excludedTeamIds: string[],
