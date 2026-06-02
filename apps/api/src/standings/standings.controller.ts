@@ -32,11 +32,11 @@ import type { StandingsMode } from './standings.service';
 
 @ApiTags('Standings')
 @Controller('standings')
-@UseInterceptors(CacheInterceptor)
 export class StandingsController {
   constructor(private readonly standingsService: StandingsService) {}
 
   @Get()
+  @UseInterceptors(CacheInterceptor)
   @CacheTTL(30000)
   @ApiOperation({
     summary: 'Lấy bảng xếp hạng',

@@ -3,6 +3,7 @@ import { Badge, Button, Dropdown, Empty, List, Typography } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import {
   apiGetNotifications,
   apiMarkAllAsRead,
@@ -16,6 +17,7 @@ const POLL_INTERVAL = 30_000;
 export default function NotificationBell() {
   const { t } = useTranslation();
   const nav = useNavigate();
+  const { user } = useAuth();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -55,9 +57,18 @@ export default function NotificationBell() {
     if (item.entityType === 'match' && item.entityId) {
       nav(`/matches/${item.entityId}`);
       setOpen(false);
-    }
-    if (item.entityType === 'team_invitation') {
-      dispatchTeamInvitationReopen(item.entityId);
+    } else if (item.entityType === 'season') {
+      nav(item.entityId ? `/seasons?seasonId=${encodeURIComponent(item.entityId)}` : '/seasons');
+      setOpen(false);
+    } else if (item.entityType === 'season_team') {
+      nav('/seasons');
+      setOpen(false);
+    } else if (item.entityType === 'team_invitation') {
+      if (user?.role === 'ADMIN') {
+        nav('/seasons');
+      } else {
+        dispatchTeamInvitationReopen(item.entityId);
+      }
       setOpen(false);
     }
   };

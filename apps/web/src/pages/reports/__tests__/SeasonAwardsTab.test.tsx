@@ -96,6 +96,10 @@ describe('SeasonAwardsTab', () => {
       />,
     );
 
+    await waitFor(() => {
+      expect(mockStandingsApi.apiGetDrawLotStatus).toHaveBeenCalledWith('season-1');
+    });
+
     const confirmButton = await screen.findByRole('button', {
       name: /Xác nhận kết quả/i,
     });

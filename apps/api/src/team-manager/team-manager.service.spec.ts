@@ -165,8 +165,8 @@ describe('TeamManagerService application workflow', () => {
         title: 'CLB nộp hồ sơ mùa giải',
         message: expect.stringContaining('Hà Nội FC'),
         type: 'SYSTEM',
-        entityType: 'season_team',
-        entityId: 'season-team-1',
+        entityType: 'season',
+        entityId: 'season-1',
       }),
     );
   });

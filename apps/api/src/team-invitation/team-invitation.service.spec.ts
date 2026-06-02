@@ -638,13 +638,13 @@ describe('TeamInvitationService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             seasonId: 'season-1',
-            teamId: expect.objectContaining({
-              notIn: expect.arrayContaining(['team-1', 'team-8']),
-            }),
           }),
           orderBy: [{ rank: 'asc' }, { createdAt: 'asc' }],
         }),
       );
+      const promotionFindCall = (prisma as any).promotionCandidate.findMany.mock
+        .calls[0][0];
+      expect(promotionFindCall.where.teamId).toBeUndefined();
       expect(result.candidates[8]).toEqual(
         expect.objectContaining({
           teamId: 'promoted-ranked-1',
@@ -663,6 +663,68 @@ describe('TeamInvitationService', () => {
           sourceCompetition: 'V.League 2 2025',
           qualificationType: 'RUNNER_UP',
           promotionStatus: 'ELIGIBLE',
+        }),
+      );
+      expect(prisma.seasonTeam.findMany).not.toHaveBeenCalled();
+    });
+
+    it('keeps the top two promotion snapshot rows even when a club also appears in the top 8', async () => {
+      jest
+        .spyOn((prisma as any).promotionCandidate, 'findMany')
+        .mockResolvedValue([
+          {
+            teamId: 'team-2',
+            rank: 2,
+            sourceCompetition: 'V.League 2 2025',
+            qualificationType: 'RUNNER_UP',
+            status: 'ELIGIBLE',
+            note: 'Á quân V.League 2 2025',
+            team: {
+              id: 'team-2',
+              name: 'CLB 2',
+              shortName: 'C2',
+              city: 'Hà Nội',
+              logoUrl: null,
+              status: 'ACTIVE',
+            },
+          },
+          {
+            teamId: 'promoted-ranked-1',
+            rank: 1,
+            sourceCompetition: 'V.League 2 2025',
+            qualificationType: 'CHAMPION',
+            status: 'ELIGIBLE',
+            note: 'Vô địch V.League 2 2025',
+            team: {
+              id: 'promoted-ranked-1',
+              name: 'CLB Thăng hạng hạng 1',
+              shortName: 'TH1',
+              city: 'Đà Nẵng',
+              logoUrl: null,
+              status: 'ACTIVE',
+            },
+          },
+        ] as any);
+
+      const result = await service.getInvitationCandidates('season-1');
+      const promoted = result.candidates.filter(
+        (candidate: any) => candidate.sourceType === 'PROMOTED',
+      );
+
+      const promotionFindCall = (prisma as any).promotionCandidate.findMany.mock
+        .calls[0][0];
+      expect(promotionFindCall.where.seasonId).toBe('season-1');
+      expect(promotionFindCall.where.teamId).toBeUndefined();
+      expect(promoted).toHaveLength(2);
+      expect(promoted.map((candidate: any) => candidate.teamId)).toEqual([
+        'promoted-ranked-1',
+        'team-2',
+      ]);
+      expect(promoted[1]).toEqual(
+        expect.objectContaining({
+          teamId: 'team-2',
+          sourceType: 'PROMOTED',
+          sourceRank: 2,
         }),
       );
       expect(prisma.seasonTeam.findMany).not.toHaveBeenCalled();
@@ -882,8 +944,8 @@ describe('TeamInvitationService', () => {
           title: 'CLB phản hồi lời mời',
           message: expect.stringContaining('Hà Nội FC'),
           type: 'TEAM_INVITATION',
-          entityType: 'team_invitation',
-          entityId: 'invitation-1',
+          entityType: 'season',
+          entityId: 'season-1',
         }),
       );
     });

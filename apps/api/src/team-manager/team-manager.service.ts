@@ -1268,8 +1268,8 @@ export class TeamManagerService {
       title: 'CLB nộp hồ sơ mùa giải',
       message: `${application.team.name} đã nộp hồ sơ tham dự ${application.season.name}. Vui lòng kiểm tra và xét duyệt.`,
       type: 'SYSTEM',
-      entityType: 'season_team',
-      entityId: application.id,
+      entityType: 'season',
+      entityId: application.seasonId,
     });
 
     return application;
