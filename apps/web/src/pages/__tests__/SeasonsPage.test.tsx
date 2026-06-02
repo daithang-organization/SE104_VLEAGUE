@@ -732,6 +732,22 @@ describe('SeasonsPage', () => {
     expect(screen.getByText('Chờ nộp hồ sơ')).toBeInTheDocument();
   });
 
+  it('hides the team removal action when the season has started', async () => {
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect((await screen.findAllByText('CLB Bình Định')).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('button', { name: /xóa đội khỏi mùa giải/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it('expands the requested season panel from the seasonId query', async () => {
     renderPage('/seasons?seasonId=s1');
 

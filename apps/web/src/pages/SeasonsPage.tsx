@@ -696,7 +696,9 @@ function ManagerSeasonApplicationPanel({ season }: { season: Season }) {
 }
 
 // ─── Season Team Panel (expandable row) ───
-function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
+function SeasonTeamPanel({ season }: { season: Season }) {
+  const seasonId = season.id;
+  const canRemoveTeams = season.status === 'UPCOMING';
   const { t } = useTranslation();
   const [teams, setTeams] = useState<SeasonTeam[]>([]);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
@@ -1177,6 +1179,11 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
   };
 
   const handleRemove = async (teamId: string) => {
+    if (!canRemoveTeams) {
+      message.error('Chỉ có thể xóa đội khi mùa giải đang ở trạng thái sắp diễn ra.');
+      return;
+    }
+
     try {
       await apiRemoveSeasonTeam(seasonId, teamId);
       message.success(t('seasons.teamPanelRemoveSuccess'));
@@ -1327,14 +1334,22 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
                 </Tooltip>
               </>
             )}
-            <Popconfirm
-              title={t('seasons.teamPanelRemoveConfirm')}
-              onConfirm={() => handleRemove(r.teamId)}
-              okText={t('seasons.deleteOk')}
-              cancelText={t('seasons.deleteCancel')}
-            >
-              <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
+            {canRemoveTeams && (
+              <Popconfirm
+                title={t('seasons.teamPanelRemoveConfirm')}
+                onConfirm={() => handleRemove(r.teamId)}
+                okText={t('seasons.deleteOk')}
+                cancelText={t('seasons.deleteCancel')}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  aria-label="Xóa đội khỏi mùa giải"
+                />
+              </Popconfirm>
+            )}
           </Space>
         );
       },
@@ -2056,7 +2071,7 @@ export default function SeasonsPage() {
                 ? {
                     expandedRowRender: (record) =>
                       isAdmin ? (
-                        <SeasonTeamPanel seasonId={record.id} />
+                        <SeasonTeamPanel season={record} />
                       ) : (
                         <ManagerSeasonApplicationPanel season={record} />
                       ),
