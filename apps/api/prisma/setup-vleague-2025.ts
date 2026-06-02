@@ -1,6 +1,8 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
   MatchStatus,
+  PlayerPosition,
+  PlayerType,
   PrismaClient,
   PromotionCandidateStatus,
   PromotionQualificationType,
@@ -21,6 +23,9 @@ const DEMO_PASSWORD = 'Demo@12345';
 const COMPLETED_SEASON_NAME = 'V.League 2025-2026';
 const TARGET_SEASON_NAME = 'VLeague 2026-2027';
 const SEED_NOW = new Date('2026-05-24T12:00:00.000Z');
+const DEMO_ROSTER_SIZE = 22;
+const DEMO_TARGET_FOREIGN_PLAYERS = 4;
+const DEMO_MAX_FOREIGN_PLAYERS = 5;
 
 const DEFAULT_REGULATIONS = [
   { key: 'MIN_AGE', value: '16', valueType: 'number' },
@@ -297,7 +302,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
       name: 'Sân vận động Bình Phước',
       city: 'Đồng Nai',
       address: 'P. Bình Phước, Đồng Nai',
-      capacity: 11000,
+      capacity: 12000,
     },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
@@ -313,7 +318,7 @@ const VLEAGUE_2_2025_PROMOTION_ORDER: PromotionSeedRow[] = [
       name: 'Sân vận động PVF',
       city: 'Hưng Yên',
       address: 'Nghĩa Trụ, Hưng Yên',
-      capacity: 4600,
+      capacity: 12000,
     },
     qualificationType: PromotionQualificationType.REPLACEMENT_POOL,
     note: 'Danh sách dự phòng thăng hạng',
@@ -385,6 +390,17 @@ type StandingStats = {
   points: number;
 };
 
+const DEMO_ROSTER_TEMPLATE: {
+  position: PlayerPosition;
+  domestic: number;
+  foreign: number;
+}[] = [
+  { position: PlayerPosition.GK, domestic: 2, foreign: 0 },
+  { position: PlayerPosition.DF, domestic: 6, foreign: 1 },
+  { position: PlayerPosition.MF, domestic: 6, foreign: 2 },
+  { position: PlayerPosition.FW, domestic: 4, foreign: 1 },
+];
+
 function slugTeamName(name: string) {
   return name
     .toLowerCase()
@@ -398,6 +414,207 @@ function slugTeamName(name: string) {
 
 function getManagerEmail(teamName: string) {
   return `manager.${slugTeamName(teamName)}@demo.local`;
+}
+
+function buildDemoDob(index: number) {
+  return new Date(Date.UTC(1996 + (index % 8), index % 12, 1 + (index % 27)));
+}
+
+function demoBirthPlace(team: TeamRecord) {
+  return team.shortName ?? slugTeamName(team.name).toUpperCase();
+}
+
+async function trimActiveRosterToRegulation(teamId: string) {
+  const activeRoster = await prisma.teamPlayer.findMany({
+    where: { teamId, leftAt: null },
+    include: {
+      player: {
+        select: {
+          playerType: true,
+        },
+      },
+    },
+    orderBy: [{ joinedAt: 'asc' }, { createdAt: 'asc' }],
+  });
+
+  const deactivatedIds = new Set<string>();
+  const foreignRows = activeRoster.filter(
+    (row) => row.player.playerType === PlayerType.FOREIGN,
+  );
+
+  for (const row of foreignRows.slice(DEMO_MAX_FOREIGN_PLAYERS)) {
+    deactivatedIds.add(row.id);
+  }
+
+  const remainingRows = activeRoster.filter(
+    (row) => !deactivatedIds.has(row.id),
+  );
+  for (const row of remainingRows.slice(DEMO_ROSTER_SIZE)) {
+    deactivatedIds.add(row.id);
+  }
+
+  if (deactivatedIds.size > 0) {
+    await prisma.teamPlayer.updateMany({
+      where: { id: { in: [...deactivatedIds] } },
+      data: { leftAt: SEED_NOW },
+    });
+  }
+}
+
+async function ensureDemoForeignPlayers(team: TeamRecord) {
+  const activeRoster = await prisma.teamPlayer.findMany({
+    where: { teamId: team.id, leftAt: null },
+    include: {
+      player: {
+        select: {
+          id: true,
+          position: true,
+          playerType: true,
+        },
+      },
+    },
+    orderBy: [{ jerseyNumber: 'asc' }, { joinedAt: 'asc' }],
+  });
+
+  const foreignCount = activeRoster.filter(
+    (row) => row.player.playerType === PlayerType.FOREIGN,
+  ).length;
+  const neededForeign =
+    Math.min(DEMO_TARGET_FOREIGN_PLAYERS, DEMO_MAX_FOREIGN_PLAYERS) -
+    foreignCount;
+
+  if (neededForeign <= 0) return;
+
+  const domesticCandidates = activeRoster.filter(
+    (row) =>
+      row.player.playerType === PlayerType.DOMESTIC &&
+      row.player.position !== PlayerPosition.GK,
+  );
+
+  for (const [index, row] of domesticCandidates
+    .slice(0, neededForeign)
+    .entries()) {
+    const nationality = index % 2 === 0 ? 'Brazil' : 'Nigeria';
+    await prisma.player.update({
+      where: { id: row.player.id },
+      data: {
+        nationality,
+        playerType: PlayerType.FOREIGN,
+        birthPlace: nationality,
+      },
+    });
+  }
+}
+
+async function ensureDemoRoster(team: TeamRecord) {
+  await trimActiveRosterToRegulation(team.id);
+
+  const currentRoster = await prisma.teamPlayer.findMany({
+    where: { teamId: team.id, leftAt: null },
+    include: { player: { select: { playerType: true } } },
+  });
+  const activeCount = currentRoster.length;
+  if (activeCount >= DEMO_ROSTER_SIZE) {
+    await ensureDemoForeignPlayers(team);
+    return;
+  }
+  let activeForeignCount = currentRoster.filter(
+    (row) => row.player.playerType === PlayerType.FOREIGN,
+  ).length;
+
+  const rosterSlots: {
+    position: PlayerPosition;
+    playerType: PlayerType;
+    nationality: string;
+  }[] = [];
+
+  for (const group of DEMO_ROSTER_TEMPLATE) {
+    for (let index = 0; index < group.domestic; index++) {
+      rosterSlots.push({
+        position: group.position,
+        playerType: PlayerType.DOMESTIC,
+        nationality: 'Việt Nam',
+      });
+    }
+    for (let index = 0; index < group.foreign; index++) {
+      rosterSlots.push({
+        position: group.position,
+        playerType: PlayerType.FOREIGN,
+        nationality:
+          group.position === PlayerPosition.MF ? 'Nigeria' : 'Brazil',
+      });
+    }
+  }
+
+  const shortName = demoBirthPlace(team);
+  const neededSlots: typeof rosterSlots = [];
+
+  for (const slot of rosterSlots) {
+    if (neededSlots.length >= DEMO_ROSTER_SIZE - activeCount) break;
+    if (
+      slot.playerType === PlayerType.FOREIGN &&
+      activeForeignCount >= DEMO_MAX_FOREIGN_PLAYERS
+    ) {
+      continue;
+    }
+    if (slot.playerType === PlayerType.FOREIGN) activeForeignCount++;
+    neededSlots.push(slot);
+  }
+
+  while (neededSlots.length < DEMO_ROSTER_SIZE - activeCount) {
+    neededSlots.push({
+      position: PlayerPosition.FW,
+      playerType: PlayerType.DOMESTIC,
+      nationality: 'Việt Nam',
+    });
+  }
+
+  for (const [offset, slot] of neededSlots.entries()) {
+    const playerIndex = activeCount + offset + 1;
+    const fullName =
+      slot.playerType === PlayerType.FOREIGN
+        ? `${shortName} Foreign ${slot.position} ${playerIndex}`
+        : `${shortName} Academy ${slot.position} ${playerIndex}`;
+
+    const existingPlayer = await prisma.player.findFirst({
+      where: { fullName },
+    });
+    const playerData = {
+      fullName,
+      dob: buildDemoDob(playerIndex),
+      nationality: slot.nationality,
+      position: slot.position,
+      playerType: slot.playerType,
+      birthPlace:
+        slot.playerType === PlayerType.FOREIGN ? slot.nationality : team.name,
+      heightCm: 170 + (playerIndex % 16),
+      weightKg: 64 + (playerIndex % 18),
+      careerSummary: `${fullName} thuộc danh sách đăng ký demo của ${team.name}.`,
+    };
+    const player = existingPlayer
+      ? await prisma.player.update({
+          where: { id: existingPlayer.id },
+          data: playerData,
+        })
+      : await prisma.player.create({ data: playerData });
+
+    const activeRosterRow = await prisma.teamPlayer.findFirst({
+      where: { teamId: team.id, playerId: player.id, leftAt: null },
+    });
+
+    if (!activeRosterRow) {
+      await prisma.teamPlayer.create({
+        data: {
+          teamId: team.id,
+          playerId: player.id,
+          jerseyNumber: playerIndex,
+          joinedAt: new Date('2026-07-01T00:00:00.000Z'),
+        },
+      });
+    }
+  }
+
+  await ensureDemoForeignPlayers(team);
 }
 
 async function upsertTeam(row: TeamSeedRow, logoUrl?: string) {
@@ -697,6 +914,7 @@ async function main() {
   for (const row of VLEAGUE_2025_FINAL_ORDER) {
     const team = await upsertTeam(row);
     leagueTeams.push(team);
+    await ensureDemoRoster(team);
     await upsertManager(
       team,
       [completedSeason.id, targetSeason.id],
@@ -815,6 +1033,7 @@ async function main() {
 
   for (const row of VLEAGUE_2_2025_PROMOTION_ORDER) {
     const team = await upsertTeam(row, row.logoUrl);
+    await ensureDemoRoster(team);
     await upsertManager(team, [targetSeason.id], passwordHash);
 
     await prisma.promotionCandidate.upsert({

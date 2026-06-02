@@ -33,6 +33,10 @@ const RESPONSE_STATUSES = [
   TeamInvitationStatus.ACCEPTED,
   TeamInvitationStatus.DECLINED,
 ] as const;
+const ACTIVE_INVITATION_STATUSES = [
+  TeamInvitationStatus.SENT,
+  TeamInvitationStatus.ACCEPTED,
+] as const;
 
 type InvitationCandidate = {
   teamId: string;
@@ -206,13 +210,29 @@ export class TeamInvitationService {
       topStandings.map((standing) => standing.teamId),
       promotedSlots,
     );
+    const replacementCandidates =
+      await this.buildReplacementInvitationCandidates(
+        seasonId,
+        [...topLeagueCandidates, ...promotedCandidates].map(
+          (candidate) => candidate.teamId,
+        ),
+      );
+    const activeCandidates = [
+      ...topLeagueCandidates,
+      ...promotedCandidates,
+      ...replacementCandidates,
+    ]
+      .filter((candidate) =>
+        this.isDisplayableInvitationStatus(candidate.invitationStatus),
+      )
+      .slice(0, topLeagueSlots + promotedSlots);
 
     return {
       targetSeason,
       previousSeason,
       requiredTopLeagueSlots: topLeagueSlots,
       requiredPromotedSlots: promotedSlots,
-      candidates: [...topLeagueCandidates, ...promotedCandidates],
+      candidates: activeCandidates,
     };
   }
 
@@ -234,6 +254,23 @@ export class TeamInvitationService {
     const sentAt = new Date();
     const deadlineAt = this.addDays(sentAt, 14);
     const regulationsSnapshot = await this.buildRegulationsSnapshot(seasonId);
+
+    if (dto.sourceType === TeamInvitationSourceType.REPLACEMENT) {
+      const replacementState = await this.getReplacementCandidates(seasonId);
+      const existingInvitation = await this.prisma.teamInvitation.findUnique({
+        where: { seasonId_teamId: { seasonId, teamId: dto.teamId } },
+        select: { sourceType: true },
+      });
+
+      if (
+        replacementState.slotsNeeded <= 0 &&
+        existingInvitation?.sourceType !== TeamInvitationSourceType.REPLACEMENT
+      ) {
+        throw new BadRequestException(
+          'Chưa cần mời đội thay thế vì các suất hiện tại vẫn đang được giữ.',
+        );
+      }
+    }
 
     const promotionNote =
       dto.sourceType === TeamInvitationSourceType.PROMOTED
@@ -382,20 +419,30 @@ export class TeamInvitationService {
 
     const TOTAL_REQUIRED = 10;
 
-    // Count distinct teams that are already accepted and/or approved.
-    const [acceptedInvitations, approvedTeams] = await Promise.all([
+    // Count distinct teams that are currently holding an invitation slot.
+    const [activeInvitations, activeSeasonTeams] = await Promise.all([
       this.prisma.teamInvitation.findMany({
-        where: { seasonId, status: TeamInvitationStatus.ACCEPTED },
+        where: {
+          seasonId,
+          status: {
+            in: [TeamInvitationStatus.SENT, TeamInvitationStatus.ACCEPTED],
+          },
+        },
         select: { teamId: true },
       }),
       this.prisma.seasonTeam.findMany({
-        where: { seasonId, status: SeasonTeamStatus.APPROVED },
+        where: {
+          seasonId,
+          status: {
+            in: [SeasonTeamStatus.REGISTERED, SeasonTeamStatus.APPROVED],
+          },
+        },
         select: { teamId: true },
       }),
     ]);
     const filledTeamIds = new Set([
-      ...acceptedInvitations.map((invitation) => invitation.teamId),
-      ...approvedTeams.map((seasonTeam) => seasonTeam.teamId),
+      ...activeInvitations.map((invitation) => invitation.teamId),
+      ...activeSeasonTeams.map((seasonTeam) => seasonTeam.teamId),
     ]);
     const filledSlots = filledTeamIds.size;
     const slotsNeeded = Math.max(0, TOTAL_REQUIRED - filledSlots);
@@ -797,15 +844,11 @@ export class TeamInvitationService {
         },
       });
     } else {
-      await this.prisma.seasonTeam.updateMany({
+      await this.prisma.seasonTeam.deleteMany({
         where: {
           seasonId: invitation.seasonId,
           teamId: invitation.teamId,
           status: { not: SeasonTeamStatus.APPROVED },
-        },
-        data: {
-          status: SeasonTeamStatus.REJECTED,
-          approvedAt: null,
         },
       });
     }
@@ -1010,6 +1053,48 @@ export class TeamInvitationService {
       goalDifference: 0,
       played: 0,
     }));
+  }
+
+  private async buildReplacementInvitationCandidates(
+    seasonId: string,
+    excludedTeamIds: string[],
+  ): Promise<InvitationCandidate[]> {
+    const replacementInvitations = await this.prisma.teamInvitation.findMany({
+      where: {
+        seasonId,
+        sourceType: TeamInvitationSourceType.REPLACEMENT,
+        status: { in: [...ACTIVE_INVITATION_STATUSES] },
+        teamId: { notIn: excludedTeamIds },
+      },
+      include: {
+        team: { select: this.teamSummarySelect },
+      },
+      orderBy: [{ sentAt: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return replacementInvitations.map((invitation, index) => ({
+      teamId: invitation.teamId,
+      teamName: invitation.team.name,
+      sourceType: TeamInvitationSourceType.REPLACEMENT,
+      sourceRank: index + 1,
+      points: 0,
+      goalDifference: 0,
+      played: 0,
+      invitationId: invitation.id,
+      invitationStatus: invitation.status,
+      responseReason: invitation.responseReason,
+      deadlineAt: invitation.deadlineAt,
+      sourceNote: invitation.promotionNote,
+      team: invitation.team,
+    }));
+  }
+
+  private isDisplayableInvitationStatus(status: TeamInvitationStatus | null) {
+    return (
+      status === null ||
+      status === TeamInvitationStatus.SENT ||
+      status === TeamInvitationStatus.ACCEPTED
+    );
   }
 
   private uniqueCandidatesByTeamId(candidates: InvitationCandidate[]) {
@@ -1243,6 +1328,7 @@ export class TeamInvitationService {
     const stadium = team?.stadium ?? null;
     const stadiumCapacity = stadium?.capacity ?? null;
     const stadiumFifaStars = stadium?.fifaStars ?? null;
+    const hasRosterPlayers = rosterCount > 0;
 
     return {
       ...invitation,
@@ -1257,14 +1343,14 @@ export class TeamInvitationService {
           current: foreignPlayers,
           max: rules.maxForeignPlayers,
           maxOnField: rules.maxForeignPlayersOnField,
-          ok: foreignPlayers <= rules.maxForeignPlayers,
+          ok: hasRosterPlayers && foreignPlayers <= rules.maxForeignPlayers,
         },
         age: {
           min: rules.minAge,
           max: rules.maxAge,
           total: rosterCount,
           invalidCount: ageViolations,
-          ok: ageViolations === 0,
+          ok: hasRosterPlayers && ageViolations === 0,
         },
         stadium: {
           stadiumId: stadium?.id ?? null,
