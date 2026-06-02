@@ -149,6 +149,14 @@ export class TeamInvitationController {
     return this.invitationService.getPendingForManager(user.id);
   }
 
+  @Get('team-invitations/my')
+  @Roles(Role.TEAM_MANAGER)
+  @ApiOperation({ summary: 'Manager xem tất cả lời mời của CLB đang quản lý' })
+  @ApiOkResponse({ description: 'Danh sách lời mời của manager' })
+  getMyInvitations(@CurrentUser() user: CurrentUserPayload) {
+    return this.invitationService.getForManager(user.id);
+  }
+
   @Patch('team-invitations/:id/respond')
   @Roles(Role.TEAM_MANAGER)
   @ApiOperation({ summary: 'Manager đồng ý hoặc từ chối lời mời tham dự' })

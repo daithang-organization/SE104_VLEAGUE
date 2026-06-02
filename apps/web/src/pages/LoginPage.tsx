@@ -96,15 +96,17 @@ export default function LoginPage() {
       </div>
 
       <section className="login-showcase" aria-labelledby="login-system-title">
-        <div className="login-brand-row">
-          <div className="login-brand-mark">
-            <img className="login-season-logo" src={seasonLogoSrc} alt="V.League 1 2025/26" />
-          </div>
-          <div>
-            <Typography.Text className="login-eyebrow">{t('login.systemEyebrow')}</Typography.Text>
-            <Typography.Title id="login-system-title" level={1} className="login-system-title">
-              {t('login.systemTitle')}
-            </Typography.Title>
+        <div className="login-hero-head">
+          <Typography.Text className="login-eyebrow">{t('login.systemEyebrow')}</Typography.Text>
+          <div className="login-brand-row">
+            <div className="login-brand-mark">
+              <img className="login-season-logo" src={seasonLogoSrc} alt="V.League 1 2025/26" />
+            </div>
+            <div>
+              <Typography.Title id="login-system-title" level={1} className="login-system-title">
+                {t('login.systemTitle')}
+              </Typography.Title>
+            </div>
           </div>
         </div>
 
