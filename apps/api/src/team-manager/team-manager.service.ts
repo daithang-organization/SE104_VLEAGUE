@@ -16,6 +16,9 @@ import {
   TeamManagerRequestStatus,
   TeamManagerRequestType,
   UserRole,
+  TeamManagerRequest,
+  ManagerPlayerRequest,
+  ManagerStadiumRequest,
 } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -278,7 +281,7 @@ export class TeamManagerService {
           );
         }
 
-        let req;
+        let req: TeamManagerRequest | undefined;
         if (dto.requestType === TeamManagerRequestType.DELETE_MANAGED_TEAM) {
           req = await this.createDeleteManagedTeamRequest(
             userId,
@@ -317,7 +320,7 @@ export class TeamManagerService {
       );
     }
 
-    let request;
+    let request: TeamManagerRequest | undefined;
     if (dto.requestType === TeamManagerRequestType.CLAIM_EXISTING_TEAM) {
       request = await this.createClaimExistingTeamRequest(userId, dto);
     } else if (dto.requestType === TeamManagerRequestType.CREATE_TEAM) {
@@ -572,7 +575,7 @@ export class TeamManagerService {
       throw new BadRequestException('Yêu cầu này đã được xét duyệt.');
     }
 
-    let updatedRequest;
+    let updatedRequest: TeamManagerRequest | undefined;
     let isApproved = false;
 
     if (dto.status === TeamManagerRequestStatus.REJECTED) {
@@ -826,7 +829,7 @@ export class TeamManagerService {
       throw new BadRequestException('Yêu cầu này đã được xét duyệt.');
     }
 
-    let updatedRequest;
+    let updatedRequest: ManagerPlayerRequest | undefined;
     let isApproved = false;
 
     if (dto.status === ManagerRequestStatus.REJECTED) {
@@ -1121,7 +1124,7 @@ export class TeamManagerService {
       throw new BadRequestException('Yêu cầu này đã được xét duyệt.');
     }
 
-    let updatedRequest;
+    let updatedRequest: ManagerStadiumRequest | undefined;
     let isApproved = false;
 
     if (dto.status === ManagerRequestStatus.REJECTED) {
@@ -1689,7 +1692,13 @@ export class TeamManagerService {
   private async getTeamManagerUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true, managedTeamId: true },
+      select: {
+        id: true,
+        role: true,
+        managedTeamId: true,
+        email: true,
+        name: true,
+      },
     });
 
     if (!user) {
