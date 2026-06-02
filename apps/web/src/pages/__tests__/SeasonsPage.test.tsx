@@ -162,6 +162,10 @@ const mockTeamInvitationApi = vi.hoisted(() => ({
   apiUpsertPromotionCandidate: vi.fn().mockResolvedValue({}),
   apiDeletePromotionCandidate: vi.fn().mockResolvedValue({ count: 1 }),
   apiSendTeamInvitation: vi.fn().mockResolvedValue({}),
+  apiApproveAllInvitationCandidates: vi.fn().mockResolvedValue({
+    approvedCount: 2,
+    candidates: [],
+  }),
 }));
 const mockTeamManagerApi = vi.hoisted(() => ({
   apiGetTeamManagerAssignment: vi.fn().mockResolvedValue({
@@ -367,6 +371,11 @@ function resetMockImplementations() {
 
   mockTeamInvitationApi.apiSendTeamInvitation.mockReset();
   mockTeamInvitationApi.apiSendTeamInvitation.mockResolvedValue({});
+  mockTeamInvitationApi.apiApproveAllInvitationCandidates.mockReset();
+  mockTeamInvitationApi.apiApproveAllInvitationCandidates.mockResolvedValue({
+    approvedCount: 2,
+    candidates: [],
+  });
 
   mockTeamManagerApi.apiGetTeamManagerAssignment.mockReset();
   mockTeamManagerApi.apiGetTeamManagerAssignment.mockResolvedValue({
@@ -787,6 +796,35 @@ describe('SeasonsPage', () => {
     });
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledTimes(2);
+    });
+  }, 30000);
+
+  it('approves all invitation candidates directly from the admin panel', async () => {
+    mockTeamInvitationApi.apiGetSeasonInvitations.mockResolvedValue([]);
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    await waitFor(
+      () => {
+        expect(mockTeamInvitationApi.apiGetInvitationCandidates).toHaveBeenCalledWith('s1');
+        expect(mockTeamInvitationApi.apiGetSeasonInvitations).toHaveBeenCalledWith('s1');
+      },
+      { timeout: 5000 },
+    );
+
+    fireEvent.click(await findButtonByText(container, /Ch.p nh.n t.t c./i));
+
+    await waitFor(() => {
+      expect(mockTeamInvitationApi.apiApproveAllInvitationCandidates).toHaveBeenCalledWith('s1');
+    });
+    await waitFor(() => {
+      expect(mockSeasonTeamApi.apiGetSeasonTeams).toHaveBeenCalledTimes(2);
     });
   }, 30000);
 
