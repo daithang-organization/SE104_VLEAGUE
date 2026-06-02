@@ -66,6 +66,12 @@ export class CreateTeamManagerRequestDto {
   @MaxLength(100)
   proposedTeamCity?: string;
 
+  @ApiPropertyOptional({ description: 'Huấn luyện viên đề xuất' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  proposedCoachName?: string;
+
   @ApiPropertyOptional({ description: 'Logo URL của CLB đề xuất' })
   @IsOptional()
   @IsString()

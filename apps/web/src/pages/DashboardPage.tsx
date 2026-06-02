@@ -1,4 +1,4 @@
-﻿import {
+import {
   BarChartOutlined,
   CalendarOutlined,
   EnvironmentOutlined,
@@ -367,7 +367,7 @@ function TeamManagerDashboard() {
                 )}
                 <span style={{ minWidth: 0 }}>
                   <Typography.Text type="secondary">CLB quản lý</Typography.Text>
-                  <Typography.Title level={4} style={{ margin: '4px 0 0' }}>
+                  <Typography.Title level={4} style={{ margin: '0 0' }}>
                     {team?.name ?? '...'}
                   </Typography.Title>
                 </span>
@@ -384,12 +384,32 @@ function TeamManagerDashboard() {
             </span>
           </Space>
         </Card>
-        <Card loading={loading} hoverable className="dashboard-stat-card">
-          <Statistic
-            title="Sân vận động"
-            value={team?.stadium?.name ?? '—'}
-            prefix={<EnvironmentOutlined />}
-          />
+        <Card
+          loading={loading}
+          hoverable
+          className="dashboard-stat-card dashboard-manager-club-card"
+        >
+          <Space direction="vertical" size={24} style={{ width: '100%' }}>
+            <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Space align="center" size={16}>
+                <EnvironmentOutlined style={{ fontSize: 32, color: '#f5222d' }} />
+                <span>
+                  <Typography.Text type="secondary">Sân vận động</Typography.Text>
+                  <Typography.Text strong style={{ display: 'block', fontSize: 18 }}>
+                    {team?.stadium?.name ?? '-'}
+                  </Typography.Text>
+                </span>
+              </Space>
+            </Space>
+            <span>
+              <Typography.Text type="secondary">Địa chỉ</Typography.Text>
+              <Typography.Text strong style={{ display: 'block', marginTop: 4 }}>
+                {team?.stadium?.address
+                  ? `${team.stadium.address}, ${team.stadium.city}`
+                  : (team?.stadium?.city ?? '-')}
+              </Typography.Text>
+            </span>
+          </Space>
         </Card>
       </div>
 

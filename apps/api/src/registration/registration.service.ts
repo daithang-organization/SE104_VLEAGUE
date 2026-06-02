@@ -92,7 +92,9 @@ export class RegistrationService {
     const team = await this.prisma.team.findUnique({
       where: { id },
       include: {
-        stadium: { select: { id: true, name: true, city: true } },
+        stadium: {
+          select: { id: true, name: true, city: true, address: true },
+        },
         managedUsers: {
           where: { role: UserRole.TEAM_MANAGER },
           select: { id: true, email: true, name: true },

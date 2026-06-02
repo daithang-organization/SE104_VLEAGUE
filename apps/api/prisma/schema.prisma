@@ -756,6 +756,7 @@ model TeamManagerRequest {
   proposedTeamName      String? @map("proposed_team_name")
   proposedTeamShortName String? @map("proposed_team_short_name")
   proposedTeamCity      String? @map("proposed_team_city")
+  proposedCoachName     String? @map("proposed_coach_name")
   proposedTeamLogoUrl   String? @map("proposed_team_logo_url")
   proposedTeamStatus    TeamStatus? @map("proposed_team_status")
   proposedStadiumId     String? @map("proposed_stadium_id") @db.Uuid

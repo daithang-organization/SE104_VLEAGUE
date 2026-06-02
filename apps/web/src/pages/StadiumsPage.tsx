@@ -374,9 +374,18 @@ export default function StadiumsPage() {
     if (capacity == null) return '—';
 
     return (
-      <span className="page-hero-metric-value-with-name">
-        <span className="page-hero-metric-number">{capacity.toLocaleString('vi-VN')}</span>
-        {stadiumName && <span className="page-hero-metric-person">{stadiumName}</span>}
+      <span
+        className="page-hero-metric-value-with-name"
+        style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
+      >
+        <span className="page-hero-metric-number" style={{ lineHeight: 1 }}>
+          {capacity.toLocaleString('vi-VN')}
+        </span>
+        {stadiumName && (
+          <span className="page-hero-metric-person" style={{ marginTop: 4 }}>
+            {stadiumName}
+          </span>
+        )}
       </span>
     );
   };
