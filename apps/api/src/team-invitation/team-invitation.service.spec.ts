@@ -103,6 +103,7 @@ describe('TeamInvitationService', () => {
               findMany: jest.fn(),
               upsert: jest.fn(),
               updateMany: jest.fn(),
+              deleteMany: jest.fn(),
             },
           },
         },
@@ -246,6 +247,7 @@ describe('TeamInvitationService', () => {
           include: expect.any(Object),
         }),
       );
+      expect(prisma.seasonTeam.upsert).not.toHaveBeenCalled();
       expect(notificationService.createForUser).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'manager-1',
@@ -263,6 +265,37 @@ describe('TeamInvitationService', () => {
         service.sendInvitation('season-1', {
           teamId: 'team-1',
           sourceType: 'PROMOTED',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.teamInvitation.upsert).not.toHaveBeenCalled();
+    });
+
+    it('rejects replacement invitations when all invitation slots are still held', async () => {
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.status?.in?.includes('SENT')) {
+            return Promise.resolve(
+              Array.from({ length: 10 }, (_, index) => ({
+                teamId: `team-${index + 1}`,
+              })),
+            ) as any;
+          }
+
+          if (args.where?.status?.in?.includes('DECLINED')) {
+            return Promise.resolve([]) as any;
+          }
+
+          return Promise.resolve([]) as any;
+        });
+      jest.spyOn(prisma.seasonTeam, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.teamInvitation, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.sendInvitation('season-1', {
+          teamId: 'team-1',
+          sourceType: 'REPLACEMENT',
         }),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.teamInvitation.upsert).not.toHaveBeenCalled();
@@ -730,6 +763,90 @@ describe('TeamInvitationService', () => {
       expect(prisma.seasonTeam.findMany).not.toHaveBeenCalled();
     });
 
+    it('replaces declined top-8 teams with accepted replacement invitations in the candidate list', async () => {
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.sourceType === 'REPLACEMENT') {
+            return Promise.resolve([
+              {
+                id: 'replacement-invitation-1',
+                teamId: 'replacement-1',
+                sourceType: 'REPLACEMENT',
+                status: 'ACCEPTED',
+                responseReason: null,
+                deadlineAt: new Date('2026-05-15T00:00:00.000Z'),
+                sentAt: now,
+                createdAt: now,
+                promotionNote: null,
+                team: {
+                  id: 'replacement-1',
+                  name: 'Quy Nhơn United',
+                  shortName: 'QNU',
+                  city: 'Gia Lai',
+                  logoUrl: null,
+                  status: 'ACTIVE',
+                },
+              },
+            ]) as any;
+          }
+
+          if (args.where?.sourceType === 'PROMOTED') {
+            return Promise.resolve([
+              {
+                id: 'promoted-invitation-1',
+                teamId: 'promoted-1',
+                sourceType: 'PROMOTED',
+                status: 'SENT',
+                responseReason: null,
+                deadlineAt: new Date('2026-05-15T00:00:00.000Z'),
+                sentAt: now,
+                createdAt: now,
+                team: {
+                  id: 'promoted-1',
+                  name: 'CLB Thăng hạng 1',
+                  shortName: 'TH1',
+                  city: 'Đà Nẵng',
+                  logoUrl: null,
+                  status: 'ACTIVE',
+                },
+              },
+            ]) as any;
+          }
+
+          return Promise.resolve([
+            {
+              id: 'top-invitation-1',
+              teamId: 'team-1',
+              status: 'SENT',
+              responseReason: null,
+              deadlineAt: new Date('2026-05-15T00:00:00.000Z'),
+            },
+            {
+              id: 'top-invitation-3',
+              teamId: 'team-3',
+              status: 'DECLINED',
+              responseReason: 'Không tham dự',
+              deadlineAt: new Date('2026-05-15T00:00:00.000Z'),
+            },
+          ]) as any;
+        });
+
+      const result = await service.getInvitationCandidates('season-1');
+
+      expect(result.candidates).toHaveLength(10);
+      expect(
+        result.candidates.some((candidate) => candidate.teamId === 'team-3'),
+      ).toBe(false);
+      expect(result.candidates).toContainEqual(
+        expect.objectContaining({
+          teamId: 'replacement-1',
+          sourceType: 'REPLACEMENT',
+          invitationStatus: 'ACCEPTED',
+        }),
+      );
+    });
+
     it('rejects candidate generation until the previous season is completed', async () => {
       jest.spyOn(prisma.season, 'findFirst').mockResolvedValue({
         ...previousSeason,
@@ -845,6 +962,39 @@ describe('TeamInvitationService', () => {
         }),
       );
     });
+
+    it('marks roster-dependent checks as failed when the invited team has no active players', async () => {
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockResolvedValue([invitation] as any);
+      jest.spyOn((prisma as any).teamPlayer, 'findMany').mockResolvedValue([]);
+      jest.spyOn(prisma.team, 'findUnique').mockResolvedValue({
+        ...team,
+        stadium: {
+          id: 'stadium-1',
+          name: 'Sân Hàng Đẫy',
+          capacity: 22500,
+          fifaStars: 3,
+        },
+      } as any);
+
+      const result = await service.getPendingForManager('manager-1');
+
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          compliance: expect.objectContaining({
+            roster: expect.objectContaining({ current: 0, ok: false }),
+            foreignPlayers: expect.objectContaining({ current: 0, ok: false }),
+            age: expect.objectContaining({
+              total: 0,
+              invalidCount: 0,
+              ok: false,
+            }),
+            stadium: expect.objectContaining({ ok: true }),
+          }),
+        }),
+      );
+    });
   });
 
   describe('getForManager', () => {
@@ -883,13 +1033,13 @@ describe('TeamInvitationService', () => {
   });
 
   describe('getReplacementCandidates', () => {
-    it('counts distinct accepted and approved teams when calculating replacement slots', async () => {
+    it('counts sent, accepted, registered, and approved teams when calculating replacement slots', async () => {
       jest.spyOn(prisma.teamInvitation, 'count').mockResolvedValue(8);
       jest.spyOn(prisma.seasonTeam, 'count').mockResolvedValue(8);
       jest
         .spyOn(prisma.teamInvitation, 'findMany')
         .mockImplementation((args: any) => {
-          if (args.where?.status === 'ACCEPTED') {
+          if (args.where?.status?.in?.includes('SENT')) {
             return Promise.resolve(
               Array.from({ length: 8 }, (_, index) => ({
                 teamId: `team-${index + 1}`,
@@ -910,7 +1060,7 @@ describe('TeamInvitationService', () => {
       jest
         .spyOn(prisma.seasonTeam, 'findMany')
         .mockImplementation((args: any) => {
-          if (args.where?.status === 'APPROVED') {
+          if (args.where?.status?.in?.includes('REGISTERED')) {
             return Promise.resolve(
               Array.from({ length: 8 }, (_, index) => ({
                 teamId: `team-${index + 3}`,
@@ -931,6 +1081,48 @@ describe('TeamInvitationService', () => {
       expect(result.filledSlots).toBe(10);
       expect(result.slotsNeeded).toBe(0);
     });
+
+    it('opens replacement slots only for declined or expired invitations', async () => {
+      jest
+        .spyOn(prisma.teamInvitation, 'findMany')
+        .mockImplementation((args: any) => {
+          if (args.where?.status?.in?.includes('SENT')) {
+            return Promise.resolve(
+              Array.from({ length: 9 }, (_, index) => ({
+                teamId: `team-${index + 1}`,
+              })),
+            ) as any;
+          }
+
+          if (args.where?.status?.in?.includes('DECLINED')) {
+            return Promise.resolve([
+              {
+                ...invitation,
+                teamId: 'team-10',
+                status: 'DECLINED',
+                responseReason: 'Không tham dự',
+              },
+            ]) as any;
+          }
+
+          return Promise.resolve(
+            Array.from({ length: 10 }, (_, index) => ({
+              teamId: `team-${index + 1}`,
+            })),
+          ) as any;
+        });
+      jest.spyOn(prisma.seasonTeam, 'findMany').mockResolvedValue([] as any);
+      jest.spyOn(prisma.team, 'findMany').mockResolvedValue([] as any);
+      jest
+        .spyOn((prisma as any).promotionCandidate, 'findMany')
+        .mockResolvedValue([] as any);
+
+      const result = await service.getReplacementCandidates('season-1');
+
+      expect(result.filledSlots).toBe(9);
+      expect(result.slotsNeeded).toBe(1);
+      expect(result.declinedTeams).toHaveLength(1);
+    });
   });
 
   describe('respondToInvitation', () => {
@@ -950,6 +1142,9 @@ describe('TeamInvitationService', () => {
         id: 'season-team-1',
         status: 'REGISTERED',
       } as any);
+      jest
+        .spyOn(prisma.seasonTeam, 'deleteMany')
+        .mockResolvedValue({ count: 0 } as any);
     });
 
     it('accepts an invitation and registers the team for season review', async () => {
@@ -1004,6 +1199,33 @@ describe('TeamInvitationService', () => {
           entityId: 'season-1',
         }),
       );
+    });
+
+    it('declines an invitation and removes the team from season participants', async () => {
+      jest.spyOn(prisma.teamInvitation, 'update').mockResolvedValue({
+        ...invitation,
+        status: 'DECLINED',
+        responseAt: now,
+      } as any);
+
+      const result = await service.respondToInvitation(
+        'invitation-1',
+        'manager-1',
+        {
+          responseStatus: 'DECLINED',
+          responseReason: 'Khong tham du',
+        },
+      );
+
+      expect(result.status).toBe('DECLINED');
+      expect(prisma.seasonTeam.upsert).not.toHaveBeenCalled();
+      expect(prisma.seasonTeam.deleteMany).toHaveBeenCalledWith({
+        where: {
+          seasonId: 'season-1',
+          teamId: 'team-1',
+          status: { not: 'APPROVED' },
+        },
+      });
     });
 
     it('prevents a manager from responding for another team', async () => {

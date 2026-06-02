@@ -200,6 +200,10 @@ export default function TeamInvitationPopup() {
   };
   const compliance = activeInvitation.compliance;
   const canAcceptInvitation = canAcceptTeamInvitation(activeInvitation);
+  const foreignPlayersOk = compliance
+    ? compliance.roster.current > 0 && compliance.foreignPlayers.ok
+    : undefined;
+  const ageOk = compliance ? compliance.age.total > 0 && compliance.age.ok : undefined;
 
   return (
     <Modal
@@ -278,7 +282,7 @@ export default function TeamInvitationPopup() {
           </Descriptions.Item>
           <Descriptions.Item label="Cầu thủ ngoại">
             <ComplianceRuleValue
-              ok={compliance?.foreignPlayers.ok}
+              ok={foreignPlayersOk}
               alert="Số lượng cầu thủ ngoại hiện tại không đảm bảo quy định"
             >
               {rules.foreignPlayers}
@@ -286,10 +290,7 @@ export default function TeamInvitationPopup() {
             </ComplianceRuleValue>
           </Descriptions.Item>
           <Descriptions.Item label="Độ tuổi cầu thủ">
-            <ComplianceRuleValue
-              ok={compliance?.age.ok}
-              alert="Độ tuổi cầu thủ hiện tại không đảm bảo quy định"
-            >
+            <ComplianceRuleValue ok={ageOk} alert="Độ tuổi cầu thủ hiện tại không đảm bảo quy định">
               {rules.age}
               {compliance
                 ? ` (${compliance.age.total - compliance.age.invalidCount}/${compliance.age.total} cầu thủ đạt)`

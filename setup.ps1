@@ -9,6 +9,7 @@ pnpm --filter api exec tsx prisma/seed-players.ts
 pnpm --filter api exec tsx prisma/setup-vleague-2024.ts
 pnpm --filter api exec tsx prisma/setup-vleague-2025.ts
 pnpm --filter api exec tsx prisma/seed-standings-tie-scenarios.ts
+pnpm --filter api exec tsx prisma/seed-invitation-rule-cases.ts
 pnpm --filter api exec tsx prisma/seed-report-demo.ts
 pnpm --filter api exec tsx prisma/seed-promotion-candidates.ts
 

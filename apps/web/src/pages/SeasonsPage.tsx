@@ -41,7 +41,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -767,6 +767,13 @@ function SeasonTeamPanel({ season }: { season: Season }) {
     fetchTeams();
   }, [fetchTeams]);
 
+  const invitationsByTeamId = new Map(
+    invitations.map((invitation) => [invitation.teamId, invitation]),
+  );
+  const participatingTeams = teams.filter((seasonTeam) => {
+    const invitation = invitationsByTeamId.get(seasonTeam.teamId);
+    return !invitation || invitation.status === 'ACCEPTED';
+  });
   const registeredTeamIds = new Set(teams.map((t) => t.teamId));
   const availableTeams = allTeams.filter(
     (t) => !registeredTeamIds.has(t.id) && t.status === 'ACTIVE',
@@ -776,9 +783,6 @@ function SeasonTeamPanel({ season }: { season: Season }) {
   );
   const availablePromotionTeams = allTeams.filter(
     (t) => t.status === 'ACTIVE' && !promotionCandidateTeamIds.has(t.id),
-  );
-  const invitationsByTeamId = new Map(
-    invitations.map((invitation) => [invitation.teamId, invitation]),
   );
   const approvedTeamIds = new Set(
     teams.filter((team) => team.status === 'APPROVED').map((team) => team.teamId),
@@ -792,13 +796,37 @@ function SeasonTeamPanel({ season }: { season: Season }) {
   const candidatePromotedCount =
     candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'PROMOTED').length ??
     0;
+  const candidateReplacementCount =
+    candidateResult?.candidates.filter((candidate) => candidate.sourceType === 'REPLACEMENT')
+      .length ?? 0;
+  const hasDeclinedReplacementSlot =
+    (replacementData?.declinedTeams.length ?? 0) > 0 && (replacementData?.slotsNeeded ?? 0) > 0;
+  const canInviteReplacement = hasDeclinedReplacementSlot;
+  const invitationSourceOptions = useMemo(
+    () =>
+      INVITATION_SOURCE_OPTIONS.map((option) =>
+        option.value === 'REPLACEMENT'
+          ? {
+              ...option,
+              disabled: !canInviteReplacement,
+            }
+          : option,
+      ),
+    [canInviteReplacement],
+  );
   const currentInvitationTargets =
     candidateResult?.candidates.filter((candidate) => {
       if (approvedTeamIds.has(candidate.teamId)) return false;
       const invitationStatus =
         invitationsByTeamId.get(candidate.teamId)?.status ?? candidate.invitationStatus;
-      return invitationStatus !== 'ACCEPTED';
+      return !invitationStatus;
     }) ?? [];
+
+  useEffect(() => {
+    if (selectedInvitationSource === 'REPLACEMENT' && !canInviteReplacement) {
+      setSelectedInvitationSource('PROMOTED');
+    }
+  }, [canInviteReplacement, selectedInvitationSource]);
 
   const handleAdd = async () => {
     if (!selectedTeamId) return;
@@ -960,7 +988,7 @@ function SeasonTeamPanel({ season }: { season: Season }) {
       const failedCount = targets.length - sentCount;
 
       if (sentCount > 0) {
-        message.success(`Đã gửi lời mời đến ${sentCount}/${targets.length} đội hiện tại`);
+        message.success(`Đã gửi lời mời đến ${sentCount}/${targets.length} đội chưa gửi`);
         await fetchTeams();
       }
       if (failedCount > 0) {
@@ -1479,6 +1507,7 @@ function SeasonTeamPanel({ season }: { season: Season }) {
                   Nguồn: {candidateResult.previousSeason.name} · Top 8: {candidateTopCount}/
                   {candidateResult.requiredTopLeagueSlots} · Thăng hạng: {candidatePromotedCount}/
                   {candidateResult.requiredPromotedSlots}
+                  {candidateReplacementCount > 0 ? ` · Thay thế: ${candidateReplacementCount}` : ''}
                 </Typography.Text>
                 <Button
                   type="primary"
@@ -1522,7 +1551,7 @@ function SeasonTeamPanel({ season }: { season: Season }) {
         )}
       </div>
       {/* Replacement alert when teams have declined/expired */}
-      {replacementData && replacementData.slotsNeeded > 0 && (
+      {replacementData && hasDeclinedReplacementSlot && (
         <Alert
           showIcon
           icon={<WarningOutlined />}
@@ -1560,8 +1589,8 @@ function SeasonTeamPanel({ season }: { season: Season }) {
         <Typography.Text strong>
           <TeamOutlined />{' '}
           {t('seasons.teamPanelTitle', {
-            approved: teams.filter((t) => t.status === 'APPROVED').length,
-            total: teams.length,
+            approved: participatingTeams.filter((t) => t.status === 'APPROVED').length,
+            total: participatingTeams.length,
           })}
         </Typography.Text>
         <Space>
@@ -1569,7 +1598,7 @@ function SeasonTeamPanel({ season }: { season: Season }) {
             value={selectedInvitationSource}
             onChange={setSelectedInvitationSource}
             style={{ width: 140 }}
-            options={INVITATION_SOURCE_OPTIONS}
+            options={invitationSourceOptions}
           />
           {candidateResult && (
             <Button
@@ -1579,7 +1608,7 @@ function SeasonTeamPanel({ season }: { season: Season }) {
               loading={inviting}
               onClick={handleSendCurrentInvitations}
             >
-              Gửi {currentInvitationTargets.length} đội hiện tại
+              Gửi {currentInvitationTargets.length} đội chưa gửi
             </Button>
           )}
           <Select
@@ -1633,7 +1662,7 @@ function SeasonTeamPanel({ season }: { season: Season }) {
       )}
       <Table
         columns={cols}
-        dataSource={teams}
+        dataSource={participatingTeams}
         rowKey="id"
         loading={loading}
         pagination={false}

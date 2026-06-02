@@ -1,4 +1,4 @@
-﻿import {
+import {
   ArrowRightOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -508,6 +508,14 @@ export default function TeamsPage() {
   const activeTeams = teams.filter((team) => team.status === 'ACTIVE').length;
   const inactiveTeams = teams.filter((team) => team.status === 'INACTIVE').length;
   const isManager = user?.role === 'TEAM_MANAGER';
+  // Lock edit/delete buttons while a PENDING update or delete request exists for the managed team
+  const hasPendingTeamRequest =
+    isManager &&
+    managerRequests.some(
+      (r) =>
+        r.status === 'PENDING' &&
+        (r.requestType === 'UPDATE_MANAGED_TEAM' || r.requestType === 'DELETE_MANAGED_TEAM'),
+    );
   const getRequestTeam = (request: TeamManagerRequest): Team =>
     request.requestType === 'CREATE_TEAM' || request.requestType === 'UPDATE_MANAGED_TEAM'
       ? {
@@ -968,6 +976,8 @@ export default function TeamsPage() {
                   className="club-card-outline-action club-card-edit-action"
                   aria-label={`Chỉnh sửa ${team.name}`}
                   icon={<EditOutlined />}
+                  disabled={hasPendingTeamRequest}
+                  title={hasPendingTeamRequest ? 'Đang chờ Admin duyệt yêu cầu' : undefined}
                   onClick={() => openUpdateManagedTeamModal(team)}
                 />
                 <Popconfirm
@@ -977,11 +987,14 @@ export default function TeamsPage() {
                   okText="Xóa"
                   cancelText={t('common.cancel')}
                   okButtonProps={{ danger: true }}
+                  disabled={hasPendingTeamRequest}
                 >
                   <Button
                     className="club-card-outline-action club-card-delete-action"
                     aria-label={`Xóa ${team.name}`}
                     icon={<DeleteOutlined />}
+                    disabled={hasPendingTeamRequest}
+                    title={hasPendingTeamRequest ? 'Đang chờ Admin duyệt yêu cầu' : undefined}
                   />
                 </Popconfirm>
                 <Popconfirm

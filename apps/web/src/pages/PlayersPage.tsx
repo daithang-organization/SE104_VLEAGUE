@@ -1,4 +1,4 @@
-﻿import {
+import {
   CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
@@ -181,6 +181,21 @@ export default function PlayersPage() {
     return user?.role && CAN_EDIT_ROLES.includes(user.role);
   }, [user]);
   const showPlayerActions = Boolean(user?.role === 'ADMIN' || isManagerMineTab);
+
+  // Set of playerIds that have a PENDING update/remove request — buttons should be locked
+  const pendingPlayerIds = useMemo(() => {
+    if (!isTeamManager) return new Set<string>();
+    return new Set(
+      managerPlayerRequests
+        .filter(
+          (r) =>
+            r.status === 'PENDING' &&
+            (r.requestType === 'UPDATE_PLAYER' || r.requestType === 'REMOVE_FROM_TEAM') &&
+            r.playerId,
+        )
+        .map((r) => r.playerId as string),
+    );
+  }, [isTeamManager, managerPlayerRequests]);
   const totalPlayers = pagination.total || players.length;
   const metricPlayers = filterSourcePlayers.length > 0 ? filterSourcePlayers : players;
   const foreignPlayers = metricPlayers.filter((player) => player.playerType === 'FOREIGN').length;
@@ -770,7 +785,14 @@ export default function PlayersPage() {
                 <Button
                   type="text"
                   icon={<EditOutlined />}
-                  disabled={isManagerTeamInactive}
+                  disabled={
+                    isManagerTeamInactive || (isTeamManager && pendingPlayerIds.has(record.id))
+                  }
+                  title={
+                    isTeamManager && pendingPlayerIds.has(record.id)
+                      ? 'Đang chờ Admin duyệt yêu cầu'
+                      : undefined
+                  }
                   onClick={() => openEditModal(record)}
                 />
                 {isTeamManager ? (
@@ -781,12 +803,16 @@ export default function PlayersPage() {
                     okText="Gửi"
                     cancelText={t('common.cancel')}
                     okButtonProps={{ danger: true }}
+                    disabled={isManagerTeamInactive || pendingPlayerIds.has(record.id)}
                   >
                     <Button
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
-                      disabled={isManagerTeamInactive}
+                      disabled={isManagerTeamInactive || pendingPlayerIds.has(record.id)}
+                      title={
+                        pendingPlayerIds.has(record.id) ? 'Đang chờ Admin duyệt yêu cầu' : undefined
+                      }
                       onClick={(e) => e.stopPropagation()}
                     />
                   </Popconfirm>

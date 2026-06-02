@@ -861,9 +861,12 @@ export class TeamManagerService {
             'Yêu cầu chưa có cầu thủ để xét duyệt.',
           );
         }
-        await this.assertPlayerBelongsToTeam(request.playerId, request.teamId);
 
         if (request.requestType === ManagerPlayerRequestType.UPDATE_PLAYER) {
+          await this.assertPlayerBelongsToTeam(
+            request.playerId,
+            request.teamId,
+          );
           updatedRequest = await this.approveUpdatePlayerRequest(
             request.id,
             reviewerId,
@@ -1567,12 +1570,25 @@ export class TeamManagerService {
       const lineupCount = await tx.matchLineupPlayer.count({
         where: { playerId },
       });
+
+      if (lineupCount > 0) {
+        throw new BadRequestException(
+          'Không thể xóa cầu thủ vì cầu thủ đã nằm trong đội hình trận đấu. Hãy gỡ khỏi CLB thay vì xóa dữ liệu.',
+        );
+      }
+
       const otherTeamRosterCount = await tx.teamPlayer.count({
         where: {
           playerId,
           teamId: { not: teamId },
         },
       });
+
+      if (otherTeamRosterCount > 0) {
+        throw new BadRequestException(
+          'Không thể xóa cầu thủ vì cầu thủ còn lịch sử ở CLB khác.',
+        );
+      }
 
       await tx.managerPlayerRequest.update({
         where: { id: requestId },
@@ -1584,18 +1600,6 @@ export class TeamManagerService {
           reviewedAt: new Date(),
         },
       });
-
-      if (lineupCount > 0) {
-        throw new BadRequestException(
-          'Không thể xóa cầu thủ vì cầu thủ đã nằm trong đội hình trận đấu. Hãy gỡ khỏi CLB thay vì xóa dữ liệu.',
-        );
-      }
-
-      if (otherTeamRosterCount > 0) {
-        throw new BadRequestException(
-          'Không thể xóa cầu thủ vì cầu thủ còn lịch sử ở CLB khác.',
-        );
-      }
 
       await tx.teamPlayer.deleteMany({
         where: { teamId, playerId },

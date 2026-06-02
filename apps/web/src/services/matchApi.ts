@@ -45,6 +45,7 @@ export type Match = {
     logoUrl?: string | null;
     coachName?: string | null;
     status?: 'ACTIVE' | 'INACTIVE';
+    stadium?: { id: string; name: string; city?: string | null } | null;
   };
   awayTeam?: {
     id: string;
@@ -53,12 +54,13 @@ export type Match = {
     logoUrl?: string | null;
     coachName?: string | null;
     status?: 'ACTIVE' | 'INACTIVE';
+    stadium?: { id: string; name: string; city?: string | null } | null;
   };
   homeScore?: number | null;
   awayScore?: number | null;
   scoreSource?: 'ADMIN' | 'REFEREE' | null;
   stadiumId?: string | null;
-  stadium?: { id: string; name: string } | null;
+  stadium?: { id: string; name: string; city?: string | null } | null;
   kickoffAt?: string | null;
   status: 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'FINISHED' | 'POSTPONED';
   events?: MatchEvent[];
