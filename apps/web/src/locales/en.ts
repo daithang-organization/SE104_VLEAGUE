@@ -797,6 +797,8 @@ const en = {
     formFifaStarsPlaceholder: 'At least 2 stars',
     formAddress: 'Address',
     formAddressPlaceholder: 'e.g. Le Duc Tho Road, Nam Tu Liem',
+    formTeam: 'Club',
+    formTeamPlaceholder: 'Select club',
   },
 
   // ─────────────────────────────────────────────
