@@ -9,6 +9,7 @@ import {
   apiMarkAsRead,
   type Notification,
 } from '../services/notificationApi';
+import { dispatchTeamInvitationReopen } from './TeamInvitationPopup';
 
 const POLL_INTERVAL = 30_000;
 
@@ -53,6 +54,10 @@ export default function NotificationBell() {
     }
     if (item.entityType === 'match' && item.entityId) {
       nav(`/matches/${item.entityId}`);
+      setOpen(false);
+    }
+    if (item.entityType === 'team_invitation') {
+      dispatchTeamInvitationReopen(item.entityId);
       setOpen(false);
     }
   };

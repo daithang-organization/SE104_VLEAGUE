@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import { TeamManagerScopeService } from '../team-manager/team-manager-scope.service';
-import { PlayerPosition, PlayerType } from './dto/player.dto';
+import { PlayerPosition } from './dto/player.dto';
 import { RegistrationService } from './registration.service';
 
 describe('RegistrationService', () => {
@@ -426,62 +426,35 @@ describe('RegistrationService', () => {
       expect(prisma.teamPlayer.create).not.toHaveBeenCalled();
     });
 
-    it('rejects creating a sixth foreign player for the same team', async () => {
+    it('allows creating a foreign player from player management when roster is not full', async () => {
       jest
         .spyOn(prisma.team, 'findUnique')
         .mockResolvedValue(mockTeams[0] as any);
       jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(10);
-      jest.spyOn(prisma.teamPlayer, 'findMany').mockResolvedValue(
-        Array.from({ length: 5 }, (_, index) => ({
-          player: {
-            playerType: PlayerType.FOREIGN,
-            nationality: index % 2 === 0 ? 'Brazil' : 'Nigeria',
-          },
-        })) as any,
-      );
+      jest.spyOn(prisma.player, 'create').mockResolvedValue({
+        ...mockPlayers[0],
+        id: 'player-foreign',
+        fullName: 'Foreign Player',
+        nationality: 'Nigeria',
+        playerType: 'FOREIGN',
+      } as any);
+      jest.spyOn(prisma.teamPlayer, 'create').mockResolvedValue({} as any);
 
-      await expect(
-        service.createPlayer({
-          fullName: 'Foreign Player',
-          dob: '2000-01-01',
-          nationality: 'Nigeria',
-          position: PlayerPosition.FW,
-          playerType: PlayerType.FOREIGN,
-          teamId: 'team-1',
-          ...validPlayerProfile,
-        }),
-      ).rejects.toThrow(/ngoại binh tối đa|ngoai binh toi da/i);
-      expect(prisma.player.create).not.toHaveBeenCalled();
-      expect(prisma.teamPlayer.create).not.toHaveBeenCalled();
-    });
+      const result = await service.createPlayer({
+        fullName: 'Foreign Player',
+        dob: '2000-01-01',
+        nationality: 'Nigeria',
+        position: PlayerPosition.FW,
+        playerType: 'FOREIGN' as any,
+        teamId: 'team-1',
+        ...validPlayerProfile,
+      });
 
-    it('counts non-Vietnam nationality as foreign even when playerType is domestic', async () => {
-      jest
-        .spyOn(prisma.team, 'findUnique')
-        .mockResolvedValue(mockTeams[0] as any);
-      jest.spyOn(prisma.teamPlayer, 'count').mockResolvedValue(10);
-      jest.spyOn(prisma.teamPlayer, 'findMany').mockResolvedValue(
-        Array.from({ length: 5 }, () => ({
-          player: {
-            playerType: PlayerType.DOMESTIC,
-            nationality: 'Brazil',
-          },
-        })) as any,
-      );
-
-      await expect(
-        service.createPlayer({
-          fullName: 'Naturalized Player',
-          dob: '2000-01-01',
-          nationality: 'Nigeria',
-          position: PlayerPosition.FW,
-          playerType: PlayerType.DOMESTIC,
-          teamId: 'team-1',
-          ...validPlayerProfile,
-        }),
-      ).rejects.toThrow(/ngoại binh tối đa|ngoai binh toi da/i);
-      expect(prisma.player.create).not.toHaveBeenCalled();
-      expect(prisma.teamPlayer.create).not.toHaveBeenCalled();
+      expect(result.id).toBe('player-foreign');
+      expect(prisma.teamPlayer.findMany).not.toHaveBeenCalled();
+      expect(prisma.teamPlayer.create).toHaveBeenCalledWith({
+        data: { teamId: 'team-1', playerId: 'player-foreign' },
+      });
     });
 
     it.each([

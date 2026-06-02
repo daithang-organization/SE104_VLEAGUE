@@ -9,6 +9,7 @@ const mockUseAuth = vi.hoisted(() =>
 );
 
 const mockInvitationApi = vi.hoisted(() => ({
+  apiGetMyInvitations: vi.fn(),
   apiGetMyPendingInvitations: vi.fn(),
   apiRespondTeamInvitation: vi.fn(),
 }));
@@ -16,7 +17,7 @@ const mockInvitationApi = vi.hoisted(() => ({
 vi.mock('../../auth/AuthContext', () => ({ useAuth: mockUseAuth }));
 vi.mock('../../services/teamInvitationApi', () => mockInvitationApi);
 
-import TeamInvitationPopup from '../TeamInvitationPopup';
+import TeamInvitationPopup, { dispatchTeamInvitationReopen } from '../TeamInvitationPopup';
 
 const pendingInvitation = {
   id: 'inv-1',
@@ -65,6 +66,7 @@ describe('TeamInvitationPopup', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'manager-1', email: 'manager.hanoi@demo.local', role: 'TEAM_MANAGER' },
     });
+    mockInvitationApi.apiGetMyInvitations.mockResolvedValue([pendingInvitation]);
     mockInvitationApi.apiGetMyPendingInvitations.mockResolvedValue([pendingInvitation]);
     mockInvitationApi.apiRespondTeamInvitation.mockResolvedValue({
       ...pendingInvitation,
@@ -139,6 +141,21 @@ describe('TeamInvitationPopup', () => {
         responseReason: undefined,
       });
     });
+  });
+
+  it('reopens a deferred invitation when requested', async () => {
+    render(<TeamInvitationPopup />);
+
+    await screen.findByText(/V\.League 2026/);
+    const deferButton = screen
+      .getAllByRole('button')
+      .find((button) => button.textContent?.toLowerCase().includes('sau'));
+    expect(deferButton).toBeTruthy();
+
+    await userEvent.click(deferButton as HTMLButtonElement);
+    dispatchTeamInvitationReopen('inv-1');
+
+    expect(await screen.findByText(/V\.League 2026/)).toBeInTheDocument();
   });
 
   it('does not fetch invitations for non-manager accounts', () => {

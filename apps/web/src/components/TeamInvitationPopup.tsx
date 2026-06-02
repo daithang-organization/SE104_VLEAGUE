@@ -4,16 +4,27 @@ import dayjs from 'dayjs';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
+  apiGetMyInvitations,
   apiGetMyPendingInvitations,
   apiRespondTeamInvitation,
   type TeamInvitation,
 } from '../services/teamInvitationApi';
 
-function readRule(invitation: TeamInvitation, key: string, fallback: string) {
+export const TEAM_INVITATION_REOPEN_EVENT = 'vleague:team-invitation:reopen';
+
+export function dispatchTeamInvitationReopen(invitationId?: string) {
+  window.dispatchEvent(
+    new CustomEvent<{ invitationId?: string }>(TEAM_INVITATION_REOPEN_EVENT, {
+      detail: { invitationId },
+    }),
+  );
+}
+
+export function readInvitationRule(invitation: TeamInvitation, key: string, fallback: string) {
   return invitation.regulationsSnapshot?.[key] ?? fallback;
 }
 
-function formatVnd(value: string) {
+export function formatVnd(value: string) {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return value;
   return `${amount.toLocaleString('vi-VN')} VND`;
@@ -29,7 +40,7 @@ function ComplianceRuleValue({
   alert: string;
 }) {
   return (
-    <Space direction="vertical" size={2}>
+    <Space orientation="vertical" size={2}>
       <Space size={8}>
         {ok === undefined ? null : ok ? (
           <CheckCircleOutlined style={{ color: '#52c41a' }} aria-label="Đạt quy định" />
@@ -45,6 +56,34 @@ function ComplianceRuleValue({
       )}
     </Space>
   );
+}
+
+export function getInvitationRules(invitation: TeamInvitation) {
+  return {
+    fee: formatVnd(readInvitationRule(invitation, 'PARTICIPATION_FEE_VND', '1000000000')),
+    age: `${readInvitationRule(invitation, 'MIN_AGE', '16')} - ${readInvitationRule(
+      invitation,
+      'MAX_AGE',
+      '40',
+    )} tuổi`,
+    roster: `${readInvitationRule(invitation, 'MIN_ROSTER', '16')} - ${readInvitationRule(
+      invitation,
+      'MAX_ROSTER',
+      '22',
+    )} cầu thủ`,
+    foreignPlayers: `Tối đa ${readInvitationRule(invitation, 'MAX_FOREIGN_PLAYERS', '5')} đăng ký, ${readInvitationRule(
+      invitation,
+      'MAX_FOREIGN_PLAYERS_ON_FIELD',
+      '3',
+    )} trên sân`,
+    stadium: `Tối thiểu ${Number(
+      readInvitationRule(invitation, 'MIN_STADIUM_CAPACITY', '10000'),
+    ).toLocaleString('vi-VN')} chỗ, đạt ít nhất ${readInvitationRule(
+      invitation,
+      'MIN_STADIUM_FIFA_STARS',
+      '2',
+    )} sao FIFA`,
+  };
 }
 
 export default function TeamInvitationPopup() {
@@ -72,33 +111,35 @@ export default function TeamInvitationPopup() {
     loadPendingInvitations();
   }, [loadPendingInvitations]);
 
+  useEffect(() => {
+    if (user?.role !== 'TEAM_MANAGER') return undefined;
+
+    const handleReopen = async (event: Event) => {
+      const invitationId = (event as CustomEvent<{ invitationId?: string }>).detail?.invitationId;
+      try {
+        const data = await apiGetMyInvitations();
+        const selected = invitationId
+          ? data.find((invitation) => invitation.id === invitationId)
+          : data[0];
+
+        if (!selected) return;
+
+        setInvitations([selected, ...data.filter((invitation) => invitation.id !== selected.id)]);
+        setDeclining(false);
+        setDeclineReason('');
+        setOpen(true);
+      } catch {
+        /* silent */
+      }
+    };
+
+    window.addEventListener(TEAM_INVITATION_REOPEN_EVENT, handleReopen);
+    return () => window.removeEventListener(TEAM_INVITATION_REOPEN_EVENT, handleReopen);
+  }, [user?.role]);
+
   const rules = useMemo(() => {
     if (!activeInvitation) return null;
-    return {
-      fee: formatVnd(readRule(activeInvitation, 'PARTICIPATION_FEE_VND', '1000000000')),
-      age: `${readRule(activeInvitation, 'MIN_AGE', '16')} - ${readRule(
-        activeInvitation,
-        'MAX_AGE',
-        '40',
-      )} tuổi`,
-      roster: `${readRule(activeInvitation, 'MIN_ROSTER', '16')} - ${readRule(
-        activeInvitation,
-        'MAX_ROSTER',
-        '22',
-      )} cầu thủ`,
-      foreignPlayers: `Tối đa ${readRule(activeInvitation, 'MAX_FOREIGN_PLAYERS', '5')} đăng ký, ${readRule(
-        activeInvitation,
-        'MAX_FOREIGN_PLAYERS_ON_FIELD',
-        '3',
-      )} trên sân`,
-      stadium: `Tối thiểu ${Number(
-        readRule(activeInvitation, 'MIN_STADIUM_CAPACITY', '10000'),
-      ).toLocaleString('vi-VN')} chỗ, đạt ít nhất ${readRule(
-        activeInvitation,
-        'MIN_STADIUM_FIFA_STARS',
-        '2',
-      )} sao FIFA`,
-    };
+    return getInvitationRules(activeInvitation);
   }, [activeInvitation]);
 
   const removeActiveInvitation = () => {
@@ -139,6 +180,12 @@ export default function TeamInvitationPopup() {
     PROMOTED: 'Đội thăng hạng',
     REPLACEMENT: 'Đội thay thế',
   };
+  const statusLabel: Record<string, string> = {
+    SENT: 'Chờ phản hồi',
+    ACCEPTED: 'Đã đồng ý',
+    DECLINED: 'Đã từ chối',
+    EXPIRED: 'Quá hạn',
+  };
   const compliance = activeInvitation.compliance;
   const canAcceptInvitation = compliance
     ? compliance.roster.ok &&
@@ -154,7 +201,9 @@ export default function TeamInvitationPopup() {
       onCancel={() => setOpen(false)}
       width={640}
       footer={
-        declining ? (
+        activeInvitation.status !== 'SENT' ? (
+          <Button onClick={() => setOpen(false)}>Đóng</Button>
+        ) : declining ? (
           <Space>
             <Button onClick={() => setDeclining(false)} disabled={submitting}>
               Hủy
@@ -188,11 +237,11 @@ export default function TeamInvitationPopup() {
         )
       }
     >
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
         <Alert
           type="info"
           showIcon
-          message={`BTC mời ${activeInvitation.team?.name ?? 'CLB'} phản hồi trong 14 ngày kể từ ngày gửi.`}
+          title={`BTC mời ${activeInvitation.team?.name ?? 'CLB'} phản hồi trong 14 ngày kể từ ngày gửi.`}
         />
 
         <Descriptions column={1} size="small" bordered>
@@ -203,6 +252,9 @@ export default function TeamInvitationPopup() {
           </Descriptions.Item>
           <Descriptions.Item label="Nguồn mời">
             <Tag color="blue">{sourceLabel[activeInvitation.sourceType]}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">
+            <Tag>{statusLabel[activeInvitation.status] ?? activeInvitation.status}</Tag>
           </Descriptions.Item>
           <Descriptions.Item label="Hạn phản hồi">
             {dayjs(activeInvitation.deadlineAt).format('DD/MM/YYYY HH:mm')}
@@ -248,7 +300,7 @@ export default function TeamInvitationPopup() {
           </Descriptions.Item>
         </Descriptions>
 
-        {!canAcceptInvitation && (
+        {activeInvitation.status === 'SENT' && !canAcceptInvitation && (
           <Typography.Text type="danger">
             Vui lòng đáp ứng đầy đủ các quy định để tham gia mùa giải
           </Typography.Text>

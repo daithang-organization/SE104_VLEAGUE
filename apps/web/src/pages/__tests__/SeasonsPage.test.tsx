@@ -74,6 +74,9 @@ const mockTeamApi = vi.hoisted(() => ({
   apiGetTeams: vi.fn().mockResolvedValue({ data: [], total: 0 }),
 }));
 const mockTeamInvitationApi = vi.hoisted(() => ({
+  apiGetMyInvitations: vi.fn().mockResolvedValue([]),
+  apiGetMyPendingInvitations: vi.fn().mockResolvedValue([]),
+  apiRespondTeamInvitation: vi.fn().mockResolvedValue({}),
   apiGetInvitationCandidates: vi.fn().mockResolvedValue({
     targetSeason: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
     previousSeason: { id: 's2', name: 'VLeague 2024-2025', year: 2024, status: 'COMPLETED' },
@@ -220,6 +223,37 @@ function renderPage() {
   );
 }
 
+async function selectVisibleAntOption(control: HTMLElement, optionText: string) {
+  fireEvent.mouseDown(control);
+  let option: Element | undefined;
+
+  await waitFor(() => {
+    const visibleDropdowns = Array.from(
+      document.querySelectorAll('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+    );
+    const activeDropdown = visibleDropdowns[visibleDropdowns.length - 1];
+    option = Array.from(activeDropdown?.querySelectorAll('.ant-select-item-option') ?? []).find(
+      (element) => element.textContent?.includes(optionText),
+    );
+    expect(option).toBeDefined();
+  });
+
+  fireEvent.click(option as Element);
+}
+
+async function findButtonByText(container: HTMLElement, pattern: RegExp) {
+  let button: HTMLButtonElement | undefined;
+
+  await waitFor(() => {
+    button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+      pattern.test(candidate.textContent ?? ''),
+    );
+    expect(button).toBeDefined();
+  });
+
+  return button as HTMLButtonElement;
+}
+
 function resetMockImplementations() {
   mockUseAuth.mockReset();
   mockUseAuth.mockReturnValue({
@@ -230,6 +264,12 @@ function resetMockImplementations() {
     logout: vi.fn(),
   });
 
+  mockTeamInvitationApi.apiGetMyPendingInvitations.mockReset();
+  mockTeamInvitationApi.apiGetMyPendingInvitations.mockResolvedValue([]);
+  mockTeamInvitationApi.apiGetMyInvitations.mockReset();
+  mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([]);
+  mockTeamInvitationApi.apiRespondTeamInvitation.mockReset();
+  mockTeamInvitationApi.apiRespondTeamInvitation.mockResolvedValue({});
   mockTeamInvitationApi.apiGetInvitationCandidates.mockReset();
   mockTeamInvitationApi.apiGetInvitationCandidates.mockResolvedValue({
     targetSeason: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
@@ -430,6 +470,45 @@ describe('SeasonsPage', () => {
     expect(messageErrorSpy).toHaveBeenCalledWith('Mùa giải 2025-2026 đã tồn tại');
   });
 
+  it('shows the backend validation reason when season status update fails', async () => {
+    const messageErrorSpy = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+    const backendReason =
+      'Không thể chuyển "VLeague 2026-2027" sang trạng thái Đang diễn ra vì mùa giải trước đó "VLeague 2025-2026" chưa kết thúc.';
+    mockSeasonApi.apiGetSeasons.mockResolvedValueOnce([
+      {
+        id: 's1',
+        name: 'VLeague 2025-2026',
+        year: 2025,
+        status: 'COMPLETED',
+        startDate: '2025-01-15T00:00:00Z',
+        endDate: '2025-06-30T00:00:00Z',
+      },
+      {
+        id: 's2',
+        name: 'VLeague 2026-2027',
+        year: 2026,
+        status: 'UPCOMING',
+        startDate: null,
+        endDate: null,
+      },
+    ]);
+    mockSeasonApi.apiUpdateSeasonStatus.mockRejectedValueOnce({
+      response: { data: { message: backendReason } },
+    });
+
+    renderPage();
+
+    const seasonName = await screen.findByText('VLeague 2026-2027');
+    const row = seasonName.closest('tr') as HTMLElement;
+    const statusSelect = within(row).getByRole('combobox');
+    await selectVisibleAntOption(statusSelect, 'Đang diễn ra');
+
+    await waitFor(() => {
+      expect(mockSeasonApi.apiUpdateSeasonStatus).toHaveBeenCalledWith('s2', 'IN_PROGRESS');
+    });
+    expect(messageErrorSpy).toHaveBeenCalledWith(backendReason);
+  });
+
   it('hides create button for non-admin users', () => {
     mockUseAuth.mockReturnValue({
       user: { id: 'u2', email: 'user@vl.local', role: 'PUBLIC' },
@@ -469,6 +548,91 @@ describe('SeasonsPage', () => {
     expect(screen.getByLabelText('Cơ quan/công ty chủ quản')).toBeInTheDocument();
     expect(screen.getByLabelText('Link chứng từ nộp lệ phí')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nộp hồ sơ/i })).toBeInTheDocument();
+  });
+
+  it('shows manager invitations in the season panel and can reopen the popup', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([
+      {
+        id: 'invitation-pending',
+        seasonId: 's1',
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+        status: 'DECLINED',
+        sentAt: '2025-01-01T00:00:00Z',
+        deadlineAt: '2025-01-15T00:00:00Z',
+        responseAt: null,
+        responseReason: null,
+        regulationsSnapshot: { PARTICIPATION_FEE_VND: '1000000000' },
+        season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+        team: { id: 'team-1', name: 'CLB BÃ¬nh Äá»‹nh' },
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+    ]);
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    const expandButton = container.querySelector('.ant-table-row-expand-icon') as HTMLElement;
+    fireEvent.click(expandButton);
+
+    expect(await screen.findByText(/Lời mời tham dự VLeague 2025-2026/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Xem lại lời mời/i }));
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'vleague:team-invitation:reopen',
+        detail: { invitationId: 'invitation-pending' },
+      }),
+    );
+  });
+
+  it('labels sent manager invitations as waiting for response', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'u-manager', email: 'manager@vl.local', role: 'TEAM_MANAGER' },
+      loading: false,
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+    });
+    mockTeamInvitationApi.apiGetMyInvitations.mockResolvedValue([
+      {
+        id: 'invitation-pending',
+        seasonId: 's1',
+        teamId: 'team-1',
+        sourceType: 'PREVIOUS_TOP_8',
+        status: 'SENT',
+        sentAt: '2025-01-01T00:00:00Z',
+        deadlineAt: '2025-01-15T00:00:00Z',
+        responseAt: null,
+        responseReason: null,
+        regulationsSnapshot: { PARTICIPATION_FEE_VND: '1000000000' },
+        season: { id: 's1', name: 'VLeague 2025-2026', year: 2025, status: 'IN_PROGRESS' },
+        team: { id: 'team-1', name: 'CLB BÃ¬nh Äá»‹nh' },
+        createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+      },
+    ]);
+    const { container } = renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('VLeague 2025-2026')).toBeInTheDocument();
+    });
+
+    fireEvent.click(container.querySelector('.ant-table-row-expand-icon') as HTMLElement);
+
+    expect(await screen.findByText('Chờ phản hồi')).toBeInTheDocument();
+    expect(screen.queryByText('Đã gửi')).not.toBeInTheDocument();
   });
 
   it('renders season years', async () => {
@@ -516,7 +680,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Nguồn đội thăng hạng')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /import csv/i })).toBeInTheDocument();
+    expect(await findButtonByText(container, /import csv/i)).toBeInTheDocument();
     expect(await screen.findAllByText('V.League 2 2025')).not.toHaveLength(0);
     expect(mockTeamInvitationApi.apiGetPromotionCandidates).toHaveBeenCalledWith('s1');
   }, 30000);
@@ -532,7 +696,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /gửi top 8/i }));
+    fireEvent.click(await findButtonByText(container, /gửi top 8/i));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
@@ -556,7 +720,7 @@ describe('SeasonsPage', () => {
     fireEvent.click(expandButton);
 
     expect(await screen.findByText('Danh sách mời dự kiến')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /gửi thăng hạng/i }));
+    fireEvent.click(await findButtonByText(container, /gửi thăng hạng/i));
 
     await waitFor(() => {
       expect(mockTeamInvitationApi.apiSendTeamInvitation).toHaveBeenCalledWith('s1', {
@@ -592,11 +756,7 @@ describe('SeasonsPage', () => {
       { timeout: 5000 },
     );
 
-    const sendCurrentButton = await within(container).findByRole(
-      'button',
-      { name: /gửi 2 đội hiện tại/i },
-      { timeout: 5000 },
-    );
+    const sendCurrentButton = await findButtonByText(container, /gửi 2 đội hiện tại/i);
     fireEvent.click(sendCurrentButton);
 
     await waitFor(() => {

@@ -12,7 +12,6 @@ import {
   type Player,
   type Team,
 } from '@prisma/client';
-import { isForeignPlayer } from '../common/utils/foreign-player.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegulationHelper } from '../regulation/regulation.helper';
 import {
@@ -26,7 +25,6 @@ import type { CreateTeamDto, UpdateTeamDto } from './dto/team.dto';
 const DEFAULT_MIN_AGE = 16;
 const DEFAULT_MAX_AGE = 40;
 const DEFAULT_MAX_ROSTER = 22;
-const DEFAULT_MAX_FOREIGN = 5;
 
 @Injectable()
 export class RegistrationService {
@@ -494,10 +492,6 @@ export class RegistrationService {
     if (writableTeamId) {
       await this.validateTeamRosterLimitsForPlayer(
         writableTeamId,
-        {
-          playerType: dto.playerType ?? 'DOMESTIC',
-          nationality: dto.nationality,
-        },
         dto.seasonId,
       );
     }
@@ -585,20 +579,12 @@ export class RegistrationService {
       dto.nationality !== undefined;
 
     if (shouldValidateRosterLimits && nextTeamId) {
-      await this.validateTeamRosterLimitsForPlayer(
-        nextTeamId,
-        {
-          playerType: (dto.playerType ?? currentPlayer.playerType) as string,
-          nationality: dto.nationality ?? currentPlayer.nationality,
-        },
-        undefined,
-        {
-          excludePlayerId: id,
-          checkRosterSize:
-            dto.teamId !== undefined &&
-            nextTeamId !== currentActiveRoster?.teamId,
-        },
-      );
+      await this.validateTeamRosterLimitsForPlayer(nextTeamId, undefined, {
+        excludePlayerId: id,
+        checkRosterSize:
+          dto.teamId !== undefined &&
+          nextTeamId !== currentActiveRoster?.teamId,
+      });
     }
 
     const player = await this.prisma.player.update({
@@ -665,7 +651,6 @@ export class RegistrationService {
 
   private async validateTeamRosterLimitsForPlayer(
     teamId: string,
-    player: { playerType?: string | null; nationality?: string | null },
     seasonId?: string,
     options?: { excludePlayerId?: string; checkRosterSize?: boolean },
   ) {
@@ -683,34 +668,6 @@ export class RegistrationService {
     };
     if (options?.excludePlayerId) {
       activeRosterWhere.playerId = { not: options.excludePlayerId };
-    }
-
-    if (isForeignPlayer(player)) {
-      const maxForeign = await this.regulationHelper.getNumericValue(
-        seasonId,
-        'MAX_FOREIGN_PLAYERS',
-        DEFAULT_MAX_FOREIGN,
-      );
-      const activeRosterPlayers = await this.prisma.teamPlayer.findMany({
-        where: activeRosterWhere,
-        select: {
-          player: {
-            select: {
-              playerType: true,
-              nationality: true,
-            },
-          },
-        },
-      });
-      const foreignCount = activeRosterPlayers.filter((row) =>
-        isForeignPlayer(row.player),
-      ).length;
-
-      if (foreignCount >= maxForeign) {
-        throw new BadRequestException(
-          `Đội đã đạt tới số lượng ngoại binh tối đa (${maxForeign})`,
-        );
-      }
     }
 
     if (options?.checkRosterSize !== false) {

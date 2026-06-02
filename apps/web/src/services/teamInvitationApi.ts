@@ -161,6 +161,10 @@ export function apiGetMyPendingInvitations() {
   return api.get<TeamInvitation[]>('/team-invitations/my-pending').then((res) => res.data);
 }
 
+export function apiGetMyInvitations() {
+  return api.get<TeamInvitation[]>('/team-invitations/my').then((res) => res.data);
+}
+
 export function apiGetPromotionCandidates(seasonId: string) {
   return api
     .get<PromotionCandidate[]>(`/seasons/${seasonId}/promotion-candidates`)
