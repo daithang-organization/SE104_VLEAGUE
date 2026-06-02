@@ -1,4 +1,4 @@
-import {
+﻿import {
   CalendarOutlined,
   CheckCircleOutlined,
   CheckOutlined,
@@ -1350,12 +1350,12 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             <Input placeholder="Ghi chú" style={{ width: 180 }} allowClear />
           </Form.Item>
           <Button
-            size="small"
+            size="medium"
             icon={<PlusOutlined />}
             loading={promotionSaving}
             onClick={handleSavePromotionCandidate}
           >
-            Lưu nguồn
+            Thêm
           </Button>
         </Form>
         <Table
@@ -1528,7 +1528,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
           />
           <Button
             type="primary"
-            size="small"
+            size="medium"
             icon={<PlusOutlined />}
             disabled={!selectedTeamId}
             loading={adding}
@@ -1537,7 +1537,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             {t('seasons.teamPanelAddBtn')}
           </Button>
           <Button
-            size="small"
+            size="medium"
             icon={<SendOutlined />}
             disabled={!selectedTeamId}
             loading={inviting}
@@ -1557,7 +1557,7 @@ function SeasonTeamPanel({ seasonId }: { seasonId: string }) {
             value={promotionNoteInput}
             onChange={(e) => setPromotionNoteInput(e.target.value)}
             style={{ width: 400 }}
-            size="small"
+            size="medium"
             allowClear
           />
         </div>

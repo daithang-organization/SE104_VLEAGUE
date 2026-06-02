@@ -21,9 +21,10 @@ async function bootstrap() {
   const logger = app.get(Logger);
   app.useLogger(logger);
 
-  // Enable CORS for frontend
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+      : 'http://localhost:5173',
     credentials: true,
   });
 
