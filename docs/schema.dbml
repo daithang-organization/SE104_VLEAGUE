@@ -1,8 +1,6 @@
-// === SE104 VLEAGUE — Database Schema (DBML) ===
-// Auto-generated from prisma/schema.prisma
-// 14 tables · snake_case naming · PostgreSQL
-
-// ───────── ENUMS ─────────
+// === SE104 VLEAGUE — Report Database Schema ===
+// Generated from apps/api/prisma/schema.prisma by scripts/generate_report_erd.py
+// 28 tables · PostgreSQL · snake_case naming
 
 Enum TeamStatus {
   ACTIVE
@@ -29,6 +27,11 @@ Enum MatchStatus {
   POSTPONED
 }
 
+Enum MatchScoreSource {
+  ADMIN
+  REFEREE
+}
+
 Enum SeasonStatus {
   UPCOMING
   IN_PROGRESS
@@ -42,12 +45,76 @@ Enum SeasonTeamStatus {
   WITHDRAWN
 }
 
+Enum TeamInvitationSourceType {
+  PREVIOUS_TOP_8
+  PROMOTED
+  REPLACEMENT
+}
+
+Enum TeamInvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+Enum PromotionQualificationType {
+  CHAMPION
+  RUNNER_UP
+  PLAYOFF
+  REPLACEMENT_POOL
+}
+
+Enum PromotionCandidateStatus {
+  ELIGIBLE
+  INVITED
+  ACCEPTED
+  DECLINED
+  SKIPPED
+}
+
 Enum EventType {
   GOAL
   OWN_GOAL
   YELLOW_CARD
   RED_CARD
   SUBSTITUTION
+  PENALTY
+  PENALTY_MISS
+}
+
+Enum MatchKitType {
+  PRIMARY
+  BACKUP
+}
+
+Enum MatchLineupRole {
+  STARTER
+  SUBSTITUTE
+}
+
+Enum MatchLineupStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+Enum PlayerSuspensionStatus {
+  ACTIVE
+  SERVED
+  CANCELLED
+}
+
+Enum OfficialStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum MatchOfficialRole {
+  MAIN_REFEREE
+  ASSISTANT_REFEREE
+  FOURTH_OFFICIAL
+  SUPERVISOR
 }
 
 Enum UserRole {
@@ -58,71 +125,100 @@ Enum UserRole {
   PUBLIC
 }
 
+Enum TeamManagerRequestType {
+  CREATE_TEAM
+  CLAIM_EXISTING_TEAM
+  UPDATE_MANAGED_TEAM
+  DELETE_MANAGED_TEAM
+}
+
+Enum TeamManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum ManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum ManagerPlayerRequestType {
+  ADD_PLAYER
+  UPDATE_PLAYER
+  REMOVE_FROM_TEAM
+}
+
+Enum ManagerStadiumRequestType {
+  CREATE_HOME_STADIUM
+  UPDATE_HOME_STADIUM
+  REMOVE_HOME_STADIUM
+}
+
 Enum OtpType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
 }
 
-// ───────── 1) roles ─────────
-
+// 1) roles
 Table roles {
-  id          uuid      [pk, default: `gen_random_uuid()`]
-  name        varchar   [unique, not null]
-  description text
-  created_at  timestamp [default: `now()`]
-  updated_at  timestamp
+  id          uuid [pk, not null, default: `gen_random_uuid()`]
+  name        varchar [unique, not null]
+  description varchar
+  created_at  timestamp [not null, default: `now()`]
+  updated_at  timestamp [not null]
 }
 
-// ───────── 2) users ─────────
-
+// 2) users
 Table users {
-  id             uuid      [pk, default: `gen_random_uuid()`]
-  email          varchar   [unique, not null]
-  password_hash  varchar
-  role           UserRole  [default: 'PUBLIC']
-  role_id        uuid      [ref: > roles.id]
-  email_verified boolean   [default: false]
-  name           varchar
-  avatar_url     varchar
-  google_id      varchar   [unique]
-  facebook_id    varchar   [unique]
-  created_at     timestamp [default: `now()`]
-  updated_at     timestamp
+  id              uuid [pk, not null, default: `gen_random_uuid()`]
+  email           varchar [unique, not null]
+  password_hash   varchar
+  role            UserRole [not null, default: 'PUBLIC']
+  email_verified  boolean [not null, default: false]
+  name            varchar
+  avatar_url      varchar
+  google_id       varchar [unique]
+  facebook_id     varchar [unique]
+  role_id         uuid [ref: > roles.id]
+  managed_team_id uuid [ref: > teams.id]
+  created_at      timestamp [not null, default: `now()`]
+  updated_at      timestamp [not null]
 
   indexes {
     role_id
+    managed_team_id
   }
 }
 
-// ───────── 3) refresh_tokens ─────────
-
+// 3) refresh_tokens
 Table refresh_tokens {
-  id          uuid      [pk, default: `gen_random_uuid()`]
-  token_hash  varchar   [unique, not null]
-  user_id     uuid      [not null, ref: > users.id]
-  user_agent  varchar
-  ip_address  varchar
-  device_name varchar
+  id           uuid [pk, not null, default: `gen_random_uuid()`]
+  token_hash   varchar [unique, not null]
+  user_id      uuid [not null, ref: > users.id]
+  user_agent   varchar
+  ip_address   varchar
+  device_name  varchar
   last_used_at timestamp
-  revoked_at  timestamp
-  expires_at  timestamp [not null]
-  created_at  timestamp [default: `now()`]
+  revoked_at   timestamp
+  expires_at   timestamp [not null]
+  created_at   timestamp [not null, default: `now()`]
 
   indexes {
     user_id
   }
 }
 
-// ───────── 4) otp_codes ─────────
-
+// 4) otp_codes
 Table otp_codes {
-  id         uuid      [pk, default: `gen_random_uuid()`]
-  code       varchar   [not null]
-  type       OtpType   [not null]
-  user_id    uuid      [not null, ref: > users.id]
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  code       varchar [not null]
+  type       OtpType [not null]
+  user_id    uuid [not null, ref: > users.id]
   used_at    timestamp
   expires_at timestamp [not null]
-  created_at timestamp [default: `now()`]
+  created_at timestamp [not null, default: `now()`]
 
   indexes {
     user_id
@@ -130,59 +226,59 @@ Table otp_codes {
   }
 }
 
-// ───────── 5) stadiums ─────────
-
+// 5) stadiums
 Table stadiums {
-  id         uuid      [pk, default: `gen_random_uuid()`]
-  name       varchar   [unique, not null]
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
   address    varchar
-  city       varchar   [not null]
+  city       varchar [not null]
+  country    varchar [not null, default: 'Việt Nam']
   capacity   int
-  created_at timestamp [default: `now()`]
-  updated_at timestamp
+  fifa_stars int
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
 }
 
-// ───────── 6) teams ─────────
-
+// 6) teams
 Table teams {
-  id         uuid       [pk, default: `gen_random_uuid()`]
-  name       varchar    [unique, not null]
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
   short_name varchar
-  logo_url   varchar
   city       varchar
-  status     TeamStatus [default: 'ACTIVE']
-  stadium_id uuid       [ref: > stadiums.id]
-  created_at timestamp  [default: `now()`]
-  updated_at timestamp
+  logo_url   varchar
+  coach_name varchar
+  status     TeamStatus [not null, default: 'ACTIVE']
+  stadium_id uuid [ref: > stadiums.id]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
 }
 
-// ───────── 7) seasons ─────────
-
+// 7) seasons
 Table seasons {
-  id         uuid         [pk, default: `gen_random_uuid()`]
-  name       varchar      [unique, not null]
-  year       int          [not null]
-  status     SeasonStatus [default: 'UPCOMING']
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
+  year       int [not null]
+  status     SeasonStatus [not null, default: 'UPCOMING']
   start_date timestamp
   end_date   timestamp
-  created_at timestamp    [default: `now()`]
-  updated_at timestamp
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
 }
 
-// ───────── 8) players ─────────
-
+// 8) players
 Table players {
-  id          uuid           [pk, default: `gen_random_uuid()`]
-  full_name   varchar        [not null]
-  dob         timestamp      [not null]
-  nationality varchar        [not null]
-  position    PlayerPosition [not null]
-  player_type PlayerType     [default: 'DOMESTIC']
-  birth_place varchar
-  height_cm   int
-  weight_kg   int
-  created_at  timestamp      [default: `now()`]
-  updated_at  timestamp
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  full_name      varchar [not null]
+  dob            timestamp [not null]
+  nationality    varchar [not null]
+  position       PlayerPosition [not null]
+  birth_place    varchar
+  height_cm      int
+  weight_kg      int
+  player_type    PlayerType [not null, default: 'DOMESTIC']
+  career_summary text
+  created_at     timestamp [not null, default: `now()`]
+  updated_at     timestamp [not null]
 
   indexes {
     full_name
@@ -192,17 +288,16 @@ Table players {
   }
 }
 
-// ───────── 9) team_players ─────────
-
+// 9) team_players
 Table team_players {
-  id            uuid      [pk, default: `gen_random_uuid()`]
-  team_id       uuid      [not null, ref: > teams.id]
-  player_id     uuid      [not null, ref: > players.id]
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  team_id       uuid [not null, ref: > teams.id]
+  player_id     uuid [not null, ref: > players.id]
   jersey_number int
-  joined_at     timestamp [default: `now()`]
+  joined_at     timestamp [not null, default: `now()`]
   left_at       timestamp
-  created_at    timestamp [default: `now()`]
-  updated_at    timestamp
+  created_at    timestamp [not null, default: `now()`]
+  updated_at    timestamp [not null]
 
   indexes {
     (team_id, player_id, joined_at) [unique]
@@ -211,17 +306,29 @@ Table team_players {
   }
 }
 
-// ───────── 10) season_teams ─────────
-
+// 10) season_teams
 Table season_teams {
-  id            uuid             [pk, default: `gen_random_uuid()`]
-  season_id     uuid             [not null, ref: > seasons.id]
-  team_id       uuid             [not null, ref: > teams.id]
-  status        SeasonTeamStatus [default: 'REGISTERED']
-  registered_at timestamp        [default: `now()`]
-  approved_at   timestamp
-  created_at    timestamp        [default: `now()`]
-  updated_at    timestamp
+  id                            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id                     uuid [not null, ref: > seasons.id]
+  team_id                       uuid [not null, ref: > teams.id]
+  status                        SeasonTeamStatus [not null, default: 'REGISTERED']
+  registered_at                 timestamp [not null, default: `now()`]
+  approved_at                   timestamp
+  owner_name                    varchar
+  owner_country                 varchar
+  owner_address                 varchar
+  team_introduction             text
+  primary_kit                   varchar
+  backup_kit                    varchar
+  participation_fee_paid        boolean [not null, default: false]
+  fee_paid_at                   timestamp
+  fee_receipt_code              varchar
+  fee_receipt_url               varchar
+  external_competition_schedule text
+  application_submitted_at      timestamp
+  application_review_note       varchar
+  created_at                    timestamp [not null, default: `now()`]
+  updated_at                    timestamp [not null]
 
   indexes {
     (season_id, team_id) [unique]
@@ -230,22 +337,22 @@ Table season_teams {
   }
 }
 
-// ───────── 11) matches ─────────
-
+// 11) matches
 Table matches {
-  id           uuid        [pk, default: `gen_random_uuid()`]
-  round_no     int         [not null]
-  leg          int         [default: 1]
-  season_id    uuid        [ref: > seasons.id]
-  home_team_id uuid        [not null, ref: > teams.id]
-  away_team_id uuid        [not null, ref: > teams.id]
+  id           uuid [pk, not null, default: `gen_random_uuid()`]
+  round_no     int [not null]
+  leg          int [not null, default: 1]
+  season_id    uuid [ref: > seasons.id]
+  home_team_id uuid [not null, ref: > teams.id]
+  away_team_id uuid [not null, ref: > teams.id]
+  stadium_id   uuid [ref: > stadiums.id]
+  kickoff_at   timestamp
   home_score   int
   away_score   int
-  stadium_id   uuid        [ref: > stadiums.id]
-  kickoff_at   timestamp
-  status       MatchStatus [default: 'DRAFT']
-  created_at   timestamp   [default: `now()`]
-  updated_at   timestamp
+  score_source MatchScoreSource
+  status       MatchStatus [not null, default: 'DRAFT']
+  created_at   timestamp [not null, default: `now()`]
+  updated_at   timestamp [not null]
 
   indexes {
     round_no
@@ -258,39 +365,39 @@ Table matches {
   }
 }
 
-// ───────── 12) match_events ─────────
-
+// 12) match_events
 Table match_events {
-  id                uuid      [pk, default: `gen_random_uuid()`]
-  match_id          uuid      [not null, ref: > matches.id]
-  minute            int       [not null]
+  id                uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id          uuid [not null, ref: > matches.id]
+  minute            int [not null]
   type              EventType [not null]
   goal_type         varchar
-  player_id         uuid      [ref: > players.id]
-  related_player_id uuid      [ref: > players.id]
-  team_id           uuid      [ref: > teams.id]
-  note              text
-  created_at        timestamp [default: `now()`]
-  updated_at        timestamp
+  player_id         uuid [ref: > players.id]
+  related_player_id uuid [ref: > players.id]
+  team_id           uuid [ref: > teams.id]
+  note              varchar
+  source            varchar [not null, default: 'MANUAL']
+  created_at        timestamp [not null, default: `now()`]
+  updated_at        timestamp [not null]
 
   indexes {
     match_id
     player_id
     team_id
     type
+    (match_id, source)
   }
 }
 
-// ───────── 13) regulations ─────────
-
+// 13) regulations
 Table regulations {
-  id         uuid      [pk, default: `gen_random_uuid()`]
-  season_id  uuid      [not null, ref: > seasons.id]
-  key        text      [not null]
-  value      text      [not null]
-  value_type text      [not null]
-  created_at timestamp [default: `now()`]
-  updated_at timestamp
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id  uuid [not null, ref: > seasons.id]
+  key        varchar [not null]
+  value      varchar [not null]
+  value_type varchar [not null]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
 
   indexes {
     (season_id, key) [unique]
@@ -298,25 +405,323 @@ Table regulations {
   }
 }
 
-// ───────── 14) standings ─────────
-
+// 14) standings
 Table standings {
-  id            uuid      [pk, default: `gen_random_uuid()`]
-  season_id     uuid      [not null, ref: > seasons.id]
-  team_id       uuid      [not null, ref: > teams.id]
-  played        int       [default: 0]
-  win           int       [default: 0]
-  draw          int       [default: 0]
-  loss          int       [default: 0]
-  goals_for     int       [default: 0]
-  goals_against int       [default: 0]
-  goal_diff     int       [default: 0]
-  points        int       [default: 0]
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id     uuid [not null, ref: > seasons.id]
+  team_id       uuid [not null, ref: > teams.id]
+  played        int [not null, default: 0]
+  win           int [not null, default: 0]
+  draw          int [not null, default: 0]
+  loss          int [not null, default: 0]
+  goals_for     int [not null, default: 0]
+  goals_against int [not null, default: 0]
+  goal_diff     int [not null, default: 0]
+  points        int [not null, default: 0]
   rank          int
-  updated_at    timestamp
+  updated_at    timestamp [not null]
 
   indexes {
     (season_id, team_id) [unique]
     season_id
+  }
+}
+
+// 15) match_team_registrations
+Table match_team_registrations {
+  id           uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id     uuid [not null, ref: > matches.id]
+  team_id      uuid [not null, ref: > teams.id]
+  kit_type     MatchKitType [not null, default: 'PRIMARY']
+  formation    varchar [not null]
+  status       MatchLineupStatus [not null, default: 'SUBMITTED']
+  submitted_at timestamp [not null, default: `now()`]
+  reviewed_at  timestamp
+  review_note  varchar
+  created_at   timestamp [not null, default: `now()`]
+  updated_at   timestamp [not null]
+
+  indexes {
+    (match_id, team_id) [unique]
+    match_id
+    team_id
+    status
+  }
+}
+
+// 16) match_lineup_players
+Table match_lineup_players {
+  id              uuid [pk, not null, default: `gen_random_uuid()`]
+  registration_id uuid [not null, ref: > match_team_registrations.id]
+  player_id       uuid [not null, ref: > players.id]
+  role            MatchLineupRole [not null]
+  position        PlayerPosition
+  shirt_number    int
+  created_at      timestamp [not null, default: `now()`]
+
+  indexes {
+    (registration_id, player_id) [unique]
+    player_id
+    role
+  }
+}
+
+// 17) player_suspensions
+Table player_suspensions {
+  id                 uuid [pk, not null, default: `gen_random_uuid()`]
+  player_id          uuid [not null, ref: > players.id]
+  team_id            uuid [not null, ref: > teams.id]
+  season_id          uuid [not null, ref: > seasons.id]
+  source_match_id    uuid [not null, ref: > matches.id]
+  effective_match_id uuid [not null, ref: > matches.id]
+  reason             varchar [not null]
+  status             PlayerSuspensionStatus [not null, default: 'ACTIVE']
+  served_at          timestamp
+  created_at         timestamp [not null, default: `now()`]
+  updated_at         timestamp [not null]
+
+  indexes {
+    (player_id, source_match_id, effective_match_id, reason) [unique]
+    team_id
+    season_id
+    effective_match_id
+    status
+  }
+}
+
+// 18) officials
+Table officials {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  full_name  varchar [not null]
+  email      varchar
+  phone      varchar
+  status     OfficialStatus [not null, default: 'ACTIVE']
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+
+  indexes {
+    status
+  }
+}
+
+// 19) match_official_assignments
+Table match_official_assignments {
+  id           uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id     uuid [not null, ref: > matches.id]
+  official_id  uuid [not null, ref: > officials.id]
+  role         MatchOfficialRole [not null]
+  published_at timestamp [not null, default: `now()`]
+  note         varchar
+  created_at   timestamp [not null, default: `now()`]
+  updated_at   timestamp [not null]
+
+  indexes {
+    (match_id, official_id, role) [unique]
+    match_id
+    official_id
+    role
+  }
+}
+
+// 20) match_reports
+Table match_reports {
+  id                   uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id             uuid [unique, not null, ref: > matches.id]
+  submitted_by_user_id uuid
+  home_score           int [not null]
+  away_score           int [not null]
+  best_player_id       uuid [ref: > players.id]
+  technical_stats      json
+  note                 text
+  submitted_at         timestamp [not null, default: `now()`]
+  created_at           timestamp [not null, default: `now()`]
+  updated_at           timestamp [not null]
+
+  indexes {
+    best_player_id
+    submitted_by_user_id
+  }
+}
+
+// 21) discipline_reports
+Table discipline_reports {
+  id                      uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id                uuid [unique, not null, ref: > matches.id]
+  supervisor_id           uuid [not null, ref: > officials.id]
+  organization_rating     varchar [not null]
+  referee_issues          text
+  player_issues           text
+  organizer_issues        text
+  notes                   text
+  sent_to_disciplinary_at timestamp
+  submitted_at            timestamp [not null, default: `now()`]
+  created_at              timestamp [not null, default: `now()`]
+  updated_at              timestamp [not null]
+
+  indexes {
+    supervisor_id
+  }
+}
+
+// 22) draw_lot_results
+Table draw_lot_results {
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id     uuid [not null, ref: > seasons.id]
+  team_id       uuid [not null, ref: > teams.id]
+  resolved_rank int [not null]
+  note          text
+  resolved_at   timestamp [not null, default: `now()`]
+  resolved_by   varchar
+  confirmed     boolean [not null, default: false]
+  created_at    timestamp [not null, default: `now()`]
+  updated_at    timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    season_id
+  }
+}
+
+// 23) promotion_candidates
+Table promotion_candidates {
+  id                 uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id          uuid [not null, ref: > seasons.id]
+  team_id            uuid [not null, ref: > teams.id]
+  rank               int [not null]
+  source_competition varchar [not null]
+  qualification_type PromotionQualificationType [not null, default: 'RUNNER_UP']
+  status             PromotionCandidateStatus [not null, default: 'ELIGIBLE']
+  note               text
+  created_at         timestamp [not null, default: `now()`]
+  updated_at         timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    (season_id, rank) [unique]
+    season_id
+    status
+  }
+}
+
+// 24) team_invitations
+Table team_invitations {
+  id                   uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id            uuid [not null, ref: > seasons.id]
+  team_id              uuid [not null, ref: > teams.id]
+  source_type          TeamInvitationSourceType [not null]
+  status               TeamInvitationStatus [not null, default: 'SENT']
+  sent_at              timestamp [not null, default: `now()`]
+  deadline_at          timestamp [not null]
+  response_at          timestamp
+  response_reason      varchar
+  regulations_snapshot json
+  promotion_note       varchar
+  created_at           timestamp [not null, default: `now()`]
+  updated_at           timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    season_id
+    team_id
+    status
+    deadline_at
+  }
+}
+
+// 25) team_manager_assignments
+Table team_manager_assignments {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id    uuid [not null, ref: > users.id]
+  season_id  uuid [not null, ref: > seasons.id]
+  team_id    uuid [not null, ref: > teams.id]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+
+  indexes {
+    (user_id, season_id) [unique]
+    team_id
+    season_id
+  }
+}
+
+// 26) team_manager_requests
+Table team_manager_requests {
+  id                       uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id               uuid [not null, ref: > users.id]
+  request_type             TeamManagerRequestType [not null]
+  status                   TeamManagerRequestStatus [not null, default: 'PENDING']
+  team_id                  uuid [ref: > teams.id]
+  proposed_team_name       varchar
+  proposed_team_short_name varchar
+  proposed_team_city       varchar
+  proposed_coach_name      varchar
+  proposed_team_logo_url   varchar
+  proposed_team_status     TeamStatus
+  proposed_stadium_id      uuid
+  request_note             text
+  admin_note               text
+  reviewed_by_id           uuid [ref: > users.id]
+  reviewed_at              timestamp
+  created_at               timestamp [not null, default: `now()`]
+  updated_at               timestamp [not null]
+
+  indexes {
+    manager_id
+    team_id
+    status
+    request_type
+    reviewed_by_id
+  }
+}
+
+// 27) manager_player_requests
+Table manager_player_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  team_id        uuid [not null, ref: > teams.id]
+  player_id      uuid [ref: > players.id]
+  request_type   ManagerPlayerRequestType [not null]
+  status         ManagerRequestStatus [not null, default: 'PENDING']
+  payload        json [not null]
+  request_note   text
+  admin_note     text
+  reviewed_by_id uuid [ref: > users.id]
+  reviewed_at    timestamp
+  created_at     timestamp [not null, default: `now()`]
+  updated_at     timestamp [not null]
+
+  indexes {
+    manager_id
+    team_id
+    player_id
+    status
+    request_type
+    reviewed_by_id
+  }
+}
+
+// 28) manager_stadium_requests
+Table manager_stadium_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  team_id        uuid [not null, ref: > teams.id]
+  stadium_id     uuid [ref: > stadiums.id]
+  request_type   ManagerStadiumRequestType [not null]
+  status         ManagerRequestStatus [not null, default: 'PENDING']
+  payload        json [not null]
+  request_note   text
+  admin_note     text
+  reviewed_by_id uuid [ref: > users.id]
+  reviewed_at    timestamp
+  created_at     timestamp [not null, default: `now()`]
+  updated_at     timestamp [not null]
+
+  indexes {
+    manager_id
+    team_id
+    stadium_id
+    status
+    request_type
+    reviewed_by_id
   }
 }

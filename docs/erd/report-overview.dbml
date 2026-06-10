@@ -1,0 +1,387 @@
+// === SE104 VLEAGUE — Report Overview ===
+// Generated from apps/api/prisma/schema.prisma by scripts/generate_report_erd.py
+// 28 tables · PostgreSQL · snake_case naming
+
+Enum TeamStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum PlayerPosition {
+  GK
+  DF
+  MF
+  FW
+}
+
+Enum PlayerType {
+  DOMESTIC
+  FOREIGN
+}
+
+Enum MatchStatus {
+  DRAFT
+  PUBLISHED
+  LOCKED
+  FINISHED
+  POSTPONED
+}
+
+Enum MatchScoreSource {
+  ADMIN
+  REFEREE
+}
+
+Enum SeasonStatus {
+  UPCOMING
+  IN_PROGRESS
+  COMPLETED
+}
+
+Enum SeasonTeamStatus {
+  REGISTERED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+Enum TeamInvitationSourceType {
+  PREVIOUS_TOP_8
+  PROMOTED
+  REPLACEMENT
+}
+
+Enum TeamInvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+Enum PromotionQualificationType {
+  CHAMPION
+  RUNNER_UP
+  PLAYOFF
+  REPLACEMENT_POOL
+}
+
+Enum PromotionCandidateStatus {
+  ELIGIBLE
+  INVITED
+  ACCEPTED
+  DECLINED
+  SKIPPED
+}
+
+Enum EventType {
+  GOAL
+  OWN_GOAL
+  YELLOW_CARD
+  RED_CARD
+  SUBSTITUTION
+  PENALTY
+  PENALTY_MISS
+}
+
+Enum MatchKitType {
+  PRIMARY
+  BACKUP
+}
+
+Enum MatchLineupRole {
+  STARTER
+  SUBSTITUTE
+}
+
+Enum MatchLineupStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+Enum PlayerSuspensionStatus {
+  ACTIVE
+  SERVED
+  CANCELLED
+}
+
+Enum OfficialStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum MatchOfficialRole {
+  MAIN_REFEREE
+  ASSISTANT_REFEREE
+  FOURTH_OFFICIAL
+  SUPERVISOR
+}
+
+Enum UserRole {
+  ADMIN
+  TEAM_MANAGER
+  REFEREE
+  SUPERVISOR
+  PUBLIC
+}
+
+Enum TeamManagerRequestType {
+  CREATE_TEAM
+  CLAIM_EXISTING_TEAM
+  UPDATE_MANAGED_TEAM
+  DELETE_MANAGED_TEAM
+}
+
+Enum TeamManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum ManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum ManagerPlayerRequestType {
+  ADD_PLAYER
+  UPDATE_PLAYER
+  REMOVE_FROM_TEAM
+}
+
+Enum ManagerStadiumRequestType {
+  CREATE_HOME_STADIUM
+  UPDATE_HOME_STADIUM
+  REMOVE_HOME_STADIUM
+}
+
+Enum OtpType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+// 1) roles
+Table roles {
+  id   uuid [pk, not null, default: `gen_random_uuid()`]
+  name varchar [unique, not null]
+}
+
+// 2) users
+Table users {
+  id              uuid [pk, not null, default: `gen_random_uuid()`]
+  role            UserRole [not null, default: 'PUBLIC']
+  name            varchar
+  role_id         uuid [ref: > roles.id]
+  managed_team_id uuid [ref: > teams.id]
+}
+
+// 3) refresh_tokens
+Table refresh_tokens {
+  id      uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id uuid [not null, ref: > users.id]
+}
+
+// 4) otp_codes
+Table otp_codes {
+  id      uuid [pk, not null, default: `gen_random_uuid()`]
+  type    OtpType [not null]
+  user_id uuid [not null, ref: > users.id]
+}
+
+// 5) stadiums
+Table stadiums {
+  id   uuid [pk, not null, default: `gen_random_uuid()`]
+  name varchar [unique, not null]
+}
+
+// 6) teams
+Table teams {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
+  status     TeamStatus [not null, default: 'ACTIVE']
+  stadium_id uuid [ref: > stadiums.id]
+}
+
+// 7) seasons
+Table seasons {
+  id     uuid [pk, not null, default: `gen_random_uuid()`]
+  name   varchar [unique, not null]
+  status SeasonStatus [not null, default: 'UPCOMING']
+}
+
+// 8) players
+Table players {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  full_name varchar [not null]
+}
+
+// 9) team_players
+Table team_players {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  team_id   uuid [not null, ref: > teams.id]
+  player_id uuid [not null, ref: > players.id]
+}
+
+// 10) season_teams
+Table season_teams {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id uuid [not null, ref: > seasons.id]
+  team_id   uuid [not null, ref: > teams.id]
+  status    SeasonTeamStatus [not null, default: 'REGISTERED']
+}
+
+// 11) matches
+Table matches {
+  id           uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id    uuid [ref: > seasons.id]
+  home_team_id uuid [not null, ref: > teams.id]
+  away_team_id uuid [not null, ref: > teams.id]
+  stadium_id   uuid [ref: > stadiums.id]
+  status       MatchStatus [not null, default: 'DRAFT']
+}
+
+// 12) match_events
+Table match_events {
+  id                uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id          uuid [not null, ref: > matches.id]
+  type              EventType [not null]
+  player_id         uuid [ref: > players.id]
+  related_player_id uuid [ref: > players.id]
+  team_id           uuid [ref: > teams.id]
+}
+
+// 13) regulations
+Table regulations {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id uuid [not null, ref: > seasons.id]
+}
+
+// 14) standings
+Table standings {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id uuid [not null, ref: > seasons.id]
+  team_id   uuid [not null, ref: > teams.id]
+  rank      int
+}
+
+// 15) match_team_registrations
+Table match_team_registrations {
+  id       uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id uuid [not null, ref: > matches.id]
+  team_id  uuid [not null, ref: > teams.id]
+  status   MatchLineupStatus [not null, default: 'SUBMITTED']
+}
+
+// 16) match_lineup_players
+Table match_lineup_players {
+  id              uuid [pk, not null, default: `gen_random_uuid()`]
+  registration_id uuid [not null, ref: > match_team_registrations.id]
+  player_id       uuid [not null, ref: > players.id]
+  role            MatchLineupRole [not null]
+}
+
+// 17) player_suspensions
+Table player_suspensions {
+  id                 uuid [pk, not null, default: `gen_random_uuid()`]
+  player_id          uuid [not null, ref: > players.id]
+  team_id            uuid [not null, ref: > teams.id]
+  season_id          uuid [not null, ref: > seasons.id]
+  source_match_id    uuid [not null, ref: > matches.id]
+  effective_match_id uuid [not null, ref: > matches.id]
+  status             PlayerSuspensionStatus [not null, default: 'ACTIVE']
+}
+
+// 18) officials
+Table officials {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  full_name varchar [not null]
+  status    OfficialStatus [not null, default: 'ACTIVE']
+}
+
+// 19) match_official_assignments
+Table match_official_assignments {
+  id          uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id    uuid [not null, ref: > matches.id]
+  official_id uuid [not null, ref: > officials.id]
+  role        MatchOfficialRole [not null]
+}
+
+// 20) match_reports
+Table match_reports {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id       uuid [unique, not null, ref: > matches.id]
+  best_player_id uuid [ref: > players.id]
+}
+
+// 21) discipline_reports
+Table discipline_reports {
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  match_id      uuid [unique, not null, ref: > matches.id]
+  supervisor_id uuid [not null, ref: > officials.id]
+}
+
+// 22) draw_lot_results
+Table draw_lot_results {
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id     uuid [not null, ref: > seasons.id]
+  team_id       uuid [not null, ref: > teams.id]
+  resolved_rank int [not null]
+}
+
+// 23) promotion_candidates
+Table promotion_candidates {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id uuid [not null, ref: > seasons.id]
+  team_id   uuid [not null, ref: > teams.id]
+  rank      int [not null]
+  status    PromotionCandidateStatus [not null, default: 'ELIGIBLE']
+}
+
+// 24) team_invitations
+Table team_invitations {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id uuid [not null, ref: > seasons.id]
+  team_id   uuid [not null, ref: > teams.id]
+  status    TeamInvitationStatus [not null, default: 'SENT']
+}
+
+// 25) team_manager_assignments
+Table team_manager_assignments {
+  id        uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id   uuid [not null, ref: > users.id]
+  season_id uuid [not null, ref: > seasons.id]
+  team_id   uuid [not null, ref: > teams.id]
+}
+
+// 26) team_manager_requests
+Table team_manager_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  request_type   TeamManagerRequestType [not null]
+  status         TeamManagerRequestStatus [not null, default: 'PENDING']
+  team_id        uuid [ref: > teams.id]
+  reviewed_by_id uuid [ref: > users.id]
+}
+
+// 27) manager_player_requests
+Table manager_player_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  team_id        uuid [not null, ref: > teams.id]
+  player_id      uuid [ref: > players.id]
+  request_type   ManagerPlayerRequestType [not null]
+  status         ManagerRequestStatus [not null, default: 'PENDING']
+  reviewed_by_id uuid [ref: > users.id]
+}
+
+// 28) manager_stadium_requests
+Table manager_stadium_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  team_id        uuid [not null, ref: > teams.id]
+  stadium_id     uuid [ref: > stadiums.id]
+  request_type   ManagerStadiumRequestType [not null]
+  status         ManagerRequestStatus [not null, default: 'PENDING']
+  reviewed_by_id uuid [ref: > users.id]
+}

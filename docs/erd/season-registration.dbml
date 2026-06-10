@@ -1,0 +1,255 @@
+// === SE104 VLEAGUE — Season Registration ===
+// Generated from apps/api/prisma/schema.prisma by scripts/generate_report_erd.py
+// 10 tables · PostgreSQL · snake_case naming
+
+Enum TeamStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum SeasonStatus {
+  UPCOMING
+  IN_PROGRESS
+  COMPLETED
+}
+
+Enum SeasonTeamStatus {
+  REGISTERED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+Enum TeamInvitationSourceType {
+  PREVIOUS_TOP_8
+  PROMOTED
+  REPLACEMENT
+}
+
+Enum TeamInvitationStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+Enum PromotionQualificationType {
+  CHAMPION
+  RUNNER_UP
+  PLAYOFF
+  REPLACEMENT_POOL
+}
+
+Enum PromotionCandidateStatus {
+  ELIGIBLE
+  INVITED
+  ACCEPTED
+  DECLINED
+  SKIPPED
+}
+
+Enum UserRole {
+  ADMIN
+  TEAM_MANAGER
+  REFEREE
+  SUPERVISOR
+  PUBLIC
+}
+
+// 1) users
+Table users {
+  id              uuid [pk, not null, default: `gen_random_uuid()`]
+  email           varchar [unique, not null]
+  password_hash   varchar
+  role            UserRole [not null, default: 'PUBLIC']
+  email_verified  boolean [not null, default: false]
+  name            varchar
+  avatar_url      varchar
+  google_id       varchar [unique]
+  facebook_id     varchar [unique]
+  role_id         uuid
+  managed_team_id uuid [ref: > teams.id]
+  created_at      timestamp [not null, default: `now()`]
+  updated_at      timestamp [not null]
+
+  indexes {
+    role_id
+    managed_team_id
+  }
+}
+
+// 2) teams
+Table teams {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
+  short_name varchar
+  city       varchar
+  logo_url   varchar
+  coach_name varchar
+  status     TeamStatus [not null, default: 'ACTIVE']
+  stadium_id uuid
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+}
+
+// 3) seasons
+Table seasons {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
+  year       int [not null]
+  status     SeasonStatus [not null, default: 'UPCOMING']
+  start_date timestamp
+  end_date   timestamp
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+}
+
+// 4) season_teams
+Table season_teams {
+  id                            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id                     uuid [not null, ref: > seasons.id]
+  team_id                       uuid [not null, ref: > teams.id]
+  status                        SeasonTeamStatus [not null, default: 'REGISTERED']
+  registered_at                 timestamp [not null, default: `now()`]
+  approved_at                   timestamp
+  owner_name                    varchar
+  owner_country                 varchar
+  owner_address                 varchar
+  team_introduction             text
+  primary_kit                   varchar
+  backup_kit                    varchar
+  participation_fee_paid        boolean [not null, default: false]
+  fee_paid_at                   timestamp
+  fee_receipt_code              varchar
+  fee_receipt_url               varchar
+  external_competition_schedule text
+  application_submitted_at      timestamp
+  application_review_note       varchar
+  created_at                    timestamp [not null, default: `now()`]
+  updated_at                    timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    season_id
+    team_id
+  }
+}
+
+// 5) regulations
+Table regulations {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id  uuid [not null, ref: > seasons.id]
+  key        varchar [not null]
+  value      varchar [not null]
+  value_type varchar [not null]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+
+  indexes {
+    (season_id, key) [unique]
+    season_id
+  }
+}
+
+// 6) standings
+Table standings {
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id     uuid [not null, ref: > seasons.id]
+  team_id       uuid [not null, ref: > teams.id]
+  played        int [not null, default: 0]
+  win           int [not null, default: 0]
+  draw          int [not null, default: 0]
+  loss          int [not null, default: 0]
+  goals_for     int [not null, default: 0]
+  goals_against int [not null, default: 0]
+  goal_diff     int [not null, default: 0]
+  points        int [not null, default: 0]
+  rank          int
+  updated_at    timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    season_id
+  }
+}
+
+// 7) draw_lot_results
+Table draw_lot_results {
+  id            uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id     uuid [not null, ref: > seasons.id]
+  team_id       uuid [not null, ref: > teams.id]
+  resolved_rank int [not null]
+  note          text
+  resolved_at   timestamp [not null, default: `now()`]
+  resolved_by   varchar
+  confirmed     boolean [not null, default: false]
+  created_at    timestamp [not null, default: `now()`]
+  updated_at    timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    season_id
+  }
+}
+
+// 8) promotion_candidates
+Table promotion_candidates {
+  id                 uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id          uuid [not null, ref: > seasons.id]
+  team_id            uuid [not null, ref: > teams.id]
+  rank               int [not null]
+  source_competition varchar [not null]
+  qualification_type PromotionQualificationType [not null, default: 'RUNNER_UP']
+  status             PromotionCandidateStatus [not null, default: 'ELIGIBLE']
+  note               text
+  created_at         timestamp [not null, default: `now()`]
+  updated_at         timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    (season_id, rank) [unique]
+    season_id
+    status
+  }
+}
+
+// 9) team_invitations
+Table team_invitations {
+  id                   uuid [pk, not null, default: `gen_random_uuid()`]
+  season_id            uuid [not null, ref: > seasons.id]
+  team_id              uuid [not null, ref: > teams.id]
+  source_type          TeamInvitationSourceType [not null]
+  status               TeamInvitationStatus [not null, default: 'SENT']
+  sent_at              timestamp [not null, default: `now()`]
+  deadline_at          timestamp [not null]
+  response_at          timestamp
+  response_reason      varchar
+  regulations_snapshot json
+  promotion_note       varchar
+  created_at           timestamp [not null, default: `now()`]
+  updated_at           timestamp [not null]
+
+  indexes {
+    (season_id, team_id) [unique]
+    season_id
+    team_id
+    status
+    deadline_at
+  }
+}
+
+// 10) team_manager_assignments
+Table team_manager_assignments {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id    uuid [not null, ref: > users.id]
+  season_id  uuid [not null, ref: > seasons.id]
+  team_id    uuid [not null, ref: > teams.id]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+
+  indexes {
+    (user_id, season_id) [unique]
+    team_id
+    season_id
+  }
+}
