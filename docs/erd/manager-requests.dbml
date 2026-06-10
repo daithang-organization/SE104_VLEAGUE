@@ -1,0 +1,238 @@
+// === SE104 VLEAGUE — Manager Requests ===
+// Generated from apps/api/prisma/schema.prisma by scripts/generate_report_erd.py
+// 9 tables · PostgreSQL · snake_case naming
+
+Enum TeamStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum PlayerPosition {
+  GK
+  DF
+  MF
+  FW
+}
+
+Enum PlayerType {
+  DOMESTIC
+  FOREIGN
+}
+
+Enum UserRole {
+  ADMIN
+  TEAM_MANAGER
+  REFEREE
+  SUPERVISOR
+  PUBLIC
+}
+
+Enum TeamManagerRequestType {
+  CREATE_TEAM
+  CLAIM_EXISTING_TEAM
+  UPDATE_MANAGED_TEAM
+  DELETE_MANAGED_TEAM
+}
+
+Enum TeamManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum ManagerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum ManagerPlayerRequestType {
+  ADD_PLAYER
+  UPDATE_PLAYER
+  REMOVE_FROM_TEAM
+}
+
+Enum ManagerStadiumRequestType {
+  CREATE_HOME_STADIUM
+  UPDATE_HOME_STADIUM
+  REMOVE_HOME_STADIUM
+}
+
+// 1) roles
+Table roles {
+  id          uuid [pk, not null, default: `gen_random_uuid()`]
+  name        varchar [unique, not null]
+  description varchar
+  created_at  timestamp [not null, default: `now()`]
+  updated_at  timestamp [not null]
+}
+
+// 2) users
+Table users {
+  id              uuid [pk, not null, default: `gen_random_uuid()`]
+  email           varchar [unique, not null]
+  password_hash   varchar
+  role            UserRole [not null, default: 'PUBLIC']
+  email_verified  boolean [not null, default: false]
+  name            varchar
+  avatar_url      varchar
+  google_id       varchar [unique]
+  facebook_id     varchar [unique]
+  role_id         uuid [ref: > roles.id]
+  managed_team_id uuid [ref: > teams.id]
+  created_at      timestamp [not null, default: `now()`]
+  updated_at      timestamp [not null]
+
+  indexes {
+    role_id
+    managed_team_id
+  }
+}
+
+// 3) stadiums
+Table stadiums {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
+  address    varchar
+  city       varchar [not null]
+  country    varchar [not null, default: 'Việt Nam']
+  capacity   int
+  fifa_stars int
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+}
+
+// 4) teams
+Table teams {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  name       varchar [unique, not null]
+  short_name varchar
+  city       varchar
+  logo_url   varchar
+  coach_name varchar
+  status     TeamStatus [not null, default: 'ACTIVE']
+  stadium_id uuid [ref: > stadiums.id]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+}
+
+// 5) players
+Table players {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  full_name      varchar [not null]
+  dob            timestamp [not null]
+  nationality    varchar [not null]
+  position       PlayerPosition [not null]
+  birth_place    varchar
+  height_cm      int
+  weight_kg      int
+  player_type    PlayerType [not null, default: 'DOMESTIC']
+  career_summary text
+  created_at     timestamp [not null, default: `now()`]
+  updated_at     timestamp [not null]
+
+  indexes {
+    full_name
+    nationality
+    position
+    player_type
+  }
+}
+
+// 6) team_manager_assignments
+Table team_manager_assignments {
+  id         uuid [pk, not null, default: `gen_random_uuid()`]
+  user_id    uuid [not null, ref: > users.id]
+  season_id  uuid [not null]
+  team_id    uuid [not null, ref: > teams.id]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null]
+
+  indexes {
+    (user_id, season_id) [unique]
+    team_id
+    season_id
+  }
+}
+
+// 7) team_manager_requests
+Table team_manager_requests {
+  id                       uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id               uuid [not null, ref: > users.id]
+  request_type             TeamManagerRequestType [not null]
+  status                   TeamManagerRequestStatus [not null, default: 'PENDING']
+  team_id                  uuid [ref: > teams.id]
+  proposed_team_name       varchar
+  proposed_team_short_name varchar
+  proposed_team_city       varchar
+  proposed_coach_name      varchar
+  proposed_team_logo_url   varchar
+  proposed_team_status     TeamStatus
+  proposed_stadium_id      uuid
+  request_note             text
+  admin_note               text
+  reviewed_by_id           uuid [ref: > users.id]
+  reviewed_at              timestamp
+  created_at               timestamp [not null, default: `now()`]
+  updated_at               timestamp [not null]
+
+  indexes {
+    manager_id
+    team_id
+    status
+    request_type
+    reviewed_by_id
+  }
+}
+
+// 8) manager_player_requests
+Table manager_player_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  team_id        uuid [not null, ref: > teams.id]
+  player_id      uuid [ref: > players.id]
+  request_type   ManagerPlayerRequestType [not null]
+  status         ManagerRequestStatus [not null, default: 'PENDING']
+  payload        json [not null]
+  request_note   text
+  admin_note     text
+  reviewed_by_id uuid [ref: > users.id]
+  reviewed_at    timestamp
+  created_at     timestamp [not null, default: `now()`]
+  updated_at     timestamp [not null]
+
+  indexes {
+    manager_id
+    team_id
+    player_id
+    status
+    request_type
+    reviewed_by_id
+  }
+}
+
+// 9) manager_stadium_requests
+Table manager_stadium_requests {
+  id             uuid [pk, not null, default: `gen_random_uuid()`]
+  manager_id     uuid [not null, ref: > users.id]
+  team_id        uuid [not null, ref: > teams.id]
+  stadium_id     uuid [ref: > stadiums.id]
+  request_type   ManagerStadiumRequestType [not null]
+  status         ManagerRequestStatus [not null, default: 'PENDING']
+  payload        json [not null]
+  request_note   text
+  admin_note     text
+  reviewed_by_id uuid [ref: > users.id]
+  reviewed_at    timestamp
+  created_at     timestamp [not null, default: `now()`]
+  updated_at     timestamp [not null]
+
+  indexes {
+    manager_id
+    team_id
+    stadium_id
+    status
+    request_type
+    reviewed_by_id
+  }
+}
